@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PinkPower HN — Lingerie & Intimates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --pink:    #e8437a;
+      --pink-lt: #f2a0bc;
+      --red:     #c0152e;
+      --black:   #0d0d0d;
+      --dark:    #1a0a0e;
+      --white:   #fdf4f6;
+      --glass:   rgba(255,255,255,0.06);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--black);
+      color: var(--white);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.4rem 3rem;
+      background: linear-gradient(to bottom, rgba(13,13,13,0.92), transparent);
+      backdrop-filter: blur(4px);
+    }
+
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--pink);
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: var(--white); }
+
+    nav ul {
+      display: flex;
+      gap: 2.4rem;
+      list-style: none;
+    }
+
+    nav ul a {
+      color: var(--white);
+      text-decoration: none;
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      transition: opacity 0.2s, color 0.2s;
+    }
+
+    nav ul a:hover { opacity: 1; color: var(--pink); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      padding: 6rem 2rem 4rem;
+    }
+
+    /* animated gradient background */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 40%, rgba(192,21,46,0.30) 0%, transparent 65%),
+        radial-gradient(ellipse 70% 50% at 80% 60%, rgba(232,67,122,0.25) 0%, transparent 60%),
+        var(--dark);
+      z-index: 0;
+      animation: pulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.8; }
+      to   { opacity: 1;   }
+    }
+
+    /* decorative lines */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 120px,
+          rgba(232,67,122,0.04) 120px,
+          rgba(232,67,122,0.04) 121px
+        );
+      z-index: 0;
+    }
+
+    .hero-inner { position: relative; z-index: 1; }
+
+    .hero-eyebrow {
+      font-size: 0.68rem;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--pink-lt);
+      margin-bottom: 1.4rem;
+    }
+
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3.4rem, 9vw, 8rem);
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--pink);
+    }
+
+    .hero-sub {
+      margin-top: 1.8rem;
+      font-size: 0.82rem;
+      letter-spacing: 0.14em;
+      color: rgba(253,244,246,0.65);
+      max-width: 36ch;
+      line-height: 1.9;
+    }
+
+    .hero-cta {
+      margin-top: 3rem;
+      display: flex;
+      gap: 1.2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.9rem 2.6rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: var(--pink);
+      color: var(--black);
+      border-color: var(--pink);
+    }
+
+    .btn-primary:hover {
+      background: var(--red);
+      border-color: var(--red);
+      color: var(--white);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--white);
+      border-color: rgba(255,255,255,0.35);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--pink);
+      color: var(--pink);
+    }
+
+    /* ── MARQUEE ── */
+    .marquee-wrap {
+      overflow: hidden;
+      border-top: 1px solid rgba(232,67,122,0.2);
+      border-bottom: 1px solid rgba(232,67,122,0.2);
+      padding: 0.9rem 0;
+      background: rgba(232,67,122,0.06);
+    }
+
+    .marquee-track {
+      display: flex;
+      white-space: nowrap;
+      animation: marquee 22s linear infinite;
+      gap: 0;
+    }
+
+    .marquee-track span {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--pink-lt);
+      padding: 0 2.4rem;
+    }
+
+    .marquee-track span::before {
+      content: '✦';
+      margin-right: 2.4rem;
+      color: var(--red);
+    }
+
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ── CATEGORIES ── */
+    .section {
+      padding: 6rem 3rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: var(--pink);
+      margin-bottom: 0.8rem;
+    }
+
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 300;
+      letter-spacing: 0.04em;
+    }
+
+    .section-title em { font-style: italic; color: var(--pink); }
+
+    .grid-3 {
+      margin-top: 3rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.4rem;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: var(--dark);
+      cursor: pointer;
+    }
+
+    /* gradient placeholder instead of images */
+    .card-bg {
+      position: absolute;
+      inset: 0;
+      transition: transform 0.6s cubic-bezier(.25,.46,.45,.94);
+    }
+
+    .card:hover .card-bg { transform: scale(1.06); }
+
+    .card-bg-1 { background: linear-gradient(155deg, #2a0812 0%, #8b1a35 45%, #e8437a 100%); }
+    .card-bg-2 { background: linear-gradient(155deg, #0d0d0d 0%, #c0152e 55%, #f2a0bc 100%); }
+    .card-bg-3 { background: linear-gradient(155deg, #1a0a0e 0%, #7c1124 50%, #e8437a 90%); }
+
+    .card-content {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 2rem 1.6rem;
+      background: linear-gradient(to top, rgba(13,13,13,0.9) 0%, transparent 100%);
+    }
+
+    .card-cat {
+      font-size: 0.62rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--pink-lt);
+      margin-bottom: 0.4rem;
+    }
+
+    .card-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
+
+    .card-link {
+      display: inline-block;
+      margin-top: 0.8rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--pink);
+      text-decoration: none;
+      border-bottom: 1px solid var(--pink);
+      padding-bottom: 1px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .card:hover .card-link { opacity: 1; transform: translateY(0); }
+
+    /* ── FEATURED BANNER ── */
+    .banner {
+      margin: 0 3rem 6rem;
+      position: relative;
+      overflow: hidden;
+      min-height: 380px;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(110deg, var(--dark) 0%, #4a0d1e 50%, #c0152e 100%);
+    }
+
+    .banner-deco {
+      position: absolute;
+      right: -60px;
+      top: -60px;
+      width: 480px;
+      height: 480px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,67,122,0.3) 0%, transparent 70%);
+    }
+
+    .banner-inner {
+      position: relative;
+      z-index: 1;
+      padding: 4rem;
+    }
+
+    .banner-badge {
+      display: inline-block;
+      background: var(--pink);
+      color: var(--black);
+      font-size: 0.6rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      padding: 0.35rem 1rem;
+      margin-bottom: 1.4rem;
+      font-weight: 500;
+    }
+
+    .banner h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 5vw, 4rem);
+      font-weight: 300;
+      line-height: 1.1;
+      letter-spacing: 0.04em;
+      max-width: 18ch;
+      margin-bottom: 1.6rem;
+    }
+
+    .banner h2 em { font-style: italic; color: var(--pink-lt); }
+
+    /* ── VALUES ── */
+    .values {
+      border-top: 1px solid rgba(232,67,122,0.15);
+      padding: 5rem 3rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 3rem;
+      max-width: 1280px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .value-icon {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .value-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.5rem;
+      color: var(--pink-lt);
+    }
+
+    .value-desc {
+      font-size: 0.74rem;
+      letter-spacing: 0.06em;
+      line-height: 1.8;
+      color: rgba(253,244,246,0.55);
+    }
+
+    /* ── NEWSLETTER ── */
+    .newsletter {
+      background: linear-gradient(135deg, #1a0a0e 0%, #2d0b18 100%);
+      border-top: 1px solid rgba(232,67,122,0.18);
+      border-bottom: 1px solid rgba(232,67,122,0.18);
+      padding: 5rem 3rem;
+      text-align: center;
+    }
+
+    .newsletter h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 300;
+      margin-bottom: 0.6rem;
+    }
+
+    .newsletter p {
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      color: rgba(253,244,246,0.55);
+      margin-bottom: 2rem;
+    }
+
+    .newsletter-form {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .newsletter-form input {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(232,67,122,0.35);
+      border-right: none;
+      color: var(--white);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.76rem;
+      letter-spacing: 0.08em;
+      padding: 0.9rem 1.4rem;
+      outline: none;
+    }
+
+    .newsletter-form input::placeholder { color: rgba(253,244,246,0.3); }
+
+    .newsletter-form input:focus { border-color: var(--pink); }
+
+    .newsletter-form button {
+      background: var(--pink);
+      color: var(--black);
+      border: 1px solid var(--pink);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.9rem 1.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .newsletter-form button:hover { background: var(--red); border-color: var(--red); color: var(--white); }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 4rem 3rem 2rem;
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr repeat(3, 1fr);
+      gap: 3rem;
+    }
+
+    .footer-brand .nav-logo { font-size: 1.4rem; display: block; margin-bottom: 1rem; }
+
+    .footer-brand p {
+      font-size: 0.72rem;
+      line-height: 1.9;
+      color: rgba(253,244,246,0.45);
+      max-width: 28ch;
+    }
+
+    footer h4 {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--pink-lt);
+      margin-bottom: 1.2rem;
+    }
+
+    footer ul { list-style: none; }
+
+    footer ul li {
+      margin-bottom: 0.6rem;
+    }
+
+    footer ul a {
+      font-size: 0.74rem;
+      color: rgba(253,244,246,0.5);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+
+    footer ul a:hover { color: var(--pink); }
+
+    .footer-bottom {
+      max-width: 1280px;
+      margin: 0 auto;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 1.4rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .footer-bottom p {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      color: rgba(253,244,246,0.3);
+    }
+
+    .footer-bottom p span { color: var(--pink); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 1.2rem 1.4rem; }
+      nav ul { display: none; }
+      .section { padding: 4rem 1.4rem; }
+      .banner { margin: 0 1.4rem 4rem; }
+      .banner-inner { padding: 2.4rem; }
+      footer { grid-template-columns: 1fr 1fr; padding: 3rem 1.4rem 1.4rem; }
+      .values { padding: 3rem 1.4rem; }
+      .newsletter { padding: 3rem 1.4rem; }
+      .footer-bottom { padding: 1.2rem 1.4rem; }
+    }
+
+    @media (max-width: 480px) {
+      footer { grid-template-columns: 1fr; }
+      .newsletter-form { flex-direction: column; }
+      .newsletter-form input { border-right: 1px solid rgba(232,67,122,0.35); border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav>
+    <a href="#" class="nav-logo">Pink<span>Power</span> HN</a>
+    <ul>
+      <li><a href="#collections">Collections</a></li>
+      <li><a href="#new">New Arrivals</a></li>
+      <li><a href="#sale">Sale</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <a href="#collections" class="btn btn-primary" style="padding: 0.6rem 1.6rem; font-size: 0.65rem;">Shop Now</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">Nueva Colección · Primavera 2025</p>
+      <h1>Feel<br /><em>Fearlessly</em><br />Beautiful</h1>
+      <p class="hero-sub">Lencería fina, ropa íntima y accesorios diseñados para mujeres que se atreven a brillar.</p>
+      <div class="hero-cta">
+        <a href="#collections" class="btn btn-primary">Explorar Colección</a>
+        <a href="#new" class="btn btn-outline">Nuevas Llegadas</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <span>Free Shipping Over L.500</span>
+      <span>New Spring Collection</span>
+      <span>Exclusive Members Only</span>
+      <span>Handcrafted Intimates</span>
+      <span>Bold · Feminine · Powerful</span>
+      <span>Free Shipping Over L.500</span>
+      <span>New Spring Collection</span>
+      <span>Exclusive Members Only</span>
+      <span>Handcrafted Intimates</span>
+      <span>Bold · Feminine · Powerful</span>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div id="collections">
+    <div class="section">
+      <p class="section-label">Our Collections</p>
+      <h2 class="section-title">Diseñado para <em>ti</em></h2>
+      <div class="grid-3">
+
+        <div class="card">
+          <div class="card-bg card-bg-1"></div>
+          <div class="card-content">
+            <p class="card-cat">Bestseller</p>
+            <p class="card-name">Lace &amp; Silk</p>
+            <a href="#" class="card-link">Shop Collection</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-bg card-bg-2"></div>
+          <div class="card-content">
+            <p class="card-cat">New Arrivals</p>
+            <p class="card-name">Velvet Dreams</p>
+            <a href="#" class="card-link">Shop Collection</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-bg card-bg-3"></div>
+          <div class="card-content">
+            <p class="card-cat">Limited Edition</p>
+            <p class="card-name">Scarlet Night</p>
+            <a href="#" class="card-link">Shop Collection</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURED BANNER -->
+  <div id="new">
+    <div class="banner">
+      <div class="banner-deco"></div>
+      <div class="banner-inner">
+        <span class="banner-badge">Temporada Especial</span>
+        <h2>Power Collection<br /><em>Spring '25</em></h2>
+        <a href="#" class="btn btn-primary">Ver Todo</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- VALUES -->
+  <div class="values" id="about">
+    <div>
+      <div class="value-icon">♡</div>
+      <p class="value-title">Hecho con Amor</p>
+      <p class="value-desc">Cada pieza es seleccionada con cuidado para celebrar la feminidad en todas sus formas.</p>
+    </div>
+    <div>
+      <div class="value-icon">✦</div>
+      <p class="value-title">Calidad Premium</p>
+      <p class="value-desc">Materiales de alta gama: encaje, seda, satén y terciopelo que acarician tu piel.</p>
+    </div>
+    <div>
+      <div class="value-icon">⬡</div>
+      <p class="value-title">Tallas Inclusivas</p>
+      <p class="value-desc">Colecciones que abrazan cada cuerpo, porque toda mujer merece sentirse poderosa.</p>
+    </div>
+    <div>
+      <div class="value-icon">◈</div>
+      <p class="value-title">Envío Seguro</p>
+      <p class="value-desc">Empaque discreto y elegante, entrega a domicilio en todo Honduras.</p>
+    </div>
+  </div>
+
+  <!-- NEWSLETTER -->
+  <section class="newsletter" id="contact">
+    <h3>Únete al <em style="font-family:'Cormorant Garamond',serif; color:var(--pink);">Club Pink</em></h3>
+    <p>Recibe las últimas novedades, ofertas exclusivas y acceso anticipado a nuevas colecciones.</p>
+    <form class="newsletter-form" onsubmit="return false;">
+      <input type="email" placeholder="tu@correo.com" />
+      <button type="submit">Suscribirse</button>
+    </form>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-brand">
+      <a href="#" class="nav-logo">Pink<span>Power</span> HN</a>
+      <p>Lencería y ropa íntima fina para la mujer hondureña que sabe lo que quiere.</p>
+    </div>
+    <div>
+      <h4>Tienda</h4>
+      <ul>
+        <li><a href="#">Nuevas Llegadas</a></li>
+        <li><a href="#">Lencería</a></li>
+        <li><a href="#">Ropa de Dormir</a></li>
+        <li><a href="#">Accesorios</a></li>
+        <li><a href="#">Sale</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Ayuda</h4>
+      <ul>
+        <li><a href="#">Guía de Tallas</a></li>
+        <li><a href="#">Envíos</a></li>
+        <li><a href="#">Devoluciones</a></li>
+        <li><a href="#">FAQ</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Síguenos</h4>
+      <ul>
+        <li><a href="#">Instagram</a></li>
+        <li><a href="#">Facebook</a></li>
+        <li><a href="#">TikTok</a></li>
+        <li><a href="#">WhatsApp</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <div class="footer-bottom">
+    <p>&copy; 2025 <span>PinkPower HN</span>. Todos los derechos reservados.</p>
+    <p>Hecho con <span>♡</span> en Honduras</p>
+  </div>
+
+</body>
+</html>

@@ -70,7 +70,7 @@ export function updateCartBadge() {
 
 // ── WhatsApp checkout ─────────────────────────────────────
 // whatsappNumber must be fetched from GET /config by the caller — never stored here
-export function buildWhatsAppMessage() {
+export function buildWhatsAppMessage(orderName = null) {
   const cart = getState().cart;
   if (!cart.length) return '';
 
@@ -81,13 +81,16 @@ export function buildWhatsAppMessage() {
   });
 
   const total = getCartTotal().toLocaleString('es-HN', { minimumFractionDigits: 2 });
-  lines.push(`\nTotal: L. ${total}`);
 
-  return `Hola! Me gustaría hacer el siguiente pedido:\n\n${lines.join('\n')}`;
+  const header = orderName
+    ? `Hola! Acabo de realizar el pedido *${orderName}* en PinkPower HN.\n\n`
+    : `Hola! Me gustaría hacer el siguiente pedido:\n\n`;
+
+  return `${header}${lines.join('\n')}\n\nTotal: L. ${total}`;
 }
 
-export function buildWhatsAppUrl(number) {
-  const msg = buildWhatsAppMessage();
+export function buildWhatsAppUrl(number, orderName = null) {
+  const msg = buildWhatsAppMessage(orderName);
   if (!msg) return `https://wa.me/${number}`;
 
   const encoded = encodeURIComponent(msg);

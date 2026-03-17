@@ -32,7 +32,7 @@ function normalizeProduct(node) {
     id:               stripGid(node.id),
     title:            node.title || '',
     description:      node.description || '',
-    availableForSale: Boolean(node.availableForSale),
+    availableForSale: variants.some(v => v.availableForSale),
     price:            displayVariant ? displayVariant.price : 0,
     variants,
     images,

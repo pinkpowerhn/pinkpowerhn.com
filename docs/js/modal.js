@@ -1,4 +1,4 @@
-import { setState } from './state.js';
+import { getState, setState } from './state.js';
 import { addToCart } from './cart.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect fill='%231a0a0e' width='600' height='600'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
@@ -103,9 +103,15 @@ function buildModalHTML(p) {
     ? `<p class="modal-description">${p.description}</p>`
     : '';
 
+  const atLimit = !soldOut && _selectedVariant
+    ? isAtLimit(_selectedVariant)
+    : false;
+
   const addBtn = soldOut
     ? `<button class="btn btn-primary" disabled>Agotado</button>`
-    : `<button class="btn btn-primary" id="modal-add-btn">Agregar al Carrito</button>`;
+    : `<button class="btn btn-primary" id="modal-add-btn"${atLimit ? ' disabled' : ''}>
+        ${atLimit ? 'Límite alcanzado' : 'Agregar al Carrito'}
+       </button>`;
 
   return `
     <div class="modal-backdrop" id="modal-backdrop"></div>
@@ -160,21 +166,14 @@ function wireModalEvents(modal, product) {
       if (priceEl) {
         priceEl.textContent = `L. ${variant.price.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
       }
+      refreshAddBtn(modal);
     });
   });
 
   modal.querySelector('#modal-add-btn')?.addEventListener('click', () => {
     if (!_currentProduct || !_selectedVariant) return;
     addToCart(_currentProduct, _selectedVariant);
-    const btn = modal.querySelector('#modal-add-btn');
-    if (btn) {
-      btn.textContent = '¡Agregado!';
-      btn.disabled = true;
-      setTimeout(() => {
-        btn.textContent = 'Agregar al Carrito';
-        btn.disabled = false;
-      }, 1800);
-    }
+    refreshAddBtn(modal);
   });
 
   // Focus trap
@@ -192,6 +191,23 @@ function wireModalEvents(modal, product) {
       e.preventDefault(); first.focus();
     }
   });
+}
+
+// ── Add button state ──────────────────────────────────────
+function isAtLimit(variant) {
+  if (variant.inventoryQuantity === null) return false; // untracked = no limit
+  const cart = getState().cart;
+  const inCart = cart.find(i => i.variantId === variant.id);
+  const qty = inCart ? inCart.quantity : 0;
+  return qty >= variant.inventoryQuantity;
+}
+
+function refreshAddBtn(modal) {
+  const btn = modal.querySelector('#modal-add-btn');
+  if (!btn || !_selectedVariant) return;
+  const at = isAtLimit(_selectedVariant);
+  btn.disabled = at;
+  btn.textContent = at ? 'Límite alcanzado' : 'Agregar al Carrito';
 }
 
 // ── Carousel ──────────────────────────────────────────────

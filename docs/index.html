@@ -24,13 +24,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --pink:    #e8437a;
-      --pink-lt: #f2a0bc;
-      --red:     #c0152e;
-      --black:   #0d0d0d;
-      --dark:    #1a0a0e;
-      --white:   #fdf4f6;
-      --glass:   rgba(255,255,255,0.06);
+      /* New light palette — Pink Power Ranger vibe */
+      --pink:    #e0006e;   /* vivid hot pink */
+      --pink-lt: #f472b6;   /* medium pink — readable on white */
+      --pink-dk: #9a0049;   /* deep magenta */
+      /* Legacy names remapped so shop.css var() refs work without changes */
+      --black:   #fff7fb;   /* page background (was black) */
+      --dark:    #fef0f7;   /* surface / panel background (was dark) */
+      --white:   #1a0a12;   /* primary text (was light text) */
+      --red:     #9a0049;   /* = pink-dk, kept for backward compat */
+      --glass:   rgba(255,255,255,0.75);
     }
 
     html { scroll-behavior: smooth; }
@@ -52,8 +55,8 @@
       align-items: center;
       justify-content: space-between;
       padding: 1.4rem 3rem;
-      background: linear-gradient(to bottom, rgba(13,13,13,0.92), transparent);
-      backdrop-filter: blur(4px);
+      background: linear-gradient(to bottom, rgba(255,247,251,0.96), transparent);
+      backdrop-filter: blur(6px);
     }
 
     .nav-logo {
@@ -80,11 +83,10 @@
       font-size: 0.72rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      opacity: 0.85;
-      transition: opacity 0.2s, color 0.2s;
+      transition: color 0.2s;
     }
 
-    nav ul a:hover { opacity: 1; color: var(--pink); }
+    nav ul a:hover { color: var(--pink); }
 
     /* ── HERO ── */
     .hero {
@@ -99,25 +101,23 @@
       padding: 6rem 2rem 4rem;
     }
 
-    /* animated gradient background */
     .hero::before {
       content: '';
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(ellipse 80% 60% at 20% 40%, rgba(192,21,46,0.30) 0%, transparent 65%),
-        radial-gradient(ellipse 70% 50% at 80% 60%, rgba(232,67,122,0.25) 0%, transparent 60%),
-        var(--dark);
+        radial-gradient(ellipse 80% 60% at 20% 40%, rgba(224,0,110,0.14) 0%, transparent 65%),
+        radial-gradient(ellipse 70% 50% at 80% 60%, rgba(244,114,182,0.18) 0%, transparent 60%),
+        var(--black);
       z-index: 0;
       animation: pulse 8s ease-in-out infinite alternate;
     }
 
     @keyframes pulse {
-      from { opacity: 0.8; }
-      to   { opacity: 1;   }
+      from { opacity: 0.85; }
+      to   { opacity: 1;    }
     }
 
-    /* decorative lines */
     .hero::after {
       content: '';
       position: absolute;
@@ -127,8 +127,8 @@
           90deg,
           transparent,
           transparent 120px,
-          rgba(232,67,122,0.04) 120px,
-          rgba(232,67,122,0.04) 121px
+          rgba(224,0,110,0.04) 120px,
+          rgba(224,0,110,0.04) 121px
         );
       z-index: 0;
     }
@@ -139,7 +139,7 @@
       font-size: 0.68rem;
       letter-spacing: 0.4em;
       text-transform: uppercase;
-      color: var(--pink-lt);
+      color: var(--pink);
       margin-bottom: 1.4rem;
     }
 
@@ -150,6 +150,7 @@
       line-height: 1;
       letter-spacing: 0.04em;
       text-transform: uppercase;
+      color: var(--white);
     }
 
     .hero h1 em {
@@ -161,7 +162,7 @@
       margin-top: 1.8rem;
       font-size: 0.82rem;
       letter-spacing: 0.14em;
-      color: rgba(253,244,246,0.65);
+      color: rgba(26,10,18,0.6);
       max-width: 36ch;
       line-height: 1.9;
     }
@@ -190,20 +191,20 @@
 
     .btn-primary {
       background: var(--pink);
-      color: var(--black);
+      color: #fff;
       border-color: var(--pink);
     }
 
     .btn-primary:hover {
-      background: var(--red);
-      border-color: var(--red);
-      color: var(--white);
+      background: var(--pink-dk);
+      border-color: var(--pink-dk);
+      color: #fff;
     }
 
     .btn-outline {
       background: transparent;
       color: var(--white);
-      border-color: rgba(255,255,255,0.35);
+      border-color: rgba(26,10,18,0.3);
     }
 
     .btn-outline:hover {
@@ -214,10 +215,10 @@
     /* ── MARQUEE ── */
     .marquee-wrap {
       overflow: hidden;
-      border-top: 1px solid rgba(232,67,122,0.2);
-      border-bottom: 1px solid rgba(232,67,122,0.2);
+      border-top: 1px solid rgba(224,0,110,0.2);
+      border-bottom: 1px solid rgba(224,0,110,0.2);
       padding: 0.9rem 0;
-      background: rgba(232,67,122,0.06);
+      background: rgba(224,0,110,0.05);
     }
 
     .marquee-track {
@@ -231,14 +232,14 @@
       font-size: 0.65rem;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: var(--pink-lt);
+      color: var(--pink);
       padding: 0 2.4rem;
     }
 
     .marquee-track span::before {
       content: '✦';
       margin-right: 2.4rem;
-      color: var(--red);
+      color: var(--pink-dk);
     }
 
     @keyframes marquee {
@@ -266,6 +267,7 @@
       font-size: clamp(2rem, 4vw, 3.2rem);
       font-weight: 300;
       letter-spacing: 0.04em;
+      color: var(--white);
     }
 
     .section-title em { font-style: italic; color: var(--pink); }
@@ -285,7 +287,6 @@
       cursor: pointer;
     }
 
-    /* gradient placeholder instead of images */
     .card-bg {
       position: absolute;
       inset: 0;
@@ -294,22 +295,22 @@
 
     .card:hover .card-bg { transform: scale(1.06); }
 
-    .card-bg-1 { background: linear-gradient(155deg, #2a0812 0%, #8b1a35 45%, #e8437a 100%); }
-    .card-bg-2 { background: linear-gradient(155deg, #0d0d0d 0%, #c0152e 55%, #f2a0bc 100%); }
-    .card-bg-3 { background: linear-gradient(155deg, #1a0a0e 0%, #7c1124 50%, #e8437a 90%); }
+    .card-bg-1 { background: linear-gradient(155deg, #fce7f3 0%, #f472b6 45%, #e0006e 100%); }
+    .card-bg-2 { background: linear-gradient(155deg, #fdf2f8 0%, #ec4899 55%, #f9a8d4 100%); }
+    .card-bg-3 { background: linear-gradient(155deg, #fff0f9 0%, #db2777 50%, #e0006e 90%);  }
 
     .card-content {
       position: absolute;
       bottom: 0; left: 0; right: 0;
       padding: 2rem 1.6rem;
-      background: linear-gradient(to top, rgba(13,13,13,0.9) 0%, transparent 100%);
+      background: linear-gradient(to top, rgba(255,255,255,0.94) 0%, transparent 100%);
     }
 
     .card-cat {
       font-size: 0.62rem;
       letter-spacing: 0.28em;
       text-transform: uppercase;
-      color: var(--pink-lt);
+      color: var(--pink);
       margin-bottom: 0.4rem;
     }
 
@@ -318,6 +319,7 @@
       font-size: 1.6rem;
       font-weight: 400;
       letter-spacing: 0.04em;
+      color: var(--white);
     }
 
     .card-link {
@@ -345,7 +347,7 @@
       min-height: 380px;
       display: flex;
       align-items: center;
-      background: linear-gradient(110deg, var(--dark) 0%, #4a0d1e 50%, #c0152e 100%);
+      background: linear-gradient(110deg, #fce7f3 0%, #fbcfe8 50%, #f9a8d4 100%);
     }
 
     .banner-deco {
@@ -355,7 +357,7 @@
       width: 480px;
       height: 480px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(232,67,122,0.3) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(224,0,110,0.18) 0%, transparent 70%);
     }
 
     .banner-inner {
@@ -367,7 +369,7 @@
     .banner-badge {
       display: inline-block;
       background: var(--pink);
-      color: var(--black);
+      color: #fff;
       font-size: 0.6rem;
       letter-spacing: 0.28em;
       text-transform: uppercase;
@@ -384,13 +386,14 @@
       letter-spacing: 0.04em;
       max-width: 18ch;
       margin-bottom: 1.6rem;
+      color: var(--white);
     }
 
-    .banner h2 em { font-style: italic; color: var(--pink-lt); }
+    .banner h2 em { font-style: italic; color: var(--pink); }
 
     /* ── VALUES ── */
     .values {
-      border-top: 1px solid rgba(232,67,122,0.15);
+      border-top: 1px solid rgba(224,0,110,0.12);
       padding: 5rem 3rem;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -410,21 +413,21 @@
       font-size: 1.2rem;
       letter-spacing: 0.06em;
       margin-bottom: 0.5rem;
-      color: var(--pink-lt);
+      color: var(--pink);
     }
 
     .value-desc {
       font-size: 0.74rem;
       letter-spacing: 0.06em;
       line-height: 1.8;
-      color: rgba(253,244,246,0.55);
+      color: rgba(26,10,18,0.55);
     }
 
     /* ── NEWSLETTER ── */
     .newsletter {
-      background: linear-gradient(135deg, #1a0a0e 0%, #2d0b18 100%);
-      border-top: 1px solid rgba(232,67,122,0.18);
-      border-bottom: 1px solid rgba(232,67,122,0.18);
+      background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+      border-top: 1px solid rgba(224,0,110,0.15);
+      border-bottom: 1px solid rgba(224,0,110,0.15);
       padding: 5rem 3rem;
       text-align: center;
     }
@@ -434,12 +437,13 @@
       font-size: clamp(1.8rem, 4vw, 2.8rem);
       font-weight: 300;
       margin-bottom: 0.6rem;
+      color: var(--white);
     }
 
     .newsletter p {
       font-size: 0.78rem;
       letter-spacing: 0.1em;
-      color: rgba(253,244,246,0.55);
+      color: rgba(26,10,18,0.6);
       margin-bottom: 2rem;
     }
 
@@ -453,8 +457,8 @@
 
     .newsletter-form input {
       flex: 1;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(232,67,122,0.35);
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(224,0,110,0.3);
       border-right: none;
       color: var(--white);
       font-family: 'Montserrat', sans-serif;
@@ -464,13 +468,13 @@
       outline: none;
     }
 
-    .newsletter-form input::placeholder { color: rgba(253,244,246,0.3); }
+    .newsletter-form input::placeholder { color: rgba(26,10,18,0.4); }
 
     .newsletter-form input:focus { border-color: var(--pink); }
 
     .newsletter-form button {
       background: var(--pink);
-      color: var(--black);
+      color: #fff;
       border: 1px solid var(--pink);
       font-family: 'Montserrat', sans-serif;
       font-size: 0.68rem;
@@ -482,7 +486,7 @@
       transition: background 0.2s;
     }
 
-    .newsletter-form button:hover { background: var(--red); border-color: var(--red); color: var(--white); }
+    .newsletter-form button:hover { background: var(--pink-dk); border-color: var(--pink-dk); }
 
     /* ── FOOTER ── */
     footer {
@@ -499,7 +503,7 @@
     .footer-brand p {
       font-size: 0.72rem;
       line-height: 1.9;
-      color: rgba(253,244,246,0.45);
+      color: rgba(26,10,18,0.5);
       max-width: 28ch;
     }
 
@@ -507,7 +511,7 @@
       font-size: 0.65rem;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: var(--pink-lt);
+      color: var(--pink);
       margin-bottom: 1.2rem;
     }
 
@@ -519,7 +523,7 @@
 
     footer ul a {
       font-size: 0.74rem;
-      color: rgba(253,244,246,0.5);
+      color: rgba(26,10,18,0.5);
       text-decoration: none;
       letter-spacing: 0.06em;
       transition: color 0.2s;
@@ -530,7 +534,7 @@
     .footer-bottom {
       max-width: 1280px;
       margin: 0 auto;
-      border-top: 1px solid rgba(255,255,255,0.07);
+      border-top: 1px solid rgba(224,0,110,0.12);
       padding: 1.4rem 3rem;
       display: flex;
       justify-content: space-between;
@@ -542,7 +546,7 @@
     .footer-bottom p {
       font-size: 0.65rem;
       letter-spacing: 0.1em;
-      color: rgba(253,244,246,0.3);
+      color: rgba(26,10,18,0.4);
     }
 
     .footer-bottom p span { color: var(--pink); }
@@ -563,7 +567,7 @@
     @media (max-width: 480px) {
       footer { grid-template-columns: 1fr; }
       .newsletter-form { flex-direction: column; }
-      .newsletter-form input { border-right: 1px solid rgba(232,67,122,0.35); border-bottom: none; }
+      .newsletter-form input { border-right: 1px solid rgba(224,0,110,0.3); border-bottom: none; }
     }
   </style>
 </head>

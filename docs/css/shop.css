@@ -88,7 +88,7 @@
 .collection-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: rgba(253, 244, 246, 0.55);
+  color: rgba(26, 10, 18, 0.5);
   font-family: 'Montserrat', sans-serif;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
@@ -126,7 +126,7 @@
 
 #search-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 247, 251, 0.8);
   border: 1px solid rgba(232, 67, 122, 0.3);
   color: var(--white);
   font-family: 'Montserrat', sans-serif;
@@ -137,13 +137,13 @@
   transition: border-color 0.2s;
 }
 
-#search-input::placeholder { color: rgba(253, 244, 246, 0.3); }
+#search-input::placeholder { color: rgba(26, 10, 18, 0.3); }
 #search-input:focus        { border-color: var(--pink); }
 
 .result-count {
   font-size: 0.65rem;
   letter-spacing: 0.14em;
-  color: rgba(253, 244, 246, 0.4);
+  color: rgba(26, 10, 18, 0.4);
   white-space: nowrap;
 }
 
@@ -256,7 +256,7 @@
   grid-column: 1 / -1;
   padding: 5rem 2rem;
   text-align: center;
-  color: rgba(253, 244, 246, 0.35);
+  color: rgba(26, 10, 18, 0.35);
   font-size: 0.9rem;
   letter-spacing: 0.1em;
 }
@@ -303,8 +303,8 @@
   top: 0.8rem;
   right: 0.8rem;
   z-index: 2;
-  background: rgba(13, 13, 13, 0.7);
-  border: 1px solid rgba(232, 67, 122, 0.25);
+  background: rgba(255, 247, 251, 0.9);
+  border: 1px solid rgba(232, 67, 122, 0.35);
   color: var(--white);
   font-size: 1.2rem;
   width: 34px;
@@ -354,8 +354,8 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(13, 13, 13, 0.65);
-  border: 1px solid rgba(232, 67, 122, 0.2);
+  background: rgba(255, 247, 251, 0.88);
+  border: 1px solid rgba(232, 67, 122, 0.3);
   color: var(--white);
   font-size: 1.6rem;
   width: 38px;
@@ -384,7 +384,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(26, 10, 18, 0.18);
   border: none;
   cursor: pointer;
   padding: 0;
@@ -429,7 +429,7 @@
 .modal-description {
   font-size: 0.78rem;
   line-height: 1.9;
-  color: rgba(253, 244, 246, 0.6);
+  color: rgba(26, 10, 18, 0.6);
   letter-spacing: 0.04em;
   margin-bottom: 1.4rem;
 }
@@ -454,7 +454,7 @@
 
 .variant-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(26, 10, 18, 0.22);
   color: var(--white);
   font-family: 'Montserrat', sans-serif;
   font-size: 0.72rem;
@@ -517,7 +517,7 @@
 .cart-header button {
   background: none;
   border: none;
-  color: rgba(253, 244, 246, 0.55);
+  color: rgba(26, 10, 18, 0.5);
   font-size: 1.4rem;
   cursor: pointer;
   line-height: 1;
@@ -536,7 +536,7 @@
 
 .cart-empty {
   font-size: 0.78rem;
-  color: rgba(253, 244, 246, 0.35);
+  color: rgba(26, 10, 18, 0.35);
   letter-spacing: 0.08em;
   text-align: center;
   padding: 3rem 0;
@@ -546,7 +546,7 @@
   display: flex;
   gap: 0.9rem;
   padding: 0.9rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(26, 10, 18, 0.1);
   align-items: flex-start;
 }
 
@@ -576,7 +576,7 @@
 .ci-variant {
   display: block;
   font-size: 0.65rem;
-  color: rgba(253, 244, 246, 0.45);
+  color: rgba(26, 10, 18, 0.45);
   letter-spacing: 0.08em;
   margin-bottom: 0.2rem;
 }
@@ -596,7 +596,7 @@
 }
 
 .qty-btn {
-  background: rgba(255,255,255,0.07);
+  background: rgba(232, 67, 122, 0.07);
   border: 1px solid rgba(232, 67, 122, 0.25);
   color: var(--white);
   width: 26px;
@@ -636,7 +636,7 @@
 .cart-item__remove {
   background: none;
   border: none;
-  color: rgba(253, 244, 246, 0.3);
+  color: rgba(26, 10, 18, 0.3);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.2rem;
@@ -762,7 +762,7 @@
 
 .co-subtitle {
   font-size: 0.72rem;
-  color: rgba(253, 244, 246, 0.5);
+  color: rgba(26, 10, 18, 0.5);
   letter-spacing: 0.08em;
   line-height: 1.7;
   margin-bottom: 1.6rem;
@@ -770,7 +770,7 @@
 
 /* Order summary inside checkout modal */
 .co-summary {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(232, 67, 122, 0.04);
   border: 1px solid rgba(232, 67, 122, 0.12);
   padding: 1rem 1.2rem;
   margin-bottom: 1.6rem;
@@ -788,13 +788,13 @@
 }
 
 .co-item__name {
-  color: rgba(253, 244, 246, 0.75);
+  color: rgba(26, 10, 18, 0.75);
   letter-spacing: 0.04em;
   flex: 1;
 }
 
 .co-variant {
-  color: rgba(253, 244, 246, 0.45);
+  color: rgba(26, 10, 18, 0.45);
   font-size: 0.7rem;
 }
 
@@ -840,12 +840,12 @@
   text-transform: none;
   letter-spacing: 0;
   font-size: 0.65rem;
-  color: rgba(253, 244, 246, 0.35);
+  color: rgba(26, 10, 18, 0.35);
 }
 
 .co-field input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 247, 251, 0.8);
   border: 1px solid rgba(232, 67, 122, 0.28);
   color: var(--white);
   font-family: 'Montserrat', sans-serif;
@@ -856,7 +856,7 @@
   transition: border-color 0.2s;
 }
 
-.co-field input::placeholder { color: rgba(253, 244, 246, 0.28); }
+.co-field input::placeholder { color: rgba(26, 10, 18, 0.28); }
 .co-field input:focus         { border-color: var(--pink); }
 
 .co-error {

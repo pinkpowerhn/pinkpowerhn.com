@@ -110,3 +110,61 @@ function updateResultCount(n) {
   const el = document.getElementById('result-count');
   if (el) el.textContent = `${n} producto${n !== 1 ? 's' : ''}`;
 }
+
+// ── Collection showcase ("Diseñado para ti") ──────────────
+// Renders one random product image per collection into #collections-grid
+export function renderCollectionShowcase(collections, products) {
+  const grid = document.getElementById('collections-grid');
+  if (!grid) return;
+  if (!collections.length || !products.length) return;
+
+  // Build a quick id→product lookup
+  const byId = new Map(products.map(p => [p.id, p]));
+
+  // Take up to 3 collections that have at least one product with an image
+  const cards = [];
+  for (const col of collections) {
+    if (cards.length === 3) break;
+    const members = col.productIds
+      .map(id => byId.get(id))
+      .filter(p => p && p.images.length > 0);
+    if (!members.length) continue;
+
+    // Pick a random member
+    const pick = members[Math.floor(Math.random() * members.length)];
+    cards.push({ col, pick });
+  }
+
+  if (!cards.length) return;
+
+  grid.innerHTML = cards.map(({ col, pick }) => {
+    const img    = pick.images[0];
+    const target = `#shop/collection/${col.handle}`;
+    return `
+      <div class="card" data-collection="${col.handle}" style="cursor:pointer">
+        <img
+          class="card-bg"
+          src="${img.url}"
+          alt="${img.altText || pick.title}"
+          loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.add('card-bg-fallback')"
+        />
+        <div class="card-content">
+          <p class="card-cat">${pick.title}</p>
+          <p class="card-name">${col.title}</p>
+          <a href="${target}" class="card-link">Ver Colección</a>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Clicking a showcase card navigates to that collection in the shop
+  grid.querySelectorAll('.card[data-collection]').forEach(card => {
+    card.addEventListener('click', () => {
+      const handle = card.dataset.collection;
+      setState({ activeCollection: handle });
+      history.pushState(null, '', `#shop/collection/${handle}`);
+      document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+}

@@ -1,6 +1,6 @@
 import { initState, getState, setState, on } from './state.js';
 import { fetchProducts, fetchCollections, fetchConfig, checkHealth } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderProductGrid } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderCollectionShowcase } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { addToCart, removeFromCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
 
@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const [products, collections] = await Promise.all([fetchProducts(), fetchCollections()]);
     setState({ products, collections });
+    renderCollectionShowcase(collections, products); // one-time editorial render
     handleHashRoute(); // Apply any hash pre-selection after data is ready
   } catch (err) {
     console.error('[PinkPower] Data load error:', err);

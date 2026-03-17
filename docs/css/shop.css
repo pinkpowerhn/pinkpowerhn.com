@@ -3,6 +3,14 @@
    Extends (never overrides) the design tokens in index.html
    ════════════════════════════════════════════════════════ */
 
+/* ── Collection showcase cards (overrides static .card-bg) */
+.card img.card-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* ── API error banner ─────────────────────────────────── */
 .api-error-banner {
   background: var(--red);

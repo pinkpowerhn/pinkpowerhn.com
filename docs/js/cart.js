@@ -11,7 +11,10 @@ export function addToCart(product, variant) {
   const key  = cartKey(product.id, variant.id);
   const existing = cart.find(i => i._key === key);
 
+  const maxQty = variant.inventoryQuantity; // null = unlimited
+
   if (existing) {
+    if (maxQty !== null && existing.quantity >= maxQty) return; // at stock limit
     existing.quantity += 1;
   } else {
     cart.push({
@@ -23,6 +26,7 @@ export function addToCart(product, variant) {
       price:        variant.price,
       imageUrl:     product.images[0]?.url || '',
       quantity:     1,
+      maxQty,
     });
   }
 
@@ -39,7 +43,9 @@ export function removeFromCart(key) {
 export function updateQuantity(key, delta) {
   const cart = getState().cart.map(i => {
     if (i._key !== key) return i;
-    return { ...i, quantity: Math.max(1, i.quantity + delta) };
+    const newQty = Math.max(1, i.quantity + delta);
+    const capped = i.maxQty !== null ? Math.min(newQty, i.maxQty) : newQty;
+    return { ...i, quantity: capped };
   });
   setState({ cart });
   updateCartBadge();

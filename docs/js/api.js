@@ -15,6 +15,8 @@ function normalizeVariant(node) {
     title: node.title || 'Default Title',
     price: parseFloat(node.price) || 0,
     availableForSale: Boolean(node.availableForSale),
+    // null = inventory not tracked for this variant (treat as unlimited)
+    inventoryQuantity: node.inventoryQuantity ?? null,
   };
 }
 

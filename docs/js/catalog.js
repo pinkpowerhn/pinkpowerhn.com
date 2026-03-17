@@ -53,11 +53,18 @@ export function renderProductGrid(products, collections, activeCollection, searc
 }
 
 function productCardHTML(p) {
-  const img     = p.images[0];
-  const soldOut = !p.availableForSale;
-  const price   = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });
-  const imgSrc  = img ? img.url : FALLBACK_IMG;
-  const imgAlt  = img ? (img.altText || p.title) : p.title;
+  const img      = p.images[0];
+  const soldOut  = !p.availableForSale;
+  const price    = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+  const imgSrc   = img ? img.url : FALLBACK_IMG;
+  const imgAlt   = img ? (img.altText || p.title) : p.title;
+
+  // Low-stock: any available variant with tracked inventory ≤ 5
+  const availableVariants = p.variants.filter(v => v.availableForSale && v.inventoryQuantity !== null);
+  const minStock = availableVariants.length
+    ? Math.min(...availableVariants.map(v => v.inventoryQuantity))
+    : null;
+  const lowStock = !soldOut && minStock !== null && minStock <= 5;
 
   return `
     <article class="product-card${soldOut ? ' product-card--sold-out' : ''}" data-id="${p.id}">
@@ -70,7 +77,11 @@ function productCardHTML(p) {
           height="533"
           onerror="this.src='${FALLBACK_IMG}'"
         />
-        ${soldOut ? '<div class="product-card__badge">Agotado</div>' : ''}
+        ${soldOut
+          ? '<div class="product-card__badge">Agotado</div>'
+          : lowStock
+            ? `<div class="product-card__badge product-card__badge--low">Últimas ${minStock}</div>`
+            : ''}
         <div class="product-card__overlay">
           ${!soldOut
             ? `<button class="btn btn-primary" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [products, collections] = await Promise.all([fetchProducts(), fetchCollections()]);
     setState({ products, collections });
     renderCollectionShowcase(collections, products);
+    renderFeaturedBanner(collections);
     handleHashRoute();
   } catch (err) {
     console.error('[PinkPower] Data load error:', err);
@@ -343,6 +344,28 @@ async function submitCheckout(name, phone, email) {
     console.error('[PinkPower] Order error:', err);
     showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
     if (submitBtn) { submitBtn.textContent = 'Crear Pedido y Continuar por WhatsApp'; submitBtn.disabled = false; }
+  }
+}
+
+// ── Featured banner ───────────────────────────────────────
+function renderFeaturedBanner(collections) {
+  if (!collections.length) return;
+  const col = collections[Math.floor(Math.random() * collections.length)];
+
+  const badge = document.getElementById('banner-badge');
+  const title = document.getElementById('banner-title');
+  const link  = document.getElementById('banner-link');
+
+  if (badge) badge.textContent = 'Colección Destacada';
+  if (title) title.innerHTML = `${col.title}<br /><em>PinkPower HN</em>`;
+  if (link) {
+    link.href = `#shop/collection/${col.handle}`;
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      setState({ activeCollection: col.handle });
+      history.pushState(null, '', `#shop/collection/${col.handle}`);
+      document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+    });
   }
 }
 

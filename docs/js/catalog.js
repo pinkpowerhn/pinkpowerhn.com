@@ -64,7 +64,7 @@ function productCardHTML(p) {
   const minStock = availableVariants.length
     ? Math.min(...availableVariants.map(v => v.inventoryQuantity))
     : null;
-  const lowStock = !soldOut && minStock !== null && minStock <= 5;
+  const lowStock = !soldOut && minStock !== null && minStock <= 3;
 
   return `
     <article class="product-card${soldOut ? ' product-card--sold-out' : ''}" data-id="${p.id}">

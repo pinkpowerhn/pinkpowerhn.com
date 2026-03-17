@@ -174,7 +174,7 @@ function renderCartDrawer() {
                 <button class="qty-btn" data-qty-change="${i._key}" data-delta="1" aria-label="Aumentar"
                   ${i.maxQty !== null && i.quantity >= i.maxQty ? 'disabled' : ''}>+</button>
               </div>
-              ${i.maxQty !== null && i.maxQty <= 5
+              ${i.maxQty !== null && i.maxQty <= 3
                 ? `<span class="qty-stock-warn">Solo ${i.maxQty} disponibles</span>`
                 : ''}
             </div>

@@ -87,27 +87,32 @@
 
 .collection-btn {
   background: transparent;
-  border: 1px solid transparent;
-  color: rgba(26, 10, 18, 0.5);
+  border: 1px solid rgba(26, 10, 18, 0.12);
+  color: rgba(26, 10, 18, 0.8);
   font-family: 'Montserrat', sans-serif;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   padding: 0.55rem 1rem;
   text-align: left;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  transition: color 0.22s, border-color 0.22s, background 0.22s, transform 0.18s, box-shadow 0.22s;
   border-radius: 2px;
 }
 
 .collection-btn:hover {
-  color: var(--white);
-  border-color: rgba(232, 67, 122, 0.3);
+  color: var(--pink);
+  border-color: var(--pink);
+  background: rgba(232, 67, 122, 0.06);
+  transform: translateX(4px);
+  box-shadow: 2px 0 0 0 var(--pink);
 }
 
 .collection-btn.is-active {
   color: var(--pink);
   border-color: var(--pink);
-  background: rgba(232, 67, 122, 0.08);
+  background: rgba(232, 67, 122, 0.1);
+  font-weight: 600;
+  box-shadow: 2px 0 0 0 var(--pink);
 }
 
 /* ── Shop toolbar ─────────────────────────────────────── */

@@ -60,16 +60,18 @@
     }
 
     .nav-logo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.6rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--pink);
+      display: flex;
+      align-items: center;
       text-decoration: none;
     }
 
-    .nav-logo span { color: var(--white); }
+    .nav-logo img {
+      height: 48px;
+      width: auto;
+      display: block;
+    }
+
+    .footer-brand .nav-logo img { height: 64px; }
 
     nav ul {
       display: flex;
@@ -498,7 +500,7 @@
       gap: 3rem;
     }
 
-    .footer-brand .nav-logo { font-size: 1.4rem; display: block; margin-bottom: 1rem; }
+    .footer-brand .nav-logo { display: block; margin-bottom: 1rem; }
 
     .footer-brand p {
       font-size: 0.72rem;
@@ -575,7 +577,7 @@
 
   <!-- NAVBAR -->
   <nav>
-    <a href="#" class="nav-logo">Pink<span>Power</span> HN</a>
+    <a href="#" class="nav-logo"><img src="img/og-image.jpg" alt="PinkPower HN" /></a>
     <ul>
       <li><a href="#collections">Collections</a></li>
       <li><a href="#new">New Arrivals</a></li>
@@ -707,7 +709,7 @@
   <!-- FOOTER -->
   <footer>
     <div class="footer-brand">
-      <a href="#" class="nav-logo">Pink<span>Power</span> HN</a>
+      <a href="#" class="nav-logo"><img src="img/og-image.jpg" alt="PinkPower HN" /></a>
       <p>Body care y fragancias para la mujer hondureña que sabe lo que quiere.</p>
     </div>
     <div>

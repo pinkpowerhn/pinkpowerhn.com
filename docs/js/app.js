@@ -20,7 +20,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       fetchCollections(),
       fetchConfig().catch(() => null),
     ]);
-    setState({ products, collections, waNumber: config?.whatsapp ?? null });
+    const waNumber = config?.whatsapp ?? null;
+    setState({ products, collections, waNumber });
+    if (waNumber) {
+      document.querySelectorAll('.wa-link').forEach(el => {
+        el.href = `https://wa.me/${waNumber}`;
+      });
+    }
     renderCollectionShowcase(collections, products);
     renderFeaturedBanner(collections);
     handleHashRoute();
@@ -109,11 +115,7 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // WhatsApp FAB
-  if (e.target.closest('#wa-fab')) {
-    handleFabClick(e);
-    return;
-  }
+  // WhatsApp FAB — handled natively by <a href>, no JS needed
 });
 
 // ── Search ────────────────────────────────────────────────
@@ -132,13 +134,6 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── WhatsApp FAB (contact, no cart) ──────────────────────
-function handleFabClick(e) {
-  e.preventDefault();
-  const { waNumber } = getState();
-  const url = waNumber ? `https://wa.me/${waNumber}` : 'https://wa.me/';
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
 
 // ── Cart drawer ───────────────────────────────────────────
 function renderCartDrawer() {

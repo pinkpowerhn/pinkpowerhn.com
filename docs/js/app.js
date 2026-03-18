@@ -133,11 +133,15 @@ async function handleFabClick(e) {
   e.preventDefault();
   const fab = document.getElementById('wa-fab');
   if (fab) fab.style.opacity = '0.6';
+
+  // Safari blocks window.open() after await — open synchronously first, then set URL
+  const win = window.open('', '_blank');
+
   try {
     const config = await fetchConfig();
-    window.open(`https://wa.me/${config.whatsapp}`, '_blank', 'noopener,noreferrer');
+    if (win) win.location.href = `https://wa.me/${config.whatsapp}`;
   } catch (_) {
-    window.open('https://wa.me/', '_blank', 'noopener,noreferrer');
+    if (win) win.location.href = 'https://wa.me/';
   } finally {
     if (fab) fab.style.opacity = '';
   }

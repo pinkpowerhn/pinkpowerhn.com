@@ -300,7 +300,10 @@ async function submitCheckout(name, phone, email) {
   const submitBtn = document.getElementById('co-submit');
   if (submitBtn) { submitBtn.textContent = 'Creando pedido...'; submitBtn.disabled = true; }
 
-  const { cart } = getState();
+  // iOS Safari: open window synchronously before any await or it gets blocked
+  const win = window.open('', '_blank');
+
+  const { cart, waNumber } = getState();
 
   const orderPayload = {
     customer_name: name,
@@ -314,16 +317,13 @@ async function submitCheckout(name, phone, email) {
   };
 
   try {
-    // Create order + fetch WA number in parallel
-    const [orderData, config] = await Promise.all([
-      postOrder(orderPayload),
-      fetchConfig(),
-    ]);
+    const orderData = await postOrder(orderPayload);
 
     const orderName = orderData?.order?.name || null; // e.g. "#1011"
-    const url = buildWhatsAppUrl(config.whatsapp, orderName);
+    const url = buildWhatsAppUrl(waNumber, orderName);
 
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (win) win.location.href = url;
+    else window.open(url, '_blank', 'noopener,noreferrer');
 
     clearCart();
     closeCheckoutModal();
@@ -334,6 +334,7 @@ async function submitCheckout(name, phone, email) {
 
   } catch (err) {
     console.error('[PinkPower] Order error:', err);
+    if (win) win.close();
     showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
     if (submitBtn) { submitBtn.textContent = 'Crear Pedido y Continuar por WhatsApp'; submitBtn.disabled = false; }
   }

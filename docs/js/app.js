@@ -15,8 +15,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   );
 
   try {
-    const [products, collections] = await Promise.all([fetchProducts(), fetchCollections()]);
-    setState({ products, collections });
+    const [products, collections, config] = await Promise.all([
+      fetchProducts(),
+      fetchCollections(),
+      fetchConfig().catch(() => null),
+    ]);
+    setState({ products, collections, waNumber: config?.whatsapp ?? null });
     renderCollectionShowcase(collections, products);
     renderFeaturedBanner(collections);
     handleHashRoute();
@@ -129,22 +133,11 @@ document.addEventListener('keydown', e => {
 });
 
 // ── WhatsApp FAB (contact, no cart) ──────────────────────
-async function handleFabClick(e) {
+function handleFabClick(e) {
   e.preventDefault();
-  const fab = document.getElementById('wa-fab');
-  if (fab) fab.style.opacity = '0.6';
-
-  // Safari blocks window.open() after await — open synchronously first, then set URL
-  const win = window.open('', '_blank');
-
-  try {
-    const config = await fetchConfig();
-    if (win) win.location.href = `https://wa.me/${config.whatsapp}`;
-  } catch (_) {
-    if (win) win.location.href = 'https://wa.me/';
-  } finally {
-    if (fab) fab.style.opacity = '';
-  }
+  const { waNumber } = getState();
+  const url = waNumber ? `https://wa.me/${waNumber}` : 'https://wa.me/';
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // ── Cart drawer ───────────────────────────────────────────

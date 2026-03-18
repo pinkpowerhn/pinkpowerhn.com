@@ -7,6 +7,7 @@ const _state = {
   cart:              [],     // hydrated from localStorage on initState()
   cartOpen:          false,
   modalProductId:    null,   // short numeric string | null
+  waNumber:          null,   // cached on load so FAB click is synchronous on iOS
 };
 
 // ── Event bus ─────────────────────────────────────────────

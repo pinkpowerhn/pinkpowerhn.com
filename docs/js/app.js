@@ -244,12 +244,12 @@ function showCheckoutModal() {
           <input type="text" id="co-name" required placeholder="Tu nombre completo" autocomplete="name" />
         </div>
         <div class="co-field">
-          <label for="co-email">Email *</label>
-          <input type="email" id="co-email" required placeholder="tu@correo.com" autocomplete="email" />
+          <label for="co-phone">Teléfono *</label>
+          <input type="tel" id="co-phone" required placeholder="504 XXXX XXXX" autocomplete="tel" />
         </div>
         <div class="co-field">
-          <label for="co-phone">Teléfono <span class="co-optional">(opcional)</span></label>
-          <input type="tel" id="co-phone" placeholder="504 XXXX XXXX" autocomplete="tel" />
+          <label for="co-email">Email <span class="co-optional">(opcional)</span></label>
+          <input type="email" id="co-email" placeholder="tu@correo.com" autocomplete="email" />
         </div>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">
@@ -275,8 +275,8 @@ function showCheckoutModal() {
     const phone = modal.querySelector('#co-phone').value.trim();
     const email = modal.querySelector('#co-email').value.trim();
 
-    if (!name || !email) {
-      showCoError('Por favor completa nombre y email.');
+    if (!name || !phone) {
+      showCoError('Por favor completa nombre y teléfono.');
       return;
     }
 

@@ -393,8 +393,9 @@ function handleHashRoute() {
     setState({ activeCollection: parts[1] });
   }
   if (parts[0] === 'product' && parts[1]) {
-    // Don't reopen modal on page load/refresh — clean the URL silently
-    history.replaceState(null, '', '#shop');
+    const { products } = getState();
+    const product = products.find(p => p.id === parts[1]);
+    if (product) openModal(product);
   }
 }
 

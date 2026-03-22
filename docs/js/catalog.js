@@ -86,7 +86,6 @@ function productCardHTML(p) {
           ${!soldOut
             ? `<button class="btn btn-primary" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`
             : ''}
-          <button class="btn btn-outline" data-action="quick-view" data-id="${p.id}">Ver Detalle</button>
         </div>
       </div>
       <div class="product-card__info">

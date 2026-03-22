@@ -61,6 +61,19 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Product card click → open detail (unless hitting the add-to-cart button)
+  const card = e.target.closest('.product-card');
+  if (card && !e.target.closest('[data-action]')) {
+    const id = card.dataset.id;
+    const { products } = getState();
+    const product = products.find(p => p.id === id);
+    if (product) {
+      openModal(product);
+      history.replaceState(null, '', `#shop/product/${id}`);
+    }
+    return;
+  }
+
   // Product card overlay actions
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn) {

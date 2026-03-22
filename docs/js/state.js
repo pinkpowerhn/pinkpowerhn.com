@@ -8,6 +8,7 @@ const _state = {
   cartOpen:          false,
   modalProductId:    null,   // short numeric string | null
   waNumber:          null,   // cached on load so FAB click is synchronous on iOS
+  activeSize:        null,   // variant/size filter
 };
 
 // ── Event bus ─────────────────────────────────────────────

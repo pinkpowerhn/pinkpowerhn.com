@@ -61,6 +61,16 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Size filter chips
+  const sizeBtn = e.target.closest('.size-btn');
+  if (sizeBtn) {
+    const { activeSize } = getState();
+    const size = sizeBtn.dataset.size;
+    // Toggle off if same size clicked again
+    setState({ activeSize: activeSize === size ? null : size });
+    return;
+  }
+
   // Product card click → open detail (unless hitting the add-to-cart button)
   const card = e.target.closest('.product-card');
   if (card && !e.target.closest('[data-action]')) {

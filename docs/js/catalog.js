@@ -23,7 +23,7 @@ export function renderCollectionSidebar(collections) {
   const sidebar = document.getElementById('collection-sidebar');
   if (!sidebar) return;
 
-  const { activeCollection } = getState();
+  const { activeCollection, activeSize, products } = getState();
 
   const allBtn = `<button class="collection-btn${!activeCollection ? ' is-active' : ''}" data-handle="">Todos</button>`;
   const btns = collections.map(c => `
@@ -32,7 +32,22 @@ export function renderCollectionSidebar(collections) {
     </button>
   `).join('');
 
-  sidebar.innerHTML = `<p class="sidebar-label">Colecciones</p>${allBtn}${btns}`;
+  // Extract unique variant titles (skip "Default Title" — Shopify placeholder for single-variant products)
+  const sizes = [...new Set(
+    products.flatMap(p => p.variants.map(v => v.title))
+           .filter(t => t && t.toLowerCase() !== 'default title')
+  )].sort();
+
+  const sizeSection = sizes.length ? `
+    <p class="sidebar-label" style="margin-top:1.4rem;">Tallas</p>
+    <div class="size-filter">
+      ${sizes.map(s => `
+        <button class="size-btn${activeSize === s ? ' is-active' : ''}" data-size="${s}">${s}</button>
+      `).join('')}
+    </div>
+  ` : '';
+
+  sidebar.innerHTML = `<p class="sidebar-label">Colecciones</p>${allBtn}${btns}${sizeSection}`;
 }
 
 // ── Product grid ──────────────────────────────────────────
@@ -40,7 +55,8 @@ export function renderProductGrid(products, collections, activeCollection, searc
   const grid = document.getElementById('product-grid');
   if (!grid) return;
 
-  const filtered = filterProducts(products, collections, activeCollection, searchQuery);
+  const { activeSize } = getState();
+  const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize);
 
   updateResultCount(filtered.length);
 
@@ -91,13 +107,16 @@ function productCardHTML(p) {
       <div class="product-card__info">
         <p class="product-card__name">${p.title}</p>
         <p class="product-card__price">L. ${price}</p>
+        ${!soldOut
+          ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`
+          : ''}
       </div>
     </article>
   `;
 }
 
 // ── Filter — pure function ────────────────────────────────
-export function filterProducts(products, collections, activeCollection, searchQuery) {
+export function filterProducts(products, collections, activeCollection, searchQuery, activeSize) {
   let result = products;
 
   if (activeCollection) {
@@ -111,6 +130,12 @@ export function filterProducts(products, collections, activeCollection, searchQu
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     result = result.filter(p => p.title.toLowerCase().includes(q));
+  }
+
+  if (activeSize) {
+    result = result.filter(p =>
+      p.variants.some(v => v.title === activeSize)
+    );
   }
 
   return result;

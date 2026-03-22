@@ -115,6 +115,37 @@
   box-shadow: 2px 0 0 0 var(--pink);
 }
 
+/* ── Size filter chips ────────────────────────────────── */
+.size-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.size-btn {
+  background: transparent;
+  border: 1px solid rgba(26, 10, 18, 0.18);
+  color: rgba(26, 10, 18, 0.7);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  border-radius: 20px;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.size-btn:hover {
+  color: var(--pink);
+  border-color: var(--pink);
+}
+
+.size-btn.is-active {
+  color: #fff;
+  background: var(--pink);
+  border-color: var(--pink);
+}
+
 /* ── Shop toolbar ─────────────────────────────────────── */
 .shop-main { min-width: 0; }
 
@@ -229,6 +260,21 @@
 
 .product-card__info {
   padding: 0.8rem 0 0.4rem;
+}
+
+/* Mobile add button — hidden on desktop, shown on touch devices */
+.product-card__mobile-add {
+  display: none;
+  width: 100%;
+  text-align: center;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+@media (hover: none) {
+  .product-card__mobile-add { display: block; }
+  .product-card__overlay    { display: none; }
 }
 
 .product-card__name {

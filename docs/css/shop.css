@@ -264,7 +264,7 @@
 
 /* Mobile add button — hidden on desktop, shown on touch devices */
 .product-card__mobile-add {
-  display: none;
+  display: none !important;
   width: 100%;
   text-align: center;
   padding: 0.55rem 0.8rem;
@@ -273,8 +273,8 @@
 }
 
 @media (hover: none) {
-  .product-card__mobile-add { display: block; }
-  .product-card__overlay    { display: none; }
+  .product-card__mobile-add { display: block !important; }
+  .product-card__overlay    { display: none !important; }
 }
 
 .product-card__name {

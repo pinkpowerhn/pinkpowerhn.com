@@ -1,5 +1,6 @@
 import { getState, setState } from './state.js';
 import { addToCart } from './cart.js';
+import { showToast } from './toast.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect fill='%231a0a0e' width='600' height='600'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -172,7 +173,7 @@ function wireModalEvents(modal, product) {
 
   modal.querySelector('#modal-add-btn')?.addEventListener('click', () => {
     if (!_currentProduct || !_selectedVariant) return;
-    addToCart(_currentProduct, _selectedVariant);
+    showToast(addToCart(_currentProduct, _selectedVariant));
     refreshAddBtn(modal);
   });
 

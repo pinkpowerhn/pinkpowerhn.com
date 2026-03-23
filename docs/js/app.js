@@ -1,4 +1,5 @@
 import { initState, getState, setState, on } from './state.js';
+import { showToast } from './toast.js';
 import { fetchProducts, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderCollectionShowcase } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
@@ -98,7 +99,7 @@ document.addEventListener('click', e => {
     }
     if (actionBtn.dataset.action === 'add-to-cart') {
       const variant = product.variants.find(v => v.availableForSale) || product.variants[0];
-      if (variant) addToCart(product, variant);
+      if (variant) showToast(addToCart(product, variant));
     }
     return;
   }

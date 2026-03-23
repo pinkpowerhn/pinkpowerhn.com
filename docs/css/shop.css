@@ -968,3 +968,33 @@
     border-radius: 0;
   }
 }
+
+/* ── Toast notification ───────────────────────────────── */
+.pp-toast {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(1rem);
+  padding: 0.75rem 1.6rem;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 999;
+}
+.pp-toast--show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.pp-toast--added {
+  background: #1a7a4a;
+  color: #fff;
+}
+.pp-toast--limit {
+  background: #9a4a00;
+  color: #fff;
+}

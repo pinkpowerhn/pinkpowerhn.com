@@ -14,7 +14,7 @@ export function addToCart(product, variant) {
   const maxQty = variant.inventoryQuantity; // null = unlimited
 
   if (existing) {
-    if (maxQty !== null && existing.quantity >= maxQty) return; // at stock limit
+    if (maxQty !== null && existing.quantity >= maxQty) return 'limit'; // at stock limit
     existing.quantity += 1;
   } else {
     cart.push({
@@ -31,6 +31,7 @@ export function addToCart(product, variant) {
   }
 
   setState({ cart });
+  return 'added';
   updateCartBadge();
 }
 

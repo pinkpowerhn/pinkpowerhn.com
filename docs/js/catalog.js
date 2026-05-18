@@ -144,14 +144,18 @@ export function renderProductGrid(products, collections, activeCollection, searc
 // ── Pagination ────────────────────────────────────────────
 function renderPagination(totalPages, current) {
   let el = document.getElementById('pagination');
+  const main = document.querySelector('.shop-main');
+  if (!main) return;
+
+  // Always (re)anchor as last child of .shop-main so layout permanece consistente
   if (!el) {
-    const grid = document.getElementById('product-grid');
-    if (!grid) return;
     el = document.createElement('nav');
     el.id = 'pagination';
     el.className = 'pagination';
     el.setAttribute('aria-label', 'Paginación');
-    grid.insertAdjacentElement('afterend', el);
+  }
+  if (el.parentElement !== main) {
+    main.appendChild(el);
   }
 
   if (totalPages <= 1) { el.innerHTML = ''; return; }

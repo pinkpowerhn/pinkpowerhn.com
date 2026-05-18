@@ -52,13 +52,22 @@ function normalizeCollection(node) {
   };
 }
 
-export async function fetchProducts() {
-  if (_products) return _products;
-  const res = await fetch(`${BASE}/products`);
+// Fetch ONE page of products. Returns { products, cursor, hasNext }.
+// Frontend hace progressive loading: primera página chica para arrancar rápido,
+// luego sigue tirando con cursor en background.
+export async function fetchProductsPage({ cursor = null, first = 50 } = {}) {
+  const params = new URLSearchParams({ first: String(first) });
+  if (cursor) params.set('cursor', cursor);
+  const res = await fetch(`${BASE}/products?${params.toString()}`);
   if (!res.ok) throw new Error(`Products fetch failed: ${res.status}`);
   const json = await res.json();
-  _products = (json.data?.products?.edges || []).map(({ node }) => normalizeProduct(node));
-  return _products;
+  const edges = json.data?.products?.edges || [];
+  const pi    = json.data?.products?.pageInfo || {};
+  return {
+    products: edges.map(({ node }) => normalizeProduct(node)),
+    cursor:   pi.endCursor || null,
+    hasNext:  Boolean(pi.hasNextPage),
+  };
 }
 
 export async function fetchCollections() {

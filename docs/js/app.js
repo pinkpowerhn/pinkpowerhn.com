@@ -1,6 +1,6 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
-import { fetchProducts, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
+import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderCollectionShowcase } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
@@ -16,26 +16,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   );
 
   try {
-    const [products, collections, config] = await Promise.all([
-      fetchProducts(),
+    // Primera página chica → grid interactivo cuanto antes
+    const [firstPage, collections, config] = await Promise.all([
+      fetchProductsPage({ first: 10 }),
       fetchCollections(),
       fetchConfig().catch(() => null),
     ]);
+
     const waNumber = config?.whatsapp ?? null;
-    setState({ products, collections, waNumber });
+    setState({
+      products: firstPage.products,
+      collections,
+      waNumber,
+    });
     if (waNumber) {
       document.querySelectorAll('.wa-link').forEach(el => {
         el.href = `https://wa.me/${waNumber}`;
       });
     }
-    renderCollectionShowcase(collections, products);
+    renderCollectionShowcase(collections, firstPage.products);
     renderFeaturedBanner(collections);
     handleHashRoute();
+
+    // Carga el resto en background sin bloquear la UI. Cada batch se
+    // mergea en state → statechange dispara re-render del grid/sidebar.
+    loadRemainingProducts(firstPage.cursor, firstPage.hasNext);
   } catch (err) {
     console.error('[PinkPower] Data load error:', err);
     showApiBanner('No se pudo cargar el catálogo. Por favor recarga la página.');
   }
 });
+
+async function loadRemainingProducts(cursor, hasNext) {
+  while (hasNext) {
+    try {
+      const page = await fetchProductsPage({ cursor, first: 50 });
+      const { products } = getState();
+      // Merge sin duplicados por si una página se reintenta
+      const existing = new Set(products.map(p => p.id));
+      const merged = products.concat(page.products.filter(p => !existing.has(p.id)));
+      setState({ products: merged });
+      cursor = page.cursor;
+      hasNext = page.hasNext;
+    } catch (err) {
+      console.warn('[PinkPower] Background load failed:', err);
+      return; // dejamos lo que ya cargamos
+    }
+  }
+}
 
 // ── State subscription ────────────────────────────────────
 on('statechange', state => {

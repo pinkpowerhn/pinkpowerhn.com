@@ -9,6 +9,8 @@ const _state = {
   modalProductId:    null,   // short numeric string | null
   waNumber:          null,   // cached on load so FAB click is synchronous on iOS
   activeSize:        null,   // variant/size filter
+  activeType:        null,   // productType (Shopify "Tipo") | null = all
+  activeTag:         null,   // tag (Shopify "Etiqueta") | null = all
 };
 
 // ── Event bus ─────────────────────────────────────────────

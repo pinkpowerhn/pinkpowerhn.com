@@ -85,7 +85,9 @@
   margin-bottom: 0.6rem;
 }
 
-.collection-btn {
+.collection-btn,
+.type-btn,
+.tag-btn {
   background: transparent;
   border: 1px solid rgba(26, 10, 18, 0.12);
   color: rgba(26, 10, 18, 0.8);
@@ -99,7 +101,9 @@
   border-radius: 2px;
 }
 
-.collection-btn:hover {
+.collection-btn:hover,
+.type-btn:hover,
+.tag-btn:hover {
   color: var(--pink);
   border-color: var(--pink);
   background: rgba(232, 67, 122, 0.06);
@@ -107,7 +111,9 @@
   box-shadow: 2px 0 0 0 var(--pink);
 }
 
-.collection-btn.is-active {
+.collection-btn.is-active,
+.type-btn.is-active,
+.tag-btn.is-active {
   color: var(--pink);
   border-color: var(--pink);
   background: rgba(232, 67, 122, 0.1);

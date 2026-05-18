@@ -53,16 +53,34 @@ on('statechange', state => {
 // ── Global click delegation ───────────────────────────────
 document.addEventListener('click', e => {
 
-  // Collection sidebar
+  // Type drill-down (top level)
+  const typeBtn = e.target.closest('.type-btn');
+  if (typeBtn) {
+    const type = typeBtn.dataset.type || null;
+    // Cambiar de tipo limpia colección y etiqueta (drill-down reseteado)
+    setState({ activeType: type, activeCollection: null, activeTag: null });
+    history.replaceState(null, '', '#shop');
+    return;
+  }
+
+  // Collection drill-down (segundo nivel — solo dentro de un tipo)
   const collBtn = e.target.closest('.collection-btn');
   if (collBtn) {
     const handle = collBtn.dataset.handle || null;
-    setState({ activeCollection: handle });
+    setState({ activeCollection: handle, activeTag: null });
     history.replaceState(null, '', handle ? `#shop/collection/${handle}` : '#shop');
     return;
   }
 
-  // Size filter chips
+  // Tag drill-down (tercer nivel)
+  const tagBtn = e.target.closest('.tag-btn');
+  if (tagBtn) {
+    const tag = tagBtn.dataset.tag || null;
+    setState({ activeTag: tag });
+    return;
+  }
+
+  // Size filter chips (filtro paralelo, independiente del drill-down)
   const sizeBtn = e.target.closest('.size-btn');
   if (sizeBtn) {
     const { activeSize } = getState();

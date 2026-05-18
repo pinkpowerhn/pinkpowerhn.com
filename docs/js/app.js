@@ -58,7 +58,7 @@ document.addEventListener('click', e => {
   if (typeBtn) {
     const type = typeBtn.dataset.type || null;
     // Cambiar de tipo limpia colección y etiqueta (drill-down reseteado)
-    setState({ activeType: type, activeCollection: null, activeTag: null });
+    setState({ activeType: type, activeCollection: null, activeTag: null, currentPage: 1 });
     history.replaceState(null, '', '#shop');
     return;
   }
@@ -67,7 +67,7 @@ document.addEventListener('click', e => {
   const collBtn = e.target.closest('.collection-btn');
   if (collBtn) {
     const handle = collBtn.dataset.handle || null;
-    setState({ activeCollection: handle, activeTag: null });
+    setState({ activeCollection: handle, activeTag: null, currentPage: 1 });
     history.replaceState(null, '', handle ? `#shop/collection/${handle}` : '#shop');
     return;
   }
@@ -76,7 +76,7 @@ document.addEventListener('click', e => {
   const tagBtn = e.target.closest('.tag-btn');
   if (tagBtn) {
     const tag = tagBtn.dataset.tag || null;
-    setState({ activeTag: tag });
+    setState({ activeTag: tag, currentPage: 1 });
     return;
   }
 
@@ -86,7 +86,18 @@ document.addEventListener('click', e => {
     const { activeSize } = getState();
     const size = sizeBtn.dataset.size;
     // Toggle off if same size clicked again
-    setState({ activeSize: activeSize === size ? null : size });
+    setState({ activeSize: activeSize === size ? null : size, currentPage: 1 });
+    return;
+  }
+
+  // Pagination buttons
+  const pageBtn = e.target.closest('.page-btn');
+  if (pageBtn && !pageBtn.disabled) {
+    const page = parseInt(pageBtn.dataset.page, 10);
+    if (Number.isFinite(page) && page >= 1) {
+      setState({ currentPage: page });
+      document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+    }
     return;
   }
 
@@ -165,7 +176,7 @@ let _searchDebounce = null;
 document.addEventListener('input', e => {
   if (e.target.id !== 'search-input') return;
   clearTimeout(_searchDebounce);
-  _searchDebounce = setTimeout(() => setState({ searchQuery: e.target.value.trim() }), 300);
+  _searchDebounce = setTimeout(() => setState({ searchQuery: e.target.value.trim(), currentPage: 1 }), 300);
 });
 
 // ── Keyboard ─────────────────────────────────────────────

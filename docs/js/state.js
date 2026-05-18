@@ -11,6 +11,7 @@ const _state = {
   activeSize:        null,   // variant/size filter
   activeType:        null,   // productType (Shopify "Tipo") | null = all
   activeTag:         null,   // tag (Shopify "Etiqueta") | null = all
+  currentPage:       1,      // pagination — resets to 1 on any filter change
 };
 
 // ── Event bus ─────────────────────────────────────────────

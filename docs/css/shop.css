@@ -152,6 +152,56 @@
   border-color: var(--pink);
 }
 
+/* ── Pagination ───────────────────────────────────────── */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 2.2rem 0 1rem;
+}
+
+.page-btn {
+  background: transparent;
+  border: 1px solid rgba(26, 10, 18, 0.18);
+  color: rgba(26, 10, 18, 0.8);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.55rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  color: var(--pink);
+  border-color: var(--pink);
+  background: rgba(232, 67, 122, 0.06);
+}
+
+.page-btn.is-active {
+  color: #fff;
+  background: var(--pink);
+  border-color: var(--pink);
+  font-weight: 600;
+}
+
+.page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.page-ellipsis {
+  padding: 0 0.3rem;
+  color: rgba(26, 10, 18, 0.5);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
 /* ── Shop toolbar ─────────────────────────────────────── */
 .shop-main { min-width: 0; }
 

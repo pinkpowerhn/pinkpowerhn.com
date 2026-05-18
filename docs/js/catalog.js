@@ -3,6 +3,7 @@ import { getState, setState } from './state.js';
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
 const TYPE_UNCLASSIFIED = 'Sin clasificar';
+const PAGE_SIZE = 10;
 
 // ── Skeletons ─────────────────────────────────────────────
 export function renderSkeletons(n = 8) {
@@ -120,17 +121,56 @@ export function renderProductGrid(products, collections, activeCollection, searc
   const grid = document.getElementById('product-grid');
   if (!grid) return;
 
-  const { activeSize, activeType, activeTag } = getState();
+  const { activeSize, activeType, activeTag, currentPage } = getState();
   const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeType, activeTag);
 
   updateResultCount(filtered.length);
 
   if (!filtered.length) {
     grid.innerHTML = `<div class="shop-empty"><p>No se encontraron productos.</p></div>`;
+    renderPagination(0, 1);
     return;
   }
 
-  grid.innerHTML = filtered.map(p => productCardHTML(p)).join('');
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.min(Math.max(1, currentPage || 1), totalPages);
+  const start = (page - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
+
+  grid.innerHTML = slice.map(p => productCardHTML(p)).join('');
+  renderPagination(totalPages, page);
+}
+
+// ── Pagination ────────────────────────────────────────────
+function renderPagination(totalPages, current) {
+  let el = document.getElementById('pagination');
+  if (!el) {
+    const grid = document.getElementById('product-grid');
+    if (!grid) return;
+    el = document.createElement('nav');
+    el.id = 'pagination';
+    el.className = 'pagination';
+    el.setAttribute('aria-label', 'Paginación');
+    grid.insertAdjacentElement('afterend', el);
+  }
+
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+  // Truncated page list: 1 … (c-1) c (c+1) … last
+  const pages = new Set([1, totalPages, current, current - 1, current + 1]);
+  const list = [...pages].filter(n => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+
+  const items = [];
+  items.push(`<button class="page-btn page-nav" data-page="${current - 1}" ${current === 1 ? 'disabled' : ''} aria-label="Anterior">‹</button>`);
+  let prev = 0;
+  for (const n of list) {
+    if (n - prev > 1) items.push(`<span class="page-ellipsis">…</span>`);
+    items.push(`<button class="page-btn${n === current ? ' is-active' : ''}" data-page="${n}">${n}</button>`);
+    prev = n;
+  }
+  items.push(`<button class="page-btn page-nav" data-page="${current + 1}" ${current === totalPages ? 'disabled' : ''} aria-label="Siguiente">›</button>`);
+
+  el.innerHTML = items.join('');
 }
 
 function productCardHTML(p) {

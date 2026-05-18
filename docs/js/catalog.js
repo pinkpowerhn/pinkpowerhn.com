@@ -143,8 +143,27 @@ export function renderProductGrid(products, collections, activeCollection, searc
 
 // ── Pagination ────────────────────────────────────────────
 function renderPagination(totalPages, current) {
-  const el = document.getElementById('pagination');
-  if (!el) return;  // El nav existe en el HTML — solo escribimos su contenido
+  const main = document.querySelector('.shop-main');
+  if (!main) return;
+
+  // Defensa: eliminar cualquier #pagination huérfano fuera de .shop-main
+  // (puede pasar si una versión anterior del JS lo dejó en otro lugar)
+  document.querySelectorAll('#pagination').forEach(node => {
+    if (!main.contains(node)) node.remove();
+  });
+
+  let el = main.querySelector('#pagination');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pagination';
+    el.className = 'pagination';
+    el.setAttribute('role', 'navigation');
+    el.setAttribute('aria-label', 'Paginación');
+    main.appendChild(el);
+  } else if (el.parentElement !== main || main.lastElementChild !== el) {
+    // Re-anclar como último hijo de .shop-main (debajo del grid)
+    main.appendChild(el);
+  }
 
   if (totalPages <= 1) { el.innerHTML = ''; return; }
 

@@ -81,26 +81,18 @@ on('statechange', state => {
 // ── Global click delegation ───────────────────────────────
 document.addEventListener('click', e => {
 
-  // Type drill-down (top level)
-  const typeBtn = e.target.closest('.type-btn');
-  if (typeBtn) {
-    const type = typeBtn.dataset.type || null;
-    // Cambiar de tipo limpia colección y etiqueta (drill-down reseteado)
-    setState({ activeType: type, activeCollection: null, activeTag: null, currentPage: 1 });
-    history.replaceState(null, '', '#shop');
-    return;
-  }
-
-  // Collection drill-down (segundo nivel — solo dentro de un tipo)
+  // Collection (top level) — toggle acordeón: click en activa la cierra
   const collBtn = e.target.closest('.collection-btn');
   if (collBtn) {
-    const handle = collBtn.dataset.handle || null;
-    setState({ activeCollection: handle, activeTag: null, currentPage: 1 });
-    history.replaceState(null, '', handle ? `#shop/collection/${handle}` : '#shop');
+    const clicked = collBtn.dataset.handle || null;
+    const { activeCollection } = getState();
+    const next = (clicked && clicked === activeCollection) ? null : clicked;
+    setState({ activeCollection: next, activeTag: null, currentPage: 1 });
+    history.replaceState(null, '', next ? `#shop/collection/${next}` : '#shop');
     return;
   }
 
-  // Tag drill-down (tercer nivel)
+  // Etiqueta dentro de la colección expandida
   const tagBtn = e.target.closest('.tag-btn');
   if (tagBtn) {
     const tag = tagBtn.dataset.tag || null;

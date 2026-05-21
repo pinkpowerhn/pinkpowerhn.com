@@ -2,7 +2,6 @@ import { getState, setState } from './state.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
-const TYPE_UNCLASSIFIED = 'Sin clasificar';
 const PAGE_SIZE = 10;
 
 // ── Skeletons ─────────────────────────────────────────────
@@ -21,76 +20,64 @@ export function renderSkeletons(n = 8) {
   `).join('');
 }
 
-// ── Sidebar — drill-down: Tipo → Colección → Etiqueta ─────
-// Niveles se calculan en vivo desde products + collections. Cuando la clienta
-// agregue Tipos/Etiquetas en Shopify aparecen sin tocar código.
+// ── Sidebar — Colecciones (con etiquetas desplegables) ────
+// Top level = Colecciones. Click en una colección la expande y muestra sus
+// etiquetas. Todo dinámico desde Shopify — no hay nada hardcoded.
 export function renderCollectionSidebar(collections) {
   const sidebar = document.getElementById('collection-sidebar');
   if (!sidebar) return;
 
-  const { activeType, activeCollection, activeTag, activeSize, products } = getState();
+  const { activeCollection, activeTag, activeSize, products } = getState();
 
-  // Tipos únicos (productType). Productos sin tipo van a "Sin clasificar".
-  const typeOf = p => p.productType || TYPE_UNCLASSIFIED;
-  const types = [...new Set(products.map(typeOf))].sort();
+  // Solo colecciones con al menos un producto cargado — evita botones vacíos
+  const productIds = new Set(products.map(p => p.id));
+  const visibleCollections = collections.filter(c =>
+    c.productIds.some(id => productIds.has(id))
+  );
 
-  // Products filtered by current drill-down (excluding tag for sub-level computation)
-  const productsInType = activeType
-    ? products.filter(p => typeOf(p) === activeType)
-    : products;
-
-  // Colecciones que contienen productos del tipo activo
-  const collectionsInType = activeType
-    ? collections.filter(c => {
-        const ids = new Set(c.productIds);
-        return productsInType.some(p => ids.has(p.id));
-      })
-    : [];
-
-  const productsInCollection = activeCollection
-    ? productsInType.filter(p => {
-        const col = collections.find(c => c.handle === activeCollection);
-        return col && col.productIds.includes(p.id);
-      })
-    : productsInType;
-
-  // Etiquetas dentro de la colección (o tipo, si no hay colección activa)
-  const tagPool = activeCollection ? productsInCollection : productsInType;
-  const tags = [...new Set(tagPool.flatMap(p => p.tags || []))].sort();
+  const productsById = new Map(products.map(p => [p.id, p]));
 
   // ── Build sidebar HTML ──
   const sections = [];
 
-  // Tipos (siempre visibles)
-  const allTypesActive = !activeType && !activeCollection && !activeTag;
+  // Botón "Todos" + colecciones (acordeón)
+  const noFilter = !activeCollection && !activeTag;
   sections.push(`
-    <p class="sidebar-label">Tipos</p>
-    <button class="type-btn${allTypesActive ? ' is-active' : ''}" data-type="">Todos</button>
-    ${types.map(t => `
-      <button class="type-btn${activeType === t ? ' is-active' : ''}" data-type="${escapeAttr(t)}">${t}</button>
-    `).join('')}
+    <p class="sidebar-label">Colecciones</p>
+    <button class="collection-btn${noFilter ? ' is-active' : ''}" data-handle="">Todos</button>
   `);
 
-  // Colecciones (solo si hay tipo activo)
-  if (activeType && collectionsInType.length) {
+  for (const c of visibleCollections) {
+    const isOpen = activeCollection === c.handle;
     sections.push(`
-      <p class="sidebar-label" style="margin-top:1.4rem;">Colecciones</p>
-      <button class="collection-btn${!activeCollection ? ' is-active' : ''}" data-handle="">Todas</button>
-      ${collectionsInType.map(c => `
-        <button class="collection-btn${activeCollection === c.handle ? ' is-active' : ''}" data-handle="${c.handle}">${c.title}</button>
-      `).join('')}
+      <button class="collection-btn${isOpen ? ' is-active' : ''}" data-handle="${c.handle}" aria-expanded="${isOpen}">
+        ${c.title}
+        <span class="collection-chevron" aria-hidden="true">${isOpen ? '−' : '+'}</span>
+      </button>
     `);
-  }
 
-  // Etiquetas (solo si hay tipo activo y existen tags en el pool actual)
-  if (activeType && tags.length) {
-    sections.push(`
-      <p class="sidebar-label" style="margin-top:1.4rem;">Etiquetas</p>
-      <button class="tag-btn${!activeTag ? ' is-active' : ''}" data-tag="">Todas</button>
-      ${tags.map(t => `
-        <button class="tag-btn${activeTag === t ? ' is-active' : ''}" data-tag="${escapeAttr(t)}">${t}</button>
-      `).join('')}
-    `);
+    if (isOpen) {
+      // Etiquetas de los productos en esta colección
+      const tagsInCollection = [...new Set(
+        c.productIds
+          .map(id => productsById.get(id))
+          .filter(Boolean)
+          .flatMap(p => p.tags || [])
+      )].sort();
+
+      if (tagsInCollection.length) {
+        sections.push(`
+          <div class="tag-group">
+            <button class="tag-btn${!activeTag ? ' is-active' : ''}" data-tag="">Todas</button>
+            ${tagsInCollection.map(t => `
+              <button class="tag-btn${activeTag === t ? ' is-active' : ''}" data-tag="${escapeAttr(t)}">${t}</button>
+            `).join('')}
+          </div>
+        `);
+      } else {
+        sections.push(`<p class="tag-group tag-group--empty">Sin etiquetas todavía</p>`);
+      }
+    }
   }
 
   // Tallas (filtro paralelo — solo aparece si algún producto tiene variantes)
@@ -121,8 +108,8 @@ export function renderProductGrid(products, collections, activeCollection, searc
   const grid = document.getElementById('product-grid');
   if (!grid) return;
 
-  const { activeSize, activeType, activeTag, currentPage } = getState();
-  const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeType, activeTag);
+  const { activeSize, activeTag, currentPage } = getState();
+  const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag);
 
   updateResultCount(filtered.length);
 
@@ -232,13 +219,8 @@ function productCardHTML(p) {
 }
 
 // ── Filter — pure function ────────────────────────────────
-export function filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeType, activeTag) {
+export function filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag) {
   let result = products;
-
-  if (activeType) {
-    const typeOf = p => p.productType || TYPE_UNCLASSIFIED;
-    result = result.filter(p => typeOf(p) === activeType);
-  }
 
   if (activeCollection) {
     const col = collections.find(c => c.handle === activeCollection);

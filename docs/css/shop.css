@@ -86,7 +86,6 @@
 }
 
 .collection-btn,
-.type-btn,
 .tag-btn {
   background: transparent;
   border: 1px solid rgba(26, 10, 18, 0.12);
@@ -99,10 +98,50 @@
   cursor: pointer;
   transition: color 0.22s, border-color 0.22s, background 0.22s, transform 0.18s, box-shadow 0.22s;
   border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.collection-chevron {
+  font-size: 0.95rem;
+  line-height: 1;
+  color: rgba(26, 10, 18, 0.45);
+  transition: color 0.22s;
+}
+
+.collection-btn.is-active .collection-chevron,
+.collection-btn:hover .collection-chevron {
+  color: var(--pink);
+}
+
+.tag-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid rgba(232, 67, 122, 0.25);
+  margin: 0.15rem 0 0.35rem 0.5rem;
+}
+
+.tag-group .tag-btn {
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.tag-group--empty {
+  font-size: 0.7rem;
+  color: rgba(26, 10, 18, 0.5);
+  font-style: italic;
+  padding-left: 0.9rem;
+  border-left: 2px solid rgba(232, 67, 122, 0.25);
+  margin: 0.15rem 0 0.35rem 0.5rem;
 }
 
 .collection-btn:hover,
-.type-btn:hover,
 .tag-btn:hover {
   color: var(--pink);
   border-color: var(--pink);
@@ -112,7 +151,6 @@
 }
 
 .collection-btn.is-active,
-.type-btn.is-active,
 .tag-btn.is-active {
   color: var(--pink);
   border-color: var(--pink);

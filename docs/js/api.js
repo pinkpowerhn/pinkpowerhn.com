@@ -30,14 +30,19 @@ function normalizeProduct(node) {
   // Display price: first available variant, else first variant
   const displayVariant = variants.find(v => v.availableForSale) || variants[0];
 
+  const collectionHandles = (node.collections?.edges || [])
+    .map(({ node: c }) => c.handle)
+    .filter(Boolean);
+
   return {
-    id:               stripGid(node.id),
-    title:            node.title || '',
-    description:      node.description || '',
-    productType:      node.productType || '',
-    tags:             Array.isArray(node.tags) ? node.tags : [],
-    availableForSale: variants.some(v => v.availableForSale),
-    price:            displayVariant ? displayVariant.price : 0,
+    id:                stripGid(node.id),
+    title:             node.title || '',
+    description:       node.description || '',
+    productType:       node.productType || '',
+    tags:              Array.isArray(node.tags) ? node.tags : [],
+    collectionHandles,
+    availableForSale:  variants.some(v => v.availableForSale),
+    price:             displayVariant ? displayVariant.price : 0,
     variants,
     images,
   };
@@ -45,10 +50,9 @@ function normalizeProduct(node) {
 
 function normalizeCollection(node) {
   return {
-    id:         stripGid(node.id),
-    handle:     node.handle || '',
-    title:      node.title  || '',
-    productIds: (node.products?.edges || []).map(({ node: p }) => stripGid(p.id)),
+    id:     stripGid(node.id),
+    handle: node.handle || '',
+    title:  node.title  || '',
   };
 }
 

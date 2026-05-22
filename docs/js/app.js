@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadRemainingProducts(cursor, hasNext) {
   while (hasNext) {
     try {
-      const page = await fetchProductsPage({ cursor, first: 50 });
+      const page = await fetchProductsPage({ cursor, first: 250 });
       const { products } = getState();
       // Merge sin duplicados por si una página se reintenta
       const existing = new Set(products.map(p => p.id));

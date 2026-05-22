@@ -29,25 +29,18 @@ export function renderCollectionSidebar(collections) {
 
   const { activeCollection, activeTag, activeSize, products } = getState();
 
-  // Solo colecciones con al menos un producto cargado — evita botones vacíos
-  const productIds = new Set(products.map(p => p.id));
-  const visibleCollections = collections.filter(c =>
-    c.productIds.some(id => productIds.has(id))
-  );
-
-  const productsById = new Map(products.map(p => [p.id, p]));
-
   // ── Build sidebar HTML ──
   const sections = [];
 
-  // Botón "Todos" + colecciones (acordeón)
+  // Botón "Todos" + colecciones (acordeón). Las 4 aparecen de inmediato,
+  // independiente de cuántos productos hayan cargado en background.
   const noFilter = !activeCollection && !activeTag;
   sections.push(`
     <p class="sidebar-label">Colecciones</p>
     <button class="collection-btn${noFilter ? ' is-active' : ''}" data-handle="">Todos</button>
   `);
 
-  for (const c of visibleCollections) {
+  for (const c of collections) {
     const isOpen = activeCollection === c.handle;
     sections.push(`
       <button class="collection-btn${isOpen ? ' is-active' : ''}" data-handle="${c.handle}" aria-expanded="${isOpen}">
@@ -57,11 +50,10 @@ export function renderCollectionSidebar(collections) {
     `);
 
     if (isOpen) {
-      // Etiquetas de los productos en esta colección
+      // Etiquetas de los productos cargados que pertenecen a esta colección
       const tagsInCollection = [...new Set(
-        c.productIds
-          .map(id => productsById.get(id))
-          .filter(Boolean)
+        products
+          .filter(p => p.collectionHandles.includes(c.handle))
           .flatMap(p => p.tags || [])
       )].sort();
 
@@ -223,11 +215,7 @@ export function filterProducts(products, collections, activeCollection, searchQu
   let result = products;
 
   if (activeCollection) {
-    const col = collections.find(c => c.handle === activeCollection);
-    if (col) {
-      const ids = new Set(col.productIds);
-      result = result.filter(p => ids.has(p.id));
-    }
+    result = result.filter(p => p.collectionHandles.includes(activeCollection));
   }
 
   if (activeTag) {
@@ -260,16 +248,13 @@ export function renderCollectionShowcase(collections, products) {
   if (!grid) return;
   if (!collections.length || !products.length) return;
 
-  // Build a quick id→product lookup
-  const byId = new Map(products.map(p => [p.id, p]));
-
   // Take up to 3 collections that have at least one product with an image
   const cards = [];
   for (const col of collections) {
     if (cards.length === 3) break;
-    const members = col.productIds
-      .map(id => byId.get(id))
-      .filter(p => p && p.images.length > 0);
+    const members = products.filter(p =>
+      p.collectionHandles.includes(col.handle) && p.images.length > 0
+    );
     if (!members.length) continue;
 
     // Pick a random member

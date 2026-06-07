@@ -105,6 +105,17 @@ on('statechange', state => {
   updateCartBadge();
 });
 
+// En móvil, baja hasta el inicio de los productos tras elegir un filtro,
+// para que se vean los primeros ítems de esa categoría.
+function scrollToProductsMobile() {
+  if (!window.matchMedia('(max-width: 768px)').matches) return;
+  const grid = document.getElementById('product-grid');
+  if (!grid) return;
+  const navOffset = 80;
+  const top = grid.getBoundingClientRect().top + window.scrollY - navOffset;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
 // ── Global click delegation ───────────────────────────────
 document.addEventListener('click', e => {
 
@@ -114,6 +125,14 @@ document.addEventListener('click', e => {
     const nav = document.querySelector('nav');
     const open = nav.classList.toggle('is-open');
     navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    return;
+  }
+
+  // Lupa de búsqueda (móvil) — llevar al buscador y enfocarlo
+  if (e.target.closest('#search-toggle')) {
+    document.querySelector('nav')?.classList.remove('is-open');
+    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => document.getElementById('search-input')?.focus({ preventScroll: true }), 450);
     return;
   }
 
@@ -134,6 +153,9 @@ document.addEventListener('click', e => {
     // Limpiar filtro de tallas al cambiar de colección — evita catálogo en blanco
     setState({ activeCollection: next, activeTag: null, activeSize: null, currentPage: 1 });
     history.replaceState(null, '', next ? `#shop/collection/${next}` : '#shop');
+    // Móvil: si la colección no tiene subcategorías, ir directo a los productos.
+    // Si sí tiene, se queda para que pueda elegir la subcategoría.
+    if (!document.querySelector('#collection-sidebar .tag-btn')) scrollToProductsMobile();
     return;
   }
 
@@ -143,6 +165,7 @@ document.addEventListener('click', e => {
     const tag = tagBtn.dataset.tag || null;
     // Limpiar filtro de tallas al cambiar de etiqueta del submenú
     setState({ activeTag: tag, activeSize: null, currentPage: 1 });
+    scrollToProductsMobile();
     return;
   }
 
@@ -153,6 +176,7 @@ document.addEventListener('click', e => {
     const size = sizeBtn.dataset.size;
     // Toggle off if same size clicked again
     setState({ activeSize: activeSize === size ? null : size, currentPage: 1 });
+    scrollToProductsMobile();
     return;
   }
 

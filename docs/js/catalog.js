@@ -2,7 +2,7 @@ import { getState, setState } from './state.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 // ── Skeletons ─────────────────────────────────────────────
 export function renderSkeletons(n = 8) {
@@ -27,7 +27,7 @@ export function renderCollectionSidebar(collections) {
   const sidebar = document.getElementById('collection-sidebar');
   if (!sidebar) return;
 
-  const { activeCollection, activeTag, activeSize, products } = getState();
+  const { activeCollection, activeTag, activeSize, priceMin, priceMax, products } = getState();
 
   // ── Build sidebar HTML ──
   const sections = [];
@@ -88,11 +88,93 @@ export function renderCollectionSidebar(collections) {
     `);
   }
 
+  // Filtro de precio — slider de rango doble (mín/máx) sobre el rango real
+  const prices = products.map(p => p.price).filter(n => Number.isFinite(n) && n > 0);
+  if (prices.length) {
+    const lo = Math.floor(Math.min(...prices));
+    const hi = Math.ceil(Math.max(...prices));
+    if (hi > lo) {
+      const curMin   = priceMin != null ? priceMin : lo;
+      const curMax   = priceMax != null ? priceMax : hi;
+      const hasPrice = priceMin != null || priceMax != null;
+      const step     = Math.max(1, Math.round((hi - lo) / 100));
+      const fmt      = n => Math.round(n).toLocaleString('es-HN');
+      sections.push(`
+        <p class="sidebar-label" style="margin-top:1.4rem;">Precio</p>
+        <div class="price-range" data-lo="${lo}" data-hi="${hi}">
+          <div class="price-range__values">
+            <span id="price-range-label">L. ${fmt(curMin)} — L. ${fmt(curMax)}</span>
+          </div>
+          <div class="price-range__track">
+            <div class="price-range__fill" id="price-range-fill"></div>
+            <input type="range" class="price-range__input" id="price-range-min"
+                   min="${lo}" max="${hi}" step="${step}" value="${curMin}" aria-label="Precio mínimo" />
+            <input type="range" class="price-range__input" id="price-range-max"
+                   min="${lo}" max="${hi}" step="${step}" value="${curMax}" aria-label="Precio máximo" />
+          </div>
+        </div>
+        ${hasPrice ? `<button class="price-clear" id="price-clear">Limpiar</button>` : ''}
+      `);
+    }
+  }
+
   sidebar.innerHTML = sections.join('');
+  wirePriceSlider(sidebar);
 }
 
 function escapeAttr(s) {
   return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// ── Price range slider ────────────────────────────────────
+// Dos <input type=range> superpuestos. Mientras se arrastra solo se repinta
+// el relleno y la etiqueta (evento input, sin setState para no perder el
+// arrastre). Al soltar (change) se aplica el filtro.
+function wirePriceSlider(root) {
+  const wrap = root.querySelector('.price-range');
+  if (!wrap) return;
+
+  const lo    = parseFloat(wrap.dataset.lo);
+  const hi    = parseFloat(wrap.dataset.hi);
+  const minI  = root.querySelector('#price-range-min');
+  const maxI  = root.querySelector('#price-range-max');
+  const fill  = root.querySelector('#price-range-fill');
+  const label = root.querySelector('#price-range-label');
+  if (!minI || !maxI || !fill || !label) return;
+
+  const span = (hi - lo) || 1;
+  const fmt  = n => Math.round(n).toLocaleString('es-HN');
+
+  function paint() {
+    const a = Math.min(parseFloat(minI.value), parseFloat(maxI.value));
+    const b = Math.max(parseFloat(minI.value), parseFloat(maxI.value));
+    fill.style.left  = ((a - lo) / span) * 100 + '%';
+    fill.style.right = (100 - ((b - lo) / span) * 100) + '%';
+    label.textContent = `L. ${fmt(a)} — L. ${fmt(b)}`;
+  }
+
+  minI.addEventListener('input', () => {
+    if (parseFloat(minI.value) > parseFloat(maxI.value)) minI.value = maxI.value;
+    paint();
+  });
+  maxI.addEventListener('input', () => {
+    if (parseFloat(maxI.value) < parseFloat(minI.value)) maxI.value = minI.value;
+    paint();
+  });
+
+  const apply = () => {
+    const a = parseFloat(minI.value);
+    const b = parseFloat(maxI.value);
+    setState({
+      priceMin: a <= lo ? null : a,   // en el extremo = sin tope
+      priceMax: b >= hi ? null : b,
+      currentPage: 1,
+    });
+  };
+  minI.addEventListener('change', apply);
+  maxI.addEventListener('change', apply);
+
+  paint();
 }
 
 // ── Product grid ──────────────────────────────────────────
@@ -100,8 +182,8 @@ export function renderProductGrid(products, collections, activeCollection, searc
   const grid = document.getElementById('product-grid');
   if (!grid) return;
 
-  const { activeSize, activeTag, currentPage } = getState();
-  const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag);
+  const { activeSize, activeTag, priceMin, priceMax, currentPage } = getState();
+  const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
 
   updateResultCount(filtered.length);
 
@@ -211,11 +293,19 @@ function productCardHTML(p) {
 }
 
 // ── Filter — pure function ────────────────────────────────
-export function filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag) {
+export function filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin = null, priceMax = null) {
   let result = products;
 
   if (activeCollection) {
     result = result.filter(p => p.collectionHandles.includes(activeCollection));
+  }
+
+  if (priceMin != null) {
+    result = result.filter(p => p.price >= priceMin);
+  }
+
+  if (priceMax != null) {
+    result = result.filter(p => p.price <= priceMax);
   }
 
   if (activeTag) {
@@ -228,8 +318,14 @@ export function filterProducts(products, collections, activeCollection, searchQu
   }
 
   if (activeSize) {
+    // Solo productos donde ESA talla está realmente disponible (con stock),
+    // no basta con que la variante exista.
     result = result.filter(p =>
-      p.variants.some(v => v.title === activeSize)
+      p.variants.some(v =>
+        v.title === activeSize &&
+        v.availableForSale &&
+        (v.inventoryQuantity === null || v.inventoryQuantity > 0)
+      )
     );
   }
 

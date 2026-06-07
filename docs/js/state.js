@@ -10,6 +10,8 @@ const _state = {
   waNumber:          null,   // cached on load so FAB click is synchronous on iOS
   activeSize:        null,   // variant/size filter
   activeTag:         null,   // tag (Shopify "Etiqueta") | null = all
+  priceMin:          null,   // filtro de precio mínimo (L.) | null = sin tope
+  priceMax:          null,   // filtro de precio máximo (L.) | null = sin tope
   currentPage:       1,      // pagination — resets to 1 on any filter change
 };
 

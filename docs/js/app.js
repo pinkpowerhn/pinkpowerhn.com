@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderCollectionShowcase } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderProductGrid } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
 
@@ -9,7 +9,11 @@ import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, 
 document.addEventListener('DOMContentLoaded', async () => {
   initState();
   updateCartBadge();
-  renderSkeletons(8);
+  renderSkeletons(12);
+
+  // El splash se muestra su tiempo mínimo y luego se oculta dejando ver el
+  // skeleton del grid mientras los productos terminan de cargar.
+  hideSplash();
 
   checkHealth().catch(() =>
     showApiBanner('El servicio está temporalmente no disponible. Intenta más tarde.')
@@ -34,7 +38,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.href = `https://wa.me/${waNumber}`;
       });
     }
-    renderCollectionShowcase(collections, firstPage.products);
     renderFeaturedBanner(collections);
     handleHashRoute();
 
@@ -46,6 +49,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     showApiBanner('No se pudo cargar el catálogo. Por favor recarga la página.');
   }
 });
+
+// ── Splash ────────────────────────────────────────────────
+const SPLASH_MIN_MS = 1300;            // tiempo mínimo visible
+const _splashStart  = performance.now();
+let _splashHidden   = false;
+function hideSplash() {
+  if (_splashHidden) return;
+  // Garantiza un mínimo en pantalla para que no aparezca y desaparezca de golpe
+  const elapsed = performance.now() - _splashStart;
+  if (elapsed < SPLASH_MIN_MS) {
+    setTimeout(hideSplash, SPLASH_MIN_MS - elapsed);
+    return;
+  }
+  _splashHidden = true;
+  document.body.classList.remove('is-loading'); // restaura el scroll
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  splash.classList.add('is-hidden');
+  // Quitar del DOM tras la transición para que no intercepte clics
+  setTimeout(() => splash.remove(), 700);
+}
 
 async function loadRemainingProducts(cursor, hasNext) {
   while (hasNext) {
@@ -81,13 +105,31 @@ on('statechange', state => {
 // ── Global click delegation ───────────────────────────────
 document.addEventListener('click', e => {
 
+  // Menú hamburguesa (móvil) — abrir/cerrar
+  const navToggle = e.target.closest('#nav-toggle');
+  if (navToggle) {
+    const nav = document.querySelector('nav');
+    const open = nav.classList.toggle('is-open');
+    navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    return;
+  }
+
+  // Cerrar el menú móvil al tocar un enlace (deja que el link navegue)
+  if (e.target.closest('nav ul a')) {
+    const nav = document.querySelector('nav');
+    nav.classList.remove('is-open');
+    document.getElementById('nav-toggle')?.setAttribute('aria-expanded', 'false');
+    // sin return: el ancla navega normalmente
+  }
+
   // Collection (top level) — toggle acordeón: click en activa la cierra
   const collBtn = e.target.closest('.collection-btn');
   if (collBtn) {
     const clicked = collBtn.dataset.handle || null;
     const { activeCollection } = getState();
     const next = (clicked && clicked === activeCollection) ? null : clicked;
-    setState({ activeCollection: next, activeTag: null, currentPage: 1 });
+    // Limpiar filtro de tallas al cambiar de colección — evita catálogo en blanco
+    setState({ activeCollection: next, activeTag: null, activeSize: null, currentPage: 1 });
     history.replaceState(null, '', next ? `#shop/collection/${next}` : '#shop');
     return;
   }
@@ -96,7 +138,8 @@ document.addEventListener('click', e => {
   const tagBtn = e.target.closest('.tag-btn');
   if (tagBtn) {
     const tag = tagBtn.dataset.tag || null;
-    setState({ activeTag: tag, currentPage: 1 });
+    // Limpiar filtro de tallas al cambiar de etiqueta del submenú
+    setState({ activeTag: tag, activeSize: null, currentPage: 1 });
     return;
   }
 
@@ -110,13 +153,26 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Limpiar filtro de precio
+  if (e.target.closest('#price-clear')) {
+    setState({ priceMin: null, priceMax: null, currentPage: 1 });
+    return;
+  }
+
   // Pagination buttons
   const pageBtn = e.target.closest('.page-btn');
   if (pageBtn && !pageBtn.disabled) {
     const page = parseInt(pageBtn.dataset.page, 10);
     if (Number.isFinite(page) && page >= 1) {
       setState({ currentPage: page });
-      document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+      // Llevar al inicio de los productos de esa página (no al tope del menú).
+      // Se descuenta el alto del navbar fijo para que la primera fila quede visible.
+      const grid = document.getElementById('product-grid');
+      if (grid) {
+        const navOffset = 90;
+        const top = grid.getBoundingClientRect().top + window.scrollY - navOffset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
     }
     return;
   }

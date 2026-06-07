@@ -15,6 +15,11 @@
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:image" content="https://pinkpowerhn.com/img/og-image.jpg" />
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
+  <link rel="icon" type="image/png" href="img/favicon.png" />
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png" />
+  <meta name="theme-color" content="#fff0f7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1a0a12" media="(prefers-color-scheme: dark)" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -66,12 +71,12 @@
     }
 
     .nav-logo img {
-      height: 48px;
+      height: 32px;
       width: auto;
       display: block;
     }
 
-    .footer-brand .nav-logo img { height: 64px; }
+    .footer-brand .nav-logo img { height: 32px; }
 
     nav ul {
       display: flex;
@@ -89,6 +94,34 @@
     }
 
     nav ul a:hover { color: var(--pink); }
+
+    /* Botón hamburguesa — oculto en escritorio */
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .nav-toggle span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      margin: 0 auto;
+      border-radius: 2px;
+      background: var(--pink-dk);
+      transition: transform 0.25s ease, opacity 0.2s ease;
+    }
+
+    nav.is-open .nav-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    nav.is-open .nav-toggle span:nth-child(2) { opacity: 0; }
+    nav.is-open .nav-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
     /* ── HERO ── */
     .hero {
@@ -162,11 +195,14 @@
 
     .hero-sub {
       margin-top: 1.8rem;
+      margin-left: auto;
+      margin-right: auto;
       font-size: 0.82rem;
       letter-spacing: 0.14em;
       color: rgba(26,10,18,0.6);
       max-width: 36ch;
       line-height: 1.9;
+      text-align: center;
     }
 
     .hero-cta {
@@ -188,7 +224,7 @@
       text-decoration: none;
       border: 1px solid transparent;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
     }
 
     .btn-primary {
@@ -212,6 +248,63 @@
     .btn-outline:hover {
       border-color: var(--pink);
       color: var(--pink);
+    }
+
+    /* ── SPLASH ── */
+    body.is-loading { overflow: hidden; }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 42%, #fff6fb 0%, #fde2ef 100%);
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+
+    #splash.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .splash-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.6rem;
+    }
+
+    .splash-logo {
+      width: min(135px, 38vw);
+      height: auto;
+      animation: splashPulse 1.9s ease-in-out infinite;
+    }
+
+    .splash-dots {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .splash-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pink-lt);
+      animation: splashDot 1.2s ease-in-out infinite;
+    }
+    .splash-dots span:nth-child(2) { animation-delay: 0.16s; }
+    .splash-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1);     opacity: 0.92; }
+      50%      { transform: scale(1.045); opacity: 1;    }
+    }
+
+    @keyframes splashDot {
+      0%, 100% { transform: translateY(0);    opacity: 0.4; }
+      50%      { transform: translateY(-7px); opacity: 1;   }
     }
 
     /* ── MARQUEE ── */
@@ -349,17 +442,35 @@
       min-height: 380px;
       display: flex;
       align-items: center;
-      background: linear-gradient(110deg, #fce7f3 0%, #fbcfe8 50%, #f9a8d4 100%);
+      border-radius: 24px;
+      background:
+        radial-gradient(ellipse 60% 80% at 85% 20%, rgba(224,0,110,0.08) 0%, transparent 60%),
+        linear-gradient(120deg, #fff0f7 0%, #fcdcec 55%, #f8bcd9 100%);
+      border: 1px solid rgba(224, 0, 110, 0.08);
+    }
+
+    /* Brillo suave inferior-izquierdo */
+    .banner::before {
+      content: '';
+      position: absolute;
+      left: -100px;
+      bottom: -130px;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+      z-index: 0;
     }
 
     .banner-deco {
       position: absolute;
-      right: -60px;
-      top: -60px;
-      width: 480px;
-      height: 480px;
+      right: -80px;
+      top: -80px;
+      width: 420px;
+      height: 420px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(224,0,110,0.18) 0%, transparent 70%);
+      background:
+        radial-gradient(circle, rgba(224,0,110,0.12) 0%, rgba(224,0,110,0.03) 50%, transparent 72%);
     }
 
     .banner-inner {
@@ -369,29 +480,45 @@
     }
 
     .banner-badge {
-      display: inline-block;
-      background: var(--pink);
-      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      background: rgba(255, 255, 255, 0.6);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      color: var(--pink-dk);
       font-size: 0.6rem;
-      letter-spacing: 0.28em;
+      letter-spacing: 0.26em;
       text-transform: uppercase;
-      padding: 0.35rem 1rem;
-      margin-bottom: 1.4rem;
-      font-weight: 500;
+      padding: 0.5rem 1.25rem;
+      border-radius: 999px;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .banner-badge::before {
+      content: '✦';
+      font-size: 0.72rem;
+      line-height: 1;
+      color: var(--pink);
     }
 
     .banner h2 {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 5vw, 4rem);
-      font-weight: 300;
-      line-height: 1.1;
-      letter-spacing: 0.04em;
+      font-size: clamp(2.2rem, 5.2vw, 4.2rem);
+      font-weight: 400;
+      line-height: 1.08;
+      letter-spacing: 0.03em;
       max-width: 18ch;
-      margin-bottom: 1.6rem;
-      color: var(--white);
+      margin-bottom: 1.8rem;
+      color: var(--pink-dk);
     }
 
-    .banner h2 em { font-style: italic; color: var(--pink); }
+    .banner h2 em {
+      font-style: italic;
+      color: var(--pink);
+    }
 
     /* ── VALUES ── */
     .values {
@@ -568,7 +695,35 @@
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       nav { padding: 1.2rem 1.4rem; }
-      nav ul { display: none; }
+
+      /* Menú desplegable bajo el navbar */
+      nav ul {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        padding: 0.4rem 1.4rem 1rem;
+        background: rgba(255, 247, 251, 0.98);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(224, 0, 110, 0.12);
+        box-shadow: 0 14px 32px -18px rgba(224, 0, 110, 0.35);
+      }
+      nav.is-open ul { display: flex; }
+      nav ul li { width: 100%; }
+      nav ul a {
+        display: block;
+        padding: 0.95rem 0.2rem;
+        font-size: 0.78rem;
+        border-bottom: 1px solid rgba(224, 0, 110, 0.08);
+      }
+      nav ul li:last-child a { border-bottom: none; }
+
+      .nav-toggle { display: flex; }
+      .nav-cta { display: none; }
+
       .section { padding: 4rem 1.4rem; }
       .banner { margin: 0 1.4rem 4rem; }
       .banner-inner { padding: 2.4rem; }
@@ -585,11 +740,19 @@
     }
   </style>
 </head>
-<body>
+<body class="is-loading">
+
+  <!-- SPLASH / pantalla de carga -->
+  <div id="splash">
+    <div class="splash-inner">
+      <img src="img/logo.png" alt="PinkPower HN" class="splash-logo" />
+      <div class="splash-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
 
   <!-- NAVBAR -->
   <nav>
-    <a href="#" class="nav-logo"><img src="img/og-image.jpg" alt="PinkPower HN" /></a>
+    <a href="#" class="nav-logo"><img src="img/logo.png" alt="PinkPower HN" /></a>
     <ul>
       <li><a href="#shop">Productos</a></li>
       <li><a href="#new">Novedades</a></li>
@@ -603,7 +766,10 @@
         </svg>
         <span id="cart-badge" class="cart-badge" hidden>0</span>
       </button>
-      <a href="#shop" class="btn btn-primary" style="padding: 0.6rem 1.6rem; font-size: 0.65rem;">Ver Productos</a>
+      <a href="#shop" class="btn btn-primary nav-cta" style="padding: 0.6rem 1.6rem; font-size: 0.65rem;">Ver Productos</a>
+      <button id="nav-toggle" class="nav-toggle" aria-label="Menú" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
 
@@ -612,7 +778,7 @@
     <div class="hero-inner">
       <p class="hero-eyebrow">Bath &amp; Body Works · Victoria's Secret · Originales</p>
       <h1>Consiéntete<br /><em>sin excusas.</em></h1>
-      <p class="hero-sub">Tu momento. Tu fragancia. Tu poder. ✨ (prueba de despliegue) ✨</p>
+      <p class="hero-sub">Tu momento. Tu fragancia. Tu poder.</p>
       <div class="hero-cta">
         <a href="#shop" class="btn btn-primary">Ver Productos</a>
         <a href="https://wa.me/" class="btn btn-outline wa-link" target="_blank" rel="noopener noreferrer">Pedir por WhatsApp</a>
@@ -643,6 +809,10 @@
       <main class="shop-main">
         <div class="shop-toolbar">
           <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
             <input
               type="search"
               id="search-input"
@@ -662,15 +832,6 @@
       </main>
     </div>
   </section>
-
-  <!-- CATEGORIES -->
-  <div id="collections">
-    <div class="section">
-      <div class="grid-3" id="collections-grid">
-        <!-- rendered by catalog.js after API loads -->
-      </div>
-    </div>
-  </div>
 
   <!-- FEATURED BANNER -->
   <div id="new">
@@ -699,7 +860,7 @@
     <div>
       <div class="value-icon">⬡</div>
       <p class="value-title">Para Ti o Para Regalar</p>
-      <p class="value-desc">Porque vos también mereces consentirte.</p>
+      <p class="value-desc">Porque tú también mereces consentirte.</p>
     </div>
     <div>
       <div class="value-icon">◈</div>
@@ -707,17 +868,6 @@
       <p class="value-desc">Empaque bonito, entrega a domicilio.</p>
     </div>
   </div>
-
-  <!-- FOUNDER -->
-  <section class="founder-section">
-    <div class="section">
-      <p class="section-label">La Emprendedora</p>
-      <h2 class="section-title">Detrás de <em>Pink</em>Power</h2>
-      <p style="text-align:center;margin-top:-0.5rem;margin-bottom:1rem;font-size:0.75rem;letter-spacing:0.08em;">
-        <a href="https://www.instagram.com/p/DIT37evRTTY/?img_index=1" target="_blank" rel="noopener noreferrer" style="color:var(--pink);text-decoration:none;">@pinkpowerhn</a>
-      </p>
-    </div>
-  </section>
 
   <!-- CONTACT CTA -->
   <section class="newsletter" id="contact">
@@ -731,8 +881,8 @@
   <!-- FOOTER -->
   <footer>
     <div class="footer-brand">
-      <a href="#" class="nav-logo"><img src="img/og-image.jpg" alt="PinkPower HN" /></a>
-      <p>Creado por y para mujeres poderosas como vos. ♡</p>
+      <a href="#" class="nav-logo"><img src="img/logo.png" alt="PinkPower HN" /></a>
+      <p>Creado por y para mujeres poderosas como tú. ♡</p>
     </div>
     <div>
       <h4>Tienda</h4>

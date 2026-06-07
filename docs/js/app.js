@@ -40,7 +40,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     if (waNumber) {
       document.querySelectorAll('.wa-link').forEach(el => {
-        el.href = `https://wa.me/${waNumber}`;
+        // Si el enlace tiene un mensaje preestablecido (data-wa-text), se incluye
+        const msg = el.dataset.waText;
+        el.href = msg
+          ? `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`
+          : `https://wa.me/${waNumber}`;
       });
     }
     handleHashRoute();

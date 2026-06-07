@@ -26,8 +26,18 @@
   to   { transform: translateX(0);    }
 }
 
-.cart-panel {
+/* La animación de entrada solo se aplica al ABRIR el carrito (clase --in),
+   no cada vez que se actualiza el contenido. */
+.cart-panel--in {
   animation: slideInRight 0.28s cubic-bezier(.25,.46,.45,.94);
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0);    }
+  to   { transform: translateX(100%); }
+}
+.cart-panel--out {
+  animation: slideOutRight 0.26s cubic-bezier(.4, 0, .7, .2) forwards;
 }
 
 /* ── Fade in for modal ────────────────────────────────── */

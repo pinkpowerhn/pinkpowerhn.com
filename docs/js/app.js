@@ -261,16 +261,14 @@ document.addEventListener('click', e => {
 
   // Cart toggle
   if (e.target.closest('#cart-toggle')) {
-    const open = !getState().cartOpen;
-    setState({ cartOpen: open });
-    document.getElementById('cart-drawer').hidden = !open;
+    if (getState().cartOpen) closeCart();
+    else openCart();
     return;
   }
 
   // Cart close
   if (e.target.closest('#cart-close') || e.target.id === 'cart-overlay') {
-    setState({ cartOpen: false });
-    document.getElementById('cart-drawer').hidden = true;
+    closeCart();
     return;
   }
 
@@ -313,6 +311,42 @@ document.addEventListener('keydown', e => {
   }
 });
 
+
+// ── Abrir / cerrar carrito (con animación en ambos sentidos) ──
+function openCart() {
+  const drawer = document.getElementById('cart-drawer');
+  if (!drawer) return;
+  setState({ cartOpen: true }); // statechange → renderCartDrawer construye/refresca
+  drawer.hidden = false;
+  drawer.classList.remove('is-closing');
+  const panel = drawer.querySelector('.cart-panel');
+  if (panel) {
+    panel.classList.remove('cart-panel--out', 'cart-panel--in');
+    void panel.offsetWidth;
+    panel.classList.add('cart-panel--in');
+  }
+}
+
+function closeCart() {
+  const drawer = document.getElementById('cart-drawer');
+  if (!drawer || drawer.hidden || !getState().cartOpen) return;
+  const panel = drawer.querySelector('.cart-panel');
+  if (!panel) { setState({ cartOpen: false }); drawer.hidden = true; return; }
+
+  // Anima la salida; recién al terminar oculta y actualiza el estado.
+  drawer.classList.add('is-closing');
+  panel.classList.remove('cart-panel--in');
+  panel.classList.add('cart-panel--out');
+
+  const finish = () => {
+    panel.removeEventListener('animationend', finish);
+    panel.classList.remove('cart-panel--out');
+    drawer.classList.remove('is-closing');
+    setState({ cartOpen: false });
+    drawer.hidden = true;
+  };
+  panel.addEventListener('animationend', finish);
+}
 
 // ── Cart drawer ───────────────────────────────────────────
 function renderCartDrawer() {
@@ -367,17 +401,25 @@ function renderCartDrawer() {
     </div>
   ` : '';
 
-  drawer.innerHTML = `
-    <div id="cart-overlay"></div>
-    <div class="cart-panel">
-      <div class="cart-header">
-        <p class="cart-title">Mi Carrito</p>
-        <button id="cart-close" aria-label="Cerrar carrito">&times;</button>
+  // Estructura del panel: se crea UNA sola vez. Así, al eliminar/cambiar un
+  // ítem solo se refresca el contenido y el panel NO se vuelve a animar
+  // (antes parecía que "salía otro sidebar").
+  if (!drawer.querySelector('.cart-panel')) {
+    drawer.innerHTML = `
+      <div id="cart-overlay"></div>
+      <div class="cart-panel">
+        <div class="cart-header">
+          <p class="cart-title">Mi Carrito</p>
+          <button id="cart-close" aria-label="Cerrar carrito">&times;</button>
+        </div>
+        <div class="cart-items"></div>
+        <div class="cart-footer-slot"></div>
       </div>
-      <div class="cart-items">${itemsHTML}</div>
-      ${footerHTML}
-    </div>
-  `;
+    `;
+  }
+
+  drawer.querySelector('.cart-items').innerHTML = itemsHTML;
+  drawer.querySelector('.cart-footer-slot').innerHTML = footerHTML;
 }
 
 // ── Checkout modal ────────────────────────────────────────

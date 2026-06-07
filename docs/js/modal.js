@@ -18,6 +18,7 @@ export function openModal(product) {
   if (!modal) return;
 
   modal.innerHTML = buildModalHTML(product);
+  modal.classList.remove('is-closing');
   modal.hidden = false;
   document.body.style.overflow = 'hidden';
   setState({ modalProductId: product.id });
@@ -33,11 +34,25 @@ export function openModal(product) {
 export function closeModal() {
   const modal = document.getElementById('product-modal');
   if (!modal || modal.hidden) return;
-  modal.hidden = true;
-  document.body.style.overflow = '';
-  _currentProduct  = null;
-  _selectedVariant = null;
-  setState({ modalProductId: null });
+
+  const panel = modal.querySelector('.modal-panel');
+
+  const finish = () => {
+    panel?.removeEventListener('animationend', finish);
+    modal.classList.remove('is-closing');
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    _currentProduct  = null;
+    _selectedVariant = null;
+    setState({ modalProductId: null });
+  };
+
+  if (panel) {
+    modal.classList.add('is-closing'); // dispara la animación de salida
+    panel.addEventListener('animationend', finish);
+  } else {
+    finish();
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────

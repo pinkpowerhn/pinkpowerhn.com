@@ -28,10 +28,9 @@ export function showToast(status, productName = '') {
       <span class="pp-toast__text">Llegaste al límite disponible</span>
       <button class="pp-toast__close" aria-label="Cerrar">&times;</button>`;
   } else {
-    const name = productName ? `<strong>${esc(productName)}</strong>` : '<strong>Producto</strong>';
     toast.innerHTML = `
       <span class="pp-toast__icon">✓</span>
-      <span class="pp-toast__text">${name}<small>Agregado al carrito</small></span>
+      <span class="pp-toast__text">Agregado al carrito</span>
       <button class="pp-toast__close" aria-label="Cerrar">&times;</button>`;
   }
 

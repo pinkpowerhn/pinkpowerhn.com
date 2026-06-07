@@ -1306,7 +1306,8 @@
 }
 
 .pp-toast__text {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   line-height: 1.35;
   letter-spacing: 0.02em;
 }
@@ -1354,20 +1355,20 @@
 }
 .pp-toast--limit .pp-toast__icon { background: #d97706; }
 
-/* Móvil: el toast ocupa todo el ancho, pegado abajo y centrado */
+/* Móvil: banner flotante abajo (con márgenes y sombra), no pegado al borde */
 @media (max-width: 600px) {
   .pp-toast {
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: 0.8rem;
+    right: 0.8rem;
+    bottom: 1rem;
     top: auto;
     max-width: none;
-    border-radius: 14px 14px 0 0;
+    border-radius: 12px;
     justify-content: center;
-    padding: 1rem 1.2rem;
-    transform: translateY(100%);
+    padding: 0.95rem 1.1rem;
+    transform: translateY(1rem) scale(0.98);
   }
-  .pp-toast--show { transform: translateY(0); }
+  .pp-toast--show { transform: translateY(0) scale(1); }
 }
 
 /* Animación del carrito al agregar un ítem */

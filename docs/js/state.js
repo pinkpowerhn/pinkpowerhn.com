@@ -1,6 +1,7 @@
 // ── Internal state ────────────────────────────────────────
 const _state = {
   products:          [],
+  productsLoaded:    false,   // true cuando terminó la carga en background
   collections:       [],
   activeCollection:  null,   // collection handle | null = all
   searchQuery:       '',

@@ -20,9 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   );
 
   try {
-    // Primera página chica → grid interactivo cuanto antes
+    // Primer lote grande → casi todas las categorías cargan de una.
+    // Si el catálogo supera 250, el resto sigue en background.
     const [firstPage, collections, config] = await Promise.all([
-      fetchProductsPage({ first: 10 }),
+      fetchProductsPage({ first: 250 }),
       fetchCollections(),
       fetchConfig().catch(() => null),
     ]);
@@ -84,9 +85,11 @@ async function loadRemainingProducts(cursor, hasNext) {
       hasNext = page.hasNext;
     } catch (err) {
       console.warn('[PinkPower] Background load failed:', err);
-      return; // dejamos lo que ya cargamos
+      break; // dejamos lo que ya cargamos
     }
   }
+  // Marca que ya no llegarán más productos → el sidebar deja de decir "Cargando…"
+  setState({ productsLoaded: true });
 }
 
 // ── State subscription ────────────────────────────────────

@@ -27,7 +27,7 @@ export function renderCollectionSidebar(collections) {
   const sidebar = document.getElementById('collection-sidebar');
   if (!sidebar) return;
 
-  const { activeCollection, activeTag, activeSize, priceMin, priceMax, products } = getState();
+  const { activeCollection, activeTag, activeSize, priceMin, priceMax, products, productsLoaded } = getState();
 
   // ── Build sidebar HTML ──
   const sections = [];
@@ -67,7 +67,7 @@ export function renderCollectionSidebar(collections) {
           </div>
         `);
       } else {
-        sections.push(`<p class="tag-group tag-group--empty">Sin etiquetas todavía</p>`);
+        sections.push(`<p class="tag-group tag-group--empty">${productsLoaded ? 'Sin etiquetas' : 'Cargando…'}</p>`);
       }
     }
   }
@@ -76,7 +76,7 @@ export function renderCollectionSidebar(collections) {
   const sizes = [...new Set(
     products.flatMap(p => p.variants.map(v => v.title))
            .filter(t => t && t.toLowerCase() !== 'default title')
-  )].sort();
+  )].sort(bySizeOrder);
   if (sizes.length) {
     sections.push(`
       <p class="sidebar-label" style="margin-top:1.4rem;">Tallas</p>
@@ -124,6 +124,26 @@ export function renderCollectionSidebar(collections) {
 
 function escapeAttr(s) {
   return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+// Orden lógico de tallas (XS, S, M, L, XL, XXL…), no alfabético
+function sizeRank(title) {
+  const k = String(title).trim().toLowerCase()
+    .replace('extra small', 'xs')
+    .replace('extra large', 'xl')
+    .replace('small', 's')
+    .replace('medium', 'm')
+    .replace('large', 'l');
+  const order = ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl'];
+  const i = order.indexOf(k);
+  return i === -1 ? 999 : i;
+}
+
+function bySizeOrder(a, b) {
+  const ra = sizeRank(a), rb = sizeRank(b);
+  if (ra !== rb) return ra - rb;
+  // Tallas no estándar (p. ej. numéricas) → orden natural
+  return a.localeCompare(b, undefined, { numeric: true });
 }
 
 // ── Price range slider ────────────────────────────────────
@@ -182,16 +202,26 @@ export function renderProductGrid(products, collections, activeCollection, searc
   const grid = document.getElementById('product-grid');
   if (!grid) return;
 
-  const { activeSize, activeTag, priceMin, priceMax, currentPage } = getState();
+  const { activeSize, activeTag, priceMin, priceMax, currentPage, productsLoaded } = getState();
   const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
 
-  updateResultCount(filtered.length);
-
   if (!filtered.length) {
+    // Si todavía hay productos cargando en background, mostrar skeleton
+    // (no "No se encontraron productos") — puede que solo no hayan llegado aún.
+    if (!productsLoaded) {
+      renderSkeletons(8);
+      const rc = document.getElementById('result-count');
+      if (rc) rc.textContent = '';
+      renderPagination(0, 1);
+      return;
+    }
+    updateResultCount(0);
     grid.innerHTML = `<div class="shop-empty"><p>No se encontraron productos.</p></div>`;
     renderPagination(0, 1);
     return;
   }
+
+  updateResultCount(filtered.length);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, currentPage || 1), totalPages);

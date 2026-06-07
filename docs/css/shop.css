@@ -456,7 +456,7 @@
 }
 
 .product-card__badge--low {
-  background: #e60023;
+  background: #f5820a;
 }
 
 /* Hover overlay with buttons */
@@ -492,9 +492,10 @@
   display: none !important;
   width: 100%;
   text-align: center;
-  padding: 0.55rem 0.8rem;
-  font-size: 0.65rem;
-  margin-top: 0.5rem;
+  padding: 0.42rem 0.6rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  margin-top: 0.45rem;
 }
 
 @media (hover: none) {
@@ -892,9 +893,10 @@
 }
 
 .cart-item__price {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1rem;
-  color: var(--pink-lt);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--pink);
 }
 
 /* Qty control */
@@ -972,9 +974,10 @@
 }
 
 .cart-total span:last-child {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.3rem;
-  color: var(--pink-lt);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--pink);
 }
 
 .cart-checkout {
@@ -1109,9 +1112,10 @@
 }
 
 .co-item__price {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 0.95rem;
-  color: var(--pink-lt);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--pink);
   white-space: nowrap;
 }
 
@@ -1127,9 +1131,10 @@
 }
 
 .co-summary__total span:last-child {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.2rem;
-  color: var(--pink-lt);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--pink);
 }
 
 /* Form fields */
@@ -1221,6 +1226,10 @@
 
 @media (max-width: 480px) {
   .product-grid { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+
+  .product-card__info { padding: 0.75rem 0.75rem 0.85rem; }
+  .product-card__name { font-size: 0.74rem; }
+  .product-card__price { font-size: 0.88rem; }
 
   .modal-panel {
     max-height: 100vh;

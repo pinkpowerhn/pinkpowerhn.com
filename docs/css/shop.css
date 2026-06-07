@@ -1264,11 +1264,13 @@
   align-items: center;
   gap: 0.7rem;
   max-width: min(320px, calc(100vw - 2.4rem));
-  padding: 0.8rem 1rem;
+  padding: 0.85rem 1rem;
   border-radius: 12px;
   font-family: 'Montserrat', sans-serif;
-  color: #fff;
-  box-shadow: 0 14px 34px -12px rgba(154, 0, 73, 0.55);
+  color: var(--pink-dk);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 16px 38px -16px rgba(154, 0, 73, 0.28);
   opacity: 0;
   transform: translateY(0.8rem) scale(0.96);
   pointer-events: none;
@@ -1294,7 +1296,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--pink);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1321,12 +1324,12 @@
   pointer-events: auto;     /* clickable aunque el toast sea pointer-events:none */
   flex-shrink: 0;
   margin-left: 0.4rem;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(26, 10, 18, 0.07);
   border: none;
   border-radius: 50%;
   width: 20px;
   height: 20px;
-  color: #fff;
+  color: inherit;
   font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
@@ -1335,10 +1338,37 @@
   justify-content: center;
   transition: background 0.2s;
 }
-.pp-toast__close:hover { background: rgba(255, 255, 255, 0.35); }
+.pp-toast__close:hover { background: rgba(26, 10, 18, 0.14); }
 
-.pp-toast--added { background: var(--pink); }   /* rosa de la marca */
-.pp-toast--limit { background: #d97706; }        /* ámbar para el aviso de límite */
+/* Estilo tipo "message" de Element Plus: fondo claro opaco + borde + texto de color */
+.pp-toast--added {
+  background: #fbdcec;   /* rosa clarito opaco */
+  border: 1px solid rgba(232, 67, 122, 0.32);
+  color: var(--pink-dk);
+}
+
+.pp-toast--limit {
+  background: #fef0dd;   /* ámbar clarito opaco */
+  border: 1px solid rgba(217, 119, 6, 0.38);
+  color: #b45309;
+}
+.pp-toast--limit .pp-toast__icon { background: #d97706; }
+
+/* Móvil: el toast ocupa todo el ancho, pegado abajo y centrado */
+@media (max-width: 600px) {
+  .pp-toast {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    max-width: none;
+    border-radius: 14px 14px 0 0;
+    justify-content: center;
+    padding: 1rem 1.2rem;
+    transform: translateY(100%);
+  }
+  .pp-toast--show { transform: translateY(0); }
+}
 
 /* Animación del carrito al agregar un ítem */
 @keyframes cartBump {
@@ -1348,3 +1378,120 @@
   100% { transform: scale(1); }
 }
 .cart-bump { animation: cartBump 0.4s ease; }
+
+/* ── Buscador de pantalla completa ────────────────────── */
+#search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--black);
+  display: flex;
+  flex-direction: column;
+  animation: searchOvIn 0.2s ease;
+}
+
+@keyframes searchOvIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.search-ov__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid rgba(232, 67, 122, 0.15);
+  background: rgba(255, 247, 251, 0.96);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.search-ov__icon { width: 20px; height: 20px; color: var(--pink); flex-shrink: 0; }
+
+#search-ov-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  color: var(--white);
+  padding: 0.4rem 0;
+}
+#search-ov-input::placeholder { color: rgba(26, 10, 18, 0.35); }
+
+.search-ov__close {
+  flex-shrink: 0;
+  border: none;
+  background: rgba(232, 67, 122, 0.1);
+  color: var(--pink-dk);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.search-ov__close:hover { background: rgba(232, 67, 122, 0.2); }
+
+.search-ov__results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.4rem 1.2rem 2.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--pink) transparent;
+}
+
+.search-ov__hint {
+  text-align: center;
+  color: rgba(26, 10, 18, 0.45);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 2.6rem 1rem;
+}
+
+.search-result {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(232, 67, 122, 0.08);
+  padding: 0.7rem 0.2rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.search-result:hover, .search-result:active { background: rgba(232, 67, 122, 0.06); }
+
+.search-result__img {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--dark);
+}
+
+.search-result__info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+
+.search-result__name {
+  font-size: 0.82rem;
+  color: var(--white);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result__price {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--pink);
+}

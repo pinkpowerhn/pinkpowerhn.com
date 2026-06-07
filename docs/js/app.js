@@ -151,11 +151,9 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // Lupa de búsqueda (móvil) — llevar al buscador y enfocarlo
+  // Lupa de búsqueda (móvil) — abre el buscador de pantalla completa
   if (e.target.closest('#search-toggle')) {
-    document.querySelector('nav')?.classList.remove('is-open');
-    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
-    setTimeout(() => document.getElementById('search-input')?.focus({ preventScroll: true }), 450);
+    openSearchOverlay();
     return;
   }
 
@@ -306,10 +304,95 @@ document.addEventListener('input', e => {
 // ── Keyboard ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    closeSearchOverlay();
     closeModal();
     closeCheckoutModal();
   }
 });
+
+// ── Buscador de pantalla completa ─────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function openSearchOverlay() {
+  if (document.getElementById('search-overlay')) return;
+  document.querySelector('nav')?.classList.remove('is-open');
+
+  const ov = document.createElement('div');
+  ov.id = 'search-overlay';
+  ov.innerHTML = `
+    <div class="search-ov__bar">
+      <svg class="search-ov__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="search" id="search-ov-input" placeholder="Buscar productos..." autocomplete="off" aria-label="Buscar productos" />
+      <button id="search-ov-close" class="search-ov__close" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="search-ov__results" id="search-ov-results"></div>
+  `;
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+
+  const input = ov.querySelector('#search-ov-input');
+  renderSearchResults('');
+  input.addEventListener('input', () => renderSearchResults(input.value));
+  ov.querySelector('#search-ov-close').addEventListener('click', closeSearchOverlay);
+
+  ov.querySelector('#search-ov-results').addEventListener('click', e => {
+    const btn = e.target.closest('.search-result');
+    if (!btn) return;
+    const product = getState().products.find(p => p.id === btn.dataset.id);
+    if (product) {
+      closeSearchOverlay();
+      openModal(product);
+      history.replaceState(null, '', `#shop/product/${product.id}`);
+    }
+  });
+
+  setTimeout(() => input.focus(), 60);
+}
+
+function closeSearchOverlay() {
+  const ov = document.getElementById('search-overlay');
+  if (!ov) return;
+  ov.remove();
+  document.body.style.overflow = '';
+}
+
+function renderSearchResults(query) {
+  const box = document.getElementById('search-ov-results');
+  if (!box) return;
+
+  const q = String(query).trim().toLowerCase();
+  const { products } = getState();
+
+  if (!q) {
+    box.innerHTML = `<p class="search-ov__hint">Escribe para buscar entre nuestros productos.</p>`;
+    return;
+  }
+
+  const matches = products.filter(p => p.title.toLowerCase().includes(q)).slice(0, 40);
+  if (!matches.length) {
+    box.innerHTML = `<p class="search-ov__hint">No se encontraron productos.</p>`;
+    return;
+  }
+
+  box.innerHTML = matches.map(p => {
+    const img     = p.images[0]?.url || '';
+    const price   = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+    const soldOut = !p.availableForSale ? ' · Agotado' : '';
+    return `
+      <button class="search-result" data-id="${p.id}">
+        <img class="search-result__img" src="${img}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+        <span class="search-result__info">
+          <span class="search-result__name">${escHtml(p.title)}</span>
+          <span class="search-result__price">L. ${price}${soldOut}</span>
+        </span>
+      </button>`;
+  }).join('');
+}
 
 
 // ── Abrir / cerrar carrito (con animación en ambos sentidos) ──

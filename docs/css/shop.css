@@ -503,6 +503,15 @@
   margin-top: auto;   /* empuja el botón al fondo → alineado entre tarjetas */
 }
 
+/* Botón "Agotado" — gris, deshabilitado (rellena el espacio, no queda en blanco) */
+.product-card__mobile-add--sold {
+  background: #e6e3e5;
+  color: rgba(26, 10, 18, 0.45);
+  border-color: #e6e3e5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 @media (hover: none) {
   .product-card__mobile-add { display: block !important; }
   .product-card__overlay    { display: none !important; }

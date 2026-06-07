@@ -316,7 +316,7 @@ function productCardHTML(p) {
         <p class="product-card__price">L. ${price}</p>
         ${!soldOut
           ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`
-          : ''}
+          : `<button class="btn product-card__mobile-add product-card__mobile-add--sold" disabled>Agotado</button>`}
       </div>
     </article>
   `;

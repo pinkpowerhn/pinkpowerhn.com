@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.href = `https://wa.me/${waNumber}`;
       });
     }
-    renderFeaturedBanner(collections);
     handleHashRoute();
 
     // Carga el resto en background sin bloquear la UI. Cada batch se

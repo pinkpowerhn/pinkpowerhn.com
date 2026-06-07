@@ -1341,13 +1341,13 @@
 }
 .pp-toast__close:hover { background: rgba(26, 10, 18, 0.14); }
 
-/* Fondo sólido claro con texto rosa vivo (como la imagen 4) */
+/* Verde success (mejor contraste) — estilo success de Element Plus */
 .pp-toast--added {
-  background: #fce1ee;   /* rosa clarito sólido */
-  border: 1px solid rgba(214, 0, 106, 0.18);
-  color: #d6006a;        /* rosa vivo del texto */
+  background: #dcf3c9;   /* verde más visible */
+  border: 1px solid rgba(82, 196, 26, 0.45);
+  color: #2e7d32;        /* verde del texto */
 }
-.pp-toast--added .pp-toast__icon { background: #d6006a; }
+.pp-toast--added .pp-toast__icon { background: #52c41a; }
 
 .pp-toast--limit {
   background: #fdebd4;   /* ámbar clarito sólido */

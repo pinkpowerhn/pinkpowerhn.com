@@ -5,6 +5,10 @@ import { renderSkeletons, renderCollectionSidebar, renderProductGrid } from './c
 import { openModal, closeModal } from './modal.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
 
+// iOS Safari solo aplica el estado :active (feedback al tocar) si existe
+// algún listener de touch. Este listener vacío lo habilita en todo el sitio.
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 // ── Bootstrap ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   initState();
@@ -92,13 +96,33 @@ async function loadRemainingProducts(cursor, hasNext) {
 }
 
 // ── State subscription ────────────────────────────────────
+// Solo redibujamos el grid/sidebar cuando cambia algo que les afecta.
+// Así, al agregar al carrito (que solo cambia `cart`) NO se recrea el grid
+// — antes eso causaba un parpadeo/"recarga" al hacer click en hover.
+let _prevRender = {};
 on('statechange', state => {
-  const { products, collections, activeCollection, searchQuery } = state;
+  const { products, collections, activeCollection, activeTag, activeSize,
+          priceMin, priceMax, searchQuery, currentPage, productsLoaded } = state;
 
-  if (products.length) {
+  const gridChanged =
+    products       !== _prevRender.products ||
+    collections    !== _prevRender.collections ||
+    activeCollection !== _prevRender.activeCollection ||
+    activeTag      !== _prevRender.activeTag ||
+    activeSize     !== _prevRender.activeSize ||
+    priceMin       !== _prevRender.priceMin ||
+    priceMax       !== _prevRender.priceMax ||
+    searchQuery    !== _prevRender.searchQuery ||
+    currentPage    !== _prevRender.currentPage ||
+    productsLoaded !== _prevRender.productsLoaded;
+
+  if (gridChanged && products.length) {
     renderProductGrid(products, collections, activeCollection, searchQuery);
     renderCollectionSidebar(collections);
   }
+
+  _prevRender = { products, collections, activeCollection, activeTag, activeSize,
+                  priceMin, priceMax, searchQuery, currentPage, productsLoaded };
 
   renderCartDrawer();
   updateCartBadge();

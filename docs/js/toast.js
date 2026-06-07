@@ -15,7 +15,8 @@ export function showToast(status, productName = '') {
   const isLimit = status === 'limit';
 
   let toast = document.getElementById('pp-toast');
-  if (!toast) {
+  const isNew = !toast;
+  if (isNew) {
     toast = document.createElement('div');
     toast.id = 'pp-toast';
     document.body.appendChild(toast);
@@ -32,10 +33,22 @@ export function showToast(status, productName = '') {
       <span class="pp-toast__text">${name}<small>Agregado al carrito</small></span>`;
   }
 
-  toast.className = `pp-toast pp-toast--${isLimit ? 'limit' : 'added'}`;
-  // Reinicia la animación para que "salte" aunque ya esté visible (clics seguidos)
-  void toast.offsetWidth;
-  toast.classList.add('pp-toast--show');
+  const variant = isLimit ? 'limit' : 'added';
+  const alreadyShown = !isNew && toast.classList.contains('pp-toast--show');
+
+  // Mantener visible si ya estaba mostrándose (para no parpadear)
+  toast.className = `pp-toast pp-toast--${variant}${alreadyShown ? ' pp-toast--show' : ''}`;
+
+  if (alreadyShown) {
+    // Ya visible → un pulso suave, sin desaparecer
+    toast.classList.remove('pp-toast--pulse');
+    void toast.offsetWidth;
+    toast.classList.add('pp-toast--pulse');
+  } else {
+    // Aparición con transición (fade + slide)
+    void toast.offsetWidth;
+    toast.classList.add('pp-toast--show');
+  }
 
   clearTimeout(_timer);
   _timer = setTimeout(() => toast.classList.remove('pp-toast--show'), 2600);

@@ -1265,6 +1265,14 @@
   transform: translateY(0) scale(1);
 }
 
+/* Pulso suave cuando ya está visible y se agrega otro ítem */
+@keyframes toastPulse {
+  0%   { transform: translateY(0) scale(1); }
+  40%  { transform: translateY(0) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+.pp-toast--pulse { animation: toastPulse 0.32s ease; }
+
 .pp-toast__icon {
   flex-shrink: 0;
   width: 26px;

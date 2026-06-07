@@ -25,20 +25,12 @@ export function showToast(status, productName = '') {
   if (isLimit) {
     toast.innerHTML = `
       <span class="pp-toast__icon">!</span>
-      <span class="pp-toast__text">Llegaste al límite disponible</span>
-      <button class="pp-toast__close" aria-label="Cerrar">&times;</button>`;
+      <span class="pp-toast__text">Llegaste al límite disponible</span>`;
   } else {
     toast.innerHTML = `
       <span class="pp-toast__icon">✓</span>
-      <span class="pp-toast__text">Agregado al carrito</span>
-      <button class="pp-toast__close" aria-label="Cerrar">&times;</button>`;
+      <span class="pp-toast__text">Ítem agregado al carrito.</span>`;
   }
-
-  // Cerrar manualmente con la X
-  toast.querySelector('.pp-toast__close')?.addEventListener('click', () => {
-    toast.classList.remove('pp-toast--show', 'pp-toast--pulse');
-    clearTimeout(_timer);
-  });
 
   const variant = isLimit ? 'limit' : 'added';
   const alreadyShown = !isNew && toast.classList.contains('pp-toast--show');

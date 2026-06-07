@@ -1306,10 +1306,10 @@
 }
 
 .pp-toast__text {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 700;
   line-height: 1.35;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 .pp-toast__text strong { font-weight: 700; }
 .pp-toast__text small {
@@ -1341,16 +1341,17 @@
 }
 .pp-toast__close:hover { background: rgba(26, 10, 18, 0.14); }
 
-/* Estilo tipo "alert" de Element Plus: fondo translúcido con tinte de color */
+/* Fondo sólido claro con texto rosa vivo (como la imagen 4) */
 .pp-toast--added {
-  background: rgba(232, 75, 154, 0.13);   /* tinte rosa translúcido */
-  border: 1px solid rgba(232, 75, 154, 0.24);
-  color: var(--pink-dk);
+  background: #fce1ee;   /* rosa clarito sólido */
+  border: 1px solid rgba(214, 0, 106, 0.18);
+  color: #d6006a;        /* rosa vivo del texto */
 }
+.pp-toast--added .pp-toast__icon { background: #d6006a; }
 
 .pp-toast--limit {
-  background: rgba(217, 119, 6, 0.12);    /* tinte ámbar translúcido */
-  border: 1px solid rgba(217, 119, 6, 0.28);
+  background: #fdebd4;   /* ámbar clarito sólido */
+  border: 1px solid rgba(217, 119, 6, 0.32);
   color: #b45309;
 }
 .pp-toast--limit .pp-toast__icon { background: #d97706; }
@@ -1364,7 +1365,7 @@
     top: auto;
     max-width: none;
     border-radius: 12px;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 0.95rem 1.1rem;
     transform: translateY(1rem) scale(0.98);
   }

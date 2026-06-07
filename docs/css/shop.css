@@ -1341,16 +1341,16 @@
 }
 .pp-toast__close:hover { background: rgba(26, 10, 18, 0.14); }
 
-/* Estilo tipo "message" de Element Plus: fondo claro opaco + borde + texto de color */
+/* Estilo tipo "alert" de Element Plus: fondo translúcido con tinte de color */
 .pp-toast--added {
-  background: #fbdcec;   /* rosa clarito opaco */
-  border: 1px solid rgba(232, 67, 122, 0.32);
+  background: rgba(232, 75, 154, 0.13);   /* tinte rosa translúcido */
+  border: 1px solid rgba(232, 75, 154, 0.24);
   color: var(--pink-dk);
 }
 
 .pp-toast--limit {
-  background: #fef0dd;   /* ámbar clarito opaco */
-  border: 1px solid rgba(217, 119, 6, 0.38);
+  background: rgba(217, 119, 6, 0.12);    /* tinte ámbar translúcido */
+  border: 1px solid rgba(217, 119, 6, 0.28);
   color: #b45309;
 }
 .pp-toast--limit .pp-toast__icon { background: #d97706; }

@@ -1240,30 +1240,67 @@
 /* ── Toast notification ───────────────────────────────── */
 .pp-toast {
   position: fixed;
-  top: 5.5rem;
-  bottom: auto;
-  left: 50%;
-  transform: translateX(-50%) translateY(-1rem);
-  padding: 0.75rem 1.6rem;
-  border-radius: 4px;
+  bottom: 5.5rem;          /* arriba del botón flotante de WhatsApp */
+  right: 1.4rem;
+  left: auto;
+  top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  max-width: min(320px, calc(100vw - 2.4rem));
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
   font-family: 'Montserrat', sans-serif;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
+  color: #fff;
+  box-shadow: 0 14px 34px -12px rgba(154, 0, 73, 0.55);
   opacity: 0;
+  transform: translateY(0.8rem) scale(0.96);
   pointer-events: none;
-  transition: opacity 0.25s, transform 0.25s;
+  transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: 999;
 }
+
 .pp-toast--show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0) scale(1);
 }
-.pp-toast--added {
-  background: #1a7a4a;
-  color: #fff;
+
+.pp-toast__icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
-.pp-toast--limit {
-  background: #9a4a00;
-  color: #fff;
+
+.pp-toast__text {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
 }
+.pp-toast__text strong { font-weight: 700; }
+.pp-toast__text small {
+  display: block;
+  font-size: 0.6rem;
+  opacity: 0.9;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.12rem;
+}
+
+.pp-toast--added { background: var(--pink); }   /* rosa de la marca */
+.pp-toast--limit { background: #d97706; }        /* ámbar para el aviso de límite */
+
+/* Animación del carrito al agregar un ítem */
+@keyframes cartBump {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.28); }
+  60%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.cart-bump { animation: cartBump 0.4s ease; }

@@ -173,7 +173,7 @@ function wireModalEvents(modal, product) {
 
   modal.querySelector('#modal-add-btn')?.addEventListener('click', () => {
     if (!_currentProduct || !_selectedVariant) return;
-    showToast(addToCart(_currentProduct, _selectedVariant));
+    showToast(addToCart(_currentProduct, _selectedVariant), _currentProduct.title);
     refreshAddBtn(modal);
   });
 

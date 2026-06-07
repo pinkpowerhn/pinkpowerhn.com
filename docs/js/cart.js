@@ -67,12 +67,24 @@ export function getCartCount() {
 }
 
 // ── Badge ─────────────────────────────────────────────────
+let _lastCount = 0;
 export function updateCartBadge() {
   const badge = document.getElementById('cart-badge');
   if (!badge) return;
   const count = getCartCount();
   badge.textContent = count;
   badge.hidden = count === 0;
+
+  // Animar el ícono del carrito cuando sube el contador (feedback de "se agregó")
+  if (count > _lastCount) {
+    const toggle = document.getElementById('cart-toggle');
+    if (toggle) {
+      toggle.classList.remove('cart-bump');
+      void toggle.offsetWidth; // reinicia la animación
+      toggle.classList.add('cart-bump');
+    }
+  }
+  _lastCount = count;
 }
 
 // ── WhatsApp checkout ─────────────────────────────────────

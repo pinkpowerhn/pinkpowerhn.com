@@ -230,7 +230,7 @@ document.addEventListener('click', e => {
     }
     if (actionBtn.dataset.action === 'add-to-cart') {
       const variant = product.variants.find(v => v.availableForSale) || product.variants[0];
-      if (variant) showToast(addToCart(product, variant));
+      if (variant) showToast(addToCart(product, variant), product.title);
     }
     return;
   }

@@ -124,10 +124,9 @@
   gap: 0.9rem;
   padding: 2.2rem;
 }
-.fb-skeleton__media { width: 150px; height: 185px; border-radius: 16px; }
-.fb-skeleton__line { width: 60%; height: 16px; border-radius: 6px; }
-.fb-skeleton__line--short { width: 38%; }
-.fb-skeleton__btn { width: 140px; height: 36px; border-radius: 4px; margin-top: 0.3rem; }
+.fb-skeleton__media { width: 220px; height: 280px; border-radius: 16px; }
+.fb-skeleton__line { width: 60%; height: 20px; border-radius: 6px; margin-top: 0.4rem; }
+.fb-skeleton__line--short { width: 55%; }
 /* Desktop: una sola tarjeta skeleton (la 2ª es solo para el peek de móvil) */
 .fb-skeleton--peek { display: none; }
 .fb-slide__body {
@@ -147,9 +146,14 @@
   justify-content: center;
 }
 .fb-slide__media img {
-  max-height: 205px;
-  max-width: 170px;
+  max-height: 290px;
+  max-width: 240px;
   object-fit: contain;
+  transition: transform 0.3s ease;
+}
+/* Pista de que la tarjeta es clickeable (en desktop) */
+@media (hover: hover) {
+  .fb-slide:hover .fb-slide__media img { transform: scale(1.05); }
 }
 .fb-slide__eyebrow {
   font-family: 'Montserrat', sans-serif;
@@ -270,10 +274,23 @@
   .fb-slide { flex-basis: 84%; min-height: 350px; }
   /* Skeleton de móvil: dos tarjetas al 84% → se asoma la segunda */
   .fb-skeleton { flex-basis: 84%; min-height: 350px; }
+  .fb-skeleton__media { width: 185px; height: 235px; }
   .fb-skeleton--peek { display: flex; }
-  .fb-slide__media img { max-height: 175px; }
+  .fb-slide__media img { max-height: 230px; }
   .fb-slide__title { font-size: 1.45rem; }
   .fb-arrow { display: none; }
+  /* En móvil la tarjeta queda con peek (no centrada), así que los puntitos
+     van debajo del carrusel, centrados en todo el ancho. */
+  .fb-dots {
+    position: static;
+    transform: none;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.8rem;
+  }
+  /* Debajo van sobre el fondo claro del hero → puntitos en rosa (no blancos) */
+  .fb-dot { background: rgba(194, 58, 126, 0.35); }
+  .fb-dot.is-active { background: var(--pink-dk); }
 
   /* Banner en móvil: vuelve a apilarse y centrarse */
   .hero--banner .fb-slide { flex-direction: column; text-align: center; gap: 1.2rem; padding: 1.8rem; }
@@ -301,16 +318,15 @@
 .collection-btn,
 .tag-btn {
   background: transparent;
-  border: 1px solid rgba(26, 10, 18, 0.12);
+  border: none;
   color: rgba(26, 10, 18, 0.8);
   font-family: 'Montserrat', sans-serif;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
-  padding: 0.55rem 1rem;
+  padding: 0.6rem 0.2rem;
   text-align: left;
   cursor: pointer;
-  transition: color 0.22s, border-color 0.22s, background 0.22s, transform 0.18s, box-shadow 0.22s;
-  border-radius: 2px;
+  transition: color 0.2s;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -357,19 +373,19 @@
 .collection-btn:hover,
 .tag-btn:hover {
   color: var(--pink);
-  border-color: var(--pink);
-  background: rgba(232, 67, 122, 0.06);
-  transform: translateX(4px);
-  box-shadow: 2px 0 0 0 var(--pink);
 }
 
 .collection-btn.is-active,
 .tag-btn.is-active {
   color: var(--pink);
-  border-color: var(--pink);
-  background: rgba(232, 67, 122, 0.1);
   font-weight: 600;
-  box-shadow: 2px 0 0 0 var(--pink);
+}
+/* Indicación visual de que la colección abierta es un botón: subrayado
+   (un 2º clic lleva a todos los productos de la categoría). */
+.collection-btn.is-active .collection-name {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1.5px;
 }
 
 /* ── Size filter chips ────────────────────────────────── */

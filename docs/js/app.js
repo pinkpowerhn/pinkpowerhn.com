@@ -291,7 +291,6 @@ function fbSlideHTML(handle, title, img, eager) {
         </div>
         <div class="fb-slide__body">
           <h3 class="fb-slide__title">${title}</h3>
-          <button class="fb-slide__btn" data-fb-collection="${handle}">Ver colección <span aria-hidden="true">&rarr;</span></button>
         </div>
       </article>`;
 }
@@ -410,22 +409,30 @@ document.addEventListener('click', e => {
     // sin return: el ancla navega normalmente
   }
 
-  // Collection (top level) — toggle acordeón: click en activa la cierra
+  // Colección: 1er clic despliega el submenú; 2º clic (ya abierta) va a TODA
+  // la categoría (todos sus productos, sin filtro de subcategoría).
   const collBtn = e.target.closest('.collection-btn');
   if (collBtn) {
-    const clicked = collBtn.dataset.handle || null;
+    const clicked = collBtn.dataset.handle;
+    if (!clicked) return;
     const { activeCollection } = getState();
-    const next = (clicked && clicked === activeCollection) ? null : clicked;
-    // Colapsar = clic en el (−) de la colección ya abierta. En ese caso solo se
-    // ocultan las subcategorías; NO se cierra la cinta.
-    const isCollapse = next === null && clicked !== null;
-    // Limpiar tallas y búsqueda al cambiar de colección — evita catálogo en blanco
+
+    if (clicked === activeCollection) {
+      // 2º clic → ver todos los productos de la categoría
+      clearSearchInput();
+      setState({ activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+      history.replaceState(null, '', `#shop/collection/${clicked}`);
+      closeMenuDrawer();
+      scrollToProductsMobile();
+      return;
+    }
+
+    // 1er clic → abrir la colección y desplegar su submenú
     clearSearchInput();
-    setState({ activeCollection: next, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
-    history.replaceState(null, '', next ? `#shop/collection/${next}` : '#shop');
-    // Si NO es un colapso y la colección no tiene subcategorías, cerrar la cinta
-    // e ir a los productos. Si tiene subcategorías, se queda abierta para elegir.
-    if (!isCollapse && !document.querySelector('#collection-sidebar .tag-btn')) {
+    setState({ activeCollection: clicked, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+    history.replaceState(null, '', `#shop/collection/${clicked}`);
+    // Si no tiene subcategorías, no hay submenú → ir directo a la categoría
+    if (!document.querySelector('#collection-sidebar .tag-btn')) {
       closeMenuDrawer();
       scrollToProductsMobile();
     }

@@ -43,8 +43,8 @@ export function renderCollectionSidebar(collections) {
     const isOpen = activeCollection === c.handle;
     sections.push(`
       <button class="collection-btn${isOpen ? ' is-active' : ''}" data-handle="${c.handle}" aria-expanded="${isOpen}">
-        ${c.title}
-        <span class="collection-chevron" aria-hidden="true">${isOpen ? '−' : '+'}</span>
+        <span class="collection-name">${c.title}</span>
+        <span class="collection-chevron" aria-hidden="true">${isOpen ? '→' : '+'}</span>
       </button>
     `);
 

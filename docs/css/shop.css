@@ -403,6 +403,26 @@
   border-color: var(--pink);
 }
 
+/* Barra de tallas en el toolbar (solo en ropa interior) */
+.size-filter-bar {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+.size-filter-bar[hidden] { display: none; }
+.size-filter-bar__label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(26, 10, 18, 0.55);
+  margin-right: 0.2rem;
+}
+
 /* ── Price filter (range slider) ──────────────────────── */
 .price-range {
   width: 100%;
@@ -1221,9 +1241,9 @@ body.menu-open nav {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  margin-bottom: 1.1rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid rgba(26, 10, 18, 0.08);
+  margin-top: 1.1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(26, 10, 18, 0.08);
 }
 .menu-links a {
   color: rgba(26, 10, 18, 0.85);

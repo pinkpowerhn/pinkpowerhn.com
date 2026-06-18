@@ -28,22 +28,16 @@ export function renderCollectionSidebar(collections) {
   const sidebar = document.getElementById('collection-sidebar');
   if (!sidebar) return;
 
-  const { activeCollection, activeTag, activeSize, priceMin, priceMax, products, productsLoaded } = getState();
+  const { activeCollection, activeTag, products, productsLoaded } = getState();
 
   // Cada etiqueta se asigna a UNA colección (la que de verdad le corresponde)
   // para que no se cuele en submenús ajenos. Ver computeTagAssignments.
   const tagAssignment = computeTagAssignments(products, collections);
 
   // ── Build sidebar HTML ──
+  // Las colecciones van directo (sin título "Colecciones" ni botón "Todos":
+  // hacer clic en una colección ya muestra todos sus productos).
   const sections = [];
-
-  // Botón "Todos" + colecciones (acordeón). Las 4 aparecen de inmediato,
-  // independiente de cuántos productos hayan cargado en background.
-  const noFilter = !activeCollection && !activeTag;
-  sections.push(`
-    <p class="sidebar-label">Colecciones</p>
-    <button class="collection-btn${noFilter ? ' is-active' : ''}" data-handle="">Todos</button>
-  `);
 
   for (const c of collections) {
     const isOpen = activeCollection === c.handle;
@@ -66,7 +60,6 @@ export function renderCollectionSidebar(collections) {
       if (tagsInCollection.length) {
         sections.push(`
           <div class="tag-group">
-            <button class="tag-btn${!activeTag ? ' is-active' : ''}" data-tag="">Todas</button>
             ${tagsInCollection.map(t => `
               <button class="tag-btn${activeTag === t ? ' is-active' : ''}" data-tag="${escapeAttr(t)}">${t}</button>
             `).join('')}
@@ -78,54 +71,53 @@ export function renderCollectionSidebar(collections) {
     }
   }
 
-  // Tallas (filtro paralelo — solo aparece si algún producto tiene variantes)
-  const sizes = [...new Set(
-    products.flatMap(p => p.variants.map(v => v.title))
-           .filter(t => t && t.toLowerCase() !== 'default title')
-  )].sort(bySizeOrder);
-  if (sizes.length) {
-    sections.push(`
-      <p class="sidebar-label" style="margin-top:1.4rem;">Tallas</p>
-      <div class="size-filter">
-        ${sizes.map(s => `
-          <button class="size-btn${activeSize === s ? ' is-active' : ''}" data-size="${escapeAttr(s)}">${s}</button>
-        `).join('')}
-      </div>
-    `);
-  }
-
-  // Filtro de precio — slider de rango doble (mín/máx) sobre el rango real
-  const prices = products.map(p => p.price).filter(n => Number.isFinite(n) && n > 0);
-  if (prices.length) {
-    const lo = Math.floor(Math.min(...prices));
-    const hi = Math.ceil(Math.max(...prices));
-    if (hi > lo) {
-      const curMin   = priceMin != null ? priceMin : lo;
-      const curMax   = priceMax != null ? priceMax : hi;
-      const hasPrice = priceMin != null || priceMax != null;
-      const step     = Math.max(1, Math.round((hi - lo) / 100));
-      const fmt      = n => Math.round(n).toLocaleString('es-HN');
-      sections.push(`
-        <p class="sidebar-label" style="margin-top:1.4rem;">Precio</p>
-        <div class="price-range" data-lo="${lo}" data-hi="${hi}">
-          <div class="price-range__values">
-            <span id="price-range-label">L. ${fmt(curMin)} — L. ${fmt(curMax)}</span>
-          </div>
-          <div class="price-range__track">
-            <div class="price-range__fill" id="price-range-fill"></div>
-            <input type="range" class="price-range__input" id="price-range-min"
-                   min="${lo}" max="${hi}" step="${step}" value="${curMin}" aria-label="Precio mínimo" />
-            <input type="range" class="price-range__input" id="price-range-max"
-                   min="${lo}" max="${hi}" step="${step}" value="${curMax}" aria-label="Precio máximo" />
-          </div>
-        </div>
-        ${hasPrice ? `<button class="price-clear" id="price-clear">Limpiar</button>` : ''}
-      `);
-    }
-  }
+  // (Las tallas se muestran ahora en el toolbar superior, solo en ropa interior;
+  //  el filtro de precio se quitó del menú a pedido del cliente.)
 
   sidebar.innerHTML = sections.join('');
-  wirePriceSlider(sidebar);
+}
+
+// ── Barra de tallas en el toolbar (solo en la categoría de ropa interior) ──
+function isLingerieCollection(handle, collections) {
+  if (!handle) return false;
+  if (handle === 'lenceria') return true;
+  const c = (collections || []).find(c => c.handle === handle);
+  return /lencer|ropa\s*interior|interior/i.test(c?.title || '');
+}
+
+export function renderSizeBar(collections) {
+  const bar = document.getElementById('size-filter-bar');
+  if (!bar) return;
+
+  const { activeCollection, activeSize, products } = getState();
+
+  if (!isLingerieCollection(activeCollection, collections)) {
+    bar.hidden = true;
+    bar.innerHTML = '';
+    return;
+  }
+
+  // Tallas disponibles en los productos de esa colección
+  const sizes = [...new Set(
+    products
+      .filter(p => p.collectionHandles.includes(activeCollection))
+      .flatMap(p => p.variants.map(v => v.title))
+      .filter(t => t && t.toLowerCase() !== 'default title')
+  )].sort(bySizeOrder);
+
+  if (!sizes.length) {
+    bar.hidden = true;
+    bar.innerHTML = '';
+    return;
+  }
+
+  bar.hidden = false;
+  bar.innerHTML = `
+    <span class="size-filter-bar__label">Talla:</span>
+    ${sizes.map(s => `
+      <button class="size-btn${activeSize === s ? ' is-active' : ''}" data-size="${escapeAttr(s)}">${s}</button>
+    `).join('')}
+  `;
 }
 
 // Asigna cada etiqueta a UNA sola colección: aquella donde vive casi toda

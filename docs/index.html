@@ -854,8 +854,6 @@
 
     <ul>
       <li><a href="#shop">Productos</a></li>
-      <li><a href="#shop">Novedades</a></li>
-      <li><a href="#about">Sobre Nosotras</a></li>
       <li><a href="#ubicacion">Ubicación</a></li>
       <li><a href="https://wa.me/" class="wa-link" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
     </ul>
@@ -911,19 +909,6 @@
     </div>
   </section>
 
-  <!-- MARQUEE -->
-  <div class="marquee-wrap">
-    <div class="marquee-track">
-      <span>Productos 100% originales ♡</span>
-      <span>Regalitos listos para entregar ♡</span>
-      <span>Sin hacer fila en el mall ♡</span>
-      <span>Entrega en San Pedro Sula ♡</span>
-      <span>Productos 100% originales ♡</span>
-      <span>Regalitos listos para entregar ♡</span>
-      <span>Sin hacer fila en el mall ♡</span>
-      <span>Entrega en San Pedro Sula ♡</span>
-    </div>
-  </div>
 
   <!-- SHOP — live catalog from API -->
   <section id="shop">
@@ -935,7 +920,7 @@
               <line x1="4" y1="7" x2="20" y2="7"></line><circle cx="9" cy="7" r="2.4" fill="currentColor" stroke="none"></circle>
               <line x1="4" y1="17" x2="20" y2="17"></line><circle cx="15" cy="17" r="2.4" fill="currentColor" stroke="none"></circle>
             </svg>
-            <span>Categorías y filtros</span>
+            <span>Filtros</span>
           </button>
           <div class="search-wrap">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -965,6 +950,8 @@
             <span>Compartir</span>
           </button>
           <p id="result-count" class="result-count"></p>
+          <!-- Botones de talla: solo aparecen en la categoría de ropa interior -->
+          <div id="size-filter-bar" class="size-filter-bar" hidden></div>
         </div>
         <div id="product-grid" class="product-grid">
           <!-- rendered by catalog.js — skeletons shown immediately -->
@@ -1080,15 +1067,12 @@
         <span class="menu-panel__title">Menú</span>
         <button id="menu-close" class="menu-close" aria-label="Cerrar menú">&times;</button>
       </div>
-      <div class="menu-links" role="navigation" aria-label="Navegación">
-        <a href="#">Inicio</a>
-        <a href="#shop">Productos</a>
-        <a href="#about">Sobre Nosotras</a>
-        <a href="#ubicacion">Ubicación</a>
-        <a href="https://wa.me/" class="wa-link" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-      </div>
       <div id="collection-sidebar" class="collection-sidebar">
         <!-- rendered by catalog.js -->
+      </div>
+      <div class="menu-links" role="navigation" aria-label="Navegación">
+        <a href="#ubicacion">Ubicación</a>
+        <a href="https://wa.me/" class="wa-link" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       </div>
     </aside>
   </div>

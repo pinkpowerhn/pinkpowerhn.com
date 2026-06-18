@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderProductGrid } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { searchProducts } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -136,6 +136,7 @@ on('statechange', state => {
   if (gridChanged && products.length) {
     renderProductGrid(products, collections, activeCollection, searchQuery);
     renderCollectionSidebar(collections);
+    renderSizeBar(collections);
   }
 
   _prevRender = { products, collections, activeCollection, activeTag, activeSize,
@@ -161,15 +162,33 @@ function catalogHash() {
   return '#shop';
 }
 
-// En móvil, baja hasta el inicio de los productos tras elegir un filtro,
-// para que se vean los primeros ítems de esa categoría.
-function scrollToProductsMobile() {
-  if (!window.matchMedia('(max-width: 768px)').matches) return;
+// Baja hasta el inicio de los productos (descontando el nav fijo).
+function scrollToProducts(behavior = 'smooth') {
   const grid = document.getElementById('product-grid');
   if (!grid) return;
   const navOffset = 80;
   const top = grid.getBoundingClientRect().top + window.scrollY - navOffset;
-  window.scrollTo({ top, behavior: 'smooth' });
+  window.scrollTo({ top, behavior });
+}
+
+// En móvil, baja a los productos tras elegir un filtro.
+function scrollToProductsMobile() {
+  if (!window.matchMedia('(max-width: 768px)').matches) return;
+  scrollToProducts('smooth');
+}
+
+// Al abrir un link de categoría, baja a los productos. Si el splash todavía
+// está (carga inicial), espera a que termine para que el scroll funcione.
+function scrollToProductsWhenReady() {
+  const go = () => scrollToProducts('auto');
+  if (document.body.classList.contains('is-loading')) {
+    const t = setInterval(() => {
+      if (!document.body.classList.contains('is-loading')) { clearInterval(t); go(); }
+    }, 100);
+    setTimeout(() => clearInterval(t), 6000); // tope de seguridad
+  } else {
+    go();
+  }
 }
 
 // ── Carrusel de colecciones (scroll horizontal) ───────────
@@ -397,13 +416,16 @@ document.addEventListener('click', e => {
     const clicked = collBtn.dataset.handle || null;
     const { activeCollection } = getState();
     const next = (clicked && clicked === activeCollection) ? null : clicked;
+    // Colapsar = clic en el (−) de la colección ya abierta. En ese caso solo se
+    // ocultan las subcategorías; NO se cierra la cinta.
+    const isCollapse = next === null && clicked !== null;
     // Limpiar tallas y búsqueda al cambiar de colección — evita catálogo en blanco
     clearSearchInput();
     setState({ activeCollection: next, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
     history.replaceState(null, '', next ? `#shop/collection/${next}` : '#shop');
-    // Si la colección no tiene subcategorías, cerrar la cinta e ir a los productos.
-    // Si sí tiene, la cinta se queda abierta para elegir la subcategoría.
-    if (!document.querySelector('#collection-sidebar .tag-btn')) {
+    // Si NO es un colapso y la colección no tiene subcategorías, cerrar la cinta
+    // e ir a los productos. Si tiene subcategorías, se queda abierta para elegir.
+    if (!isCollapse && !document.querySelector('#collection-sidebar .tag-btn')) {
       closeMenuDrawer();
       scrollToProductsMobile();
     }
@@ -1083,8 +1105,10 @@ function handleHashRoute() {
 
   if (parts[0] === 'collection' && parts[1]) {
     setState({ activeCollection: decodeURIComponent(parts[1]), activeTag: null, currentPage: 1 });
+    scrollToProductsWhenReady(); // link de categoría → bajar a los productos
   } else if (parts[0] === 'tag' && parts[1]) {
     setState({ activeCollection: null, activeTag: decodeURIComponent(parts[1]), currentPage: 1 });
+    scrollToProductsWhenReady();
   } else {
     setState({ activeCollection: null, activeTag: null, currentPage: 1 });
   }

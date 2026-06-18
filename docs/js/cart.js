@@ -89,7 +89,7 @@ export function updateCartBadge() {
 
 // ── WhatsApp checkout ─────────────────────────────────────
 // whatsappNumber must be fetched from GET /config by the caller — never stored here
-export function buildWhatsAppMessage(orderName = null) {
+export function buildWhatsAppMessage(orderName = null, checkout = null) {
   const cart = getState().cart;
   if (!cart.length) return '';
 
@@ -99,17 +99,31 @@ export function buildWhatsAppMessage(orderName = null) {
     return `• ${i.productTitle}${variantLabel} x${i.quantity} — L. ${price}`;
   });
 
-  const total = getCartTotal().toLocaleString('es-HN', { minimumFractionDigits: 2 });
+  const fmt = n => Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2 });
+
+  let totalsBlock;
+  if (checkout) {
+    const rows = [
+      `Subtotal: L. ${fmt(checkout.productsTotal)}`,
+      `Entrega: ${checkout.deliveryLabel}${checkout.shipping ? ` — L. ${fmt(checkout.shipping)}` : ' — Gratis'}`,
+      `Pago: ${checkout.paymentLabel}`,
+    ];
+    if (checkout.commission > 0) rows.push(`Comisión contra entrega (5%): L. ${fmt(checkout.commission)}`);
+    rows.push(`*Total a pagar: L. ${fmt(checkout.finalTotal)}*`);
+    totalsBlock = rows.join('\n');
+  } else {
+    totalsBlock = `Total: L. ${fmt(getCartTotal())}`;
+  }
 
   const header = orderName
     ? `Hola! Acabo de realizar el pedido *${orderName}* en PinkPower HN.\n\n`
     : `Hola! Me gustaría hacer el siguiente pedido:\n\n`;
 
-  return `${header}${lines.join('\n')}\n\nTotal: L. ${total}`;
+  return `${header}${lines.join('\n')}\n\n${totalsBlock}`;
 }
 
-export function buildWhatsAppUrl(number, orderName = null) {
-  const msg = buildWhatsAppMessage(orderName);
+export function buildWhatsAppUrl(number, orderName = null, checkout = null) {
+  const msg = buildWhatsAppMessage(orderName, checkout);
   if (!msg) return `https://wa.me/${number}`;
 
   const encoded = encodeURIComponent(msg);

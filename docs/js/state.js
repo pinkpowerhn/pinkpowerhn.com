@@ -13,6 +13,8 @@ const _state = {
   activeTag:         null,   // tag (Shopify "Etiqueta") | null = all
   priceMin:          null,   // filtro de precio mínimo (L.) | null = sin tope
   priceMax:          null,   // filtro de precio máximo (L.) | null = sin tope
+  sortBy:            'relevance', // 'relevance' | 'price-asc' | 'price-desc'
+  menuOpen:          false,   // cinta lateral del menú de productos
   currentPage:       1,      // pagination — resets to 1 on any filter change
 };
 

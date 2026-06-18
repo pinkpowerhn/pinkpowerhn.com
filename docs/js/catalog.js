@@ -1,4 +1,5 @@
 import { getState, setState } from './state.js';
+import { tokenize, buildCollMap, scoreProduct } from './search.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -29,6 +30,10 @@ export function renderCollectionSidebar(collections) {
 
   const { activeCollection, activeTag, activeSize, priceMin, priceMax, products, productsLoaded } = getState();
 
+  // Cada etiqueta se asigna a UNA colección (la que de verdad le corresponde)
+  // para que no se cuele en submenús ajenos. Ver computeTagAssignments.
+  const tagAssignment = computeTagAssignments(products, collections);
+
   // ── Build sidebar HTML ──
   const sections = [];
 
@@ -50,12 +55,13 @@ export function renderCollectionSidebar(collections) {
     `);
 
     if (isOpen) {
-      // Etiquetas de los productos cargados que pertenecen a esta colección
+      // Solo las etiquetas que de verdad le corresponden a esta colección
+      // (las que computeTagAssignments asignó a c.handle).
       const tagsInCollection = [...new Set(
         products
           .filter(p => p.collectionHandles.includes(c.handle))
           .flatMap(p => p.tags || [])
-      )].sort();
+      )].filter(t => tagAssignment[t] === c.handle).sort();
 
       if (tagsInCollection.length) {
         sections.push(`
@@ -120,6 +126,61 @@ export function renderCollectionSidebar(collections) {
 
   sidebar.innerHTML = sections.join('');
   wirePriceSlider(sidebar);
+}
+
+// Asigna cada etiqueta a UNA sola colección: aquella donde vive casi toda
+// su "gente". Si casi todos los productos con la etiqueta T están dentro de la
+// colección C (contención ≥ 85%), T le pertenece a C. Si T califica para varias
+// colecciones, gana la más específica (la más pequeña). Si no llega al umbral en
+// ninguna pero su mayor concentración es razonable (≥ 50%), se asigna a esa; si
+// está muy repartida (marca, promos), no se muestra en ningún submenú.
+function computeTagAssignments(products, collections) {
+  const THRESHOLD   = 0.85; // "casi todos"
+  const MIN_FALLBACK = 0.6;  // concentración mínima para el respaldo (un 50/50
+                             // se considera transversal y no se muestra)
+
+  // Tamaño de cada colección (para elegir la más específica en empates)
+  const collSize = {};
+  for (const c of collections) {
+    collSize[c.handle] = products.filter(p => p.collectionHandles.includes(c.handle)).length;
+  }
+
+  // Productos por etiqueta
+  const byTag = {};
+  for (const p of products) {
+    for (const t of (p.tags || [])) {
+      (byTag[t] || (byTag[t] = [])).push(p);
+    }
+  }
+
+  const assignment = {};
+  for (const [tag, prods] of Object.entries(byTag)) {
+    const total = prods.length;
+    let best = null;            // mayor contención (para el respaldo)
+    const qualifying = [];      // colecciones que superan el umbral
+
+    for (const c of collections) {
+      const inC = prods.filter(p => p.collectionHandles.includes(c.handle)).length;
+      const containment = inC / total;
+      if (containment >= THRESHOLD) {
+        qualifying.push({ handle: c.handle, size: collSize[c.handle] });
+      }
+      if (!best || containment > best.containment) {
+        best = { handle: c.handle, containment };
+      }
+    }
+
+    if (qualifying.length) {
+      // La más específica = la colección con menos productos
+      qualifying.sort((a, b) => a.size - b.size);
+      assignment[tag] = qualifying[0].handle;
+    } else if (best && best.containment >= MIN_FALLBACK) {
+      assignment[tag] = best.handle;
+    } else {
+      assignment[tag] = null; // etiqueta transversal → no se muestra en submenús
+    }
+  }
+  return assignment;
 }
 
 function escapeAttr(s) {
@@ -202,8 +263,15 @@ export function renderProductGrid(products, collections, activeCollection, searc
   const grid = document.getElementById('product-grid');
   if (!grid) return;
 
-  const { activeSize, activeTag, priceMin, priceMax, currentPage, productsLoaded } = getState();
-  const filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
+  const { activeSize, activeTag, priceMin, priceMax, sortBy, currentPage, productsLoaded } = getState();
+  let filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
+
+  // Orden por precio (el orden por relevancia ya lo da el filtro de búsqueda)
+  if (sortBy === 'price-asc') {
+    filtered = [...filtered].sort((a, b) => a.price - b.price);
+  } else if (sortBy === 'price-desc') {
+    filtered = [...filtered].sort((a, b) => b.price - a.price);
+  }
 
   if (!filtered.length) {
     // Si todavía hay productos cargando en background, mostrar skeleton
@@ -313,6 +381,7 @@ function productCardHTML(p) {
       </div>
       <div class="product-card__info">
         <p class="product-card__name">${p.title}</p>
+        <p class="product-card__type">${p.productType || ''}</p>
         <p class="product-card__price">L. ${price}</p>
         ${!soldOut
           ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`
@@ -343,8 +412,11 @@ export function filterProducts(products, collections, activeCollection, searchQu
   }
 
   if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    result = result.filter(p => p.title.toLowerCase().includes(q));
+    const tokens = tokenize(searchQuery);
+    if (tokens.length) {
+      const collMap = buildCollMap(collections);
+      result = result.filter(p => scoreProduct(p, tokens, collMap) > 0);
+    }
   }
 
   if (activeSize) {

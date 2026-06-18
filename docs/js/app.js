@@ -3,6 +3,8 @@ import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
+import { searchProducts } from './search.js';
+import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
 
 // iOS Safari solo aplica el estado :active (feedback al tocar) si existe
@@ -47,6 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           : `https://wa.me/${waNumber}`;
       });
     }
+    renderFeatured(firstPage.products, collections);
     handleHashRoute();
 
     // Carga el resto en background sin bloquear la UI. Cada batch se
@@ -97,6 +100,14 @@ async function loadRemainingProducts(cursor, hasNext) {
   }
   // Marca que ya no llegarán más productos → el sidebar deja de decir "Cargando…"
   setState({ productsLoaded: true });
+
+  // Ya con todo el catálogo, agrega las colecciones que faltaban (las que
+  // tenían sus productos en lotes posteriores) SIN re-armar el carrusel.
+  if (!_fbFullDone) {
+    _fbFullDone = true;
+    const st = getState();
+    addMissingFeatured(st.products, st.collections);
+  }
 }
 
 // ── State subscription ────────────────────────────────────
@@ -104,9 +115,10 @@ async function loadRemainingProducts(cursor, hasNext) {
 // Así, al agregar al carrito (que solo cambia `cart`) NO se recrea el grid
 // — antes eso causaba un parpadeo/"recarga" al hacer click en hover.
 let _prevRender = {};
+let _prevModalId = null;
 on('statechange', state => {
   const { products, collections, activeCollection, activeTag, activeSize,
-          priceMin, priceMax, searchQuery, currentPage, productsLoaded } = state;
+          priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded } = state;
 
   const gridChanged =
     products       !== _prevRender.products ||
@@ -116,6 +128,7 @@ on('statechange', state => {
     activeSize     !== _prevRender.activeSize ||
     priceMin       !== _prevRender.priceMin ||
     priceMax       !== _prevRender.priceMax ||
+    sortBy         !== _prevRender.sortBy ||
     searchQuery    !== _prevRender.searchQuery ||
     currentPage    !== _prevRender.currentPage ||
     productsLoaded !== _prevRender.productsLoaded;
@@ -126,11 +139,27 @@ on('statechange', state => {
   }
 
   _prevRender = { products, collections, activeCollection, activeTag, activeSize,
-                  priceMin, priceMax, searchQuery, currentPage, productsLoaded };
+                  priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded };
+
+  // Al cerrar la ficha de un producto, devolver la URL al catálogo
+  // (así un refresh no reabre el modal).
+  const mid = state.modalProductId;
+  if (_prevModalId && !mid && location.hash.includes('/product/')) {
+    history.replaceState(null, '', catalogHash());
+  }
+  _prevModalId = mid;
 
   renderCartDrawer();
   updateCartBadge();
 });
+
+// Hash del catálogo según los filtros activos (para restaurar la URL)
+function catalogHash() {
+  const { activeCollection, activeTag } = getState();
+  if (activeTag) return `#shop/tag/${encodeURIComponent(activeTag)}`;
+  if (activeCollection) return `#shop/collection/${activeCollection}`;
+  return '#shop';
+}
 
 // En móvil, baja hasta el inicio de los productos tras elegir un filtro,
 // para que se vean los primeros ítems de esa categoría.
@@ -143,15 +172,211 @@ function scrollToProductsMobile() {
   window.scrollTo({ top, behavior: 'smooth' });
 }
 
+// ── Carrusel de colecciones (scroll horizontal) ───────────
+// Una fila desplazable: en desktop muestra una colección a la vez y avanza
+// sola; en móvil se ven varias con "peek" y se puede deslizar (como B&BW).
+let _fbIndex = 0;
+let _fbTimer = null;
+let _fbFullDone = false; // ya se re-renderizó con todo el catálogo
+
+function renderFeatured(products, collections) {
+  const section = document.getElementById('featured');
+  const track   = document.getElementById('fb-track');
+  if (!section || !track) return;
+
+  // Una diapositiva por colección, con una foto representativa: se toma un
+  // producto AL AZAR de esa colección, así en cada visita la foto cambia y
+  // no es siempre la misma.
+  const slides = [];
+  for (const c of collections) {
+    const img = pickCollectionImage(products, c.handle);
+    if (!img) continue; // colección sin productos/fotos aún → se omite
+    slides.push({ handle: c.handle, title: c.title, img });
+  }
+  if (slides.length < 2) { section.hidden = true; return; }
+
+  track.innerHTML = slides.map((s, i) => fbSlideHTML(s.handle, s.title, s.img, i === 0)).join('');
+  fbRenderDots(slides.length);
+
+  section.hidden = false;
+  _fbIndex = 0;
+  track.scrollLeft = 0;
+
+  // Al desplazar (auto o manual), sincroniza los puntos con la posición
+  track.onscroll = () => {
+    clearTimeout(track._fbScrollT);
+    track._fbScrollT = setTimeout(syncFbDots, 90);
+  };
+
+  // Arrastre con mouse (en táctil ya funciona el swipe nativo)
+  if (!track._fbDragWired) { wireFbDrag(track); track._fbDragWired = true; }
+
+  startFbAuto();
+  // Pausa el auto-avance al pasar el mouse (desktop)
+  section.onmouseenter = stopFbAuto;
+  section.onmouseleave = startFbAuto;
+}
+
+// Centra la diapositiva i dentro del carril
+function setFbIndex(i, smooth = true) {
+  const track  = document.getElementById('fb-track');
+  const slides = track ? [...track.querySelectorAll('.fb-slide')] : [];
+  if (!slides.length) return;
+  _fbIndex = (i + slides.length) % slides.length;
+  const slide = slides[_fbIndex];
+  const left  = slide.offsetLeft - (track.clientWidth - slide.clientWidth) / 2;
+  track.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
+  markFbDot(_fbIndex);
+}
+
+// Detecta cuál diapositiva está centrada y actualiza los puntos
+function syncFbDots() {
+  const track  = document.getElementById('fb-track');
+  const slides = track ? [...track.querySelectorAll('.fb-slide')] : [];
+  if (!slides.length) return;
+  const center = track.scrollLeft + track.clientWidth / 2;
+  let nearest = 0, best = Infinity;
+  slides.forEach((s, idx) => {
+    const d = Math.abs((s.offsetLeft + s.clientWidth / 2) - center);
+    if (d < best) { best = d; nearest = idx; }
+  });
+  _fbIndex = nearest;
+  markFbDot(nearest);
+}
+
+function markFbDot(idx) {
+  document.querySelectorAll('#fb-dots .fb-dot').forEach((d, i) =>
+    d.classList.toggle('is-active', i === idx));
+}
+
+function startFbAuto() {
+  stopFbAuto();
+  _fbTimer = setInterval(() => setFbIndex(_fbIndex + 1), 5000);
+}
+function stopFbAuto() {
+  if (_fbTimer) { clearInterval(_fbTimer); _fbTimer = null; }
+}
+
+// Foto al azar de un producto (con imagen) de la colección, o null si no hay.
+function pickCollectionImage(products, handle) {
+  const pool = products.filter(p => p.collectionHandles.includes(handle) && p.images.length);
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)].images[0].url;
+}
+
+function fbSlideHTML(handle, title, img, eager) {
+  return `
+      <article class="fb-slide" data-fb-collection="${handle}">
+        <div class="fb-slide__media">
+          <img src="${img}" alt="${title}" loading="${eager ? 'eager' : 'lazy'}" />
+        </div>
+        <div class="fb-slide__body">
+          <p class="fb-slide__eyebrow">Colección</p>
+          <h3 class="fb-slide__title">${title}</h3>
+          <button class="fb-slide__btn" data-fb-collection="${handle}">Ver colección <span aria-hidden="true">&rarr;</span></button>
+        </div>
+      </article>`;
+}
+
+function fbRenderDots(n) {
+  const dotsBox = document.getElementById('fb-dots');
+  if (!dotsBox) return;
+  dotsBox.innerHTML = Array.from({ length: n }, (_, i) =>
+    `<button class="fb-dot${i === _fbIndex ? ' is-active' : ''}" data-fb-dot="${i}" aria-label="Ir a la colección ${i + 1}"></button>`
+  ).join('');
+}
+
+// Al terminar de cargar el catálogo, AGREGA solo las colecciones que faltaban
+// (sin re-armar ni resetear el carrusel → no salta ni cambia las fotos ya puestas).
+function addMissingFeatured(products, collections) {
+  const section = document.getElementById('featured');
+  const track   = document.getElementById('fb-track');
+  if (!section || !track) return;
+
+  const existing = new Set(
+    [...track.querySelectorAll('.fb-slide')].map(s => s.dataset.fbCollection)
+  );
+
+  let added = 0;
+  for (const c of collections) {
+    if (existing.has(c.handle)) continue;
+    const img = pickCollectionImage(products, c.handle);
+    if (!img) continue;
+    track.insertAdjacentHTML('beforeend', fbSlideHTML(c.handle, c.title, img, false));
+    added++;
+  }
+
+  if (!added) return;
+  const total = track.querySelectorAll('.fb-slide').length;
+  fbRenderDots(total);
+
+  // Si antes estaba oculto por tener <2, ahora muéstralo y arráncalo
+  if (section.hidden && total >= 2) {
+    section.hidden = false;
+    _fbIndex = 0;
+    track.scrollLeft = 0;
+    if (!track._fbDragWired) { wireFbDrag(track); track._fbDragWired = true; }
+    startFbAuto();
+  }
+}
+
+// Permite arrastrar el carrusel con el mouse (el táctil usa swipe nativo).
+function wireFbDrag(track) {
+  let down = false, startX = 0, startScroll = 0, moved = false;
+
+  track.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse') return; // en táctil deja el scroll nativo
+    down = true; moved = false;
+    startX = e.clientX;
+    startScroll = track.scrollLeft;
+    track.style.scrollSnapType = 'none'; // evita saltos mientras se arrastra
+    track.style.cursor = 'grabbing';
+    try { track.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  track.addEventListener('pointermove', e => {
+    if (!down) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 4) moved = true;
+    track.scrollLeft = startScroll - dx;
+  });
+
+  const end = () => {
+    if (!down) return;
+    down = false;
+    track.style.cursor = '';
+    track.style.scrollSnapType = ''; // re-activa el snap → encaja en la tarjeta
+    syncFbDots();
+  };
+  track.addEventListener('pointerup', end);
+  track.addEventListener('pointerleave', end);
+  track.addEventListener('pointercancel', end);
+
+  // Si hubo arrastre, no dispares el click (no abrir la colección sin querer)
+  track.addEventListener('click', e => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+  }, true);
+}
+
 // ── Global click delegation ───────────────────────────────
 document.addEventListener('click', e => {
 
-  // Menú hamburguesa (móvil) — abrir/cerrar
-  const navToggle = e.target.closest('#nav-toggle');
-  if (navToggle) {
-    const nav = document.querySelector('nav');
-    const open = nav.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  // Menú hamburguesa / botón "Categorías y filtros" — abren la cinta lateral
+  if (e.target.closest('#nav-toggle') || e.target.closest('#filters-toggle')) {
+    openMenuDrawer();
+    return;
+  }
+
+  // Cerrar la cinta lateral del menú
+  if (e.target.closest('#menu-close') || e.target.closest('#menu-drawer .menu-overlay')) {
+    closeMenuDrawer();
+    return;
+  }
+
+  // Compartir la vista actual del catálogo (colección, etiqueta o búsqueda)
+  if (e.target.closest('#share-view')) {
+    const hash = location.hash.startsWith('#shop') ? location.hash : '#shop';
+    shareLink(siteUrl(hash), shareViewTitle());
     return;
   }
 
@@ -161,11 +386,9 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // Cerrar el menú móvil al tocar un enlace (deja que el link navegue)
-  if (e.target.closest('nav ul a')) {
-    const nav = document.querySelector('nav');
-    nav.classList.remove('is-open');
-    document.getElementById('nav-toggle')?.setAttribute('aria-expanded', 'false');
+  // Cerrar la cinta lateral al tocar un enlace de navegación (deja que navegue)
+  if (e.target.closest('.menu-links a')) {
+    closeMenuDrawer();
     // sin return: el ancla navega normalmente
   }
 
@@ -175,12 +398,16 @@ document.addEventListener('click', e => {
     const clicked = collBtn.dataset.handle || null;
     const { activeCollection } = getState();
     const next = (clicked && clicked === activeCollection) ? null : clicked;
-    // Limpiar filtro de tallas al cambiar de colección — evita catálogo en blanco
-    setState({ activeCollection: next, activeTag: null, activeSize: null, currentPage: 1 });
+    // Limpiar tallas y búsqueda al cambiar de colección — evita catálogo en blanco
+    clearSearchInput();
+    setState({ activeCollection: next, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
     history.replaceState(null, '', next ? `#shop/collection/${next}` : '#shop');
-    // Móvil: si la colección no tiene subcategorías, ir directo a los productos.
-    // Si sí tiene, se queda para que pueda elegir la subcategoría.
-    if (!document.querySelector('#collection-sidebar .tag-btn')) scrollToProductsMobile();
+    // Si la colección no tiene subcategorías, cerrar la cinta e ir a los productos.
+    // Si sí tiene, la cinta se queda abierta para elegir la subcategoría.
+    if (!document.querySelector('#collection-sidebar .tag-btn')) {
+      closeMenuDrawer();
+      scrollToProductsMobile();
+    }
     return;
   }
 
@@ -188,8 +415,15 @@ document.addEventListener('click', e => {
   const tagBtn = e.target.closest('.tag-btn');
   if (tagBtn) {
     const tag = tagBtn.dataset.tag || null;
-    // Limpiar filtro de tallas al cambiar de etiqueta del submenú
-    setState({ activeTag: tag, activeSize: null, currentPage: 1 });
+    // Limpiar tallas y búsqueda al cambiar de etiqueta del submenú
+    clearSearchInput();
+    setState({ activeTag: tag, activeSize: null, searchQuery: '', currentPage: 1 });
+    // URL compartible: etiqueta sola, o la colección si eligió "Todas"
+    const { activeCollection } = getState();
+    history.replaceState(null, '', tag
+      ? `#shop/tag/${encodeURIComponent(tag)}`
+      : (activeCollection ? `#shop/collection/${activeCollection}` : '#shop'));
+    closeMenuDrawer();
     scrollToProductsMobile();
     return;
   }
@@ -226,6 +460,21 @@ document.addEventListener('click', e => {
         window.scrollTo({ top, behavior: 'smooth' });
       }
     }
+    return;
+  }
+
+  // Carrusel de colecciones — flechas, puntos y abrir colección
+  if (e.target.closest('#fb-prev')) { setFbIndex(_fbIndex - 1); startFbAuto(); return; }
+  if (e.target.closest('#fb-next')) { setFbIndex(_fbIndex + 1); startFbAuto(); return; }
+  const fbDot = e.target.closest('[data-fb-dot]');
+  if (fbDot) { setFbIndex(parseInt(fbDot.dataset.fbDot, 10)); startFbAuto(); return; }
+  const fbCol = e.target.closest('[data-fb-collection]');
+  if (fbCol) {
+    const handle = fbCol.dataset.fbCollection;
+    clearSearchInput();
+    setState({ activeCollection: handle, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+    history.replaceState(null, '', `#shop/collection/${handle}`);
+    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
 
@@ -305,6 +554,21 @@ document.addEventListener('input', e => {
   _searchDebounce = setTimeout(() => setState({ searchQuery: e.target.value.trim(), currentPage: 1 }), 300);
 });
 
+// Limpia el campo de búsqueda y cancela cualquier búsqueda pendiente.
+// Se usa al elegir una categoría/subcategoría para que no se combinen los
+// filtros y el catálogo quede vacío.
+function clearSearchInput() {
+  clearTimeout(_searchDebounce);
+  const input = document.getElementById('search-input');
+  if (input) input.value = '';
+}
+
+// ── Ordenar por precio ───────────────────────────────────
+document.addEventListener('change', e => {
+  if (e.target.id !== 'sort-select') return;
+  setState({ sortBy: e.target.value, currentPage: 1 });
+});
+
 // ── Keyboard ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -369,15 +633,15 @@ function renderSearchResults(query) {
   const box = document.getElementById('search-ov-results');
   if (!box) return;
 
-  const q = String(query).trim().toLowerCase();
-  const { products } = getState();
+  const q = String(query).trim();
+  const { products, collections } = getState();
 
   if (!q) {
     box.innerHTML = `<p class="search-ov__hint">Escribe para buscar entre nuestros productos.</p>`;
     return;
   }
 
-  const matches = products.filter(p => p.title.toLowerCase().includes(q)).slice(0, 40);
+  const matches = searchProducts(products, q, collections).slice(0, 40);
   if (!matches.length) {
     box.innerHTML = `<p class="search-ov__hint">No se encontraron productos.</p>`;
     return;
@@ -430,6 +694,45 @@ function closeCart() {
     panel.classList.remove('cart-panel--out');
     drawer.classList.remove('is-closing');
     setState({ cartOpen: false });
+    drawer.hidden = true;
+  };
+  panel.addEventListener('animationend', finish);
+}
+
+// ── Cinta lateral del menú de productos (con animación) ──────
+function openMenuDrawer() {
+  const drawer = document.getElementById('menu-drawer');
+  if (!drawer) return;
+  setState({ menuOpen: true });
+  drawer.hidden = false;
+  drawer.classList.remove('is-closing');
+  document.getElementById('nav-toggle')?.classList.add('is-active');
+  document.getElementById('filters-toggle')?.setAttribute('aria-expanded', 'true');
+  const panel = drawer.querySelector('.menu-panel');
+  if (panel) {
+    panel.classList.remove('menu-panel--out', 'menu-panel--in');
+    void panel.offsetWidth;
+    panel.classList.add('menu-panel--in');
+  }
+}
+
+function closeMenuDrawer() {
+  const drawer = document.getElementById('menu-drawer');
+  if (!drawer || drawer.hidden) return;
+  document.getElementById('nav-toggle')?.classList.remove('is-active');
+  document.getElementById('filters-toggle')?.setAttribute('aria-expanded', 'false');
+  const panel = drawer.querySelector('.menu-panel');
+  if (!panel) { setState({ menuOpen: false }); drawer.hidden = true; return; }
+
+  drawer.classList.add('is-closing');
+  panel.classList.remove('menu-panel--in');
+  panel.classList.add('menu-panel--out');
+
+  const finish = () => {
+    panel.removeEventListener('animationend', finish);
+    panel.classList.remove('menu-panel--out');
+    drawer.classList.remove('is-closing');
+    setState({ menuOpen: false });
     drawer.hidden = true;
   };
   panel.addEventListener('animationend', finish);
@@ -514,9 +817,6 @@ function showCheckoutModal() {
   if (document.getElementById('checkout-modal')) return;
 
   const { cart } = getState();
-  const total = cart
-    .reduce((s, i) => s + i.price * i.quantity, 0)
-    .toLocaleString('es-HN', { minimumFractionDigits: 2 });
 
   const summaryLines = cart.map(i => {
     const varLabel = i.variantTitle !== 'Default Title' ? ` <span class="co-variant">(${i.variantTitle})</span>` : '';
@@ -540,13 +840,29 @@ function showCheckoutModal() {
 
       <div class="co-summary">
         ${summaryLines}
-        <div class="co-summary__total">
-          <span>Total</span>
-          <span>L. ${total}</span>
-        </div>
       </div>
 
       <form id="co-form" novalidate>
+        <div class="co-field">
+          <p class="co-field__label">Tipo de entrega *</p>
+          <div class="co-options">
+            <label class="co-radio"><input type="radio" name="co-delivery" value="pickup" checked /><span>Pick up — recoger en tienda<em>Gratis</em></span></label>
+            <label class="co-radio"><input type="radio" name="co-delivery" value="sps" /><span>Envío en SPS<em>+ L. 95.00</em></span></label>
+            <label class="co-radio"><input type="radio" name="co-delivery" value="outside" /><span>Envío fuera de SPS<em>+ L. 110.00</em></span></label>
+          </div>
+        </div>
+        <div class="co-field">
+          <p class="co-field__label">Tipo de pago *</p>
+          <div class="co-options">
+            <label class="co-radio"><input type="radio" name="co-payment" value="transfer" checked /><span>Transferencia</span></label>
+            <label class="co-radio"><input type="radio" name="co-payment" value="card" /><span>Tarjeta</span></label>
+            <label class="co-radio"><input type="radio" name="co-payment" value="cash" /><span>Efectivo</span></label>
+          </div>
+        </div>
+
+        <div class="co-totals" id="co-totals"></div>
+        <p class="co-warning" id="co-warning" hidden>El pago en efectivo fuera de SPS tiene un 5% de comisión por cobro contra entrega, ya incluido en el total.</p>
+
         <div class="co-field">
           <label for="co-name">Nombre completo *</label>
           <input type="text" id="co-name" required placeholder="Tu nombre completo" autocomplete="name" />
@@ -569,6 +885,12 @@ function showCheckoutModal() {
 
   document.body.appendChild(modal);
 
+  // Totales iniciales + recálculo al cambiar entrega/pago
+  updateCoTotals(modal);
+  modal.querySelector('#co-form').addEventListener('change', e => {
+    if (e.target.name === 'co-delivery' || e.target.name === 'co-payment') updateCoTotals(modal);
+  });
+
   // Focus name field
   setTimeout(() => modal.querySelector('#co-name')?.focus(), 50);
 
@@ -588,8 +910,65 @@ function showCheckoutModal() {
       return;
     }
 
-    await submitCheckout(name, phone, email);
+    const { delivery, payment } = getCoSelection(modal);
+    const totals  = computeCheckout(delivery, payment);
+    const checkout = {
+      deliveryLabel: DELIVERY[delivery].label,
+      paymentLabel:  PAYMENT[payment].label,
+      ...totals,
+    };
+
+    await submitCheckout(name, phone, email, checkout);
   });
+}
+
+// ── Cálculo de entrega / pago / comisión ──────────────────
+const DELIVERY = {
+  pickup:  { label: 'Pick up (recoger en tienda)', cost: 0 },
+  sps:     { label: 'Envío en SPS',                cost: 95 },
+  outside: { label: 'Envío fuera de SPS',          cost: 110 },
+};
+const PAYMENT = {
+  transfer: { label: 'Transferencia' },
+  card:     { label: 'Tarjeta' },
+  cash:     { label: 'Efectivo' },
+};
+
+function computeCheckout(delivery, payment) {
+  const { cart } = getState();
+  const productsTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shipping = DELIVERY[delivery]?.cost ?? 0;
+  const base = productsTotal + shipping;
+  // Efectivo + fuera de SPS → 5% de comisión por cobro contra entrega.
+  // Total = (productos + envío) / 0.95, redondeado hacia arriba a entero.
+  const cashOnDelivery = payment === 'cash' && delivery === 'outside';
+  const finalTotal = cashOnDelivery ? Math.ceil(base / 0.95) : base;
+  const commission = finalTotal - base;
+  return { productsTotal, shipping, commission, finalTotal, cashOnDelivery };
+}
+
+function getCoSelection(modal) {
+  const delivery = modal.querySelector('input[name="co-delivery"]:checked')?.value || 'pickup';
+  const payment  = modal.querySelector('input[name="co-payment"]:checked')?.value || 'transfer';
+  return { delivery, payment };
+}
+
+function updateCoTotals(modal) {
+  const { delivery, payment } = getCoSelection(modal);
+  const t   = computeCheckout(delivery, payment);
+  const fmt = n => `L. ${Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
+
+  const box = modal.querySelector('#co-totals');
+  if (box) {
+    box.innerHTML = `
+      <div class="co-total-row"><span>Subtotal productos</span><span>${fmt(t.productsTotal)}</span></div>
+      <div class="co-total-row"><span>Envío</span><span>${t.shipping ? fmt(t.shipping) : 'Gratis'}</span></div>
+      ${t.commission > 0 ? `<div class="co-total-row co-total-row--fee"><span>Comisión contra entrega (5%)</span><span>${fmt(t.commission)}</span></div>` : ''}
+      <div class="co-total-row co-total-row--grand"><span>Total a pagar</span><span>${fmt(t.finalTotal)}</span></div>
+    `;
+  }
+  const warn = modal.querySelector('#co-warning');
+  if (warn) warn.hidden = !t.cashOnDelivery;
 }
 
 function closeCheckoutModal() {
@@ -604,7 +983,7 @@ function showCoError(msg) {
   el.hidden = false;
 }
 
-async function submitCheckout(name, phone, email) {
+async function submitCheckout(name, phone, email, checkout = null) {
   const submitBtn = document.getElementById('co-submit');
   if (submitBtn) { submitBtn.textContent = 'Creando pedido...'; submitBtn.disabled = true; }
 
@@ -625,7 +1004,7 @@ async function submitCheckout(name, phone, email) {
     const orderData = await postOrder(orderPayload);
 
     const orderName = orderData?.order?.name || null; // e.g. "#1011"
-    const url = buildWhatsAppUrl(waNumber, orderName);
+    const url = buildWhatsAppUrl(waNumber, orderName, checkout);
 
     clearCart();
     closeCheckoutModal();
@@ -666,21 +1045,47 @@ function renderFeaturedBanner(collections) {
   }
 }
 
+// Título descriptivo para compartir la vista actual del catálogo
+function shareViewTitle() {
+  const { activeCollection, activeTag, collections } = getState();
+  if (activeTag) return `Catálogo: ${activeTag} · PinkPower HN`;
+  if (activeCollection) {
+    const c = collections.find(c => c.handle === activeCollection);
+    return `Catálogo: ${c ? c.title : ''} · PinkPower HN`;
+  }
+  return 'Catálogo PinkPower HN';
+}
+
 // ── Hash routing ──────────────────────────────────────────
+// Esquema de URLs compartibles:
+//   #shop                       → catálogo completo
+//   #shop/collection/<handle>   → una colección
+//   #shop/tag/<etiqueta>        → todos los productos con esa etiqueta
+//   #shop/product/<id>          → ficha de un producto (modal)
 function handleHashRoute() {
-  const hash  = location.hash;
+  const hash = location.hash;
   if (!hash.startsWith('#shop')) return;
 
   const path  = hash.replace('#shop', '').replace(/^\//, '');
-  const parts = path.split('/');
+  const parts = path.split('/').filter(Boolean);
+
+  // Producto → abrir su ficha
+  if (parts[0] === 'product' && parts[1]) {
+    const id = decodeURIComponent(parts[1]);
+    const product = getState().products.find(p => String(p.id) === id);
+    if (product) openModal(product);
+    return;
+  }
+
+  // Cualquier ruta de catálogo: si había una ficha abierta, ciérrala
+  if (getState().modalProductId) closeModal();
 
   if (parts[0] === 'collection' && parts[1]) {
-    setState({ activeCollection: parts[1] });
-  }
-  if (parts[0] === 'product' && parts[1]) {
-    const { products } = getState();
-    const product = products.find(p => p.id === parts[1]);
-    if (product) openModal(product);
+    setState({ activeCollection: decodeURIComponent(parts[1]), activeTag: null, currentPage: 1 });
+  } else if (parts[0] === 'tag' && parts[1]) {
+    setState({ activeCollection: null, activeTag: decodeURIComponent(parts[1]), currentPage: 1 });
+  } else {
+    setState({ activeCollection: null, activeTag: null, currentPage: 1 });
   }
 }
 

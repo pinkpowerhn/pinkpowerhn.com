@@ -1,6 +1,7 @@
 import { getState, setState } from './state.js';
 import { addToCart } from './cart.js';
 import { showToast } from './toast.js';
+import { shareLink, siteUrl } from './share.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect fill='%231a0a0e' width='600' height='600'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -145,11 +146,21 @@ function buildModalHTML(p) {
         <!-- Info -->
         <div class="modal-info">
           <p class="modal-product-name">${p.title}</p>
+          ${p.productType ? `<p class="modal-product-type">${p.productType}</p>` : ''}
           <p class="modal-price" id="modal-price">L. ${price}</p>
           ${soldOut ? '<p class="modal-sold-out-label">Producto agotado</p>' : ''}
           ${descSection}
           ${variantSection}
-          <div class="modal-actions">${addBtn}</div>
+          <div class="modal-actions">
+            ${addBtn}
+            <button class="btn btn-outline modal-share" id="modal-share" type="button" aria-label="Compartir producto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.6" y1="10.7" x2="15.4" y2="6.3"></line><line x1="8.6" y1="13.3" x2="15.4" y2="17.7"></line>
+              </svg>
+              Compartir
+            </button>
+          </div>
         </div>
 
       </div>
@@ -190,6 +201,11 @@ function wireModalEvents(modal, product) {
     if (!_currentProduct || !_selectedVariant) return;
     showToast(addToCart(_currentProduct, _selectedVariant), _currentProduct.title);
     refreshAddBtn(modal);
+  });
+
+  modal.querySelector('#modal-share')?.addEventListener('click', () => {
+    const url = siteUrl(`#shop/product/${encodeURIComponent(product.id)}`);
+    shareLink(url, product.title);
   });
 
   // Focus trap

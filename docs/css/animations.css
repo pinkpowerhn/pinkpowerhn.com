@@ -40,9 +40,11 @@
   animation: slideOutRight 0.26s cubic-bezier(.4, 0, .7, .2) forwards;
 }
 
-/* La cinta lateral del menú comparte el mismo slide que el carrito. */
-.menu-panel--in  { animation: slideInRight 0.28s cubic-bezier(.25,.46,.45,.94); }
-.menu-panel--out { animation: slideOutRight 0.26s cubic-bezier(.4, 0, .7, .2) forwards; }
+/* La cinta lateral del menú sale desde la IZQUIERDA. */
+@keyframes slideInLeft  { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes slideOutLeft { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.menu-panel--in  { animation: slideInLeft 0.28s cubic-bezier(.25,.46,.45,.94); }
+.menu-panel--out { animation: slideOutLeft 0.26s cubic-bezier(.4, 0, .7, .2) forwards; }
 
 /* ── Fade in for modal ────────────────────────────────── */
 @keyframes fadeIn {

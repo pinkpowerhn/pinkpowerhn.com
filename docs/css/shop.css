@@ -1161,7 +1161,14 @@
 .menu-drawer {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: 1300; /* por encima del nav (z-index 100) */
+}
+/* Con el menú abierto, el nav no debe flotar sobre el drawer. El backdrop-filter
+   del nav crea un contexto de apilamiento que lo eleva; lo anulamos. */
+body.menu-open nav {
+  z-index: 1;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .menu-overlay {
   position: absolute;
@@ -1173,13 +1180,13 @@
 
 .menu-panel {
   position: absolute;
-  right: 0;
+  left: 0;
   top: 0;
   bottom: 0;
   width: min(360px, 86vw);
   background: #fff;
-  border-left: 1px solid rgba(26, 10, 18, 0.08);
-  box-shadow: -10px 0 40px rgba(26, 10, 18, 0.14);
+  border-right: 1px solid rgba(26, 10, 18, 0.08);
+  box-shadow: 10px 0 40px rgba(26, 10, 18, 0.14);
   display: flex;
   flex-direction: column;
   overflow-y: auto;

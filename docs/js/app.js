@@ -271,7 +271,6 @@ function fbSlideHTML(handle, title, img, eager) {
           <img src="${img}" alt="${title}" loading="${eager ? 'eager' : 'lazy'}" />
         </div>
         <div class="fb-slide__body">
-          <p class="fb-slide__eyebrow">Colección</p>
           <h3 class="fb-slide__title">${title}</h3>
           <button class="fb-slide__btn" data-fb-collection="${handle}">Ver colección <span aria-hidden="true">&rarr;</span></button>
         </div>
@@ -704,6 +703,7 @@ function openMenuDrawer() {
   const drawer = document.getElementById('menu-drawer');
   if (!drawer) return;
   setState({ menuOpen: true });
+  document.body.classList.add('menu-open');
   drawer.hidden = false;
   drawer.classList.remove('is-closing');
   document.getElementById('nav-toggle')?.classList.add('is-active');
@@ -722,7 +722,7 @@ function closeMenuDrawer() {
   document.getElementById('nav-toggle')?.classList.remove('is-active');
   document.getElementById('filters-toggle')?.setAttribute('aria-expanded', 'false');
   const panel = drawer.querySelector('.menu-panel');
-  if (!panel) { setState({ menuOpen: false }); drawer.hidden = true; return; }
+  if (!panel) { setState({ menuOpen: false }); drawer.hidden = true; document.body.classList.remove('menu-open'); return; }
 
   drawer.classList.add('is-closing');
   panel.classList.remove('menu-panel--in');
@@ -734,6 +734,7 @@ function closeMenuDrawer() {
     drawer.classList.remove('is-closing');
     setState({ menuOpen: false });
     drawer.hidden = true;
+    document.body.classList.remove('menu-open');
   };
   panel.addEventListener('animationend', finish);
 }

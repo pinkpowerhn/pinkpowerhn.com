@@ -321,9 +321,9 @@
   border: none;
   color: rgba(26, 10, 18, 0.8);
   font-family: 'Montserrat', sans-serif;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  padding: 0.6rem 0.2rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.06em;
+  padding: 0.7rem 0.2rem;
   text-align: left;
   cursor: pointer;
   transition: color 0.2s;
@@ -360,9 +360,9 @@
 }
 
 .tag-group .tag-btn {
-  font-size: 0.7rem;
-  padding: 0.4rem 0.8rem;
-  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.8rem;
+  letter-spacing: 0.04em;
 }
 
 .tag-group--empty {
@@ -806,6 +806,8 @@
 
 .product-card__badge--low {
   background: #f5820a;
+  left: auto;
+  right: 0.7rem;   /* el aviso de stock bajo va a la derecha */
 }
 
 /* Hover overlay with buttons */
@@ -1270,10 +1272,10 @@ body.menu-open nav {
   color: rgba(26, 10, 18, 0.85);
   text-decoration: none;
   font-family: 'Montserrat', sans-serif;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.55rem 0.2rem;
+  padding: 0.62rem 0.2rem;
   transition: color 0.2s;
 }
 .menu-links a:hover { color: var(--pink); }
@@ -2128,4 +2130,46 @@ body.menu-open nav {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--pink);
+}
+
+/* Sugerencias de colección / etiqueta en el buscador */
+.search-ov__section {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pink-dk);
+  font-weight: 700;
+  margin: 1rem 0.2rem 0.35rem;
+}
+.search-ov__section:first-child { margin-top: 0; }
+
+.search-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(232, 67, 122, 0.08);
+  padding: 0.7rem 0.2rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.search-cat:hover, .search-cat:active { background: rgba(232, 67, 122, 0.06); }
+.search-cat__name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--white);
+}
+.search-cat__type {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pink);
+  background: rgba(232, 67, 122, 0.1);
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
 }

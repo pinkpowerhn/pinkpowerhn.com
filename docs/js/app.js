@@ -3,7 +3,7 @@ import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
-import { searchProducts } from './search.js';
+import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
 
@@ -654,6 +654,22 @@ function openSearchOverlay() {
   ov.querySelector('#search-ov-close').addEventListener('click', closeSearchOverlay);
 
   ov.querySelector('#search-ov-results').addEventListener('click', e => {
+    // Sugerencia de colección o etiqueta → ir a esa categoría
+    const cat = e.target.closest('.search-cat');
+    if (cat) {
+      closeSearchOverlay();
+      clearSearchInput();
+      if (cat.dataset.collection) {
+        setState({ activeCollection: cat.dataset.collection, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+        history.replaceState(null, '', `#shop/collection/${cat.dataset.collection}`);
+      } else if (cat.dataset.tag) {
+        setState({ activeCollection: null, activeTag: cat.dataset.tag, activeSize: null, searchQuery: '', currentPage: 1 });
+        history.replaceState(null, '', `#shop/tag/${encodeURIComponent(cat.dataset.tag)}`);
+      }
+      scrollToProducts('smooth');
+      return;
+    }
+
     const btn = e.target.closest('.search-result');
     if (!btn) return;
     const product = getState().products.find(p => p.id === btn.dataset.id);
@@ -686,25 +702,55 @@ function renderSearchResults(query) {
     return;
   }
 
-  const matches = searchProducts(products, q, collections).slice(0, 40);
-  if (!matches.length) {
-    box.innerHTML = `<p class="search-ov__hint">No se encontraron productos.</p>`;
+  const nq = norm(q);
+
+  // Colecciones y etiquetas que coinciden con la búsqueda
+  const collMatches = collections.filter(c => norm(c.title).includes(nq));
+  const allTags = [...new Set(products.flatMap(p => p.tags || []))];
+  const tagMatches = allTags.filter(t => norm(t).includes(nq)).slice(0, 8);
+  // Productos que coinciden
+  const prodMatches = searchProducts(products, q, collections).slice(0, 40);
+
+  if (!collMatches.length && !tagMatches.length && !prodMatches.length) {
+    box.innerHTML = `<p class="search-ov__hint">No se encontraron resultados.</p>`;
     return;
   }
 
-  box.innerHTML = matches.map(p => {
-    const img     = p.images[0]?.url || '';
-    const price   = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });
-    const soldOut = !p.availableForSale ? ' · Agotado' : '';
-    return `
-      <button class="search-result" data-id="${p.id}">
-        <img class="search-result__img" src="${img}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
-        <span class="search-result__info">
-          <span class="search-result__name">${escHtml(p.title)}</span>
-          <span class="search-result__price">L. ${price}${soldOut}</span>
-        </span>
-      </button>`;
-  }).join('');
+  const attr = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  let html = '';
+
+  if (collMatches.length || tagMatches.length) {
+    html += `<p class="search-ov__section">Colecciones y etiquetas</p>`;
+    html += collMatches.map(c => `
+      <button class="search-cat" data-collection="${attr(c.handle)}">
+        <span class="search-cat__name">${escHtml(c.title)}</span>
+        <span class="search-cat__type">Colección</span>
+      </button>`).join('');
+    html += tagMatches.map(t => `
+      <button class="search-cat" data-tag="${attr(t)}">
+        <span class="search-cat__name">${escHtml(t)}</span>
+        <span class="search-cat__type">Etiqueta</span>
+      </button>`).join('');
+  }
+
+  if (prodMatches.length) {
+    html += `<p class="search-ov__section">Productos</p>`;
+    html += prodMatches.map(p => {
+      const img     = p.images[0]?.url || '';
+      const price   = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+      const soldOut = !p.availableForSale ? ' · Agotado' : '';
+      return `
+        <button class="search-result" data-id="${p.id}">
+          <img class="search-result__img" src="${img}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+          <span class="search-result__info">
+            <span class="search-result__name">${escHtml(p.title)}</span>
+            <span class="search-result__price">L. ${price}${soldOut}</span>
+          </span>
+        </button>`;
+    }).join('');
+  }
+
+  box.innerHTML = html;
 }
 
 

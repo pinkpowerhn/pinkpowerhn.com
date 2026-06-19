@@ -363,7 +363,7 @@ function productCardHTML(p) {
         ${soldOut
           ? '<div class="product-card__badge">Agotado</div>'
           : lowStock
-            ? `<div class="product-card__badge product-card__badge--low">Últimas ${minStock}</div>`
+            ? `<div class="product-card__badge product-card__badge--low">${minStock === 1 ? 'Solo queda 1' : `Últimas ${minStock}`}</div>`
             : ''}
         <div class="product-card__overlay">
           ${!soldOut

@@ -899,7 +899,7 @@ function showCheckoutModal() {
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="pickup" checked />
               <span class="co-radio__text">
-                <span class="co-radio__title"><span class="co-radio__emoji">🏪</span> Pick up — recoger en tienda</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">🏪</span> Recoger en tienda</span>
                 <span class="co-radio__sub">(Lun. a Sáb. 10 am - 7 pm)</span>
               </span>
               <em class="co-radio__price">GRATIS</em>
@@ -907,16 +907,16 @@ function showCheckoutModal() {
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="sps" />
               <span class="co-radio__text">
-                <span class="co-radio__title"><span class="co-radio__emoji">🛵</span> Envío a domicilio en SPS</span>
-                <span class="co-radio__sub">(2 a 6 horas)</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">🛵</span> Envío SPS</span>
+                <span class="co-radio__sub">Recíbelo hoy en 2-6 horas</span>
               </span>
               <em class="co-radio__price">L. 95.00</em>
             </label>
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="outside" />
               <span class="co-radio__text">
-                <span class="co-radio__title"><span class="co-radio__emoji">📦</span> Envío a domicilio fuera de SPS</span>
-                <span class="co-radio__sub">(1 a 2 días hábiles)</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">📦</span> Envío nacional</span>
+                <span class="co-radio__sub">1-2 días hábiles</span>
               </span>
               <em class="co-radio__price">L. 110.00</em>
             </label>
@@ -1011,9 +1011,9 @@ function showCheckoutModal() {
 
 // ── Cálculo de entrega / pago / comisión ──────────────────
 const DELIVERY = {
-  pickup:  { label: 'Pick up (recoger en tienda)',     cost: 0 },
-  sps:     { label: 'Envío a domicilio en SPS',        cost: 95 },
-  outside: { label: 'Envío a domicilio fuera de SPS',  cost: 110 },
+  pickup:  { label: 'Recoger en tienda', cost: 0 },
+  sps:     { label: 'Envío SPS',         cost: 95 },
+  outside: { label: 'Envío nacional',    cost: 110 },
 };
 const PAYMENT = {
   transfer: { label: 'Transferencia' },

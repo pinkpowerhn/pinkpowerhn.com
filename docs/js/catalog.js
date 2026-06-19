@@ -44,7 +44,7 @@ export function renderCollectionSidebar(collections) {
     sections.push(`
       <button class="collection-btn${isOpen ? ' is-active' : ''}" data-handle="${c.handle}" aria-expanded="${isOpen}">
         <span class="collection-name">${c.title}</span>
-        <span class="collection-chevron" aria-hidden="true">${isOpen ? '→' : '+'}</span>
+        <span class="collection-chevron" aria-label="${isOpen ? 'Minimizar' : 'Desplegar'}">${isOpen ? '−' : '+'}</span>
       </button>
     `);
 

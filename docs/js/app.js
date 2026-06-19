@@ -409,16 +409,34 @@ document.addEventListener('click', e => {
     // sin return: el ancla navega normalmente
   }
 
-  // Colección: 1er clic despliega el submenú; 2º clic (ya abierta) va a TODA
-  // la categoría (todos sus productos, sin filtro de subcategoría).
+  // Colección. El chevron (+/−) solo despliega/colapsa el submenú; el NOMBRE
+  // despliega (1er clic) o va a TODA la categoría (2º clic, ya abierta).
   const collBtn = e.target.closest('.collection-btn');
   if (collBtn) {
     const clicked = collBtn.dataset.handle;
     if (!clicked) return;
     const { activeCollection } = getState();
+    const isOpen = clicked === activeCollection;
+    const onChevron = !!e.target.closest('.collection-chevron');
 
-    if (clicked === activeCollection) {
-      // 2º clic → ver todos los productos de la categoría
+    if (onChevron) {
+      // Solo desplegar/colapsar (no navega ni cierra la cinta)
+      if (isOpen) {
+        // − → minimizar para seguir navegando
+        setState({ activeCollection: null, activeTag: null, activeSize: null, currentPage: 1 });
+        history.replaceState(null, '', '#shop');
+      } else {
+        // + → desplegar
+        clearSearchInput();
+        setState({ activeCollection: clicked, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+        history.replaceState(null, '', `#shop/collection/${clicked}`);
+      }
+      return;
+    }
+
+    // Clic en el NOMBRE de la colección
+    if (isOpen) {
+      // ya abierta → ir a TODA la categoría (todos los productos, sin filtro)
       clearSearchInput();
       setState({ activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
       history.replaceState(null, '', `#shop/collection/${clicked}`);
@@ -426,12 +444,11 @@ document.addEventListener('click', e => {
       scrollToProductsMobile();
       return;
     }
-
-    // 1er clic → abrir la colección y desplegar su submenú
+    // colapsada → desplegar su submenú
     clearSearchInput();
     setState({ activeCollection: clicked, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
     history.replaceState(null, '', `#shop/collection/${clicked}`);
-    // Si no tiene subcategorías, no hay submenú → ir directo a la categoría
+    // Si no tiene subcategorías, ir directo a la categoría
     if (!document.querySelector('#collection-sidebar .tag-btn')) {
       closeMenuDrawer();
       scrollToProductsMobile();

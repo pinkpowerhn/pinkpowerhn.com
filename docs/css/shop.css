@@ -335,10 +335,14 @@
 }
 
 .collection-chevron {
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   line-height: 1;
   color: rgba(26, 10, 18, 0.45);
   transition: color 0.22s;
+  /* área tocable más amplia para el +/− sin desacomodar la fila */
+  padding: 0.3rem 0.55rem;
+  margin: -0.3rem -0.45rem -0.3rem 0;
+  cursor: pointer;
 }
 
 .collection-btn.is-active .collection-chevron,

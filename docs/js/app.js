@@ -1048,9 +1048,9 @@ function updateCoTotals(modal) {
   const box = modal.querySelector('#co-totals');
   if (box) {
     box.innerHTML = `
-      <div class="co-total-row"><span>Subtotal productos</span><span>${fmt(t.productsTotal)}</span></div>
+      <div class="co-total-row"><span>Subtotal</span><span>${fmt(t.productsTotal)}</span></div>
       <div class="co-total-row"><span>Envío</span><span>${t.shipping ? fmt(t.shipping) : 'Gratis'}</span></div>
-      ${t.commission > 0 ? `<div class="co-total-row co-total-row--fee"><span>Comisión contra entrega (5%)</span><span>${fmt(t.commission)}</span></div>` : ''}
+      ${t.commission > 0 ? `<div class="co-total-row co-total-row--fee"><span>Comisión (5%)</span><span>${fmt(t.commission)}</span></div>` : ''}
       <div class="co-total-row co-total-row--grand"><span>Total a pagar</span><span>${fmt(t.finalTotal)}</span></div>
     `;
   }

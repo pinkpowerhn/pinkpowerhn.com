@@ -1741,6 +1741,7 @@ body.menu-open nav {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 0.8rem;
   font-size: 0.84rem;
   font-weight: 500;
   color: rgba(26, 10, 18, 0.8);
@@ -1749,6 +1750,7 @@ body.menu-open nav {
 .co-total-row span:last-child {
   font-weight: 600;
   color: rgba(26, 10, 18, 0.9);
+  white-space: nowrap;          /* el monto nunca se parte en 2 líneas */
 }
 .co-total-row--fee { color: var(--pink-dk); }
 .co-total-row--fee span:last-child { color: var(--pink-dk); }

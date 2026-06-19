@@ -1118,10 +1118,15 @@ async function submitCheckout(name, phone, email, checkout = null) {
 
   const { cart, waNumber } = getState();
 
+  // Si el cliente no deja correo, se arma uno técnico con su teléfono para que
+  // Shopify lo identifique (con su nombre y teléfono) y no lo cree "desconocido".
+  const phoneDigits = String(phone).replace(/\D/g, '');
+  const customerEmail = email || (phoneDigits ? `${phoneDigits}@pinkpowerhn.com` : undefined);
+
   const orderPayload = {
     customer_name: name,
     phone,
-    email: email || undefined,
+    email: customerEmail,
     line_items: cart.map(i => ({
       variant_id: i.variantId,
       quantity:   i.quantity,

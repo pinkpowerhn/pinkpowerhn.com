@@ -1696,6 +1696,7 @@ body.menu-open nav {
   font-size: 0.7rem;
   color: rgba(26, 10, 18, 0.62);
   letter-spacing: 0.02em;
+  text-transform: none;   /* en su caso normal, no en MAYÚSCULAS */
 }
 .co-radio__price {
   font-style: normal;

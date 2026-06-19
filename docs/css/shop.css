@@ -1657,12 +1657,18 @@ body.menu-open nav {
 
 /* Tipo de entrega / pago — opciones */
 .co-field__label {
-  font-size: 0.82rem;
+  font-size: 0.95rem;              /* más grande que las opciones → jerarquía clara */
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;       /* TIPO DE ENTREGA / TIPO DE PAGO en mayúscula */
   color: rgba(26, 10, 18, 0.92);   /* oscuro y legible */
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+/* Las secciones de entrega/pago: más aire entre una y otra para que se note
+   que son 2 grupos distintos (no un montón de cosas juntas). */
+.co-field:has(.co-options) {
+  margin-bottom: 2rem;
 }
 .co-options { display: flex; flex-direction: column; gap: 0.4rem; }
 .co-radio {
@@ -1771,10 +1777,11 @@ body.menu-open nav {
 /* Solo los labels de los campos de texto (hijos directos), NO los .co-radio */
 .co-field > label {
   display: block;
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--pink-lt);
+  color: var(--pink-dk);          /* antes pink-lt: se veía opaco */
   margin-bottom: 0.4rem;
 }
 
@@ -1782,7 +1789,7 @@ body.menu-open nav {
   text-transform: none;
   letter-spacing: 0;
   font-size: 0.65rem;
-  color: rgba(26, 10, 18, 0.35);
+  color: rgba(26, 10, 18, 0.5);
 }
 
 /* Solo los inputs de texto (hijos directos), NO los radios de las opciones */
@@ -1799,7 +1806,7 @@ body.menu-open nav {
   transition: border-color 0.2s;
 }
 
-.co-field > input::placeholder { color: rgba(26, 10, 18, 0.28); }
+.co-field > input::placeholder { color: rgba(26, 10, 18, 0.45); }
 .co-field > input:focus         { border-color: var(--pink); }
 
 .co-error {

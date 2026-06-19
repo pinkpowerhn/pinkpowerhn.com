@@ -1598,15 +1598,28 @@ body.menu-open nav {
 .co-item {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 1rem;
   font-size: 0.76rem;
 }
 
-.co-item__name {
-  color: rgba(26, 10, 18, 0.75);
-  letter-spacing: 0.04em;
+.co-item__info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.co-item__name {
+  color: rgba(26, 10, 18, 0.9);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.co-item__qty {
+  font-size: 0.7rem;
+  color: rgba(26, 10, 18, 0.62);
+  letter-spacing: 0.04em;
 }
 
 .co-variant {
@@ -1642,42 +1655,56 @@ body.menu-open nav {
 
 /* Tipo de entrega / pago — opciones */
 .co-field__label {
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--pink-lt);
-  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(26, 10, 18, 0.92);   /* oscuro y legible, como la referencia */
+  margin-bottom: 0.6rem;
 }
 .co-options { display: flex; flex-direction: column; gap: 0.4rem; }
 .co-radio {
   display: flex;
-  align-items: center;
+  align-items: flex-start;          /* el check arriba a la izquierda, aunque el texto sea de 2 líneas */
   gap: 0.6rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.7rem 0.85rem;
   border: 1px solid rgba(232, 67, 122, 0.2);
   border-radius: 10px;
   cursor: pointer;
   transition: border-color 0.18s, background 0.18s;
 }
 .co-radio:hover { border-color: var(--pink); }
-.co-radio input { accent-color: var(--pink); width: 16px; height: 16px; flex-shrink: 0; }
-.co-radio span {
+.co-radio input {
+  accent-color: var(--pink);
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+  margin-top: 0.12rem;              /* alinea el check con la 1ª línea del texto */
+}
+.co-radio__text {
   flex: 1;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.78rem;
-  color: rgba(26, 10, 18, 0.8);
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.co-radio__title {
+  font-weight: 700;                 /* texto en negrita, se lee mejor */
+  font-size: 0.8rem;
+  color: rgba(26, 10, 18, 0.9);
   letter-spacing: 0.02em;
 }
-.co-radio span em {
+.co-radio__sub {
+  font-size: 0.7rem;
+  color: rgba(26, 10, 18, 0.62);
+  letter-spacing: 0.02em;
+}
+.co-radio__price {
   font-style: normal;
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: 0.74rem;
   color: var(--pink);
   white-space: nowrap;
+  margin-top: 0.1rem;
 }
 .co-radio:has(input:checked) { border-color: var(--pink); background: rgba(232, 67, 122, 0.06); }
 
@@ -1749,7 +1776,8 @@ body.menu-open nav {
   color: rgba(26, 10, 18, 0.35);
 }
 
-.co-field input {
+/* Solo los inputs de texto (hijos directos), NO los radios de las opciones */
+.co-field > input {
   width: 100%;
   background: rgba(255, 247, 251, 0.8);
   border: 1px solid rgba(232, 67, 122, 0.28);
@@ -1762,8 +1790,8 @@ body.menu-open nav {
   transition: border-color 0.2s;
 }
 
-.co-field input::placeholder { color: rgba(26, 10, 18, 0.28); }
-.co-field input:focus         { border-color: var(--pink); }
+.co-field > input::placeholder { color: rgba(26, 10, 18, 0.28); }
+.co-field > input:focus         { border-color: var(--pink); }
 
 .co-error {
   font-size: 0.72rem;

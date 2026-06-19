@@ -270,12 +270,10 @@
     gap: 2rem;
     max-width: 520px;
   }
-  /* En móvil cada colección ocupa 84% → se asoma la siguiente (peek) */
-  .fb-slide { flex-basis: 84%; min-height: 350px; }
-  /* Skeleton de móvil: dos tarjetas al 84% → se asoma la segunda */
-  .fb-skeleton { flex-basis: 84%; min-height: 350px; }
+  /* En móvil cada colección ocupa todo el ancho (sin peek de las de al lado) */
+  .fb-slide { min-height: 350px; }
+  .fb-skeleton { min-height: 350px; }
   .fb-skeleton__media { width: 185px; height: 235px; }
-  .fb-skeleton--peek { display: flex; }
   .fb-slide__media img { max-height: 230px; }
   .fb-slide__title { font-size: 1.45rem; }
   .fb-arrow { display: none; }
@@ -792,7 +790,8 @@
 .product-card__badge {
   position: absolute;
   top: 0.7rem;
-  left: 0.7rem;
+  right: 0.7rem;          /* badges (Agotado / stock bajo) a la derecha */
+  left: auto;
   background: #e60023;
   color: #fff;
   font-size: 0.56rem;
@@ -806,8 +805,6 @@
 
 .product-card__badge--low {
   background: #f5820a;
-  left: auto;
-  right: 0.7rem;   /* el aviso de stock bajo va a la derecha */
 }
 
 /* Hover overlay with buttons */
@@ -1706,9 +1703,9 @@ body.menu-open nav {
   text-transform: none;             /* en su caso normal: solo la 1ª letra en mayúscula */
 }
 .co-radio__emoji {
-  font-size: 1.05rem;               /* el icono un poco más grande que el texto */
+  font-size: 0.9rem;                /* emojis más pequeños */
   line-height: 1;
-  vertical-align: -0.12em;          /* alinea el emoji sin inflar la línea del título */
+  vertical-align: -0.06em;          /* alinea el emoji sin inflar la línea del título */
   margin-right: 0.15rem;
 }
 .co-radio__sub {

@@ -720,16 +720,14 @@ function renderSearchResults(query) {
   let html = '';
 
   if (collMatches.length || tagMatches.length) {
-    html += `<p class="search-ov__section">Colecciones y etiquetas</p>`;
+    html += `<p class="search-ov__section">Colecciones</p>`;
     html += collMatches.map(c => `
       <button class="search-cat" data-collection="${attr(c.handle)}">
         <span class="search-cat__name">${escHtml(c.title)}</span>
-        <span class="search-cat__type">Colección</span>
       </button>`).join('');
     html += tagMatches.map(t => `
       <button class="search-cat" data-tag="${attr(t)}">
         <span class="search-cat__name">${escHtml(t)}</span>
-        <span class="search-cat__type">Etiqueta</span>
       </button>`).join('');
   }
 

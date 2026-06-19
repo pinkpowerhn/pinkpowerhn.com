@@ -1658,9 +1658,9 @@ body.menu-open nav {
 .co-field__label {
   font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  text-transform: none;
-  color: rgba(26, 10, 18, 0.92);   /* oscuro y legible, como la referencia */
+  letter-spacing: 0.06em;
+  text-transform: uppercase;       /* TIPO DE ENTREGA / TIPO DE PAGO en mayúscula */
+  color: rgba(26, 10, 18, 0.92);   /* oscuro y legible */
   margin-bottom: 0.6rem;
 }
 .co-options { display: flex; flex-direction: column; gap: 0.4rem; }

@@ -1613,6 +1613,7 @@ body.menu-open nav {
 .co-item__name {
   color: rgba(26, 10, 18, 0.9);
   font-weight: 700;
+  font-size: 0.82rem;          /* coincide con el título de las opciones */
   letter-spacing: 0.04em;
 }
 
@@ -1630,7 +1631,7 @@ body.menu-open nav {
 .co-item__price {
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.82rem;          /* mismo tamaño que el precio de las opciones */
   color: var(--pink);
   white-space: nowrap;
 }
@@ -1703,7 +1704,7 @@ body.menu-open nav {
   font-style: normal;
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
-  font-size: 0.74rem;
+  font-size: 0.82rem;          /* mismo tamaño que el precio del resumen */
   color: var(--pink);
   white-space: nowrap;
   margin-top: 0.1rem;

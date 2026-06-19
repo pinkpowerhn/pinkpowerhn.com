@@ -1688,10 +1688,10 @@ body.menu-open nav {
 }
 .co-radio__title {
   font-weight: 700;                 /* texto en negrita, se lee mejor */
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: rgba(26, 10, 18, 0.9);
   letter-spacing: 0.02em;
-  text-transform: uppercase;        /* título en MAYÚSCULAS (como la referencia) */
+  text-transform: none;             /* en su caso normal: solo la 1ª letra en mayúscula */
 }
 .co-radio__sub {
   font-size: 0.7rem;

@@ -938,8 +938,10 @@ function showCheckoutModal() {
     if (e.target.name === 'co-delivery' || e.target.name === 'co-payment') updateCoTotals(modal);
   });
 
-  // Focus name field
-  setTimeout(() => modal.querySelector('#co-name')?.focus(), 50);
+  // Abrir mostrando el inicio (resumen del pedido + opciones), no el campo de
+  // datos. Antes el focus automático al nombre scrolleaba hasta el fondo en móvil.
+  const panel = modal.querySelector('.co-panel');
+  if (panel) panel.scrollTop = 0;
 
   // Wire close
   modal.querySelector('#co-backdrop').addEventListener('click', closeCheckoutModal);

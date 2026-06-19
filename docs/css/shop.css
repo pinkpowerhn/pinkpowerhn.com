@@ -1589,6 +1589,7 @@ body.menu-open nav {
 .co-summary {
   background: rgba(232, 67, 122, 0.04);
   border: 1px solid rgba(232, 67, 122, 0.12);
+  border-radius: 10px;          /* mismas esquinas redondeadas que las cajas de abajo */
   padding: 1rem 1.2rem;
   margin-bottom: 1.6rem;
   display: flex;
@@ -1697,12 +1698,15 @@ body.menu-open nav {
 .co-radio__title {
   font-weight: 700;                 /* texto en negrita, se lee mejor */
   font-size: 0.82rem;
+  line-height: 1.4;
   color: rgba(26, 10, 18, 0.9);
   letter-spacing: 0.02em;
   text-transform: none;             /* en su caso normal: solo la 1ª letra en mayúscula */
 }
 .co-radio__emoji {
   font-size: 1.05rem;               /* el icono un poco más grande que el texto */
+  line-height: 1;
+  vertical-align: -0.12em;          /* alinea el emoji sin inflar la línea del título */
   margin-right: 0.15rem;
 }
 .co-radio__sub {
@@ -1716,44 +1720,51 @@ body.menu-open nav {
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: 0.82rem;          /* mismo tamaño que el precio del resumen */
+  line-height: 1.4;            /* mismo line-height que el título → misma altura */
   color: var(--pink);
   white-space: nowrap;
-  margin-top: 0.1rem;
 }
 .co-radio:has(input:checked) { border-color: var(--pink); background: rgba(232, 67, 122, 0.06); }
 
 /* Totales dinámicos */
 .co-totals {
-  background: rgba(232, 67, 122, 0.04);
-  border: 1px solid rgba(232, 67, 122, 0.12);
+  background: rgba(232, 67, 122, 0.07);
+  border: 1px solid rgba(232, 67, 122, 0.22);
   border-radius: 10px;
-  padding: 0.9rem 1.1rem;
+  padding: 1.1rem 1.2rem;
   margin-bottom: 0.8rem;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 .co-total-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 0.76rem;
-  color: rgba(26, 10, 18, 0.7);
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: rgba(26, 10, 18, 0.8);
   letter-spacing: 0.03em;
 }
+.co-total-row span:last-child {
+  font-weight: 600;
+  color: rgba(26, 10, 18, 0.9);
+}
 .co-total-row--fee { color: var(--pink-dk); }
+.co-total-row--fee span:last-child { color: var(--pink-dk); }
 .co-total-row--grand {
-  border-top: 1px solid rgba(232, 67, 122, 0.18);
-  margin-top: 0.3rem;
-  padding-top: 0.55rem;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
-  color: rgba(26, 10, 18, 0.85);
+  border-top: 1px solid rgba(232, 67, 122, 0.28);
+  margin-top: 0.5rem;
+  padding-top: 0.7rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(26, 10, 18, 0.92);
 }
 .co-total-row--grand span:last-child {
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   color: var(--pink);
 }
 

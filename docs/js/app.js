@@ -940,7 +940,7 @@ function showCheckoutModal() {
               <input type="radio" name="co-payment" value="cash" />
               <span class="co-radio__text">
                 <span class="co-radio__title"><span class="co-radio__emoji">💵</span> Efectivo</span>
-                <span class="co-radio__sub">(El pago en efectivo fuera de SPS tiene un 5% de comisión por cobro contra entrega, se incluirá en el total)</span>
+                <span class="co-radio__sub">Pago contra entrega fuera de SPS aplica una comisión del 5%</span>
               </span>
             </label>
           </div>
@@ -950,11 +950,11 @@ function showCheckoutModal() {
 
         <div class="co-field">
           <label for="co-name">Nombre completo *</label>
-          <input type="text" id="co-name" required placeholder="Tu nombre completo" autocomplete="name" />
+          <input type="text" id="co-name" required placeholder="Nombre y Apellido" autocomplete="name" />
         </div>
         <div class="co-field">
           <label for="co-phone">Teléfono *</label>
-          <input type="tel" id="co-phone" required placeholder="504 XXXX XXXX" autocomplete="tel" />
+          <input type="tel" id="co-phone" required value="+504 " placeholder="+504 0000-0000" autocomplete="tel" />
         </div>
         <div class="co-field">
           <label for="co-email">Email <span class="co-optional">(opcional)</span></label>
@@ -962,7 +962,7 @@ function showCheckoutModal() {
         </div>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">
-          Crear Pedido y Continuar por WhatsApp
+          Finalizar por WhatsApp
         </button>
       </form>
     </div>
@@ -1104,7 +1104,7 @@ async function submitCheckout(name, phone, email, checkout = null) {
   } catch (err) {
     console.error('[PinkPower] Order error:', err);
     showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
-    if (submitBtn) { submitBtn.textContent = 'Crear Pedido y Continuar por WhatsApp'; submitBtn.disabled = false; }
+    if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
   }
 }
 

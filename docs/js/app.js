@@ -910,7 +910,7 @@ function showCheckoutModal() {
                 <span class="co-radio__title">Envío a domicilio en SPS</span>
                 <span class="co-radio__sub">(2 a 6 horas)</span>
               </span>
-              <em class="co-radio__price">+ L. 95.00</em>
+              <em class="co-radio__price">L. 95.00</em>
             </label>
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="outside" />
@@ -918,7 +918,7 @@ function showCheckoutModal() {
                 <span class="co-radio__title">Envío a domicilio fuera de SPS</span>
                 <span class="co-radio__sub">(1 a 2 días hábiles)</span>
               </span>
-              <em class="co-radio__price">+ L. 110.00</em>
+              <em class="co-radio__price">L. 110.00</em>
             </label>
           </div>
         </div>

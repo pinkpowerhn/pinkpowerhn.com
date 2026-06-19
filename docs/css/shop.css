@@ -1691,6 +1691,7 @@ body.menu-open nav {
   font-size: 0.8rem;
   color: rgba(26, 10, 18, 0.9);
   letter-spacing: 0.02em;
+  text-transform: uppercase;        /* título en MAYÚSCULAS (como la referencia) */
 }
 .co-radio__sub {
   font-size: 0.7rem;
@@ -1761,7 +1762,8 @@ body.menu-open nav {
   margin-bottom: 1.1rem;
 }
 
-.co-field label {
+/* Solo los labels de los campos de texto (hijos directos), NO los .co-radio */
+.co-field > label {
   display: block;
   font-size: 0.62rem;
   letter-spacing: 0.22em;

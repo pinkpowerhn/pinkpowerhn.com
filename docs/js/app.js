@@ -899,15 +899,15 @@ function showCheckoutModal() {
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="pickup" checked />
               <span class="co-radio__text">
-                <span class="co-radio__title">Pick up — recoger en tienda</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">🏪</span> Pick up — recoger en tienda</span>
                 <span class="co-radio__sub">(Lun. a Sáb. 10 am - 7 pm)</span>
               </span>
-              <em class="co-radio__price">Gratis</em>
+              <em class="co-radio__price">GRATIS</em>
             </label>
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="sps" />
               <span class="co-radio__text">
-                <span class="co-radio__title">Envío a domicilio en SPS</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">🛵</span> Envío a domicilio en SPS</span>
                 <span class="co-radio__sub">(2 a 6 horas)</span>
               </span>
               <em class="co-radio__price">L. 95.00</em>
@@ -915,7 +915,7 @@ function showCheckoutModal() {
             <label class="co-radio">
               <input type="radio" name="co-delivery" value="outside" />
               <span class="co-radio__text">
-                <span class="co-radio__title">Envío a domicilio fuera de SPS</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">📦</span> Envío a domicilio fuera de SPS</span>
                 <span class="co-radio__sub">(1 a 2 días hábiles)</span>
               </span>
               <em class="co-radio__price">L. 110.00</em>
@@ -928,18 +928,18 @@ function showCheckoutModal() {
             <label class="co-radio">
               <input type="radio" name="co-payment" value="transfer" checked />
               <span class="co-radio__text">
-                <span class="co-radio__title">Transferencia</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">🏦</span> Transferencia</span>
                 <span class="co-radio__sub">(BAC / Atlántida / Banpaís / Ficohsa / Occidente)</span>
               </span>
             </label>
             <label class="co-radio">
               <input type="radio" name="co-payment" value="card" />
-              <span class="co-radio__text"><span class="co-radio__title">Tarjeta / Link de Pago</span></span>
+              <span class="co-radio__text"><span class="co-radio__title"><span class="co-radio__emoji">💳</span> Tarjeta / Link de Pago</span></span>
             </label>
             <label class="co-radio">
               <input type="radio" name="co-payment" value="cash" />
               <span class="co-radio__text">
-                <span class="co-radio__title">Efectivo</span>
+                <span class="co-radio__title"><span class="co-radio__emoji">💵</span> Efectivo</span>
                 <span class="co-radio__sub">(El pago en efectivo fuera de SPS tiene un 5% de comisión por cobro contra entrega, se incluirá en el total)</span>
               </span>
             </label>

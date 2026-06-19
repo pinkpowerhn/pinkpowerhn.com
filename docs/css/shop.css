@@ -884,7 +884,8 @@
   font-size: 0.66rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pink-lt);
+  color: var(--pink-dk);          /* antes pink-lt: casi no se leía */
+  font-weight: 600;
   margin-bottom: 0.4rem;
   line-height: 1.3;
   min-height: 1.1em; /* reserva espacio aunque esté vacío → tarjetas alineadas */
@@ -1693,6 +1694,10 @@ body.menu-open nav {
   color: rgba(26, 10, 18, 0.9);
   letter-spacing: 0.02em;
   text-transform: none;             /* en su caso normal: solo la 1ª letra en mayúscula */
+}
+.co-radio__emoji {
+  font-size: 1.05rem;               /* el icono un poco más grande que el texto */
+  margin-right: 0.15rem;
 }
 .co-radio__sub {
   font-size: 0.7rem;

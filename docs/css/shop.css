@@ -277,8 +277,20 @@
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
   }
-  /* En móvil cada colección ocupa todo el ancho (sin peek de las de al lado) */
-  .fb-slide { min-height: 350px; }
+  /* En móvil la tarjeta va centrada y asoma un pedazo de la anterior y la
+     siguiente (efecto peek). El padding lateral del carril deja que la 1ª y la
+     última también queden centradas. */
+  .fb-track {
+    gap: 0.55rem;
+    padding-left: 14vw;
+    padding-right: 14vw;
+    scroll-padding-left: 14vw;
+    scroll-padding-right: 14vw;
+  }
+  .fb-slide   { flex-basis: 72vw; min-height: 350px; }
+  .fb-skeleton{ flex-basis: 72vw; }
+  /* Tarjeta un poco más compacta para que el contenido respire en 72vw */
+  .fb-slide { padding: 2rem 1.3rem 2.4rem; }
   .fb-skeleton { min-height: 350px; }
   .fb-skeleton__media { width: 185px; height: 235px; }
   .fb-slide__media img { max-height: 230px; }

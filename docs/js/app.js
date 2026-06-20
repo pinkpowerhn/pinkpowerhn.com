@@ -49,7 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           : `https://wa.me/${waNumber}`;
       });
     }
-    renderFeatured(firstPage.products, collections);
+    // El carrusel NO se dibuja aún: se pinta una sola vez cuando termina de
+    // cargar todo el catálogo (ver loadRemainingProducts), para que aparezcan
+    // todas las colecciones de golpe y los puntos no salten de 3 a 5.
     handleHashRoute();
 
     // Carga el resto en background sin bloquear la UI. Cada batch se
@@ -101,12 +103,12 @@ async function loadRemainingProducts(cursor, hasNext) {
   // Marca que ya no llegarán más productos → el sidebar deja de decir "Cargando…"
   setState({ productsLoaded: true });
 
-  // Ya con todo el catálogo, agrega las colecciones que faltaban (las que
-  // tenían sus productos en lotes posteriores) SIN re-armar el carrusel.
+  // Ya con todo el catálogo, dibuja el carrusel UNA sola vez con todas las
+  // colecciones (así no aparecen primero 3 y luego 5).
   if (!_fbFullDone) {
     _fbFullDone = true;
     const st = getState();
-    addMissingFeatured(st.products, st.collections);
+    renderFeatured(st.products, st.collections);
   }
 }
 
@@ -194,9 +196,13 @@ function scrollToProductsWhenReady() {
 // ── Carrusel de colecciones (scroll horizontal) ───────────
 // Una fila desplazable: en desktop muestra una colección a la vez y avanza
 // sola; en móvil se ven varias con "peek" y se puede deslizar (como B&BW).
-let _fbIndex = 0;
+let _fbIndex = 0;          // índice ABSOLUTO dentro de las 3 copias del carril
 let _fbTimer = null;
-let _fbFullDone = false; // ya se re-renderizó con todo el catálogo
+let _fbFullDone = false;   // ya se dibujó el carrusel con todo el catálogo
+let _fbProgScroll = false; // hay un scroll programático en curso (auto/flechas/puntos)
+let _fbN = 0;              // cantidad de colecciones reales (1 copia)
+let _fbJumpW = 0;          // ancho en px de una copia (para reposicionar en círculo)
+let _fbDragging = false;   // se está arrastrando con el mouse
 
 function renderFeatured(products, collections) {
   const section = document.getElementById('featured');
@@ -206,25 +212,45 @@ function renderFeatured(products, collections) {
   // Una diapositiva por colección, con una foto representativa: se toma un
   // producto AL AZAR de esa colección, así en cada visita la foto cambia y
   // no es siempre la misma.
-  const slides = [];
+  const base = [];
   for (const c of collections) {
     const img = pickCollectionImage(products, c.handle);
     if (!img) continue; // colección sin productos/fotos aún → se omite
-    slides.push({ handle: c.handle, title: c.title, img });
+    base.push({ handle: c.handle, title: c.title, img });
   }
-  if (slides.length < 2) { section.hidden = true; return; }
+  if (base.length < 2) { section.hidden = true; return; }
 
-  track.innerHTML = slides.map((s, i) => fbSlideHTML(s.handle, s.title, s.img, i === 0)).join('');
-  fbRenderDots(slides.length);
+  _fbN = base.length;
+  // Carrusel INFINITO: se pintan TRES copias seguidas de las colecciones. El
+  // usuario siempre está en la copia del medio, así siempre hay tarjetas a
+  // ambos lados (peek) y, al cruzar a otra copia, se reposiciona sin que se
+  // note → se puede arrastrar en círculo sin fin en ambos sentidos.
+  const triple = [...base, ...base, ...base];
+  track.innerHTML = triple
+    .map((s, i) => fbSlideHTML(s.handle, s.title, s.img, i < _fbN))
+    .join('');
+  fbRenderDots(_fbN);
 
   section.hidden = false;
-  _fbIndex = 0;
-  track.scrollLeft = 0;
 
-  // Al desplazar (auto o manual), sincroniza los puntos con la posición
+  // Centra la 1ª tarjeta de la copia del medio y mide el ancho de una copia.
+  const center = () => {
+    const slides = [...track.querySelectorAll('.fb-slide')];
+    if (slides.length < _fbN * 3) return;
+    _fbJumpW = slides[_fbN].offsetLeft - slides[0].offsetLeft;
+    _fbIndex = _fbN;
+    const mid = slides[_fbN];
+    track.scrollLeft = mid.offsetLeft - (track.clientWidth - mid.clientWidth) / 2;
+    markFbDot(0);
+  };
+  center();
+  requestAnimationFrame(center); // reintento por si el layout aún no estaba listo
+
+  // Al asentarse el scroll (90 ms sin moverse) se actualizan los puntos, se
+  // reposiciona a la copia del medio y se restaura el snap.
   track.onscroll = () => {
     clearTimeout(track._fbScrollT);
-    track._fbScrollT = setTimeout(syncFbDots, 90);
+    track._fbScrollT = setTimeout(fbOnSettle, 90);
   };
 
   // Arrastre con mouse (en táctil ya funciona el swipe nativo)
@@ -236,22 +262,32 @@ function renderFeatured(products, collections) {
   section.onmouseleave = startFbAuto;
 }
 
-// Centra la diapositiva i dentro del carril
+// Centra la diapositiva absoluta i dentro del carril (auto / flechas / puntos)
 function setFbIndex(i, smooth = true) {
   const track  = document.getElementById('fb-track');
   const slides = track ? [...track.querySelectorAll('.fb-slide')] : [];
-  if (!slides.length) return;
-  _fbIndex = (i + slides.length) % slides.length;
-  const slide = slides[_fbIndex];
+  if (!slides.length || !_fbN) return;
+  let abs = i;
+  if (abs < 0) abs += _fbN;                 // no salir por la izquierda
+  if (abs >= slides.length) abs -= _fbN;    // no salir por la derecha
+  _fbIndex = abs;
+  const slide = slides[abs];
   const left  = slide.offsetLeft - (track.clientWidth - slide.clientWidth) / 2;
+  // Apagamos el snap obligatorio durante el scroll programático: en móvil el
+  // snap puede interrumpir un desplazamiento largo y dejarlo a medias. Se
+  // restaura al asentarse (ver fbOnSettle).
+  track.style.scrollSnapType = 'none';
+  _fbProgScroll = true;
   track.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
-  markFbDot(_fbIndex);
+  markFbDot(abs % _fbN);
 }
 
-// Detecta cuál diapositiva está centrada y actualiza los puntos
-function syncFbDots() {
+// Al asentarse el scroll: detecta la tarjeta centrada, actualiza los puntos y
+// reposiciona (sin animación) a la copia del medio para el efecto infinito.
+function fbOnSettle() {
   const track  = document.getElementById('fb-track');
-  const slides = track ? [...track.querySelectorAll('.fb-slide')] : [];
+  if (!track || _fbDragging || !_fbN) return;
+  const slides = [...track.querySelectorAll('.fb-slide')];
   if (!slides.length) return;
   const center = track.scrollLeft + track.clientWidth / 2;
   let nearest = 0, best = Infinity;
@@ -259,8 +295,22 @@ function syncFbDots() {
     const d = Math.abs((s.offsetLeft + s.clientWidth / 2) - center);
     if (d < best) { best = d; nearest = idx; }
   });
+  // Si quedó en la 1ª o 3ª copia, saltar a la del medio (mismo aspecto visual)
+  if (_fbJumpW) {
+    if (nearest < _fbN) {
+      track.style.scrollSnapType = 'none';
+      track.scrollLeft += _fbJumpW;
+      nearest += _fbN;
+    } else if (nearest >= 2 * _fbN) {
+      track.style.scrollSnapType = 'none';
+      track.scrollLeft -= _fbJumpW;
+      nearest -= _fbN;
+    }
+  }
   _fbIndex = nearest;
-  markFbDot(nearest);
+  markFbDot(nearest % _fbN);
+  track.style.scrollSnapType = ''; // snap activo para el deslizamiento manual
+  _fbProgScroll = false;
 }
 
 function markFbDot(idx) {
@@ -299,42 +349,8 @@ function fbRenderDots(n) {
   const dotsBox = document.getElementById('fb-dots');
   if (!dotsBox) return;
   dotsBox.innerHTML = Array.from({ length: n }, (_, i) =>
-    `<button class="fb-dot${i === _fbIndex ? ' is-active' : ''}" data-fb-dot="${i}" aria-label="Ir a la colección ${i + 1}"></button>`
+    `<button class="fb-dot${i === 0 ? ' is-active' : ''}" data-fb-dot="${i}" aria-label="Ir a la colección ${i + 1}"></button>`
   ).join('');
-}
-
-// Al terminar de cargar el catálogo, AGREGA solo las colecciones que faltaban
-// (sin re-armar ni resetear el carrusel → no salta ni cambia las fotos ya puestas).
-function addMissingFeatured(products, collections) {
-  const section = document.getElementById('featured');
-  const track   = document.getElementById('fb-track');
-  if (!section || !track) return;
-
-  const existing = new Set(
-    [...track.querySelectorAll('.fb-slide')].map(s => s.dataset.fbCollection)
-  );
-
-  let added = 0;
-  for (const c of collections) {
-    if (existing.has(c.handle)) continue;
-    const img = pickCollectionImage(products, c.handle);
-    if (!img) continue;
-    track.insertAdjacentHTML('beforeend', fbSlideHTML(c.handle, c.title, img, false));
-    added++;
-  }
-
-  if (!added) return;
-  const total = track.querySelectorAll('.fb-slide').length;
-  fbRenderDots(total);
-
-  // Si antes estaba oculto por tener <2, ahora muéstralo y arráncalo
-  if (section.hidden && total >= 2) {
-    section.hidden = false;
-    _fbIndex = 0;
-    track.scrollLeft = 0;
-    if (!track._fbDragWired) { wireFbDrag(track); track._fbDragWired = true; }
-    startFbAuto();
-  }
 }
 
 // Permite arrastrar el carrusel con el mouse (el táctil usa swipe nativo).
@@ -344,6 +360,8 @@ function wireFbDrag(track) {
   track.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'mouse') return; // en táctil deja el scroll nativo
     down = true; moved = false;
+    _fbDragging = true;
+    _fbProgScroll = false; // el arrastre maneja su propio snap (no lo restaure el onscroll)
     startX = e.clientX;
     startScroll = track.scrollLeft;
     track.style.scrollSnapType = 'none'; // evita saltos mientras se arrastra
@@ -361,9 +379,10 @@ function wireFbDrag(track) {
   const end = () => {
     if (!down) return;
     down = false;
+    _fbDragging = false;
     track.style.cursor = '';
-    track.style.scrollSnapType = ''; // re-activa el snap → encaja en la tarjeta
-    syncFbDots();
+    // fbOnSettle re-activa el snap, ajusta los puntos y reposiciona en círculo
+    fbOnSettle();
   };
   track.addEventListener('pointerup', end);
   track.addEventListener('pointerleave', end);
@@ -512,7 +531,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#fb-prev')) { setFbIndex(_fbIndex - 1); startFbAuto(); return; }
   if (e.target.closest('#fb-next')) { setFbIndex(_fbIndex + 1); startFbAuto(); return; }
   const fbDot = e.target.closest('[data-fb-dot]');
-  if (fbDot) { setFbIndex(parseInt(fbDot.dataset.fbDot, 10)); startFbAuto(); return; }
+  if (fbDot) { setFbIndex(_fbN + parseInt(fbDot.dataset.fbDot, 10)); startFbAuto(); return; }
   const fbCol = e.target.closest('[data-fb-collection]');
   if (fbCol) {
     const handle = fbCol.dataset.fbCollection;

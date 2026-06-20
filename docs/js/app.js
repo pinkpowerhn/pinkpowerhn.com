@@ -49,9 +49,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           : `https://wa.me/${waNumber}`;
       });
     }
-    // El carrusel NO se dibuja aún: se pinta una sola vez cuando termina de
-    // cargar todo el catálogo (ver loadRemainingProducts), para que aparezcan
-    // todas las colecciones de golpe y los puntos no salten de 3 a 5.
+    // El carrusel se dibuja YA con todas las colecciones (las fotos que aún no
+    // estén se rellenan al cargar los lotes siguientes). Así aparece rápido y
+    // los puntos no saltan de 3 a 5.
+    renderFeatured(firstPage.products, collections);
     handleHashRoute();
 
     // Carga el resto en background sin bloquear la UI. Cada batch se
@@ -95,6 +96,8 @@ async function loadRemainingProducts(cursor, hasNext) {
       setState({ products: merged });
       cursor = page.cursor;
       hasNext = page.hasNext;
+      // Con cada lote nuevo, rellena las fotos de las colecciones que faltaban
+      fbFillFeaturedImages(merged);
     } catch (err) {
       console.warn('[PinkPower] Background load failed:', err);
       break; // dejamos lo que ya cargamos
@@ -102,14 +105,10 @@ async function loadRemainingProducts(cursor, hasNext) {
   }
   // Marca que ya no llegarán más productos → el sidebar deja de decir "Cargando…"
   setState({ productsLoaded: true });
-
-  // Ya con todo el catálogo, dibuja el carrusel UNA sola vez con todas las
-  // colecciones (así no aparecen primero 3 y luego 5).
-  if (!_fbFullDone) {
-    _fbFullDone = true;
-    const st = getState();
-    renderFeatured(st.products, st.collections);
-  }
+  // Último intento de rellenar fotos y, si alguna colección quedó sin foto,
+  // se le quita el shimmer para que no parpadee para siempre.
+  fbFillFeaturedImages(getState().products);
+  document.querySelectorAll('#fb-track .fb-slide__imgskel').forEach(el => el.classList.remove('skeleton'));
 }
 
 // ── State subscription ────────────────────────────────────
@@ -198,7 +197,6 @@ function scrollToProductsWhenReady() {
 // sola; en móvil se ven varias con "peek" y se puede deslizar (como B&BW).
 let _fbIndex = 0;          // índice ABSOLUTO dentro de las 3 copias del carril
 let _fbTimer = null;
-let _fbFullDone = false;   // ya se dibujó el carrusel con todo el catálogo
 let _fbProgScroll = false; // hay un scroll programático en curso (auto/flechas/puntos)
 let _fbN = 0;              // cantidad de colecciones reales (1 copia)
 let _fbJumpW = 0;          // ancho en px de una copia (para reposicionar en círculo)
@@ -209,15 +207,15 @@ function renderFeatured(products, collections) {
   const track   = document.getElementById('fb-track');
   if (!section || !track) return;
 
-  // Una diapositiva por colección, con una foto representativa: se toma un
-  // producto AL AZAR de esa colección, así en cada visita la foto cambia y
-  // no es siempre la misma.
-  const base = [];
-  for (const c of collections) {
-    const img = pickCollectionImage(products, c.handle);
-    if (!img) continue; // colección sin productos/fotos aún → se omite
-    base.push({ handle: c.handle, title: c.title, img });
-  }
+  // Una tarjeta por colección. La foto es un producto AL AZAR de esa colección
+  // (así cambia en cada visita). Se incluyen TODAS las colecciones desde el
+  // inicio aunque su foto aún no esté disponible (se rellena luego), para que
+  // los puntos no salten de 3 a 5 y el carrusel aparezca rápido.
+  const base = collections.map(c => ({
+    handle: c.handle,
+    title:  c.title,
+    img:    pickCollectionImage(products, c.handle), // puede ser null al inicio
+  }));
   if (base.length < 2) { section.hidden = true; return; }
 
   _fbN = base.length;
@@ -334,15 +332,40 @@ function pickCollectionImage(products, handle) {
 }
 
 function fbSlideHTML(handle, title, img, eager) {
+  // Si la colección aún no tiene foto (sus productos cargan en un lote
+  // posterior), se muestra un skeleton en el área de la imagen y se marca con
+  // data-fb-noimg para rellenarla después (ver fbFillFeaturedImages).
+  const media = img
+    ? `<img src="${img}" alt="${title}" loading="${eager ? 'eager' : 'lazy'}" />`
+    : `<div class="fb-slide__imgskel skeleton" aria-hidden="true"></div>`;
   return `
-      <article class="fb-slide" data-fb-collection="${handle}">
-        <div class="fb-slide__media">
-          <img src="${img}" alt="${title}" loading="${eager ? 'eager' : 'lazy'}" />
-        </div>
+      <article class="fb-slide" data-fb-collection="${handle}"${img ? '' : ' data-fb-noimg'}>
+        <div class="fb-slide__media">${media}</div>
         <div class="fb-slide__body">
           <h3 class="fb-slide__title">${title}</h3>
         </div>
       </article>`;
+}
+
+// Rellena la foto de las tarjetas que aún no la tenían, a medida que van
+// cargando más productos. No re-arma el carrusel (no resetea scroll ni puntos):
+// solo cambia la imagen en las 3 copias de esa colección.
+function fbFillFeaturedImages(products) {
+  const track = document.getElementById('fb-track');
+  if (!track || !_fbN) return;
+  const pending = [...new Set(
+    [...track.querySelectorAll('.fb-slide[data-fb-noimg]')].map(s => s.dataset.fbCollection)
+  )];
+  for (const handle of pending) {
+    const img = pickCollectionImage(products, handle);
+    if (!img) continue;
+    track.querySelectorAll(`.fb-slide[data-fb-collection="${handle}"]`).forEach(s => {
+      const media = s.querySelector('.fb-slide__media');
+      const title = s.querySelector('.fb-slide__title')?.textContent || '';
+      if (media) media.innerHTML = `<img src="${img}" alt="${title}" loading="lazy" />`;
+      s.removeAttribute('data-fb-noimg');
+    });
+  }
 }
 
 function fbRenderDots(n) {

@@ -951,6 +951,11 @@ function showCheckoutModal() {
 
   const { cart } = getState();
 
+  // Extrafinanciamiento BAC: solo se habilita si el SUBTOTAL de productos
+  // (sin flete ni comisiones) es igual o mayor a L. 3,000.
+  const productsSubtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const showExtrafin = productsSubtotal >= 3000;
+
   const summaryLines = cart.map(i => {
     const varLabel = i.variantTitle !== 'Default Title' ? ` <span class="co-variant">(${i.variantTitle})</span>` : '';
     const price = (i.price * i.quantity).toLocaleString('es-HN', { minimumFractionDigits: 2 });
@@ -1029,6 +1034,14 @@ function showCheckoutModal() {
                 <span class="co-radio__sub">Pago contra entrega fuera de SPS aplica una comisión del 5%</span>
               </span>
             </label>
+            ${showExtrafin ? `
+            <label class="co-radio">
+              <input type="radio" name="co-payment" value="extrafin" />
+              <span class="co-radio__text">
+                <span class="co-radio__title"><span class="co-radio__emoji">🗓️</span> Extrafinanciamiento</span>
+                <span class="co-radio__sub">0% interés a 6 meses con tarjetas BAC</span>
+              </span>
+            </label>` : ''}
           </div>
         </div>
 
@@ -1105,6 +1118,7 @@ const PAYMENT = {
   transfer: { label: 'Transferencia' },
   card:     { label: 'Tarjeta / Link de Pago' },
   cash:     { label: 'Efectivo' },
+  extrafin: { label: 'Extrafinanciamiento 0% interés a 6 meses con tarjetas BAC' },
 };
 
 function computeCheckout(delivery, payment) {

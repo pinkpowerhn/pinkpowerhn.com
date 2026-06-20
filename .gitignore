@@ -1,6 +1,13 @@
 # Notas / material de trabajo — no se publica
 arreglos/
 
+# Llaves SSH del servidor Oracle — NUNCA subir al repo
+ssh-keys-oracle/
+*.key
+*.pem
+id_rsa
+id_rsa.pub
+
 # OS
 .DS_Store
 **/.DS_Store

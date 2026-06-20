@@ -270,6 +270,13 @@
     gap: 2rem;
     max-width: 520px;
   }
+  /* En móvil el carrusel rompe el padding lateral del hero y va de borde a borde
+     (sin márgenes a las orillas). El texto del hero conserva su padding. */
+  .hero-carousel {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
   /* En móvil cada colección ocupa todo el ancho (sin peek de las de al lado) */
   .fb-slide { min-height: 350px; }
   .fb-skeleton { min-height: 350px; }

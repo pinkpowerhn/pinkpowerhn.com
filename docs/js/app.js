@@ -1,6 +1,6 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
-import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder } from './api.js';
+import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { searchProducts, norm } from './search.js';
@@ -1263,7 +1263,13 @@ function handleHashRoute() {
   if (parts[0] === 'product' && parts[1]) {
     const id = decodeURIComponent(parts[1]);
     const product = getState().products.find(p => String(p.id) === id);
-    if (product) openModal(product);
+    if (product) {
+      openModal(product);
+    } else {
+      // Aún no cargó en el catálogo (está en un lote posterior). Se trae
+      // directo por id para que un link compartido abra la ficha al instante.
+      fetchProductById(id).then(p => { if (p) openModal(p); }).catch(() => {});
+    }
     return;
   }
 

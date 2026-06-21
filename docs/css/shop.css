@@ -1049,11 +1049,12 @@
   background: var(--black);
 }
 
-/* Aviso de stock dentro del pop up del producto, arriba a la derecha */
+/* Aviso de stock dentro del pop up del producto. Va arriba a la IZQUIERDA para
+   no traslaparse con el botón de cerrar (X), que está arriba a la derecha. */
 .modal-badge {
   position: absolute;
   top: 0.7rem;
-  right: 0.7rem;
+  left: 0.7rem;
   z-index: 2;
   background: #e60023;
   color: #fff;

@@ -5,7 +5,7 @@ import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSize
 import { openModal, closeModal } from './modal.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
-import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl } from './cart.js';
+import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl, canAddNow } from './cart.js';
 
 // iOS Safari solo aplica el estado :active (feedback al tocar) si existe
 // algún listener de touch. Este listener vacío lo habilita en todo el sitio.
@@ -592,7 +592,7 @@ document.addEventListener('click', e => {
     }
     if (actionBtn.dataset.action === 'add-to-cart') {
       const variant = product.variants.find(v => v.availableForSale) || product.variants[0];
-      if (variant) showToast(addToCart(product, variant), product.title);
+      if (variant && canAddNow(variant.id)) showToast(addToCart(product, variant), product.title);
     }
     return;
   }

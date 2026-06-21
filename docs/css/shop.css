@@ -1049,6 +1049,24 @@
   background: var(--black);
 }
 
+/* Aviso de stock dentro del pop up del producto, arriba a la derecha */
+.modal-badge {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 2;
+  background: #e60023;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.36rem 0.78rem;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.modal-badge--low { background: #f5820a; }
+
 .carousel-track {
   overflow: hidden;
   aspect-ratio: 1 / 1;

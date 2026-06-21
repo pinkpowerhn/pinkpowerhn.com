@@ -1,5 +1,5 @@
 import { getState, setState } from './state.js';
-import { addToCart } from './cart.js';
+import { addToCart, canAddNow } from './cart.js';
 import { showToast } from './toast.js';
 import { shareLink, siteUrl } from './share.js';
 
@@ -72,6 +72,16 @@ function buildModalHTML(p) {
   const price   = (_selectedVariant?.price ?? p.price)
     .toLocaleString('es-HN', { minimumFractionDigits: 2 });
 
+  // Aviso de stock (mismo criterio que la tarjeta), arriba a la derecha de la foto
+  const availVars = p.variants.filter(v => v.availableForSale && v.inventoryQuantity !== null);
+  const minStock  = availVars.length ? Math.min(...availVars.map(v => v.inventoryQuantity)) : null;
+  const lowStock  = !soldOut && minStock !== null && minStock <= 3;
+  const badgeHTML = soldOut
+    ? '<div class="modal-badge">Agotado</div>'
+    : lowStock
+      ? `<div class="modal-badge modal-badge--low">${minStock === 1 ? 'Solo queda 1' : `Últimas ${minStock}`}</div>`
+      : '';
+
   // Carousel
   const slides = p.images.length
     ? p.images.map((img, i) => `
@@ -127,7 +137,7 @@ function buildModalHTML(p) {
   const addBtn = soldOut
     ? `<button class="btn btn-primary" disabled>Agotado</button>`
     : `<button class="btn btn-primary" id="modal-add-btn"${atLimit ? ' disabled' : ''}>
-        ${atLimit ? 'Límite alcanzado' : 'Agregar al Carrito'}
+        ${atLimit ? 'Sin más stock' : 'Agregar al Carrito'}
        </button>`;
 
   return `
@@ -141,6 +151,7 @@ function buildModalHTML(p) {
           <div class="carousel-track" id="carousel-track">${slides}</div>
           ${arrows}
           ${dots}
+          ${badgeHTML}
         </div>
 
         <!-- Info -->
@@ -199,6 +210,7 @@ function wireModalEvents(modal, product) {
 
   modal.querySelector('#modal-add-btn')?.addEventListener('click', () => {
     if (!_currentProduct || !_selectedVariant) return;
+    if (!canAddNow(_selectedVariant.id)) return; // ignora clics muy seguidos
     showToast(addToCart(_currentProduct, _selectedVariant), _currentProduct.title);
     refreshAddBtn(modal);
   });
@@ -239,7 +251,7 @@ function refreshAddBtn(modal) {
   if (!btn || !_selectedVariant) return;
   const at = isAtLimit(_selectedVariant);
   btn.disabled = at;
-  btn.textContent = at ? 'Límite alcanzado' : 'Agregar al Carrito';
+  btn.textContent = at ? 'Sin más stock' : 'Agregar al Carrito';
 }
 
 // ── Carousel ──────────────────────────────────────────────

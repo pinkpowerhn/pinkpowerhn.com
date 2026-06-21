@@ -5,6 +5,18 @@ function cartKey(productId, variantId) {
   return `${productId}__${variantId}`;
 }
 
+// ── Anti doble/triple clic ────────────────────────────────
+// Evita que clics muy seguidos sobre el mismo producto agreguen 2 o 3 piezas
+// sin que la clienta se dé cuenta. Devuelve false si el clic llega demasiado
+// rápido tras el anterior del mismo producto.
+let _lastAdd = { id: null, t: 0 };
+export function canAddNow(variantId, windowMs = 600) {
+  const now = Date.now();
+  if (_lastAdd.id === variantId && now - _lastAdd.t < windowMs) return false;
+  _lastAdd = { id: variantId, t: now };
+  return true;
+}
+
 // ── Mutations ─────────────────────────────────────────────
 export function addToCart(product, variant) {
   const cart = getState().cart.map(i => ({ ...i })); // shallow clone items

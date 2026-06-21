@@ -89,18 +89,38 @@ export function renderSizeBar(collections) {
   const bar = document.getElementById('size-filter-bar');
   if (!bar) return;
 
-  const { activeCollection, activeSize, products } = getState();
+  const { activeCollection, activeTag, activeSize, products } = getState();
 
-  if (!isLingerieCollection(activeCollection, collections)) {
+  // Mostramos las tallas cuando se está viendo ropa interior, ya sea:
+  //  a) por la colección de lencería directamente, o
+  //  b) por una etiqueta cuyos productos viven mayormente en lencería
+  //     (p. ej. compartir el link de la etiqueta "Panties").
+  let pool = [];
+  if (isLingerieCollection(activeCollection, collections)) {
+    pool = products.filter(p => p.collectionHandles.includes(activeCollection));
+  } else if (activeTag) {
+    const tagged = products.filter(p => (p.tags || []).includes(activeTag));
+    const lingerieHandles = collections
+      .filter(c => isLingerieCollection(c.handle, collections))
+      .map(c => c.handle);
+    const inLingerie = tagged.filter(p =>
+      p.collectionHandles.some(h => lingerieHandles.includes(h))
+    );
+    // Si la mayoría de los productos con esa etiqueta son de lencería → tallas
+    if (tagged.length && inLingerie.length / tagged.length >= 0.5) {
+      pool = tagged;
+    }
+  }
+
+  if (!pool.length) {
     bar.hidden = true;
     bar.innerHTML = '';
     return;
   }
 
-  // Tallas disponibles en los productos de esa colección
+  // Tallas disponibles en esos productos
   const sizes = [...new Set(
-    products
-      .filter(p => p.collectionHandles.includes(activeCollection))
+    pool
       .flatMap(p => p.variants.map(v => v.title))
       .filter(t => t && t.toLowerCase() !== 'default title')
   )].sort(bySizeOrder);

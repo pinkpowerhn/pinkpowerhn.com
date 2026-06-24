@@ -154,6 +154,14 @@ on('statechange', state => {
     renderSizeBar(collections);
   }
 
+  // Al entrar en mayoreo, rehacer el carrusel con SOLO las colecciones que
+  // tienen al menos un producto con precio de mayoreo. Se hace una vez (al
+  // salir de mayoreo la página se recarga, así que vuelve al modo normal).
+  if (state.mayoreo && _fbMode !== 'mayoreo' && products.length && collections.length) {
+    renderFeatured(products, collectionsWithProducts(products, collections));
+    _fbMode = 'mayoreo';
+  }
+
   _prevRender = { products, collections, activeCollection, activeTag, activeSize,
                   priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded };
 
@@ -216,6 +224,16 @@ let _fbItems = [];   // [{ handle, title, img }]
 let _fbIndex = 0;    // colección visible (0..N-1)
 let _fbN = 0;        // cantidad de colecciones
 let _fbTimer = null;
+let _fbMode = 'normal';  // 'normal' | 'mayoreo' — para reconstruir el carrusel al entrar a mayoreo
+
+// Colecciones que tienen al menos un producto en la lista dada. En mayoreo,
+// `products` son exclusivamente los que tienen precio de mayoreo, así que esto
+// deja fuera del carrusel las colecciones sin ningún producto de mayoreo.
+function collectionsWithProducts(products, collections) {
+  const conProducto = new Set();
+  products.forEach(p => p.collectionHandles.forEach(h => conProducto.add(h)));
+  return collections.filter(c => conProducto.has(c.handle));
+}
 
 function renderFeatured(products, collections) {
   const section = document.getElementById('featured');

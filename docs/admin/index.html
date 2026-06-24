@@ -216,13 +216,60 @@ function renderCuentas(rows) {
       <td><b>${esc(r.usuario)}</b></td>
       <td>${esc(r.nombre || '')}</td>
       <td><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
-      <td style="text-align:right">
-        <button class="btn btn--ghost btn--sm" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
+      <td style="text-align:right; white-space:nowrap">
+        <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}">Editar</button>
+        <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>
+        <button class="btn btn--ghost btn--sm act-estado" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
           ${r.activo ? 'Desactivar' : 'Activar'}
         </button>
       </td>
     </tr>`).join('');
-  body.querySelectorAll('button[data-user]').forEach(b => b.addEventListener('click', toggleEstado));
+  body.querySelectorAll('.act-estado').forEach(b => b.addEventListener('click', toggleEstado));
+  body.querySelectorAll('.act-pass').forEach(b => b.addEventListener('click', cambiarPassword));
+  body.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', editarCuenta));
+}
+
+// ── Cambiar contraseña de una mayorista ──
+async function cambiarPassword(e) {
+  const usuario = e.currentTarget.dataset.user;
+  const { value: pass } = await Swal.fire({
+    title: `Nueva contraseña`,
+    html: `<p class="muted" style="margin:0 0 .6rem">Para <b>${esc(usuario)}</b></p>`,
+    input: 'text',
+    inputPlaceholder: 'Mínimo 4 caracteres',
+    inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+    showCancelButton: true,
+    confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    inputValidator: (v) => (!v || v.trim().length < 4) ? 'Debe tener al menos 4 caracteres' : undefined,
+  });
+  if (!pass) return;
+  try {
+    await api('/admin/cuentas/password', { method: 'POST', body: JSON.stringify({ usuario, password: pass.trim() }) });
+    panelMsg(`Contraseña de "${usuario}" actualizada.`);
+  } catch (ex) { panelMsg(ex.message, false); }
+}
+
+// ── Editar datos (nombre / tienda) de una mayorista ──
+async function editarCuenta(e) {
+  const usuario = e.currentTarget.dataset.user;
+  const actual = e.currentTarget.dataset.nombre || '';
+  const { value: nombre } = await Swal.fire({
+    title: `Editar datos`,
+    html: `<p class="muted" style="margin:0 0 .6rem">Usuario <b>${esc(usuario)}</b></p>`,
+    input: 'text',
+    inputValue: actual,
+    inputLabel: 'Nombre / Tienda',
+    showCancelButton: true,
+    confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+  });
+  if (nombre === undefined) return;   // canceló
+  try {
+    await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario, nombre: nombre.trim() }) });
+    panelMsg(`Datos de "${usuario}" actualizados.`);
+    renderCuentas(await api('/admin/cuentas'));
+  } catch (ex) { panelMsg(ex.message, false); }
 }
 
 async function toggleEstado(e) {

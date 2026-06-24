@@ -132,7 +132,7 @@
 .fb-skeleton__media { width: 220px; height: 280px; border-radius: 16px; }
 /* Skeleton de la foto dentro de una tarjeta real (colección cuya imagen aún no
    ha cargado). Mismo tamaño aprox. que la imagen para que la tarjeta no salte. */
-.fb-slide__imgskel { width: 220px; height: 280px; max-width: 60vw; border-radius: 14px; }
+.fb-slide__imgskel { width: 100%; height: 280px; border-radius: 14px; }
 .fb-skeleton__line { width: 60%; height: 20px; border-radius: 6px; margin-top: 0.4rem; }
 .fb-skeleton__line--short { width: 55%; }
 /* Desktop: una sola tarjeta skeleton (la 2ª es solo para el peek de móvil) */
@@ -152,14 +152,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Alto fijo: así el card NO cambia de altura al pasar de una colección a
-     otra (cada foto tiene proporciones distintas). La imagen se ajusta dentro. */
+  /* Alto Y ancho fijos: así el card blanco NO cambia de tamaño al pasar de una
+     colección a otra (cada foto tiene proporciones y ancho distintos). La
+     imagen se ajusta DENTRO con object-fit, sin definir el tamaño del card. */
+  width: min(282px, 78vw);
   height: 312px;
   box-sizing: border-box;
 }
 .fb-slide__media img {
   max-height: 100%;
-  max-width: 240px;
+  max-width: 100%;
   object-fit: contain;
   transition: transform 0.3s ease;
 }
@@ -326,7 +328,7 @@
   .fb-slide { padding: 2rem 1.3rem 2.4rem; }
   .fb-skeleton { min-height: 350px; }
   .fb-skeleton__media { width: 185px; height: 235px; }
-  .fb-slide__imgskel { width: 185px; height: 230px; }
+  .fb-slide__imgskel { height: 230px; }
   .fb-slide__media img { max-height: 230px; }
   .fb-slide__title { font-size: 1.45rem; }
   .fb-arrow { display: none; }

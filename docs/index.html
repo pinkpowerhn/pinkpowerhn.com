@@ -25,6 +25,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="css/shop.css" />
+  <link rel="stylesheet" href="css/mayoreo.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -142,6 +143,9 @@
       cursor: pointer;
     }
     .search-toggle svg { width: 21px; height: 21px; }
+    /* Lupa de búsqueda visible en desktop (a la derecha, junto al carrito) */
+    .search-toggle--desktop { display: flex; }
+    .search-toggle--desktop:hover { color: var(--pink); }
 
     /* ── HERO ── */
     .hero {
@@ -770,6 +774,7 @@
       .nav-group--right { justify-self: end; }
       .nav-logo { justify-self: center; }
       .search-toggle { display: flex; }
+      .search-toggle--desktop { display: none; } /* en móvil ya está la lupa de la izquierda */
 
       /* Menú desplegable bajo el navbar */
       nav ul {
@@ -858,15 +863,20 @@
       <li><a href="https://wa.me/" class="wa-link" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
     </ul>
 
-    <!-- Zona derecha: carrito + CTA -->
+    <!-- Zona derecha: buscador (desktop) + carrito -->
     <div class="nav-group nav-group--right">
+      <button class="search-toggle search-toggle--desktop" aria-label="Buscar productos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </button>
       <button id="cart-toggle" class="cart-toggle" aria-label="Carrito">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
         <span id="cart-badge" class="cart-badge" hidden>0</span>
       </button>
-      <a href="#shop" class="btn btn-primary nav-cta" style="padding: 0.6rem 1.6rem; font-size: 0.65rem;">Ver Productos</a>
     </div>
   </nav>
 
@@ -949,6 +959,8 @@
           <!-- Botones de talla: solo aparecen en la categoría de ropa interior -->
           <div id="size-filter-bar" class="size-filter-bar" hidden></div>
         </div>
+        <!-- Indicador de filtros activos -->
+        <div id="active-filters" class="active-filters" hidden></div>
         <div id="product-grid" class="product-grid">
           <!-- rendered by catalog.js — skeletons shown immediately -->
         </div>
@@ -986,16 +998,16 @@
     <div class="location-map-wrap">
       <iframe
         class="location-map"
-        src="https://www.google.com/maps?q=Pink+Power+HN,+28+Calle,+San+Pedro+Sula,+Cort%C3%A9s&output=embed"
+        src="https://www.google.com/maps?q=15.5352302,-88.0335438&output=embed"
         loading="lazy"
         referrerpolicy="no-referrer-when-downgrade"
         title="Ubicación de PinkPower HN en Google Maps"
         allowfullscreen></iframe>
     </div>
-    <p class="location-address">Jardines del Valle, 28 calle — en la cuadra del restaurante Frites.</p>
-    <p class="location-note">Avísanos antes para confirmar tu visita y enviarte el QR de acceso.</p>
+    <p class="location-address">San Pedro Sula, Col. Villas del Sol, entrada principal (en la calle que va hacia la morgue). La primera casa al lado derecho.</p>
+    <p class="location-note">Avísanos antes para confirmar tu visita ✨😊</p>
     <div style="margin-top:1.6rem;">
-      <a href="https://maps.app.goo.gl/XeWVyzPxnM85Yr4B8" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Ver en Google Maps</a>
+      <a href="https://www.google.com/maps/place/Pink+Power+HN/@15.5352302,-88.0335438,17z" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Ver en Google Maps</a>
     </div>
   </section>
 
@@ -1029,6 +1041,7 @@
         <li><a href="#contact">Envíos</a></li>
         <li><a href="#contact">FAQ</a></li>
         <li><a href="https://wa.me/" class="wa-link" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
+        <li id="mayoreo-access-item"><a href="#" id="mayoreo-access">Acceso Mayoreo</a></li>
       </ul>
     </div>
     <div>

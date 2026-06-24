@@ -6,6 +6,7 @@ import { openModal, closeModal } from './modal.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl, canAddNow } from './cart.js';
+import { initMayoreo, restoreMayoreo, hasMayoreoSession } from './mayoreo.js';
 
 // iOS Safari solo aplica el estado :active (feedback al tocar) si existe
 // algún listener de touch. Este listener vacío lo habilita en todo el sitio.
@@ -14,6 +15,7 @@ document.addEventListener('touchstart', () => {}, { passive: true });
 // ── Bootstrap ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   initState();
+  initMayoreo();
   updateCartBadge();
   renderSkeletons(12);
 
@@ -35,8 +37,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
 
     const waNumber = config?.whatsapp ?? null;
+    // Si hay sesión de mayoreo, no mostramos el catálogo normal (se quedan los
+    // skeletons) hasta que carguen los precios de mayoreo — evita el flash de
+    // precios normales al recargar.
+    const mayoreoSession = hasMayoreoSession();
     setState({
-      products: firstPage.products,
+      products: mayoreoSession ? [] : firstPage.products,
       collections,
       waNumber,
     });
@@ -55,9 +61,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderFeatured(firstPage.products, collections);
     handleHashRoute();
 
-    // Carga el resto en background sin bloquear la UI. Cada batch se
-    // mergea en state → statechange dispara re-render del grid/sidebar.
-    loadRemainingProducts(firstPage.cursor, firstPage.hasNext);
+    if (mayoreoSession) {
+      // Sesión de mayoreo guardada: entra a modo mayoreo y NO carga el catálogo
+      // normal en background (evita la carrera que pisaba la restauración).
+      restoreMayoreo();
+    } else {
+      // Carga el resto en background sin bloquear la UI. Cada batch se
+      // mergea en state → statechange dispara re-render del grid/sidebar.
+      loadRemainingProducts(firstPage.cursor, firstPage.hasNext);
+    }
   } catch (err) {
     console.error('[PinkPower] Data load error:', err);
     showApiBanner('No se pudo cargar el catálogo. Por favor recarga la página.');
@@ -89,6 +101,8 @@ async function loadRemainingProducts(cursor, hasNext) {
   while (hasNext) {
     try {
       const page = await fetchProductsPage({ cursor, first: 250 });
+      // Si se activó el modo mayoreo mientras cargaba, no mezclar el catálogo normal.
+      if (getState().mayoreo) return;
       const { products } = getState();
       // Merge sin duplicados por si una página se reintenta
       const existing = new Set(products.map(p => p.id));
@@ -195,120 +209,66 @@ function scrollToProductsWhenReady() {
 // ── Carrusel de colecciones (scroll horizontal) ───────────
 // Una fila desplazable: en desktop muestra una colección a la vez y avanza
 // sola; en móvil se ven varias con "peek" y se puede deslizar (como B&BW).
-let _fbIndex = 0;          // índice ABSOLUTO dentro de las 3 copias del carril
+// Carrusel de colecciones: el CARD se queda fijo y solo cambia/desliza su
+// contenido (imagen + título) al pasar de una colección a otra. Así el card
+// nunca se mueve y nunca pierde el border-radius durante una transición.
+let _fbItems = [];   // [{ handle, title, img }]
+let _fbIndex = 0;    // colección visible (0..N-1)
+let _fbN = 0;        // cantidad de colecciones
 let _fbTimer = null;
-let _fbProgScroll = false; // hay un scroll programático en curso (auto/flechas/puntos)
-let _fbN = 0;              // cantidad de colecciones reales (1 copia)
-let _fbJumpW = 0;          // ancho en px de una copia (para reposicionar en círculo)
-let _fbDragging = false;   // se está arrastrando con el mouse
 
 function renderFeatured(products, collections) {
   const section = document.getElementById('featured');
   const track   = document.getElementById('fb-track');
   if (!section || !track) return;
 
-  // Una tarjeta por colección. La foto es un producto AL AZAR de esa colección
-  // (así cambia en cada visita). Se incluyen TODAS las colecciones desde el
-  // inicio aunque su foto aún no esté disponible (se rellena luego), para que
-  // los puntos no salten de 3 a 5 y el carrusel aparezca rápido.
-  const base = collections.map(c => ({
+  // Una entrada por colección. La foto es un producto AL AZAR de esa colección
+  // (cambia en cada visita); puede ser null al inicio y se rellena después.
+  _fbItems = collections.map(c => ({
     handle: c.handle,
     title:  c.title,
-    img:    pickCollectionImage(products, c.handle), // puede ser null al inicio
+    img:    pickCollectionImage(products, c.handle),
   }));
-  if (base.length < 2) { section.hidden = true; return; }
+  if (_fbItems.length < 2) { section.hidden = true; return; }
 
-  _fbN = base.length;
-  // Carrusel INFINITO: se pintan TRES copias seguidas de las colecciones. El
-  // usuario siempre está en la copia del medio, así siempre hay tarjetas a
-  // ambos lados (peek) y, al cruzar a otra copia, se reposiciona sin que se
-  // note → se puede arrastrar en círculo sin fin en ambos sentidos.
-  const triple = [...base, ...base, ...base];
-  track.innerHTML = triple
-    .map((s, i) => fbSlideHTML(s.handle, s.title, s.img, i < _fbN))
-    .join('');
+  _fbN = _fbItems.length;
+  _fbIndex = 0;
+  // Un solo card fijo (no se hace scroll). Lo rellena showFbCollection.
+  track.innerHTML = fbSlideHTML(_fbItems[0].handle, _fbItems[0].title, _fbItems[0].img, true);
   fbRenderDots(_fbN);
+  markFbDot(0);
 
   section.hidden = false;
-
-  // Centra la 1ª tarjeta de la copia del medio y mide el ancho de una copia.
-  const center = () => {
-    const slides = [...track.querySelectorAll('.fb-slide')];
-    if (slides.length < _fbN * 3) return;
-    _fbJumpW = slides[_fbN].offsetLeft - slides[0].offsetLeft;
-    _fbIndex = _fbN;
-    const mid = slides[_fbN];
-    track.scrollLeft = mid.offsetLeft - (track.clientWidth - mid.clientWidth) / 2;
-    markFbDot(0);
-  };
-  center();
-  requestAnimationFrame(center); // reintento por si el layout aún no estaba listo
-
-  // Al asentarse el scroll (90 ms sin moverse) se actualizan los puntos, se
-  // reposiciona a la copia del medio y se restaura el snap.
-  track.onscroll = () => {
-    clearTimeout(track._fbScrollT);
-    track._fbScrollT = setTimeout(fbOnSettle, 90);
-  };
-
-  // Arrastre con mouse (en táctil ya funciona el swipe nativo)
-  if (!track._fbDragWired) { wireFbDrag(track); track._fbDragWired = true; }
-
   startFbAuto();
   // Pausa el auto-avance al pasar el mouse (desktop)
   section.onmouseenter = stopFbAuto;
   section.onmouseleave = startFbAuto;
 }
 
-// Centra la diapositiva absoluta i dentro del carril (auto / flechas / puntos)
-function setFbIndex(i, smooth = true) {
-  const track  = document.getElementById('fb-track');
-  const slides = track ? [...track.querySelectorAll('.fb-slide')] : [];
-  if (!slides.length || !_fbN) return;
-  let abs = i;
-  if (abs < 0) abs += _fbN;                 // no salir por la izquierda
-  if (abs >= slides.length) abs -= _fbN;    // no salir por la derecha
-  _fbIndex = abs;
-  const slide = slides[abs];
-  const left  = slide.offsetLeft - (track.clientWidth - slide.clientWidth) / 2;
-  // Apagamos el snap obligatorio durante el scroll programático: en móvil el
-  // snap puede interrumpir un desplazamiento largo y dejarlo a medias. Se
-  // restaura al asentarse (ver fbOnSettle).
-  track.style.scrollSnapType = 'none';
-  _fbProgScroll = true;
-  track.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
-  markFbDot(abs % _fbN);
-}
-
-// Al asentarse el scroll: detecta la tarjeta centrada, actualiza los puntos y
-// reposiciona (sin animación) a la copia del medio para el efecto infinito.
-function fbOnSettle() {
-  const track  = document.getElementById('fb-track');
-  if (!track || _fbDragging || !_fbN) return;
-  const slides = [...track.querySelectorAll('.fb-slide')];
-  if (!slides.length) return;
-  const center = track.scrollLeft + track.clientWidth / 2;
-  let nearest = 0, best = Infinity;
-  slides.forEach((s, idx) => {
-    const d = Math.abs((s.offsetLeft + s.clientWidth / 2) - center);
-    if (d < best) { best = d; nearest = idx; }
-  });
-  // Si quedó en la 1ª o 3ª copia, saltar a la del medio (mismo aspecto visual)
-  if (_fbJumpW) {
-    if (nearest < _fbN) {
-      track.style.scrollSnapType = 'none';
-      track.scrollLeft += _fbJumpW;
-      nearest += _fbN;
-    } else if (nearest >= 2 * _fbN) {
-      track.style.scrollSnapType = 'none';
-      track.scrollLeft -= _fbJumpW;
-      nearest -= _fbN;
-    }
+// Cambia el contenido del card a la colección i (con animación de entrada).
+function showFbCollection(i, dir = 1) {
+  if (!_fbN) return;
+  i = ((i % _fbN) + _fbN) % _fbN;
+  _fbIndex = i;
+  const card = document.querySelector('#fb-track .fb-slide');
+  if (!card) return;
+  const it = _fbItems[i];
+  card.dataset.fbCollection = it.handle;
+  const media = card.querySelector('.fb-slide__media');
+  const title = card.querySelector('.fb-slide__title');
+  if (media) {
+    media.innerHTML = it.img
+      ? `<img src="${it.img}" alt="${it.title}" loading="lazy" />`
+      : `<div class="fb-slide__imgskel skeleton" aria-hidden="true"></div>`;
   }
-  _fbIndex = nearest;
-  markFbDot(nearest % _fbN);
-  track.style.scrollSnapType = ''; // snap activo para el deslizamiento manual
-  _fbProgScroll = false;
+  if (title) title.textContent = it.title;
+  it.img ? card.removeAttribute('data-fb-noimg') : card.setAttribute('data-fb-noimg', '');
+  // Re-dispara la animación de entrada del contenido (slide + fade).
+  card.style.setProperty('--fb-dir', dir >= 0 ? '26px' : '-26px');
+  card.classList.remove('fb-in');
+  void card.offsetWidth;
+  card.classList.add('fb-in');
+  markFbDot(i);
 }
 
 function markFbDot(idx) {
@@ -318,7 +278,7 @@ function markFbDot(idx) {
 
 function startFbAuto() {
   stopFbAuto();
-  _fbTimer = setInterval(() => setFbIndex(_fbIndex + 1), 5000);
+  _fbTimer = setInterval(() => showFbCollection(_fbIndex + 1, 1), 5000);
 }
 function stopFbAuto() {
   if (_fbTimer) { clearInterval(_fbTimer); _fbTimer = null; }
@@ -347,24 +307,24 @@ function fbSlideHTML(handle, title, img, eager) {
       </article>`;
 }
 
-// Rellena la foto de las tarjetas que aún no la tenían, a medida que van
-// cargando más productos. No re-arma el carrusel (no resetea scroll ni puntos):
-// solo cambia la imagen en las 3 copias de esa colección.
+// Rellena la foto de las colecciones que aún no la tenían, a medida que van
+// cargando más productos. Solo actualiza la lista interna y, si la colección
+// visible ahora ya tiene foto, refresca el card (sin re-armar el carrusel).
 function fbFillFeaturedImages(products) {
-  const track = document.getElementById('fb-track');
-  if (!track || !_fbN) return;
-  const pending = [...new Set(
-    [...track.querySelectorAll('.fb-slide[data-fb-noimg]')].map(s => s.dataset.fbCollection)
-  )];
-  for (const handle of pending) {
-    const img = pickCollectionImage(products, handle);
-    if (!img) continue;
-    track.querySelectorAll(`.fb-slide[data-fb-collection="${handle}"]`).forEach(s => {
-      const media = s.querySelector('.fb-slide__media');
-      const title = s.querySelector('.fb-slide__title')?.textContent || '';
-      if (media) media.innerHTML = `<img src="${img}" alt="${title}" loading="lazy" />`;
-      s.removeAttribute('data-fb-noimg');
-    });
+  if (!_fbItems.length) return;
+  let refreshCurrent = false;
+  _fbItems.forEach((it, i) => {
+    if (it.img) return;
+    const img = pickCollectionImage(products, it.handle);
+    if (img) { it.img = img; if (i === _fbIndex) refreshCurrent = true; }
+  });
+  if (!refreshCurrent) return;
+  const card = document.querySelector('#fb-track .fb-slide');
+  const media = card && card.querySelector('.fb-slide__media');
+  const it = _fbItems[_fbIndex];
+  if (media && it.img) {
+    media.innerHTML = `<img src="${it.img}" alt="${it.title}" loading="lazy" />`;
+    card.removeAttribute('data-fb-noimg');
   }
 }
 
@@ -376,45 +336,16 @@ function fbRenderDots(n) {
   ).join('');
 }
 
-// Permite arrastrar el carrusel con el mouse (el táctil usa swipe nativo).
-function wireFbDrag(track) {
-  let down = false, startX = 0, startScroll = 0, moved = false;
-
-  track.addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'mouse') return; // en táctil deja el scroll nativo
-    down = true; moved = false;
-    _fbDragging = true;
-    _fbProgScroll = false; // el arrastre maneja su propio snap (no lo restaure el onscroll)
-    startX = e.clientX;
-    startScroll = track.scrollLeft;
-    track.style.scrollSnapType = 'none'; // evita saltos mientras se arrastra
-    track.style.cursor = 'grabbing';
-    try { track.setPointerCapture(e.pointerId); } catch (_) {}
-  });
-
-  track.addEventListener('pointermove', e => {
-    if (!down) return;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) > 4) moved = true;
-    track.scrollLeft = startScroll - dx;
-  });
-
-  const end = () => {
-    if (!down) return;
-    down = false;
-    _fbDragging = false;
-    track.style.cursor = '';
-    // fbOnSettle re-activa el snap, ajusta los puntos y reposiciona en círculo
-    fbOnSettle();
-  };
-  track.addEventListener('pointerup', end);
-  track.addEventListener('pointerleave', end);
-  track.addEventListener('pointercancel', end);
-
-  // Si hubo arrastre, no dispares el click (no abrir la colección sin querer)
-  track.addEventListener('click', e => {
-    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
-  }, true);
+// Abre una colección desde el carrusel (con guard anti doble-disparo).
+let _lastColNav = { handle: null, t: 0 };
+function goToCollection(handle) {
+  const now = Date.now();
+  if (_lastColNav.handle === handle && now - _lastColNav.t < 600) return;
+  _lastColNav = { handle, t: now };
+  clearSearchInput();
+  setState({ activeCollection: handle, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+  history.replaceState(null, '', `#shop/collection/${handle}`);
+  document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
 }
 
 // ── Global click delegation ───────────────────────────────
@@ -439,8 +370,8 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // Lupa de búsqueda (móvil) — abre el buscador de pantalla completa
-  if (e.target.closest('#search-toggle')) {
+  // Lupa de búsqueda (móvil y desktop) — abre el buscador de pantalla completa
+  if (e.target.closest('.search-toggle')) {
     openSearchOverlay();
     return;
   }
@@ -551,19 +482,17 @@ document.addEventListener('click', e => {
   }
 
   // Carrusel de colecciones — flechas, puntos y abrir colección
-  if (e.target.closest('#fb-prev')) { setFbIndex(_fbIndex - 1); startFbAuto(); return; }
-  if (e.target.closest('#fb-next')) { setFbIndex(_fbIndex + 1); startFbAuto(); return; }
+  if (e.target.closest('#fb-prev')) { showFbCollection(_fbIndex - 1, -1); startFbAuto(); return; }
+  if (e.target.closest('#fb-next')) { showFbCollection(_fbIndex + 1, 1); startFbAuto(); return; }
   const fbDot = e.target.closest('[data-fb-dot]');
-  if (fbDot) { setFbIndex(_fbN + parseInt(fbDot.dataset.fbDot, 10)); startFbAuto(); return; }
-  const fbCol = e.target.closest('[data-fb-collection]');
-  if (fbCol) {
-    const handle = fbCol.dataset.fbCollection;
-    clearSearchInput();
-    setState({ activeCollection: handle, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
-    history.replaceState(null, '', `#shop/collection/${handle}`);
-    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
+  if (fbDot) {
+    const di = parseInt(fbDot.dataset.fbDot, 10);
+    showFbCollection(di, di >= _fbIndex ? 1 : -1);
+    startFbAuto();
     return;
   }
+  const fbCol = e.target.closest('[data-fb-collection]');
+  if (fbCol) { goToCollection(fbCol.dataset.fbCollection); return; }
 
   // Product card click → open detail (unless hitting the add-to-cart button)
   const card = e.target.closest('.product-card');
@@ -954,7 +883,9 @@ function showCheckoutModal() {
   // Extrafinanciamiento BAC: solo se habilita si el SUBTOTAL de productos
   // (sin flete ni comisiones) es igual o mayor a L. 3,000.
   const productsSubtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const showExtrafin = productsSubtotal >= 3000;
+  const esMayoreo = getState().mayoreo;
+  // En mayoreo no se ofrece pago con tarjeta (solo transferencia o efectivo).
+  const showExtrafin = productsSubtotal >= 3000 && !esMayoreo;
 
   const summaryLines = cart.map(i => {
     const varLabel = i.variantTitle !== 'Default Title' ? ` <span class="co-variant">(${i.variantTitle})</span>` : '';
@@ -1023,10 +954,11 @@ function showCheckoutModal() {
                 <span class="co-radio__sub">(BAC / Atlántida / Banpaís / Ficohsa / Occidente)</span>
               </span>
             </label>
+            ${!esMayoreo ? `
             <label class="co-radio">
               <input type="radio" name="co-payment" value="card" />
               <span class="co-radio__text"><span class="co-radio__title"><span class="co-radio__emoji">💳</span> Tarjeta / Link de Pago</span></span>
-            </label>
+            </label>` : ''}
             <label class="co-radio">
               <input type="radio" name="co-payment" value="cash" />
               <span class="co-radio__text">
@@ -1191,7 +1123,10 @@ async function submitCheckout(name, phone, email, checkout = null) {
   };
 
   try {
-    const orderData = await postOrder(orderPayload);
+    // En mayoreo, se manda el token para que el pedido use precios de mayoreo y
+    // la etiqueta "mayoreo" en Shopify.
+    const mayoreoToken = getState().mayoreo ? localStorage.getItem('pinkpower_mayoreo_token') : null;
+    const orderData = await postOrder(orderPayload, mayoreoToken);
 
     const orderName = orderData?.order?.name || null; // e.g. "#1011"
     const url = buildWhatsAppUrl(waNumber, orderName, checkout);

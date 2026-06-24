@@ -81,25 +81,30 @@
 
 /* Carrusel de productos destacados (dentro del hero) */
 .fb-viewport { position: relative; }
+/* Un solo card FIJO: el carrusel ya no hace scroll. Al cambiar de colección
+   solo se desliza el CONTENIDO (imagen + título), así el marco del card nunca
+   se mueve ni pierde el border-radius durante la transición. */
 .fb-track {
   display: flex;
-  gap: 1.1rem;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   padding: 0.3rem 0 1rem;
 }
 .fb-track::-webkit-scrollbar { display: none; }
 .fb-slide {
   flex: 0 0 100%;
   min-height: 420px;
-  scroll-snap-align: center;
   border-radius: 24px;
   background:
     radial-gradient(130% 90% at 80% 0%, rgba(255, 255, 255, 0.18) 0%, transparent 55%),
     linear-gradient(140deg, #f792c4 0%, #e84b9a 52%, #c23a7e 100%);
   box-shadow: 0 12px 26px -16px rgba(194, 58, 126, 0.55);
+  /* overflow:hidden fuerza el recorte redondeado de forma robusta (no depende
+     del repintado), y translateZ(0) lo mantiene en una capa estable. Juntos
+     evitan que el slide parpadee cuadrado al entrar durante el scroll. */
+  overflow: hidden;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -147,9 +152,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Alto fijo: así el card NO cambia de altura al pasar de una colección a
+     otra (cada foto tiene proporciones distintas). La imagen se ajusta dentro. */
+  height: 312px;
+  box-sizing: border-box;
 }
 .fb-slide__media img {
-  max-height: 290px;
+  max-height: 100%;
   max-width: 240px;
   object-fit: contain;
   transition: transform 0.3s ease;
@@ -157,6 +166,21 @@
 /* Pista de que la tarjeta es clickeable (en desktop) */
 @media (hover: hover) {
   .fb-slide:hover .fb-slide__media img { transform: scale(1.05); }
+}
+
+/* Transición al cambiar de colección: el contenido (imagen + título) entra
+   deslizándose y con fade. El marco del card no participa (queda fijo). */
+@keyframes fbInfoIn {
+  from { opacity: 0; transform: translateX(var(--fb-dir, 26px)); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.fb-slide.fb-in .fb-slide__media,
+.fb-slide.fb-in .fb-slide__body {
+  animation: fbInfoIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fb-slide.fb-in .fb-slide__media,
+  .fb-slide.fb-in .fb-slide__body { animation: none; }
 }
 .fb-slide__eyebrow {
   font-family: 'Montserrat', sans-serif;
@@ -173,6 +197,12 @@
   line-height: 1.12;
   color: #fff;
   max-width: 92%;
+  /* Reserva 2 líneas siempre: así los títulos de 1 línea no encogen el card y
+     el marco se mantiene a la misma altura al cambiar de colección. */
+  min-height: 2.24em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .fb-slide__price {
   font-family: 'Montserrat', sans-serif;
@@ -2212,3 +2242,44 @@ body.menu-open nav {
   border-radius: 999px;
   flex-shrink: 0;
 }
+
+/* ── Indicador de filtros activos ─────────────────────────── */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.1rem;
+}
+.active-filters__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--pink-dk, #c23a7e);
+  margin-right: 0.15rem;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.34rem 0.5rem 0.34rem 0.75rem;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: #8a2f5e;
+  background: #ffe3ef;
+  border: 1px solid #f6c6dc;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.filter-chip:hover { background: #ffd0e4; }
+.filter-chip__x { font-size: 1.05rem; line-height: 1; opacity: 0.65; }
+.filter-chip--all {
+  padding: 0.34rem 0.85rem;
+  background: var(--pink, #e84b9a);
+  color: #fff;
+  border-color: var(--pink, #e84b9a);
+  font-weight: 600;
+}
+.filter-chip--all:hover { background: var(--pink-dk, #c23a7e); border-color: var(--pink-dk, #c23a7e); }
+.shop-empty .btn { margin-top: 1rem; }

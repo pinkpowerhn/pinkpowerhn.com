@@ -271,9 +271,62 @@ function wirePriceSlider(root) {
 }
 
 // ── Product grid ──────────────────────────────────────────
+// ── Indicador de filtros activos ──────────────────────────
+function _esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function activeFilterList(collections, st) {
+  const out = [];
+  if (st.searchQuery) out.push({ key: 'search', label: `Búsqueda: "${st.searchQuery}"` });
+  if (st.activeCollection) {
+    const c = (collections || []).find(x => x.handle === st.activeCollection);
+    out.push({ key: 'collection', label: `Categoría: ${c ? c.title : st.activeCollection}` });
+  }
+  if (st.activeTag)  out.push({ key: 'tag',  label: st.activeTag });
+  if (st.activeSize) out.push({ key: 'size', label: `Talla: ${st.activeSize}` });
+  if (st.priceMin != null || st.priceMax != null) {
+    const a = st.priceMin != null ? `L.${st.priceMin}` : '0';
+    const b = st.priceMax != null ? `L.${st.priceMax}` : 'máx';
+    out.push({ key: 'price', label: `Precio: ${a}–${b}` });
+  }
+  return out;
+}
+
+export function renderActiveFilters(collections) {
+  const cont = document.getElementById('active-filters');
+  if (!cont) return;
+  const list = activeFilterList(collections, getState());
+  if (!list.length) { cont.hidden = true; cont.innerHTML = ''; return; }
+  cont.hidden = false;
+  cont.innerHTML =
+    `<span class="active-filters__label">Filtros activos:</span>` +
+    list.map(f => `<button class="filter-chip" data-clear="${f.key}">${_esc(f.label)}<span class="filter-chip__x" aria-hidden="true">×</span></button>`).join('') +
+    `<button class="filter-chip filter-chip--all" data-clear="all">Limpiar todo</button>`;
+  cont.querySelectorAll('[data-clear]').forEach(b =>
+    b.addEventListener('click', () => clearFilter(b.dataset.clear)));
+}
+
+export function clearFilter(key) {
+  const patch = { currentPage: 1 };
+  if (key === 'all') {
+    Object.assign(patch, { activeCollection: null, activeTag: null, activeSize: null, priceMin: null, priceMax: null, searchQuery: '' });
+    _clearSearchInputs();
+  } else if (key === 'search') { patch.searchQuery = ''; _clearSearchInputs(); }
+  else if (key === 'collection') patch.activeCollection = null;
+  else if (key === 'tag')  patch.activeTag = null;
+  else if (key === 'size') patch.activeSize = null;
+  else if (key === 'price') { patch.priceMin = null; patch.priceMax = null; }
+  setState(patch);
+}
+
+function _clearSearchInputs() {
+  document.querySelectorAll('#search-input, #search-overlay input').forEach(i => { i.value = ''; });
+}
+
 export function renderProductGrid(products, collections, activeCollection, searchQuery) {
   const grid = document.getElementById('product-grid');
   if (!grid) return;
+
+  renderActiveFilters(collections);
 
   const { activeSize, activeTag, priceMin, priceMax, sortBy, currentPage, productsLoaded } = getState();
   let filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
@@ -296,7 +349,12 @@ export function renderProductGrid(products, collections, activeCollection, searc
       return;
     }
     updateResultCount(0);
-    grid.innerHTML = `<div class="shop-empty"><p>No se encontraron productos.</p></div>`;
+    const hayFiltros = activeFilterList(collections, getState()).length > 0;
+    grid.innerHTML = hayFiltros
+      ? `<div class="shop-empty"><p>No hay productos con los filtros activos.</p>
+           <button class="btn btn-primary" data-clear="all">Limpiar filtros</button></div>`
+      : `<div class="shop-empty"><p>No se encontraron productos.</p></div>`;
+    grid.querySelector('[data-clear="all"]')?.addEventListener('click', () => clearFilter('all'));
     renderPagination(0, 1);
     return;
   }
@@ -427,7 +485,13 @@ export function filterProducts(products, collections, activeCollection, searchQu
     const tokens = tokenize(searchQuery);
     if (tokens.length) {
       const collMap = buildCollMap(collections);
-      result = result.filter(p => scoreProduct(p, tokens, collMap) > 0);
+      // Puntuar, descartar los que no coinciden y ORDENAR por relevancia
+      // (antes solo se filtraba → la coincidencia exacta quedaba enterrada).
+      result = result
+        .map(p => ({ p, s: scoreProduct(p, tokens, collMap) }))
+        .filter(x => x.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .map(x => x.p);
     }
   }
 

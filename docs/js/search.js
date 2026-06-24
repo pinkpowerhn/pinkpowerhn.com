@@ -101,6 +101,12 @@ export function scoreProduct(product, tokens, collMap) {
   // Bonus si los tokens están en el título (más relevante).
   const title = norm(product.title);
   for (const t of tokens) if (title.includes(t)) total += 1.5;
+  // Bonus fuerte por coincidencia de la frase en el título:
+  // exacto > empieza con > contiene. Así la coincidencia más exacta queda arriba.
+  const phrase = tokens.join(' ');
+  if (title === phrase) total += 50;
+  else if (title.startsWith(phrase)) total += 20;
+  else if (title.includes(phrase)) total += 10;
   return total;
 }
 

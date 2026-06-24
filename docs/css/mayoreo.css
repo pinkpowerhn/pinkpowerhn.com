@@ -1,0 +1,193 @@
+/* ── Modo Mayoreo ────────────────────────────────────────── */
+
+/* Transición de vista (entrar/salir del modo mayoreo) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Modal de login ──────────────────────────────────────── */
+/* El atributo [hidden] debe ganarle al display:flex de abajo, si no el modal
+   queda invisible pero tapando toda la pantalla y bloquea los clics. */
+.my-modal[hidden] { display: none; }
+.my-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+.my-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(40, 12, 26, 0.45);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.26s ease;
+}
+.my-modal.is-open .my-modal__backdrop { opacity: 1; }
+
+.my-modal__panel {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 22px;
+  padding: 2.4rem 2rem 2rem;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(150, 30, 80, 0.28);
+  transform: translateY(14px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.5, 1), opacity 0.24s ease;
+}
+.my-modal.is-open .my-modal__panel { transform: translateY(0) scale(1); opacity: 1; }
+
+.my-modal__close {
+  position: absolute;
+  top: 0.8rem; right: 1rem;
+  background: none; border: none;
+  font-size: 1.7rem; line-height: 1;
+  color: #c98aa6; cursor: pointer;
+  transition: color 0.2s ease;
+}
+.my-modal__close:hover { color: #e8437a; }
+
+.my-modal__icon {
+  width: 62px; height: 62px;
+  margin: 0 auto 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.9rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffe3ef, #ffd0e4);
+  box-shadow: 0 6px 18px rgba(232, 67, 122, 0.22);
+}
+.my-modal__title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #3a1424;
+  margin: 0 0 0.3rem;
+}
+.my-modal__sub {
+  font-size: 0.82rem;
+  color: #9a7385;
+  margin: 0 0 1.5rem;
+}
+
+/* ── Formulario ──────────────────────────────────────────── */
+.my-form { display: flex; flex-direction: column; gap: 0.95rem; text-align: left; }
+.my-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.my-field span {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a87690;
+}
+.my-field input {
+  width: 100%;
+  padding: 0.8rem 0.95rem;
+  border: 1.5px solid #f0d6e2;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  color: #3a1424;
+  background: #fff8fb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.my-field input:focus {
+  outline: none;
+  border-color: #e8437a;
+  box-shadow: 0 0 0 3px rgba(232, 67, 122, 0.14);
+}
+.my-pwd-wrap { position: relative; }
+.my-pwd-wrap input { padding-right: 2.8rem; }
+.my-pwd-eye {
+  position: absolute; right: 0.45rem; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer; color: #a87690;
+  padding: 0.3rem; opacity: 0.85;
+}
+.my-pwd-eye:hover { opacity: 1; color: #c01f6b; }
+.my-pwd-eye svg { display: block; }
+.my-form__error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #d61f4a;
+  background: #ffeaf0;
+  border-radius: 9px;
+  padding: 0.55rem 0.7rem;
+  text-align: center;
+}
+.my-form__submit { margin-top: 0.4rem; width: 100%; justify-content: center; }
+
+/* ── Menú de cuenta de mayorista (dropdown en el nav) ────── */
+.my-account { position: relative; display: flex; align-items: center; }
+/* Hereda .btn .btn-primary (rosa, rectangular, mayúsculas). Solo ajustamos el
+   layout interno y el alto para que calce con el botón "Ver Productos". */
+/* .my-account__btn.btn (doble clase) para ganarle a `.btn` del <style> inline,
+   que va después de este archivo y si no pisa el padding/tamaño. */
+.my-account__btn.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.6rem;     /* mismo padding que el botón "Ver Productos" */
+  font-size: 0.65rem;
+  line-height: 1;
+  letter-spacing: 0.1em;
+}
+.my-account__label { opacity: 0.78; }
+.my-account__label::after { content: '·'; margin-left: 0.55rem; opacity: 0.55; }
+.my-account__name {
+  max-width: 130px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.my-account__chev { opacity: 0.9; transition: transform 0.2s ease; }
+.my-account__btn[aria-expanded="true"] .my-account__chev { transform: rotate(180deg); }
+
+.my-account__menu {
+  position: fixed;
+  min-width: 150px;
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.3rem;
+  box-shadow: 0 16px 40px rgba(150, 30, 80, 0.22);
+  animation: myMenuIn 0.18s ease;
+  z-index: 1300;
+}
+@keyframes myMenuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.my-account__hello {
+  margin: 0.3rem 0.6rem 0.5rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a87690;
+}
+.my-account__logout {
+  width: 100%;
+  text-align: left;
+  background: #fff8fb;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c01f6b;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.my-account__logout:hover { background: #ffe3ef; }
+
+/* Enlace discreto en el footer */
+#mayoreo-access { cursor: pointer; }
+/* Si ya hay sesión de mayoreo, se oculta el acceso del footer. */
+body.is-mayoreo #mayoreo-access-item { display: none; }
+
+@media (max-width: 600px) {
+  .my-account__name { max-width: 90px; }
+  .my-account__btn { font-size: 0.66rem; }
+}

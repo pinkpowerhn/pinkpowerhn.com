@@ -1,4 +1,4 @@
-const BASE = 'https://network.pinkpowerhn.com';
+const BASE = 'https://api.pinkpowerhn.com';
 
 // In-memory cache — one fetch per page load
 let _products = null;
@@ -92,6 +92,37 @@ export async function fetchProductById(id) {
   return normalizeProduct(node);
 }
 
+// ── Mayoreo ───────────────────────────────────────────────
+// Login de mayorista. Devuelve { token, usuario, nombre } o lanza error.
+export async function mayoreoLogin(usuario, password) {
+  const res = await fetch(`${BASE}/mayoreo/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usuario, password }),
+  });
+  if (!res.ok) {
+    const msg = res.status === 401 ? 'Usuario o contraseña incorrectos' : 'No se pudo iniciar sesión';
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+// Catálogo de mayoreo (solo productos con precio de mayoreo, ya aplicado).
+// Requiere el token de sesión. Devuelve productos normalizados como /products.
+export async function fetchMayoreoProducts(token) {
+  const res = await fetch(`${BASE}/mayoreo/products`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = new Error(`Mayoreo products failed: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  const json = await res.json();
+  const edges = json.data?.products?.edges || [];
+  return edges.map(({ node }) => normalizeProduct(node));
+}
+
 // Called ONLY on checkout click — intentionally not cached to prevent scraping
 export async function fetchConfig() {
   const res = await fetch(`${BASE}/config`);
@@ -99,10 +130,14 @@ export async function fetchConfig() {
   return res.json(); // { whatsapp: "504XXXXXXXX" }
 }
 
-export async function postOrder(orderData) {
+export async function postOrder(orderData, token = null) {
+  const headers = { 'Content-Type': 'application/json' };
+  // Si hay sesión de mayoreo, el token marca el pedido como de mayoreo (precios
+  // personalizados + etiqueta) en el backend.
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${BASE}/orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(orderData),
   });
   if (!res.ok) throw new Error(`Order POST failed: ${res.status}`);

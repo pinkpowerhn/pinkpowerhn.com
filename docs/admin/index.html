@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Panel de Mayoreo · PinkPower HN</title>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root { --pink:#e8437a; --pink-dk:#c01f6b; --ink:#3a1424; --muted:#9a7385; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Montserrat', system-ui, sans-serif;
+    background: #fff5fa; color: var(--ink); min-height: 100vh;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 1.5rem 1.1rem 4rem; }
+  h1 { font-size: 1.35rem; margin: 0; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.6rem; }
+  .top__brand { display: flex; align-items: center; gap: 0.6rem; }
+  .top__brand b { color: var(--pink-dk); }
+  .card {
+    background: #fff; border-radius: 14px; padding: 1.3rem 1.3rem;
+    box-shadow: 0 8px 28px rgba(150,30,80,0.10); margin-bottom: 1.3rem;
+  }
+  .card h2 { font-size: 0.95rem; margin: 0 0 1rem; letter-spacing: 0.02em; }
+  label { display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em;
+          text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; }
+  input {
+    width: 100%; padding: 0.7rem 0.85rem; border: 1.5px solid #f0d6e2; border-radius: 10px;
+    font-size: 0.95rem; color: var(--ink); background: #fff8fb; margin-bottom: 0.9rem;
+  }
+  input:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13); }
+  .pwd-wrap { position: relative; margin-bottom: 0.9rem; }
+  .pwd-wrap input { padding-right: 2.7rem; margin-bottom: 0; }
+  .pwd-eye {
+    position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    padding: 0.3rem; opacity: 0.85;
+  }
+  .pwd-eye:hover { opacity: 1; color: var(--pink-dk); }
+  .pwd-eye svg { display: block; }
+  .btn {
+    background: var(--pink); color: #fff; border: none; border-radius: 9px;
+    padding: 0.65rem 1.3rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .btn:hover { background: var(--pink-dk); }
+  .btn--ghost { background: #fff; color: var(--pink-dk); border: 1.5px solid #f0d6e2; }
+  .btn--ghost:hover { background: #fff0f6; color: var(--pink-dk); border-color: var(--pink); }
+  .btn--sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+  .row { display: flex; gap: 0.7rem; align-items: flex-end; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 140px; }
+  .row input { margin-bottom: 0; }
+  .money { position: relative; }
+  .money > span {
+    position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-weight: 600; font-size: 0.92rem; pointer-events: none;
+  }
+  .money input { padding-left: 2.1rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 0.6rem 0.4rem; font-size: 0.88rem; border-bottom: 1px solid #f4e4ec; }
+  th { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .pill { font-size: 0.66rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 999px; }
+  .pill--on { background: #e3f9ec; color: #1c9e54; }
+  .pill--off { background: #ffe6ec; color: #d61f4a; }
+  .msg { font-size: 0.82rem; padding: 0.6rem 0.8rem; border-radius: 9px; margin-bottom: 0.9rem; }
+  .msg--err { background: #ffeaf0; color: #d61f4a; }
+  .msg--ok { background: #e3f9ec; color: #1c9e54; }
+  .hidden { display: none; }
+  .login { max-width: 360px; margin: 8vh auto 0; }
+  .login__icon { font-size: 2rem; text-align: center; margin-bottom: 0.4rem; }
+  .muted { color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="login-view" class="wrap">
+    <div class="card login">
+      <div class="login__icon">🔐</div>
+      <h2 style="text-align:center">Panel de Mayoreo</h2>
+      <p class="muted" style="text-align:center; margin-top:-0.3rem">PinkPower HN · acceso de administrador</p>
+      <div id="login-msg" class="msg msg--err hidden"></div>
+      <form id="login-form" style="margin-top:1rem">
+        <label>Usuario</label>
+        <input type="text" id="l-user" autocomplete="username" autocapitalize="none" required />
+        <label>Contraseña</label>
+        <div class="pwd-wrap">
+          <input type="password" id="l-pass" autocomplete="current-password" required />
+          <button type="button" class="pwd-eye" data-target="l-pass" aria-label="Mostrar u ocultar contraseña"></button>
+        </div>
+        <button class="btn" style="width:100%" id="l-submit">Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- PANEL -->
+  <div id="panel-view" class="wrap hidden">
+    <div class="top">
+      <div class="top__brand"><span>🛍️</span><h1>Mayoreo · <b>PinkPower</b></h1></div>
+      <button class="btn btn--ghost btn--sm" id="logout">Salir</button>
+    </div>
+
+    <!-- Mínimo mensual -->
+    <div class="card">
+      <h2>📅 Mínimo de compra mensual</h2>
+      <p class="muted" style="margin-top:-0.6rem">Monto que cada mayorista debe alcanzar al mes (en Lempiras).</p>
+      <div class="row">
+        <div>
+          <label>Mínimo mensual</label>
+          <div class="money">
+            <span>L.</span>
+            <input type="number" id="min-input" min="0" step="100" placeholder="0" />
+          </div>
+        </div>
+        <button class="btn" id="min-save">Guardar</button>
+      </div>
+    </div>
+
+    <!-- Crear mayorista -->
+    <div class="card">
+      <h2>➕ Nueva mayorista</h2>
+      <div class="row">
+        <div><label>Usuario</label><input type="text" id="n-user" autocapitalize="none" /></div>
+        <div><label>Contraseña</label><input type="text" id="n-pass" /></div>
+        <div><label>Nombre / Tienda</label><input type="text" id="n-name" /></div>
+        <button class="btn" id="n-add">Crear</button>
+      </div>
+    </div>
+
+    <!-- Lista de mayoristas -->
+    <div class="card">
+      <h2>👥 Mayoristas</h2>
+      <table>
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="cuentas-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const API = 'https://api.pinkpowerhn.com';
+const TOKEN_KEY = 'pinkpower_admin_token';
+let token = localStorage.getItem(TOKEN_KEY);
+
+const $ = (id) => document.getElementById(id);
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) },
+  });
+  if (res.status === 401) { logout(); throw new Error('Sesión expirada'); }
+  if (!res.ok) {
+    let d = 'Error'; try { d = (await res.json()).detail || d; } catch (_) {}
+    throw new Error(d);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function show(view) {
+  $('login-view').classList.toggle('hidden', view !== 'login');
+  $('panel-view').classList.toggle('hidden', view !== 'panel');
+}
+
+const Toast = Swal.mixin({
+  toast: true, position: 'top-end', showConfirmButton: false,
+  timer: 2800, timerProgressBar: true,
+  didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); },
+});
+function panelMsg(text, ok = true) {
+  Toast.fire({ icon: ok ? 'success' : 'error', title: text });
+}
+
+// ── Login ──
+$('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('login-msg'); msg.classList.add('hidden');
+  $('l-submit').disabled = true; $('l-submit').textContent = 'Ingresando…';
+  try {
+    const res = await fetch(API + '/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: $('l-user').value.trim(), password: $('l-pass').value }),
+    });
+    if (!res.ok) throw new Error('Usuario o contraseña incorrectos');
+    const data = await res.json();
+    token = data.token; localStorage.setItem(TOKEN_KEY, token);
+    show('panel'); loadAll();
+  } catch (ex) {
+    msg.textContent = ex.message; msg.classList.remove('hidden');
+  } finally {
+    $('l-submit').disabled = false; $('l-submit').textContent = 'Ingresar';
+  }
+});
+
+function logout() {
+  token = null; localStorage.removeItem(TOKEN_KEY); show('login');
+}
+$('logout').addEventListener('click', logout);
+
+// ── Datos ──
+async function loadAll() {
+  try {
+    const cfg = await api('/admin/config');
+    $('min-input').value = cfg.minimo_mensual || '';
+    renderCuentas(await api('/admin/cuentas'));
+  } catch (ex) { panelMsg(ex.message, false); }
+}
+
+function renderCuentas(rows) {
+  const body = $('cuentas-body');
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="4" class="muted">Sin mayoristas todavía.</td></tr>'; return; }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td><b>${esc(r.usuario)}</b></td>
+      <td>${esc(r.nombre || '')}</td>
+      <td><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
+      <td style="text-align:right">
+        <button class="btn btn--ghost btn--sm" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
+          ${r.activo ? 'Desactivar' : 'Activar'}
+        </button>
+      </td>
+    </tr>`).join('');
+  body.querySelectorAll('button[data-user]').forEach(b => b.addEventListener('click', toggleEstado));
+}
+
+async function toggleEstado(e) {
+  const b = e.currentTarget;
+  const usuario = b.dataset.user, nuevo = b.dataset.activo !== '1';
+  if (!nuevo) {
+    const r = await Swal.fire({
+      title: `¿Desactivar a "${usuario}"?`,
+      text: 'No podrá iniciar sesión hasta que la reactives.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Sí, desactivar', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    });
+    if (!r.isConfirmed) return;
+  }
+  b.disabled = true;
+  try {
+    await api('/admin/cuentas/estado', { method: 'POST', body: JSON.stringify({ usuario, activo: nuevo }) });
+    panelMsg(`Cuenta "${usuario}" ${nuevo ? 'activada' : 'desactivada'}.`);
+    renderCuentas(await api('/admin/cuentas'));
+  } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
+}
+
+// ── Mínimo ──
+$('min-save').addEventListener('click', async () => {
+  try {
+    await api('/admin/config', { method: 'PUT', body: JSON.stringify({ minimo_mensual: $('min-input').value }) });
+    panelMsg('Mínimo mensual guardado.');
+  } catch (ex) { panelMsg(ex.message, false); }
+});
+
+// ── Crear mayorista ──
+$('n-add').addEventListener('click', async () => {
+  const usuario = $('n-user').value.trim(), password = $('n-pass').value, nombre = $('n-name').value.trim();
+  try {
+    await api('/admin/cuentas', { method: 'POST', body: JSON.stringify({ usuario, password, nombre }) });
+    $('n-user').value = ''; $('n-pass').value = ''; $('n-name').value = '';
+    panelMsg(`Mayorista "${usuario}" creada.`);
+    renderCuentas(await api('/admin/cuentas'));
+  } catch (ex) { panelMsg(ex.message, false); }
+});
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ── Ojo para revelar contraseña (ícono SVG) ──
+const EYE = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18.4 18.4 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2m-6.7-1.1a3 3 0 1 1-4.2-4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+document.querySelectorAll('.pwd-eye').forEach(btn => {
+  btn.innerHTML = EYE;
+  btn.addEventListener('click', () => {
+    const inp = document.getElementById(btn.dataset.target);
+    const reveal = inp.type === 'password';
+    inp.type = reveal ? 'text' : 'password';
+    btn.innerHTML = reveal ? EYE_OFF : EYE;
+  });
+});
+
+// ── Init ──
+if (token) { show('panel'); loadAll(); } else { show('login'); }
+</script>
+</body>
+</html>

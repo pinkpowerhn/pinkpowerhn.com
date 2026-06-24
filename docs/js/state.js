@@ -16,6 +16,8 @@ const _state = {
   sortBy:            'relevance', // 'relevance' | 'price-asc' | 'price-desc'
   menuOpen:          false,   // cinta lateral del menú de productos
   currentPage:       1,      // pagination — resets to 1 on any filter change
+  mayoreo:           false,   // modo mayoreo activo (precios de mayorista)
+  mayoreoUser:       null,    // nombre de la mayorista en sesión | null
 };
 
 // ── Event bus ─────────────────────────────────────────────

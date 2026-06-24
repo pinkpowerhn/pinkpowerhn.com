@@ -127,8 +127,20 @@ async function enterMayoreo(token, nombre) {
   // y dejaba la pantalla en el estado viejo hasta refrescar).
   document.body.classList.add('is-mayoreo');
   mountAccount(nombre);
+  // En mayoreo solo deben existir las colecciones que tienen al menos un
+  // producto con precio de mayoreo. Filtramos `collections` en el estado (no
+  // solo el carrusel) para que la lista de categorías, la barra de tallas y la
+  // búsqueda tampoco muestren colecciones vacías. `productos` ya son solo los
+  // de mayoreo, así que basta con quedarnos con sus colecciones.
+  const conMayoreo = new Set();
+  productos.forEach(p => (p.collectionHandles || []).forEach(h => conMayoreo.add(h)));
+  const todasCols = getState().collections || [];
+  const colsMayoreo = todasCols.filter(c => conMayoreo.has(c.handle));
   setState({
     products: productos,
+    // Si por algún motivo no se pudo determinar (productos sin colecciones),
+    // dejamos las colecciones completas para no vaciar el catálogo.
+    collections: colsMayoreo.length ? colsMayoreo : todasCols,
     productsLoaded: true,
     mayoreo: true,
     mayoreoUser: nombre || '',

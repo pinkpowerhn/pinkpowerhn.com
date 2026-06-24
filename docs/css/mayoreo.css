@@ -187,6 +187,54 @@
 /* Si ya hay sesión de mayoreo, se oculta el acceso del footer. */
 body.is-mayoreo #mayoreo-access-item { display: none; }
 
+/* ── Sesión de mayoreo dentro de la cinta lateral (móvil) ── */
+/* En escritorio mandamos el dropdown del nav: este bloque queda oculto. */
+.my-drawer-account { display: none; }
+.my-drawer-account__hello {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a87690;
+}
+.my-drawer-account__name {
+  margin: 0.15rem 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #3a1424;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.my-drawer-account__logout {
+  width: 100%;
+  text-align: center;
+  background: #fff8fb;
+  border: 1.5px solid #f0d6e2;
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c01f6b;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.my-drawer-account__logout:hover { background: #ffe3ef; border-color: #e8b8cf; }
+
+@media (max-width: 768px) {
+  /* El botón pastilla del nav rompe el header en móvil: lo ocultamos y
+     mostramos el control dentro de la hamburguesa. */
+  body.is-mayoreo .my-account,
+  body.is-mayoreo .my-account__menu { display: none !important; }
+  .my-drawer-account {
+    display: block;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(26, 10, 18, 0.08);
+  }
+}
+
 @media (max-width: 600px) {
   .my-account__name { max-width: 90px; }
   .my-account__btn { font-size: 0.66rem; }

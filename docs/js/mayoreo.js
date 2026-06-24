@@ -195,6 +195,29 @@ function mountAccount(nombre) {
   }
   acc.querySelector('.my-account__name').textContent = nombre || 'Mayorista';
   acc.hidden = false;
+
+  // En móvil el botón del nav rompía el header, así que el control de sesión
+  // vive dentro de la cinta lateral (hamburguesa). CSS decide cuál se ve.
+  mountDrawerAccount(nombre);
+}
+
+// Bloque de sesión de mayoreo dentro del menú lateral (visible solo en móvil).
+function mountDrawerAccount(nombre) {
+  let block = document.getElementById('my-drawer-account');
+  if (!block) {
+    const panel = document.querySelector('#menu-drawer .menu-panel');
+    if (!panel) return;
+    block = document.createElement('div');
+    block.id = 'my-drawer-account';
+    block.className = 'my-drawer-account';
+    block.innerHTML = `
+      <p class="my-drawer-account__hello">Sesión de mayoreo</p>
+      <p class="my-drawer-account__name"></p>
+      <button class="my-drawer-account__logout" id="my-drawer-logout">Cerrar sesión</button>`;
+    panel.appendChild(block);
+    block.querySelector('#my-drawer-logout').addEventListener('click', exitMayoreo);
+  }
+  block.querySelector('.my-drawer-account__name').textContent = nombre || 'Mayorista';
 }
 
 function unmountAccount() {
@@ -202,6 +225,8 @@ function unmountAccount() {
   if (acc) acc.remove();
   const menu = document.getElementById('my-account-menu');
   if (menu) menu.remove();
+  const drawerAcc = document.getElementById('my-drawer-account');
+  if (drawerAcc) drawerAcc.remove();
 }
 
 // ── Init ──────────────────────────────────────────────────

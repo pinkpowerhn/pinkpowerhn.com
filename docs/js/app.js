@@ -225,6 +225,7 @@ let _fbIndex = 0;    // colección visible (0..N-1)
 let _fbN = 0;        // cantidad de colecciones
 let _fbTimer = null;
 let _fbMode = 'normal';  // 'normal' | 'mayoreo' — para reconstruir el carrusel al entrar a mayoreo
+let _fbReq = 0;          // secuencia para descartar precargas de imagen obsoletas (clicks rápidos)
 
 // Colecciones que tienen al menos un producto en la lista dada. En mayoreo,
 // `products` son exclusivamente los que tienen precio de mayoreo, así que esto
@@ -251,10 +252,12 @@ function renderFeatured(products, collections) {
 
   _fbN = _fbItems.length;
   _fbIndex = 0;
-  // Un solo card fijo (no se hace scroll). Lo rellena showFbCollection.
-  track.innerHTML = fbSlideHTML(_fbItems[0].handle, _fbItems[0].title, _fbItems[0].img, true);
+  // Un solo card fijo (no se hace scroll). Arranca como skeleton y
+  // showFbCollection precarga la foto y la mete (con el título) cuando ya está
+  // lista, para que no haya el salto de tamaño al aparecer la imagen.
+  track.innerHTML = fbSlideHTML(_fbItems[0].handle, _fbItems[0].title, null, true);
   fbRenderDots(_fbN);
-  markFbDot(0);
+  showFbCollection(0, 1);
 
   section.hidden = false;
   startFbAuto();
@@ -263,30 +266,49 @@ function renderFeatured(products, collections) {
   section.onmouseleave = startFbAuto;
 }
 
-// Cambia el contenido del card a la colección i (con animación de entrada).
+// Cambia el contenido del card a la colección i. La imagen se PRECARGA y el
+// contenido (imagen + título) solo se intercambia cuando ya está lista, así no
+// hay el salto de tamaño al aparecer la foto. Mientras tanto se queda visible
+// el contenido anterior (o el skeleton). Una secuencia (_fbReq) descarta
+// precargas que quedaron obsoletas si se avanza rápido.
 function showFbCollection(i, dir = 1) {
   if (!_fbN) return;
   i = ((i % _fbN) + _fbN) % _fbN;
   _fbIndex = i;
-  const card = document.querySelector('#fb-track .fb-slide');
-  if (!card) return;
   const it = _fbItems[i];
-  card.dataset.fbCollection = it.handle;
-  const media = card.querySelector('.fb-slide__media');
-  const title = card.querySelector('.fb-slide__title');
-  if (media) {
-    media.innerHTML = it.img
-      ? `<img src="${it.img}" alt="${it.title}" loading="lazy" />`
-      : `<div class="fb-slide__imgskel skeleton" aria-hidden="true"></div>`;
+  const reqId = ++_fbReq;
+
+  const apply = (withImg) => {
+    if (reqId !== _fbReq) return;  // llegó otra navegación mientras precargaba
+    const card = document.querySelector('#fb-track .fb-slide');
+    if (!card) return;
+    const media = card.querySelector('.fb-slide__media');
+    const title = card.querySelector('.fb-slide__title');
+    card.dataset.fbCollection = it.handle;
+    if (media) {
+      media.innerHTML = withImg
+        ? `<img src="${it.img}" alt="${it.title}" loading="lazy" />`
+        : `<div class="fb-slide__imgskel skeleton" aria-hidden="true"></div>`;
+    }
+    if (title) title.textContent = it.title;
+    withImg ? card.removeAttribute('data-fb-noimg') : card.setAttribute('data-fb-noimg', '');
+    // Re-dispara la animación de entrada del contenido (slide + fade).
+    card.style.setProperty('--fb-dir', dir >= 0 ? '26px' : '-26px');
+    card.classList.remove('fb-in');
+    void card.offsetWidth;
+    card.classList.add('fb-in');
+    markFbDot(i);
+  };
+
+  if (it.img) {
+    const pre = new Image();
+    pre.onload  = () => apply(true);
+    pre.onerror = () => apply(false);  // si la foto falla, al menos el título
+    pre.src = it.img;
+    if (pre.complete) apply(true);     // ya estaba en caché → instantáneo
+  } else {
+    apply(false);  // sin foto todavía: skeleton + título
   }
-  if (title) title.textContent = it.title;
-  it.img ? card.removeAttribute('data-fb-noimg') : card.setAttribute('data-fb-noimg', '');
-  // Re-dispara la animación de entrada del contenido (slide + fade).
-  card.style.setProperty('--fb-dir', dir >= 0 ? '26px' : '-26px');
-  card.classList.remove('fb-in');
-  void card.offsetWidth;
-  card.classList.add('fb-in');
-  markFbDot(i);
 }
 
 function markFbDot(idx) {
@@ -336,14 +358,9 @@ function fbFillFeaturedImages(products) {
     const img = pickCollectionImage(products, it.handle);
     if (img) { it.img = img; if (i === _fbIndex) refreshCurrent = true; }
   });
-  if (!refreshCurrent) return;
-  const card = document.querySelector('#fb-track .fb-slide');
-  const media = card && card.querySelector('.fb-slide__media');
-  const it = _fbItems[_fbIndex];
-  if (media && it.img) {
-    media.innerHTML = `<img src="${it.img}" alt="${it.title}" loading="lazy" />`;
-    card.removeAttribute('data-fb-noimg');
-  }
+  // Si la foto de la colección visible acaba de llegar, refrescamos con
+  // showFbCollection para que también la precargue y entre sin salto.
+  if (refreshCurrent) showFbCollection(_fbIndex, 1);
 }
 
 function fbRenderDots(n) {

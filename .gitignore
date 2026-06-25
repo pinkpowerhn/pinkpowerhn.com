@@ -1,6 +1,7 @@
 # Notas / material de trabajo — no se publica
 arreglos/
 cotizacion_mayoreo.md
+cotizacion_*.md
 
 # Llaves SSH del servidor Oracle — NUNCA subir al repo
 ssh-keys-oracle/

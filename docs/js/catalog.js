@@ -49,19 +49,34 @@ export function renderCollectionSidebar(collections) {
     `);
 
     if (isOpen) {
-      // Qué etiquetas mostrar en el submenú de esta colección. Mostramos:
-      //  a) las que tienen su "hogar" en esta colección (computeTagAssignments), y
-      //  b) las que, aunque su hogar sea otra colección, representan una parte
-      //     útil de ESTA colección. Esto importa en colecciones transversales
-      //     como "Hombres", donde el filtro útil es la categoría (Perfumes,
-      //     Cremas, Gel…) cuyo hogar es su propia colección de categoría.
+      // Qué etiquetas mostrar en el submenú de esta colección.
+      //
+      // Hay dos tipos de colección y se detectan solos (sin nombres fijos):
+      //  • De categoría (Accesorios, Hogar, Ropa…): sus propios productos ya
+      //    están cubiertos por sus etiquetas "propias". Mostramos solo esas, para
+      //    no colar etiquetas ajenas (p. ej. en Accesorios los "holders" llevan
+      //    también la etiqueta del producto que sostienen — eso no debe salir).
+      //  • Transversal (Hombres, Sets…): sus etiquetas propias cubren poco; el
+      //    filtro útil es la categoría real de cada producto (Perfumes, Cremas…),
+      //    cuyo hogar es otra colección. Ahí mostramos las categorías presentes.
+      // En ambos casos se ocultan las etiquetas que están sobre casi todos los
+      // productos (no filtran nada útil, p. ej. "Hombre" dentro de Hombres).
       const prodsInC = products.filter(p => p.collectionHandles.includes(c.handle));
       const sizeC = prodsInC.length || 1;
       const countInC = {};
       for (const p of prodsInC) for (const t of (p.tags || [])) countInC[t] = (countInC[t] || 0) + 1;
-      const tagsInCollection = Object.keys(countInC)
-        .filter(t => tagAssignment[t] === c.handle || (countInC[t] >= 2 && countInC[t] / sizeC >= 0.08))
-        .sort();
+
+      const esTrivial = t => countInC[t] >= 0.9 * sizeC;
+      const propias = new Set(
+        Object.keys(countInC).filter(t => tagAssignment[t] === c.handle && !esTrivial(t)));
+      const cubiertos = prodsInC.filter(p => (p.tags || []).some(t => propias.has(t))).length;
+      const bienCubierta = cubiertos / sizeC >= 0.6;
+
+      const tagsInCollection = bienCubierta
+        ? [...propias].sort()
+        : Object.keys(countInC)
+            .filter(t => !esTrivial(t) && countInC[t] >= 2 && countInC[t] / sizeC >= 0.08)
+            .sort();
 
       if (tagsInCollection.length) {
         sections.push(`

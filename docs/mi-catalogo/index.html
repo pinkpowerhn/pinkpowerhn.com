@@ -187,13 +187,21 @@
   .cb-switch input:checked + .cb-switch__track { background: var(--pp); }
   .cb-switch input:checked + .cb-switch__track::after { transform: translateX(18px); }
 
-  .cb-preview-wrap { display: flex; justify-content: center; }
+  .cb-preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.3rem; position: sticky; top: 1rem; }
+  .cb-prev { display: flex; flex-direction: column; align-items: center; gap: .45rem; width: 100%; }
+  .cb-prev__label { font-size: .78rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  /* Marco de computadora (navegador) */
+  .cb-browser { width: 100%; max-width: 340px; border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.16); }
+  .cb-browser__bar { height: 26px; background: #ece6ea; display: flex; align-items: center; gap: .35rem; padding: 0 .6rem; }
+  .cb-browser__bar i { width: 9px; height: 9px; border-radius: 50%; background: #c9bcc5; }
+  .cb-browser__screen { height: 250px; overflow-y: auto; background: #fff; }
+  /* Marco de celular */
   .cb-phone {
-    width: 280px; background: #1c1c1e; border-radius: 30px; padding: 10px;
+    width: 232px; background: #1c1c1e; border-radius: 28px; padding: 9px;
     box-shadow: 0 12px 36px rgba(0,0,0,.22);
   }
   .cb-phone__screen {
-    background: #fff; border-radius: 22px; overflow-y: auto; height: 480px;
+    background: #fff; border-radius: 20px; overflow-y: auto; height: 410px;
   }
   /* Mini-réplica de la página pública */
   .pv { min-height: 100%; font-size: 12px; }
@@ -204,7 +212,7 @@
   .pv-rule { width: 36px; height: 3px; border-radius: 3px; margin: .7rem auto 0; }
   .pv-sec { font-weight: 800; font-size: .92rem; padding: .8rem .8rem .2rem; display: flex; align-items: center; gap: .4rem; }
   .pv-sec::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
-  .pv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .7rem; }
+  .pv-grid { display: grid; grid-template-columns: repeat(var(--pvcols, 2), 1fr); gap: .4rem; padding: .6rem; }
   .pv-wa { margin: .2rem .7rem 1rem; text-align: center; background: #25d366; color: #fff; font-weight: 700; font-size: .78rem; padding: .55rem; border-radius: 999px; }
   .pv-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,.1); }
   .pv-card__img { aspect-ratio: 1/1; background: #f3f3f3; display: grid; place-items: center; }

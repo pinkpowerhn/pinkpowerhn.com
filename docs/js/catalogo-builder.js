@@ -29,7 +29,7 @@ const state = {
   diseno: {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
-    logo: '', whatsapp: '', columnas: 3, separarPorColeccion: true,
+    logo: '', whatsapp: '', columnas: 4, separarPorColeccion: true,
   },
   paso: 'productos',
   diasConfig: null,       // días que configuró la admin
@@ -432,7 +432,17 @@ function renderDiseno() {
         <p class="cb-hint">Así se verá la página que abrirán tus clientas →</p>
       </div>
       <div class="cb-preview-wrap">
-        <div class="cb-phone"><div class="cb-phone__screen" id="cb-preview"></div></div>
+        <div class="cb-prev">
+          <div class="cb-prev__label">🖥️ En computadora</div>
+          <div class="cb-browser">
+            <div class="cb-browser__bar"><i></i><i></i><i></i></div>
+            <div class="cb-browser__screen" id="cb-preview-desk"></div>
+          </div>
+        </div>
+        <div class="cb-prev">
+          <div class="cb-prev__label">📱 En celular</div>
+          <div class="cb-phone"><div class="cb-phone__screen" id="cb-preview-mobile"></div></div>
+        </div>
       </div>
     </div>`;
 
@@ -495,7 +505,8 @@ function procesarLogo(file, cb) {
   reader.readAsDataURL(file);
 }
 
-function actualizarPreview() {
+// Construye el HTML del preview para una cantidad de columnas dada.
+function previewInner(cols) {
   const d = state.diseno;
   const items = [...state.sel.values()];
   const separar = d.separarPorColeccion && items.some(i => i.coleccion);
@@ -520,12 +531,12 @@ function actualizarPreview() {
     });
     cuerpo = grupos.slice(0, 4).map(g => `
       ${g.t ? `<div class="pv-sec" style="color:${esc(d.colorAcento)}">${esc(g.t)}</div>` : ''}
-      <div class="pv-grid">${g.items.slice(0, 4).map(cardHTML).join('')}</div>`).join('');
+      <div class="pv-grid" style="--pvcols:${cols}">${g.items.slice(0, cols * 2).map(cardHTML).join('')}</div>`).join('');
   } else {
-    cuerpo = `<div class="pv-grid">${items.slice(0, 6).map(cardHTML).join('')}</div>`;
+    cuerpo = `<div class="pv-grid" style="--pvcols:${cols}">${items.slice(0, cols * 3).map(cardHTML).join('')}</div>`;
   }
 
-  $('#cb-preview').innerHTML = `
+  return `
     <div class="pv" style="background:${esc(d.colorFondo)};color:${esc(d.colorTexto)}">
       <div class="pv-head">
         ${d.logo ? `<img class="pv-logo" src="${esc(d.logo)}" alt=""/>` : ''}
@@ -536,6 +547,13 @@ function actualizarPreview() {
       ${cuerpo}
       ${d.whatsapp ? `<div class="pv-wa">💬 Hacer pedido</div>` : ''}
     </div>`;
+}
+
+function actualizarPreview() {
+  const desk = $('#cb-preview-desk');
+  const mob = $('#cb-preview-mobile');
+  if (desk) desk.innerHTML = previewInner(state.diseno.columnas);  // compu: columnas elegidas
+  if (mob) mob.innerHTML = previewInner(2);                        // celular: siempre 2
 }
 
 // ── Paso 4: Generar ───────────────────────────────────────
@@ -703,7 +721,7 @@ function crearNuevo() {
   state.diseno = {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
-    logo: '', whatsapp: '', columnas: 3, separarPorColeccion: true,
+    logo: '', whatsapp: '', columnas: 4, separarPorColeccion: true,
   };
   state.busqueda = ''; state.filtroColeccion = '';
   state.paso = 'productos';
@@ -730,7 +748,7 @@ function editarCat(cat) {
     colorAcento: op.colorAcento || '#e8437a',
     logo: op.logo || '',
     whatsapp: op.whatsapp || '',
-    columnas: [2, 3, 4].includes(op.columnas) ? op.columnas : 3,
+    columnas: [2, 3, 4].includes(op.columnas) ? op.columnas : 4,
     separarPorColeccion: op.separarPorColeccion !== false,
   };
   state.busqueda = ''; state.filtroColeccion = '';

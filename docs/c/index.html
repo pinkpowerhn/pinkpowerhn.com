@@ -71,9 +71,9 @@
     margin: 1.2rem auto 0;
   }
 
-  /* Secciones por colección. Ancho cómodo centrado en desktop (parte de ~42rem
-     ≈ max-w-2xl con 2 columnas y crece con más columnas). En móvil ocupa todo. */
-  .section { padding: .6rem 1rem 0; max-width: min(94vw, max(42rem, calc(var(--cols, 2) * 16rem))); margin: 0 auto; }
+  /* Secciones por colección. Ancho centrado en desktop según las columnas
+     (~14rem por columna → 4 col ≈ 56rem = max-w-4xl). En móvil ocupa todo. */
+  .section { padding: .6rem 1rem 0; max-width: min(94vw, calc(var(--cols, 4) * 14rem)); margin: 0 auto; }
   .section__title {
     display: flex; align-items: center; gap: .7rem;
     font-size: clamp(1.05rem, 4vw, 1.35rem); font-weight: 800;
@@ -93,7 +93,7 @@
     padding: 0 1rem;
   }
   /* Grilla suelta (sin separar por colección): mismo tope de ancho. */
-  .grid--solo { max-width: min(94vw, max(42rem, calc(var(--cols, 2) * 16rem))); margin: 0 auto; }
+  .grid--solo { max-width: min(94vw, calc(var(--cols, 4) * 14rem)); margin: 0 auto; }
   /* En pantallas chicas nunca más de 2; respeta --cols solo desde tablet. */
   @media (max-width: 539px) { .grid { grid-template-columns: repeat(min(var(--cols, 2), 2), 1fr); } }
   @media (min-width: 540px) and (max-width: 860px) { .grid { grid-template-columns: repeat(min(var(--cols, 3), 3), 1fr); gap: 1rem; } }
@@ -228,7 +228,7 @@ function render(cat) {
   const op = cat.opciones || {};
   const accent = op.colorAcento || cat.colorTexto || '#e8437a';
   document.documentElement.style.setProperty('--accent', accent);
-  const cols = [2, 3, 4].includes(op.columnas) ? op.columnas : 2;
+  const cols = [2, 3, 4].includes(op.columnas) ? op.columnas : 4;
 
   const titulo = cat.titulo || 'Catálogo';
   document.title = titulo;

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Crear catálogo — Mayoreo</title>
+<link rel="icon" href="/img/favicon.png" />
+<style>
+  :root {
+    --pp: #e8437a; --pp-dark: #b32c5b; --ink: #2a0f1c;
+    --line: rgba(42,15,28,.10); --soft: #fff5f9; --muted: #8a6c79;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #faf3f6; color: var(--ink); -webkit-font-smoothing: antialiased;
+    line-height: 1.45; min-height: 100vh;
+  }
+  img { display: block; max-width: 100%; }
+
+  /* Cabecera */
+  .cb-head {
+    display: flex; align-items: center; gap: .8rem;
+    padding: .9rem 1rem; background: #fff; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .cb-head h1 { font-size: 1.15rem; font-weight: 800; flex: 1; }
+  .cb-back {
+    width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+    text-decoration: none; color: var(--ink); font-size: 1.3rem; background: var(--soft);
+  }
+  .cb-mis { color: var(--pp); font-weight: 700; text-decoration: none; font-size: .92rem; }
+
+  /* Pasos */
+  .cb-steps {
+    display: flex; gap: .4rem; padding: .9rem 1rem; overflow-x: auto;
+    background: #fff; border-bottom: 1px solid var(--line);
+  }
+  .cb-step {
+    display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap;
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    padding: .45rem .8rem; border-radius: 999px; font-size: .86rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .cb-step:disabled { opacity: .45; cursor: not-allowed; }
+  .cb-step.is-active { background: var(--pp); border-color: var(--pp); color: #fff; }
+  .cb-step.is-done { color: var(--pp); border-color: var(--pp); }
+  .cb-step__n {
+    width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(0,0,0,.06); font-size: .76rem;
+  }
+  .cb-step.is-active .cb-step__n { background: rgba(255,255,255,.25); }
+
+  /* Cuerpo */
+  .cb-body { max-width: 920px; margin: 0 auto; padding: 1.1rem 1rem 6rem; }
+  .cb-hint { color: var(--muted); font-size: .9rem; margin: .2rem 0 .9rem; }
+  .cb-error { color: #c0392b; font-weight: 600; }
+
+  /* Inputs y botones */
+  .cb-input {
+    width: 100%; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px;
+    font-size: .95rem; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  .cb-input:focus { outline: 2px solid rgba(232,67,122,.35); border-color: var(--pp); }
+  .cb-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+    padding: .6rem 1rem; border-radius: 10px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); font-weight: 700; font-size: .92rem;
+    cursor: pointer; font-family: inherit; text-decoration: none;
+  }
+  .cb-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .cb-btn--primary { background: var(--pp); border-color: var(--pp); color: #fff; }
+  .cb-btn--ghost { background: var(--soft); }
+  .cb-btn--wa { background: #25d366; border-color: #25d366; color: #fff; width: 100%; margin-top: .5rem; }
+  .cb-btn--big { width: 100%; padding: .9rem; font-size: 1.05rem; }
+  .cb-btn--sm { padding: .4rem .7rem; font-size: .82rem; }
+
+  /* Paso 1: colecciones (chips) */
+  .cb-cols { margin-bottom: .8rem; }
+  .cb-cols__label { font-size: .82rem; font-weight: 600; color: var(--muted); margin-bottom: .4rem; }
+  .cb-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .cb-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: .35rem .7rem; border-radius: 999px; font-size: .82rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .cb-chip:hover { border-color: var(--pp); }
+  .cb-chip.is-on { background: var(--pp); border-color: var(--pp); color: #fff; }
+  .cb-chip__n { font-size: .72rem; opacity: .7; background: rgba(0,0,0,.06); border-radius: 999px; padding: 0 .4rem; }
+  .cb-chip.is-on .cb-chip__n { background: rgba(255,255,255,.25); opacity: .9; }
+  .cb-link-btn {
+    border: none; background: none; color: var(--pp); font-weight: 700; cursor: pointer;
+    font-family: inherit; font-size: .88rem; margin-left: .4rem; padding: 0;
+  }
+
+  /* Paso 1: herramientas + grilla */
+  .cb-tools { display: grid; grid-template-columns: 1fr; gap: .55rem; margin-bottom: .3rem; }
+  @media (min-width: 640px) { .cb-tools { grid-template-columns: 1fr 1fr auto; } }
+  .cb-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem;
+  }
+  @media (min-width: 560px) { .cb-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 800px) { .cb-grid { grid-template-columns: repeat(5, 1fr); } }
+  .cb-pcard {
+    border: 2px solid transparent; background: #fff; border-radius: 12px; overflow: hidden;
+    cursor: pointer; padding: 0; font-family: inherit; text-align: left;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05); position: relative;
+  }
+  .cb-pcard__img {
+    aspect-ratio: 1/1; background: #f3eef1; display: grid; place-items: center;
+    font-size: 1.6rem; position: relative; overflow: hidden;
+  }
+  .cb-pcard__img img { width: 100%; height: 100%; object-fit: cover; }
+  .cb-pcard__check {
+    position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--pp); color: #fff; display: grid; place-items: center; font-size: .85rem;
+    opacity: 0; transform: scale(.5); transition: .15s;
+  }
+  .cb-pcard.is-on { border-color: var(--pp); }
+  .cb-pcard.is-on .cb-pcard__check { opacity: 1; transform: scale(1); }
+  .cb-pcard__name {
+    display: block; padding: .45rem .55rem .6rem; font-size: .8rem; font-weight: 600;
+    line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+
+  /* Paso 2: precios */
+  .cb-plist { display: flex; flex-direction: column; gap: .5rem; }
+  .cb-prow {
+    display: grid; grid-template-columns: 44px 1fr 110px 32px; align-items: center; gap: .6rem;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .5rem .6rem;
+  }
+  .cb-prow__img { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; background: #f3eef1; display: grid; place-items: center; }
+  .cb-prow__img img { width: 100%; height: 100%; object-fit: cover; }
+  .cb-prow__name { font-size: .9rem; font-weight: 600; }
+  .cb-prow__del { border: none; background: none; color: var(--muted); font-size: 1rem; cursor: pointer; }
+
+  /* Paso 3: diseño + preview */
+  .cb-design { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }
+  @media (min-width: 760px) { .cb-design { grid-template-columns: 1fr 320px; align-items: start; } }
+  .cb-form { display: flex; flex-direction: column; gap: .9rem; }
+  .cb-field { display: flex; flex-direction: column; gap: .35rem; font-size: .86rem; font-weight: 600; }
+  .cb-field span { color: var(--muted); }
+  .cb-colors { display: flex; gap: 1rem; }
+  .cb-field--color input[type=color] { width: 56px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; }
+
+  .cb-preview-wrap { display: flex; justify-content: center; }
+  .cb-phone {
+    width: 280px; background: #1c1c1e; border-radius: 30px; padding: 10px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.22);
+  }
+  .cb-phone__screen {
+    background: #fff; border-radius: 22px; overflow-y: auto; height: 480px;
+  }
+  /* Mini-réplica de la página pública */
+  .pv { min-height: 100%; font-size: 12px; }
+  .pv-head { text-align: center; padding: 1.4rem 1rem .8rem; }
+  .pv-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; word-break: break-word; }
+  .pv-sub { margin-top: .3rem; opacity: .8; font-weight: 500; }
+  .pv-rule { width: 36px; height: 3px; border-radius: 3px; opacity: .3; margin: .7rem auto 0; }
+  .pv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .7rem; }
+  .pv-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+  .pv-card__img { aspect-ratio: 1/1; background: #f3f3f3; display: grid; place-items: center; }
+  .pv-card__img img { width: 100%; height: 100%; object-fit: cover; }
+  .pv-card__name { font-size: .7rem; font-weight: 600; color: #232323; padding: .35rem .4rem 0; }
+  .pv-card__price { font-size: .78rem; font-weight: 800; padding: .15rem .4rem .45rem; }
+
+  /* Paso 4: generar */
+  .cb-generar { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+  .cb-resumen { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem; }
+  .cb-resumen h3 { font-size: 1rem; margin-bottom: .5rem; }
+  .cb-resumen ul { list-style: none; display: flex; flex-direction: column; gap: .3rem; font-size: .95rem; }
+  .cb-ok { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem; text-align: center; }
+  .cb-ok__icon { font-size: 2.4rem; }
+  .cb-ok h3 { margin: .3rem 0 .2rem; }
+  .cb-linkbox { display: flex; gap: .4rem; margin: .7rem 0; }
+  .cb-linkbox .cb-input { font-size: .82rem; }
+
+  /* Mis catálogos */
+  .cb-mislist { display: flex; flex-direction: column; gap: .6rem; }
+  .cb-miscard {
+    display: flex; align-items: center; gap: .8rem; justify-content: space-between;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .7rem .9rem;
+  }
+  .cb-miscard.is-exp { opacity: .6; }
+  .cb-miscard__info { display: flex; flex-direction: column; }
+  .cb-miscard__info span { font-size: .82rem; color: var(--muted); }
+  .cb-miscard__acts { display: flex; gap: .4rem; }
+
+  /* Footer navegación */
+  .cb-foot {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .7rem 1rem; background: #fff; border-top: 1px solid var(--line);
+    max-width: 920px; margin: 0 auto;
+  }
+  .cb-foot__info { color: var(--muted); font-size: .9rem; font-weight: 600; }
+
+  /* Estados */
+  .cb-loading, .cb-empty { text-align: center; padding: 3rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: .8rem; }
+  .cb-empty__icon { font-size: 2.6rem; }
+  .cb-spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--pp); border-top-color: transparent; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div id="cb-root"></div>
+  <script type="module" src="/js/catalogo-builder.js"></script>
+</body>
+</html>

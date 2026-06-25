@@ -181,6 +181,20 @@
   transition: background 0.18s ease;
 }
 .my-account__logout:hover { background: #ffe3ef; }
+.my-account__link {
+  display: block;
+  text-decoration: none;
+  text-align: left;
+  border-radius: 4px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1a0a12;
+  background: #fff;
+  transition: background 0.18s ease;
+}
+.my-account__link:hover { background: #fff0f6; }
 
 /* Enlace discreto en el footer */
 #mayoreo-access { cursor: pointer; }
@@ -205,6 +219,24 @@ body.is-mayoreo #mayoreo-access-item { display: none; }
   color: #3a1424;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.my-drawer-account__catalogo {
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+  background: #e8437a;
+  border: 1.5px solid #e8437a;
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  transition: background 0.18s ease;
+}
+.my-drawer-account__catalogo:hover { background: #c01f6b; border-color: #c01f6b; }
 .my-drawer-account__logout {
   width: 100%;
   text-align: center;

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Catálogo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🛍️</text></svg>" />
+<style>
+  :root {
+    --bg: #fff0f5;
+    --fg: #3a0a1e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.4;
+  }
+
+  /* Estados (cargando / vacío / expirado) */
+  .state {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 2rem; gap: .6rem;
+  }
+  .state__icon { font-size: 3rem; }
+  .state__title { font-size: 1.3rem; font-weight: 700; }
+  .state__msg { opacity: .75; max-width: 22rem; }
+  .spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid currentColor; border-top-color: transparent;
+    opacity: .5; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Cabecera */
+  header.cat {
+    text-align: center;
+    padding: 2.4rem 1.2rem 1.4rem;
+  }
+  .cat__title {
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    font-weight: 800; letter-spacing: -.02em;
+  }
+  .cat__subtitle {
+    margin-top: .5rem; font-size: clamp(.95rem, 3.6vw, 1.1rem);
+    opacity: .8; font-weight: 500;
+  }
+  .cat__rule {
+    width: 48px; height: 3px; border-radius: 3px;
+    background: currentColor; opacity: .3;
+    margin: 1.1rem auto 0;
+  }
+
+  /* Grilla de productos */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .9rem;
+    padding: 1rem 1rem 3rem;
+    max-width: 960px; margin: 0 auto;
+  }
+  @media (min-width: 620px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 1.1rem; } }
+  @media (min-width: 880px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    display: flex; flex-direction: column;
+  }
+  .card__imgwrap {
+    position: relative; width: 100%;
+    aspect-ratio: 1 / 1; background: #f3f3f3;
+  }
+  .card__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card__noimg {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; opacity: .25;
+  }
+  .card__body { padding: .7rem .8rem .9rem; display: flex; flex-direction: column; gap: .3rem; flex: 1; }
+  .card__name { font-size: .92rem; font-weight: 600; color: #232323; line-height: 1.3; }
+  .card__price {
+    margin-top: auto; font-size: 1.02rem; font-weight: 800;
+    color: var(--fg);
+  }
+
+  footer.cat {
+    text-align: center; padding: 1.5rem 1rem 2.4rem;
+    font-size: .8rem; opacity: .55;
+  }
+</style>
+</head>
+<body>
+  <div id="root">
+    <div class="state">
+      <div class="spinner"></div>
+      <p class="state__msg">Cargando catálogo…</p>
+    </div>
+  </div>
+
+<script>
+const API = 'https://api.pinkpowerhn.com';
+
+function getToken() {
+  const q = new URLSearchParams(location.search).get('c');
+  if (q) return q.trim();
+  return (location.hash || '').replace(/^#/, '').trim();
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function stateView(icon, title, msg) {
+  return `<div class="state">
+    <div class="state__icon">${icon}</div>
+    <div class="state__title">${esc(title)}</div>
+    <p class="state__msg">${esc(msg)}</p>
+  </div>`;
+}
+
+function render(cat) {
+  if (cat.colorFondo) document.documentElement.style.setProperty('--bg', cat.colorFondo);
+  if (cat.colorTexto) document.documentElement.style.setProperty('--fg', cat.colorTexto);
+
+  const titulo = cat.titulo || 'Catálogo';
+  document.title = titulo;
+
+  const items = Array.isArray(cat.items) ? cat.items : [];
+  const cards = items.map(it => {
+    const img = it.imagen
+      ? `<img class="card__img" src="${esc(it.imagen)}" alt="${esc(it.nombre)}" loading="lazy" />`
+      : `<div class="card__noimg">🛍️</div>`;
+    const precio = it.precio ? `<div class="card__price">${esc(it.precio)}</div>` : '';
+    return `<article class="card">
+      <div class="card__imgwrap">${img}</div>
+      <div class="card__body">
+        <div class="card__name">${esc(it.nombre)}</div>
+        ${precio}
+      </div>
+    </article>`;
+  }).join('');
+
+  document.getElementById('root').innerHTML = `
+    <header class="cat">
+      <h1 class="cat__title">${esc(titulo)}</h1>
+      ${cat.subtitulo ? `<p class="cat__subtitle">${esc(cat.subtitulo)}</p>` : ''}
+      <div class="cat__rule"></div>
+    </header>
+    ${items.length ? `<main class="grid">${cards}</main>` : stateView('📭', 'Catálogo vacío', 'Este catálogo no tiene productos.')}
+    <footer class="cat">Catálogo en línea</footer>`;
+}
+
+async function load() {
+  const token = getToken();
+  const root = document.getElementById('root');
+  if (!token) {
+    root.innerHTML = stateView('🔗', 'Enlace incompleto', 'El enlace del catálogo no es válido.');
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/catalogo/${encodeURIComponent(token)}`);
+    if (res.status === 404) {
+      root.innerHTML = stateView('⏳', 'Catálogo no disponible', 'Este catálogo expiró o ya no está disponible. Pedile uno nuevo a tu vendedora.');
+      return;
+    }
+    if (!res.ok) throw new Error('fetch');
+    render(await res.json());
+  } catch (_) {
+    root.innerHTML = stateView('😕', 'No se pudo cargar', 'Revisá tu conexión e intentá de nuevo.');
+  }
+}
+
+load();
+</script>
+</body>
+</html>

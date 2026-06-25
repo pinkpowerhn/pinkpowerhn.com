@@ -123,6 +123,57 @@ export async function fetchMayoreoProducts(token) {
   return edges.map(({ node }) => normalizeProduct(node));
 }
 
+// ── Catálogos de revendedora (links temporales) ───────────
+// Crea un catálogo y devuelve { token, dias, expiraEn }.
+export async function crearCatalogo(token, data) {
+  const res = await fetch(`${BASE}/mayoreo/catalogos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    let msg = 'No se pudo crear el catálogo';
+    try { msg = (await res.json()).detail || msg; } catch (_) {}
+    const err = new Error(msg); err.status = res.status; throw err;
+  }
+  return res.json();
+}
+
+// Edita un catálogo existente (conserva link y expiración). Devuelve { token }.
+export async function editarCatalogo(token, catToken, data) {
+  const res = await fetch(`${BASE}/mayoreo/catalogos/${encodeURIComponent(catToken)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    let msg = 'No se pudo guardar el catálogo';
+    try { msg = (await res.json()).detail || msg; } catch (_) {}
+    const err = new Error(msg); err.status = res.status; throw err;
+  }
+  return res.json();
+}
+
+// Lista los catálogos de la mayorista. Devuelve { dias, catalogos: [...] }.
+export async function listarCatalogos(token) {
+  const res = await fetch(`${BASE}/mayoreo/catalogos`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = new Error('No se pudieron cargar los catálogos'); err.status = res.status; throw err;
+  }
+  return res.json();
+}
+
+export async function eliminarCatalogo(token, catToken) {
+  const res = await fetch(`${BASE}/mayoreo/catalogos/${encodeURIComponent(catToken)}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('No se pudo eliminar el catálogo');
+  return res.json();
+}
+
 // Called ONLY on checkout click — intentionally not cached to prevent scraping
 export async function fetchConfig() {
   const res = await fetch(`${BASE}/config`);

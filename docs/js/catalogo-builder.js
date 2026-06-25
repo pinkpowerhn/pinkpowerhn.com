@@ -1,0 +1,505 @@
+// ── Constructor de catálogos para revendedoras ────────────
+// Página aparte (paso a paso): elegir productos → precios → diseño → generar.
+// Requiere sesión de mayoreo (token en localStorage). Marca blanca: el link
+// final no muestra nada de PinkPower.
+import { fetchMayoreoProducts, fetchCollections, crearCatalogo, editarCatalogo, listarCatalogos, eliminarCatalogo } from './api.js';
+
+const TOKEN_KEY = 'pinkpower_mayoreo_token';
+const DRAFT_KEY = 'pinkpower_catalogo_draft';
+
+const PASOS = ['productos', 'precios', 'diseno', 'generar'];
+
+const state = {
+  token: null,
+  productos: [],          // catálogo de mayoreo (normalizado)
+  colecciones: [],        // [{handle, title}]
+  filtroColeccion: '',    // handle activo | ''
+  busqueda: '',
+  sel: new Map(),         // id -> { id, nombre, imagen, precio }
+  diseno: { titulo: '', subtitulo: '', colorFondo: '#fdeef4', colorTexto: '#7a1f43' },
+  paso: 'productos',
+  diasConfig: null,       // días que configuró la admin
+  editando: null,         // token del catálogo en edición | null = creando nuevo
+};
+
+// ── Borrador (no perder el trabajo si recarga) ────────────
+function guardarBorrador() {
+  if (state.editando) return;   // al editar no pisamos el borrador de "crear"
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      items: [...state.sel.values()],
+      diseno: state.diseno,
+      paso: state.paso,
+    }));
+  } catch (_) { /* almacenamiento lleno o privado: seguimos sin guardar */ }
+}
+
+function cargarBorrador() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.items) || !d.items.length) return false;
+    state.sel = new Map(d.items.map(it => [it.id, it]));
+    if (d.diseno) state.diseno = { ...state.diseno, ...d.diseno };
+    state.paso = PASOS.includes(d.paso) ? d.paso : 'productos';
+    return true;
+  } catch (_) { return false; }
+}
+
+function limpiarBorrador() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+}
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function imgDe(p) { return (p.images && p.images[0] && p.images[0].url) || ''; }
+
+// ── Init ──────────────────────────────────────────────────
+export async function initBuilder() {
+  state.token = localStorage.getItem(TOKEN_KEY);
+  const root = $('#cb-root');
+  if (!state.token) {
+    root.innerHTML = `<div class="cb-empty">
+      <div class="cb-empty__icon">🔒</div>
+      <h2>Necesitás iniciar sesión de mayoreo</h2>
+      <p>Volvé a la tienda y entrá con tu usuario de mayorista.</p>
+      <a class="cb-btn cb-btn--primary" href="/">Ir a la tienda</a>
+    </div>`;
+    return;
+  }
+  root.innerHTML = `<div class="cb-loading"><div class="cb-spinner"></div><p>Cargando tu catálogo…</p></div>`;
+  try {
+    const [prods, cols, lista] = await Promise.all([
+      fetchMayoreoProducts(state.token),
+      fetchCollections(),
+      listarCatalogos(state.token).catch(() => ({ dias: null, catalogos: [] })),
+    ]);
+    state.productos = prods;
+    state.diasConfig = lista.dias;
+    // Solo colecciones que tienen al menos un producto de mayoreo.
+    const conProd = new Set();
+    prods.forEach(p => (p.collectionHandles || []).forEach(h => conProd.add(h)));
+    state.colecciones = cols.filter(c => conProd.has(c.handle));
+    cargarBorrador();   // si había trabajo a medias, lo recupera
+    renderShell();
+    render();
+  } catch (e) {
+    root.innerHTML = `<div class="cb-empty"><div class="cb-empty__icon">😕</div>
+      <h2>No se pudo cargar</h2><p>Revisá tu conexión e intentá de nuevo.</p>
+      <a class="cb-btn" href="/mi-catalogo/">Reintentar</a></div>`;
+  }
+}
+
+// ── Shell (cabecera + pasos) ──────────────────────────────
+function renderShell() {
+  $('#cb-root').innerHTML = `
+    <header class="cb-head">
+      <a class="cb-back" href="/" title="Volver a la tienda">←</a>
+      <h1 id="cb-titulo-head">Crear catálogo</h1>
+      <a class="cb-mis" href="#" id="cb-ver-mis">Mis catálogos</a>
+    </header>
+    <nav class="cb-steps" id="cb-steps"></nav>
+    <main class="cb-body" id="cb-body"></main>
+    <footer class="cb-foot" id="cb-foot"></footer>`;
+  $('#cb-ver-mis').addEventListener('click', (e) => { e.preventDefault(); openMisCatalogos(); });
+}
+
+function actualizarTituloHead() {
+  const h = $('#cb-titulo-head');
+  if (h) h.textContent = state.editando ? 'Editar catálogo' : 'Crear catálogo';
+}
+
+function renderSteps() {
+  const labels = { productos: 'Productos', precios: 'Precios', diseno: 'Diseño', generar: 'Generar' };
+  const idx = PASOS.indexOf(state.paso);
+  $('#cb-steps').innerHTML = PASOS.map((p, i) => `
+    <button class="cb-step ${i === idx ? 'is-active' : ''} ${i < idx ? 'is-done' : ''}"
+            data-paso="${p}" ${i > idx && !puedeAvanzarHasta(p) ? 'disabled' : ''}>
+      <span class="cb-step__n">${i < idx ? '✓' : i + 1}</span>${labels[p]}
+    </button>`).join('');
+  $('#cb-steps').querySelectorAll('.cb-step').forEach(b =>
+    b.addEventListener('click', () => irA(b.dataset.paso)));
+}
+
+function puedeAvanzarHasta(paso) {
+  const i = PASOS.indexOf(paso);
+  // Para pasar de "productos" hay que tener al menos 1 seleccionado.
+  if (i >= 1 && state.sel.size === 0) return false;
+  // Para llegar a "generar" hace falta un título.
+  if (paso === 'generar' && !state.diseno.titulo.trim()) return false;
+  return true;
+}
+
+function irA(paso) {
+  if (!puedeAvanzarHasta(paso)) return;
+  state.paso = paso;
+  render();
+}
+
+function render() {
+  actualizarTituloHead();
+  renderSteps();
+  if (state.paso === 'productos') renderProductos();
+  else if (state.paso === 'precios') renderPrecios();
+  else if (state.paso === 'diseno') renderDiseno();
+  else if (state.paso === 'generar') renderGenerar();
+}
+
+// ── Paso 1: Productos ─────────────────────────────────────
+function productosFiltrados() {
+  const q = state.busqueda.trim().toLowerCase();
+  return state.productos.filter(p => {
+    if (state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
+    if (q && !p.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function productosDeColeccion(handle) {
+  return state.productos.filter(p => (p.collectionHandles || []).includes(handle));
+}
+
+function renderProductos() {
+  const lista = productosFiltrados();
+  const chips = state.colecciones.map(c => {
+    const total = productosDeColeccion(c.handle).length;
+    const todos = total > 0 && productosDeColeccion(c.handle).every(p => state.sel.has(p.id));
+    return `<button class="cb-chip ${todos ? 'is-on' : ''}" data-col="${esc(c.handle)}">
+      ${esc(c.title)} <span class="cb-chip__n">${total}</span></button>`;
+  }).join('');
+
+  $('#cb-body').innerHTML = `
+    ${state.colecciones.length ? `
+    <div class="cb-cols">
+      <p class="cb-cols__label">Agregar una colección completa:</p>
+      <div class="cb-chips">${chips}</div>
+    </div>` : ''}
+    <div class="cb-tools">
+      <input id="cb-buscar" class="cb-input" type="search" placeholder="Buscar producto…" value="${esc(state.busqueda)}" />
+      <select id="cb-coleccion" class="cb-input">
+        <option value="">Todas las colecciones</option>
+        ${state.colecciones.map(c => `<option value="${esc(c.handle)}" ${c.handle === state.filtroColeccion ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}
+      </select>
+      <button class="cb-btn cb-btn--ghost" id="cb-add-todos">Agregar los ${lista.length} visibles</button>
+    </div>
+    <p class="cb-hint">
+      ${state.sel.size} seleccionado${state.sel.size === 1 ? '' : 's'}. Tocá un producto para agregarlo o quitarlo.
+      ${state.sel.size ? '<button class="cb-link-btn" id="cb-quitar-todos">Quitar todos</button>' : ''}
+    </p>
+    <div class="cb-grid">
+      ${lista.map(p => {
+        const on = state.sel.has(p.id);
+        const img = imgDe(p);
+        return `<button class="cb-pcard ${on ? 'is-on' : ''}" data-id="${esc(p.id)}">
+          <div class="cb-pcard__img">${img ? `<img src="${esc(img)}" alt="" loading="lazy"/>` : '🛍️'}
+            <span class="cb-pcard__check">✓</span></div>
+          <span class="cb-pcard__name">${esc(p.title)}</span>
+        </button>`;
+      }).join('') || '<p class="cb-hint">No hay productos con ese filtro.</p>'}
+    </div>`;
+
+  $('#cb-buscar').addEventListener('input', (e) => { state.busqueda = e.target.value; renderProductos(); });
+  $('#cb-coleccion').addEventListener('change', (e) => { state.filtroColeccion = e.target.value; renderProductos(); });
+  $('#cb-add-todos').addEventListener('click', () => {
+    productosFiltrados().forEach(p => addProducto(p));
+    guardarBorrador(); renderProductos();
+  });
+  const quitar = $('#cb-quitar-todos');
+  if (quitar) quitar.addEventListener('click', () => { state.sel.clear(); guardarBorrador(); renderProductos(); });
+  // Chips de colección: agregan/quitan la colección entera.
+  $('#cb-body').querySelectorAll('.cb-chip').forEach(b =>
+    b.addEventListener('click', () => { toggleColeccion(b.dataset.col); guardarBorrador(); renderProductos(); }));
+  $('#cb-body').querySelectorAll('.cb-pcard').forEach(b =>
+    b.addEventListener('click', () => { toggleProducto(b.dataset.id); guardarBorrador(); renderProductos(); }));
+
+  setFoot(`${state.sel.size} producto${state.sel.size === 1 ? '' : 's'}`,
+          state.sel.size ? 'Siguiente: precios →' : '', () => irA('precios'));
+}
+
+function toggleColeccion(handle) {
+  const prods = productosDeColeccion(handle);
+  const todos = prods.length && prods.every(p => state.sel.has(p.id));
+  if (todos) prods.forEach(p => state.sel.delete(p.id));   // ya estaban todos: los quita
+  else prods.forEach(p => addProducto(p));                 // si no: los agrega
+}
+
+function addProducto(p) {
+  if (state.sel.has(p.id)) return;
+  state.sel.set(p.id, { id: p.id, nombre: p.title, imagen: imgDe(p), precio: '' });
+}
+function toggleProducto(id) {
+  if (state.sel.has(id)) { state.sel.delete(id); return; }
+  const p = state.productos.find(x => x.id === id);
+  if (p) addProducto(p);
+}
+
+// ── Paso 2: Precios ───────────────────────────────────────
+function renderPrecios() {
+  const items = [...state.sel.values()];
+  $('#cb-body').innerHTML = `
+    <p class="cb-hint">Poné el precio que vas a mostrarle a tus clientas. Dejalo en blanco si no querés mostrar precio en ese producto.</p>
+    <div class="cb-plist">
+      ${items.map(it => `
+        <div class="cb-prow" data-id="${esc(it.id)}">
+          <div class="cb-prow__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : '🛍️'}</div>
+          <div class="cb-prow__name">${esc(it.nombre)}</div>
+          <input class="cb-input cb-prow__price" type="text" inputmode="decimal"
+                 placeholder="sin precio" value="${esc(it.precio)}" data-id="${esc(it.id)}" />
+          <button class="cb-prow__del" data-id="${esc(it.id)}" title="Quitar">✕</button>
+        </div>`).join('')}
+    </div>`;
+
+  $('#cb-body').querySelectorAll('.cb-prow__price').forEach(inp =>
+    inp.addEventListener('input', (e) => {
+      const it = state.sel.get(e.target.dataset.id); if (it) it.precio = e.target.value;
+      guardarBorrador();
+    }));
+  $('#cb-body').querySelectorAll('.cb-prow__del').forEach(b =>
+    b.addEventListener('click', () => {
+      state.sel.delete(b.dataset.id); guardarBorrador();
+      if (state.sel.size) { renderPrecios(); renderSteps(); }
+      else irA('productos');   // sin productos: volvemos al paso 1
+    }));
+
+  setFoot('← Productos', 'Siguiente: diseño →', () => irA('diseno'), () => irA('productos'));
+}
+
+// Da formato amable al precio: si es solo número, le antepone "L. ".
+function precioMostrar(v) {
+  v = (v || '').trim();
+  if (!v) return '';
+  if (/^[\d.,]+$/.test(v)) return 'L. ' + v;
+  return v;
+}
+
+// ── Paso 3: Diseño + preview en vivo ──────────────────────
+function renderDiseno() {
+  const d = state.diseno;
+  $('#cb-body').innerHTML = `
+    <div class="cb-design">
+      <div class="cb-form">
+        <label class="cb-field"><span>Título del catálogo</span>
+          <input class="cb-input" id="cb-titulo" type="text" maxlength="120" placeholder="Ej: Cosméticos Andrea" value="${esc(d.titulo)}"/></label>
+        <label class="cb-field"><span>Subtítulo (opcional)</span>
+          <input class="cb-input" id="cb-subtitulo" type="text" maxlength="160" placeholder="Ej: Perfumes y cremas — hacé tu pedido" value="${esc(d.subtitulo)}"/></label>
+        <div class="cb-colors">
+          <label class="cb-field cb-field--color"><span>Color de fondo</span>
+            <input id="cb-fondo" type="color" value="${esc(d.colorFondo)}"/></label>
+          <label class="cb-field cb-field--color"><span>Color del texto</span>
+            <input id="cb-texto" type="color" value="${esc(d.colorTexto)}"/></label>
+        </div>
+        <p class="cb-hint" id="cb-titulo-aviso">Poné un título para poder generar el link.</p>
+        <p class="cb-hint">Así se verá la página que abrirán tus clientas →</p>
+      </div>
+      <div class="cb-preview-wrap">
+        <div class="cb-phone"><div class="cb-phone__screen" id="cb-preview"></div></div>
+      </div>
+    </div>`;
+
+  const upd = () => {
+    actualizarPreview();
+    guardarBorrador();
+    // El botón "Siguiente: generar" depende de que haya título.
+    const r = $('#cb-foot-right');
+    if (r) r.disabled = !puedeAvanzarHasta('generar');
+    const aviso = $('#cb-titulo-aviso');
+    if (aviso) aviso.style.display = state.diseno.titulo.trim() ? 'none' : '';
+  };
+  $('#cb-titulo').addEventListener('input', (e) => { d.titulo = e.target.value; upd(); });
+  $('#cb-subtitulo').addEventListener('input', (e) => { d.subtitulo = e.target.value; upd(); });
+  $('#cb-fondo').addEventListener('input', (e) => { d.colorFondo = e.target.value; upd(); });
+  $('#cb-texto').addEventListener('input', (e) => { d.colorTexto = e.target.value; upd(); });
+  actualizarPreview();
+
+  setFoot('← Precios', 'Siguiente: generar →', () => irA('generar'), () => irA('precios'),
+          !puedeAvanzarHasta('generar'));
+  const aviso = $('#cb-titulo-aviso');
+  if (aviso) aviso.style.display = state.diseno.titulo.trim() ? 'none' : '';
+}
+
+function actualizarPreview() {
+  const d = state.diseno;
+  const items = [...state.sel.values()];
+  const cards = items.slice(0, 6).map(it => {
+    const precio = precioMostrar(it.precio);
+    return `<div class="pv-card">
+      <div class="pv-card__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : '🛍️'}</div>
+      <div class="pv-card__name">${esc(it.nombre)}</div>
+      ${precio ? `<div class="pv-card__price" style="color:${esc(d.colorTexto)}">${esc(precio)}</div>` : ''}
+    </div>`;
+  }).join('');
+  $('#cb-preview').innerHTML = `
+    <div class="pv" style="background:${esc(d.colorFondo)};color:${esc(d.colorTexto)}">
+      <div class="pv-head">
+        <div class="pv-title">${esc(d.titulo || 'Título del catálogo')}</div>
+        ${d.subtitulo ? `<div class="pv-sub">${esc(d.subtitulo)}</div>` : ''}
+        <div class="pv-rule" style="background:${esc(d.colorTexto)}"></div>
+      </div>
+      <div class="pv-grid">${cards}</div>
+    </div>`;
+}
+
+// ── Paso 4: Generar ───────────────────────────────────────
+function renderGenerar() {
+  const dias = state.diasConfig;
+  const editando = !!state.editando;
+  $('#cb-body').innerHTML = `
+    <div class="cb-generar">
+      <div class="cb-resumen">
+        <h3>Resumen</h3>
+        <ul>
+          <li><b>${state.sel.size}</b> producto${state.sel.size === 1 ? '' : 's'}</li>
+          <li>Título: <b>${esc(state.diseno.titulo || '(sin título)')}</b></li>
+          <li>Duración del link: <b>${editando ? 'se conserva la del catálogo' : (dias ? dias + ' días' : 'la que configuró la tienda')}</b></li>
+        </ul>
+        <p class="cb-hint">${editando
+          ? 'Vas a guardar los cambios en el mismo link (no cambia ni se renueva el plazo).'
+          : 'La duración del link la define la tienda. Cuando se cumpla el plazo, el link deja de funcionar.'}</p>
+      </div>
+      <button class="cb-btn cb-btn--primary cb-btn--big" id="cb-generar-btn">${editando ? 'Guardar cambios' : 'Generar link'}</button>
+      <div id="cb-resultado"></div>
+    </div>`;
+  $('#cb-generar-btn').addEventListener('click', generar);
+  setFoot('← Diseño', '', null, () => irA('diseno'));
+}
+
+async function generar() {
+  const btn = $('#cb-generar-btn');
+  const editando = !!state.editando;
+  btn.disabled = true; btn.textContent = editando ? 'Guardando…' : 'Generando…';
+  const items = [...state.sel.values()].map(it => ({
+    id: it.id, nombre: it.nombre, imagen: it.imagen, precio: precioMostrar(it.precio),
+  }));
+  const payload = {
+    titulo: state.diseno.titulo, subtitulo: state.diseno.subtitulo,
+    colorFondo: state.diseno.colorFondo, colorTexto: state.diseno.colorTexto,
+    items,
+  };
+  try {
+    let catToken, dias;
+    if (editando) {
+      await editarCatalogo(state.token, state.editando, payload);
+      catToken = state.editando;
+    } else {
+      const r = await crearCatalogo(state.token, payload);
+      catToken = r.token; dias = r.dias;
+    }
+    limpiarBorrador();
+    const link = `${location.origin}/c/?c=${catToken}`;
+    const waText = encodeURIComponent(`Mirá mi catálogo 🛍️\n${link}`);
+    $('#cb-resultado').innerHTML = `
+      <div class="cb-ok">
+        <div class="cb-ok__icon">✅</div>
+        <h3>${editando ? '¡Cambios guardados!' : '¡Tu catálogo está listo!'}</h3>
+        <p class="cb-hint">${editando ? 'Tu catálogo se actualizó en el mismo link:' : `Dura ${dias} días. Compartí este link con tus clientas:`}</p>
+        <div class="cb-linkbox">
+          <input id="cb-link" class="cb-input" readonly value="${esc(link)}"/>
+          <button class="cb-btn" id="cb-copy">Copiar</button>
+        </div>
+        <a class="cb-btn cb-btn--wa" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+        <a class="cb-btn cb-btn--ghost" href="${esc(link)}" target="_blank" rel="noopener">Ver cómo quedó</a>
+        <a class="cb-btn cb-btn--ghost" href="#" id="cb-ver-mis2">Mis catálogos</a>
+      </div>`;
+    $('#cb-copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(link); $('#cb-copy').textContent = '¡Copiado!'; }
+      catch (_) { $('#cb-link').select(); document.execCommand('copy'); $('#cb-copy').textContent = '¡Copiado!'; }
+    });
+    $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); state.editando = null; openMisCatalogos(); });
+    btn.style.display = 'none';
+  } catch (e) {
+    btn.disabled = false; btn.textContent = editando ? 'Guardar cambios' : 'Generar link';
+    $('#cb-resultado').innerHTML = `<p class="cb-error">${esc(e.message || 'No se pudo generar')}</p>`;
+  }
+}
+
+// ── Mis catálogos (lista + editar + eliminar) ─────────────
+async function openMisCatalogos() {
+  actualizarTituloHead();
+  const body = $('#cb-body'); const steps = $('#cb-steps');
+  steps.innerHTML = '';
+  setFoot('← Volver', '+ Crear nuevo', () => crearNuevo(), () => { render(); });
+  body.innerHTML = `<div class="cb-loading"><div class="cb-spinner"></div><p>Cargando…</p></div>`;
+  try {
+    const { catalogos } = await listarCatalogos(state.token);
+    if (!catalogos.length) {
+      body.innerHTML = `<p class="cb-hint" style="text-align:center;padding:2rem">Todavía no has creado catálogos.</p>`;
+      return;
+    }
+    body.innerHTML = `<div class="cb-mislist">${catalogos.map((c, i) => {
+      const link = `${location.origin}/c/?c=${c.token}`;
+      const exp = c.expirado;
+      const fecha = new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' });
+      return `<div class="cb-miscard ${exp ? 'is-exp' : ''}">
+        <div class="cb-miscard__info">
+          <b>${esc(c.titulo || '(sin título)')}</b>
+          <span>${c.cantidad} producto${c.cantidad === 1 ? '' : 's'} · ${exp ? 'Expirado' : 'Vence el ' + fecha}</span>
+        </div>
+        <div class="cb-miscard__acts">
+          ${exp ? '' : `<a class="cb-btn cb-btn--sm" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>`}
+          <button class="cb-btn cb-btn--sm" data-edit="${i}">Editar</button>
+          <button class="cb-btn cb-btn--sm cb-btn--ghost" data-del="${esc(c.token)}">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+    body.querySelectorAll('[data-edit]').forEach(b =>
+      b.addEventListener('click', () => editarCat(catalogos[+b.dataset.edit])));
+    body.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = '…';
+      try { await eliminarCatalogo(state.token, b.dataset.del); openMisCatalogos(); }
+      catch (_) { b.disabled = false; b.textContent = 'Eliminar'; }
+    }));
+  } catch (_) {
+    body.innerHTML = `<p class="cb-error" style="text-align:center;padding:2rem">No se pudieron cargar.</p>`;
+  }
+}
+
+// Empezar un catálogo nuevo en blanco (descarta el borrador anterior).
+function crearNuevo() {
+  state.editando = null;
+  state.sel = new Map();
+  state.diseno = { titulo: '', subtitulo: '', colorFondo: '#fdeef4', colorTexto: '#7a1f43' };
+  state.busqueda = ''; state.filtroColeccion = '';
+  state.paso = 'productos';
+  limpiarBorrador();
+  render();
+}
+
+// Cargar un catálogo existente en el asistente para editarlo.
+function editarCat(cat) {
+  state.editando = cat.token;
+  state.sel = new Map();
+  (cat.items || []).forEach((it, i) => {
+    const key = it.id || ('x' + i);   // id real si lo hay; si no, clave temporal
+    // El precio guardado puede venir como "L. 150"; lo dejamos tal cual para editar.
+    state.sel.set(key, { id: it.id || key, nombre: it.nombre, imagen: it.imagen || '', precio: it.precio || '' });
+  });
+  state.diseno = {
+    titulo: cat.titulo || '',
+    subtitulo: cat.subtitulo || '',
+    colorFondo: cat.colorFondo || '#fdeef4',
+    colorTexto: cat.colorTexto || '#7a1f43',
+  };
+  state.busqueda = ''; state.filtroColeccion = '';
+  state.paso = 'productos';
+  render();
+}
+
+// ── Footer de navegación ──────────────────────────────────
+// rightDisabled (opcional) deshabilita el botón derecho explícitamente.
+function setFoot(leftLabel, rightLabel, onRight, onLeft, rightDisabled = false) {
+  const foot = $('#cb-foot');
+  // Si el izquierdo trae handler -> botón (ej. "← Precios"). Si no, es info.
+  const leftHtml = leftLabel
+    ? (onLeft
+        ? `<button class="cb-btn cb-btn--ghost" id="cb-foot-left">${esc(leftLabel)}</button>`
+        : `<span class="cb-foot__info">${esc(leftLabel)}</span>`)
+    : '<span></span>';
+  foot.innerHTML = `${leftHtml}${rightLabel ? `<button class="cb-btn cb-btn--primary" id="cb-foot-right"${rightDisabled ? ' disabled' : ''}>${esc(rightLabel)}</button>` : '<span></span>'}`;
+  if (leftLabel && onLeft) $('#cb-foot-left').addEventListener('click', onLeft);
+  if (rightLabel && onRight) $('#cb-foot-right').addEventListener('click', onRight);
+}
+
+initBuilder();

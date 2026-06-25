@@ -49,13 +49,19 @@ export function renderCollectionSidebar(collections) {
     `);
 
     if (isOpen) {
-      // Solo las etiquetas que de verdad le corresponden a esta colección
-      // (las que computeTagAssignments asignó a c.handle).
-      const tagsInCollection = [...new Set(
-        products
-          .filter(p => p.collectionHandles.includes(c.handle))
-          .flatMap(p => p.tags || [])
-      )].filter(t => tagAssignment[t] === c.handle).sort();
+      // Qué etiquetas mostrar en el submenú de esta colección. Mostramos:
+      //  a) las que tienen su "hogar" en esta colección (computeTagAssignments), y
+      //  b) las que, aunque su hogar sea otra colección, representan una parte
+      //     útil de ESTA colección. Esto importa en colecciones transversales
+      //     como "Hombres", donde el filtro útil es la categoría (Perfumes,
+      //     Cremas, Gel…) cuyo hogar es su propia colección de categoría.
+      const prodsInC = products.filter(p => p.collectionHandles.includes(c.handle));
+      const sizeC = prodsInC.length || 1;
+      const countInC = {};
+      for (const p of prodsInC) for (const t of (p.tags || [])) countInC[t] = (countInC[t] || 0) + 1;
+      const tagsInCollection = Object.keys(countInC)
+        .filter(t => tagAssignment[t] === c.handle || (countInC[t] >= 2 && countInC[t] / sizeC >= 0.08))
+        .sort();
 
       if (tagsInCollection.length) {
         sections.push(`

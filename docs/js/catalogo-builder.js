@@ -262,7 +262,7 @@ function renderProductos() {
     b.addEventListener('click', () => { toggleProducto(b.dataset.id); guardarBorrador(); renderProductos(); }));
 
   setFoot(`${state.sel.size} producto${state.sel.size === 1 ? '' : 's'}`,
-          state.sel.size ? 'Siguiente: precios →' : '', () => irA('precios'));
+          state.sel.size ? 'Siguiente →' : '', () => irA('precios'));
 }
 
 function toggleColeccion(handle) {
@@ -352,7 +352,7 @@ function renderPrecios() {
       else irA('productos');   // sin productos: volvemos al paso 1
     }));
 
-  setFoot('← Productos', 'Siguiente: diseño →', () => irA('diseno'), () => irA('productos'));
+  setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
 }
 
 // Da formato amable al precio: si es solo número, le antepone "L. ".
@@ -469,7 +469,7 @@ function renderDiseno() {
   if (del) del.addEventListener('click', () => { d.logo = ''; renderDiseno(); });
 
   actualizarPreview();
-  setFoot('← Precios', 'Siguiente: generar →', () => irA('generar'), () => irA('precios'),
+  setFoot('← Precios', 'Siguiente →', () => irA('generar'), () => irA('precios'),
           !puedeAvanzarHasta('generar'));
   const aviso = $('#cb-titulo-aviso');
   if (aviso) aviso.style.display = state.diseno.titulo.trim() ? 'none' : '';

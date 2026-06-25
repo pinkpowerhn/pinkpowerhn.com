@@ -217,11 +217,14 @@
   .cb-resumen { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem; }
   .cb-resumen h3 { font-size: 1rem; margin-bottom: .5rem; }
   .cb-resumen ul { list-style: none; display: flex; flex-direction: column; gap: .3rem; font-size: .95rem; }
-  .cb-ok { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem; text-align: center; }
+  .cb-ok { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.4rem; text-align: center; display: flex; flex-direction: column; gap: .7rem; }
   .cb-ok__icon { font-size: 2.4rem; }
-  .cb-ok h3 { margin: .3rem 0 .2rem; }
-  .cb-linkbox { display: flex; gap: .4rem; margin: .7rem 0; }
+  .cb-ok h3 { margin: .2rem 0 0; }
+  .cb-ok .cb-hint { margin: 0; }
+  .cb-linkbox { display: flex; gap: .5rem; margin: .3rem 0 .2rem; }
   .cb-linkbox .cb-input { font-size: .82rem; }
+  /* Botones de acción del resultado: full-width y separados. */
+  .cb-ok > .cb-btn { width: 100%; margin: 0; }
 
   /* Mis catálogos */
   .cb-mislist { display: flex; flex-direction: column; gap: .6rem; }

@@ -71,8 +71,9 @@
     margin: 1.2rem auto 0;
   }
 
-  /* Secciones por colección */
-  .section { padding: .6rem 1rem 0; }
+  /* Secciones por colección. Se limita el ancho según las columnas para que las
+     tarjetas no queden enormes en pantallas anchas (~220px por tarjeta). */
+  .section { padding: .6rem 1rem 0; max-width: calc(var(--cols, 2) * 230px); margin: 0 auto; }
   .section__title {
     display: flex; align-items: center; gap: .7rem;
     font-size: clamp(1.05rem, 4vw, 1.35rem); font-weight: 800;
@@ -91,6 +92,8 @@
     gap: .9rem;
     padding: 0 1rem;
   }
+  /* Grilla suelta (sin separar por colección): mismo tope de ancho. */
+  .grid--solo { max-width: calc(var(--cols, 2) * 230px); margin: 0 auto; }
   /* En pantallas chicas nunca más de 2; respeta --cols solo desde tablet. */
   @media (max-width: 539px) { .grid { grid-template-columns: repeat(min(var(--cols, 2), 2), 1fr); } }
   @media (min-width: 540px) and (max-width: 860px) { .grid { grid-template-columns: repeat(min(var(--cols, 3), 3), 1fr); gap: 1rem; } }
@@ -214,12 +217,12 @@ function render(cat) {
     cuerpo = stateView('📭', 'Catálogo vacío', 'Este catálogo no tiene productos.');
   } else if (separar) {
     cuerpo = agrupar(items).map(g => `
-      <section class="section">
+      <section class="section" style="--cols:${cols}">
         ${g.titulo ? `<h2 class="section__title">${esc(g.titulo)}</h2>` : ''}
-        <div class="grid" style="--cols:${cols}">${g.items.map(cardHTML).join('')}</div>
+        <div class="grid">${g.items.map(cardHTML).join('')}</div>
       </section>`).join('');
   } else {
-    cuerpo = `<main class="grid" style="--cols:${cols}">${items.map(cardHTML).join('')}</main>`;
+    cuerpo = `<main class="grid grid--solo" style="--cols:${cols}">${items.map(cardHTML).join('')}</main>`;
   }
 
   const logo = op.logo ? `<img class="cat__logo" src="${esc(op.logo)}" alt="" />` : '';

@@ -619,28 +619,21 @@ async function generar() {
 
 // ── Mis catálogos (lista + editar + eliminar) ─────────────
 async function openMisCatalogos() {
-  actualizarTituloHead();
   const body = $('#cb-body'); const steps = $('#cb-steps');
   steps.innerHTML = '';
+  const head = $('#cb-titulo-head'); if (head) head.textContent = 'Mis catálogos';
   setFoot('← Volver a la tienda', '+ Crear catálogo', () => crearNuevo(), () => { location.href = '/'; });
   body.innerHTML = `<div class="cb-mislist">${skLista()}</div>`;
   try {
     const { catalogos } = await listarCatalogos(state.token);
-    const barra = `<div class="cb-mis-top">
-      <h2 class="cb-mis-top__t">Mis catálogos</h2>
-      <button class="cb-btn cb-btn--primary cb-btn--sm" id="cb-mis-crear">+ Crear catálogo</button>
-    </div>`;
     if (!catalogos.length) {
-      body.innerHTML = `${barra}
+      body.innerHTML = `
         <div class="cb-empty"><div class="cb-empty__icon">🛍️</div>
-          <p class="cb-hint">Todavía no has creado catálogos.</p>
-          <button class="cb-btn cb-btn--primary" id="cb-empty-crear">Crear mi primer catálogo</button>
+          <p class="cb-hint">Todavía no has creado catálogos.<br>Usá el botón <b>“+ Crear catálogo”</b> de abajo para empezar.</p>
         </div>`;
-      $('#cb-mis-crear').addEventListener('click', crearNuevo);
-      $('#cb-empty-crear').addEventListener('click', crearNuevo);
       return;
     }
-    body.innerHTML = `${barra}<div class="cb-mislist">${catalogos.map((c, i) => {
+    body.innerHTML = `<div class="cb-mislist">${catalogos.map((c, i) => {
       const link = `${location.origin}/c/?c=${c.token}`;
       const exp = c.expirado;
       const fecha = new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' });
@@ -656,7 +649,6 @@ async function openMisCatalogos() {
         </div>
       </div>`;
     }).join('')}</div>`;
-    $('#cb-mis-crear').addEventListener('click', crearNuevo);
     body.querySelectorAll('[data-edit]').forEach(b =>
       b.addEventListener('click', () => editarCat(catalogos[+b.dataset.edit])));
     body.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {

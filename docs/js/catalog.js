@@ -322,6 +322,19 @@ export function clearFilter(key) {
   else if (key === 'size') patch.activeSize = null;
   else if (key === 'price') { patch.priceMin = null; patch.priceMax = null; }
   setState(patch);
+  syncCatalogHash();   // que la URL refleje los filtros que quedaron (no re-aplicar al refrescar)
+}
+
+// Pone la URL acorde a la colección/etiqueta activas. Se llama tras acciones del
+// usuario que cambian filtros (no en la carga inicial, para no pisar la ruta).
+export function syncCatalogHash() {
+  const { activeCollection, activeTag } = getState();
+  const h = activeTag ? `#shop/tag/${encodeURIComponent(activeTag)}`
+          : activeCollection ? `#shop/collection/${activeCollection}`
+          : '#shop';
+  if (location.hash.startsWith('#shop') && !location.hash.includes('/product/') && location.hash !== h) {
+    history.replaceState(null, '', h);
+  }
 }
 
 function _clearSearchInputs() {

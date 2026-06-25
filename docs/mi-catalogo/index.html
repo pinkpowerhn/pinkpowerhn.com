@@ -202,6 +202,59 @@
   .cb-empty__icon { font-size: 2.6rem; }
   .cb-spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--pp); border-top-color: transparent; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Skeletons */
+  .sk { position: relative; overflow: hidden; background: rgba(42,15,28,.08); border-radius: 8px; }
+  .sk::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+    animation: shimmer 1.3s infinite;
+  }
+  @keyframes shimmer { 100% { transform: translateX(100%); } }
+  .sk-pcard { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .sk-pcard__img { aspect-ratio: 1/1; border-radius: 0; }
+  .sk-line { height: 11px; border-radius: 6px; margin: .5rem .55rem; }
+  .sk-chip { display: inline-block; width: 120px; height: 30px; border-radius: 999px; margin-right: .4rem; }
+  .sk-row { height: 60px; border-radius: 12px; margin-bottom: .6rem; }
+
+  /* Placeholder de producto sin foto (más lindo que un emoji suelto) */
+  .cb-noimg {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .25rem; background: linear-gradient(135deg, #fdeef4, #f7e2ec);
+    color: #c98aa8;
+  }
+  .cb-noimg svg { width: 26px; height: 26px; }
+  .cb-noimg span { font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+
+  /* Select bonito (custom) */
+  .cb-select { position: relative; }
+  .cb-select__btn {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px;
+    background: #fff; color: var(--ink); font-size: .95rem; font-family: inherit;
+    font-weight: 600; cursor: pointer; text-align: left;
+  }
+  .cb-select__btn:focus { outline: 2px solid rgba(232,67,122,.35); border-color: var(--pp); }
+  .cb-select__btn .cb-select__cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cb-select__chev { flex: none; transition: transform .18s ease; color: var(--muted); }
+  .cb-select.is-open .cb-select__chev { transform: rotate(180deg); }
+  .cb-select__panel {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(150,30,80,.18); padding: .3rem;
+    max-height: 260px; overflow-y: auto;
+    animation: cbSelIn .14s ease;
+  }
+  @keyframes cbSelIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .cb-select__opt {
+    width: 100%; text-align: left; border: none; background: #fff; color: var(--ink);
+    padding: .55rem .7rem; border-radius: 8px; font-size: .92rem; font-family: inherit;
+    font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  }
+  .cb-select__opt:hover { background: #fff0f6; }
+  .cb-select__opt.is-sel { background: #fff0f6; color: var(--pp); }
+  .cb-select__opt .cb-select__n { font-size: .76rem; opacity: .6; }
 </style>
 </head>
 <body>

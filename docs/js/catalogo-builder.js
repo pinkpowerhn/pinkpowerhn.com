@@ -57,6 +57,28 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
 
 function imgDe(p) { return (p.images && p.images[0] && p.images[0].url) || ''; }
 
+// Placeholder lindo para productos sin foto (en vez de un emoji suelto).
+const NOIMG = `<div class="cb-noimg">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+  <span>Sin foto</span></div>`;
+
+// ── Skeletons ─────────────────────────────────────────────
+function skProductos() {
+  const cards = Array.from({ length: 10 }).map(() => `
+    <div class="sk-pcard"><div class="sk sk-pcard__img"></div>
+      <div class="sk sk-line" style="width:80%"></div>
+      <div class="sk sk-line" style="width:55%"></div></div>`).join('');
+  return `
+    <div class="cb-chips" style="margin-bottom:1rem">
+      <span class="sk sk-chip"></span><span class="sk sk-chip"></span>
+    </div>
+    <div class="cb-grid">${cards}</div>`;
+}
+
+function skLista() {
+  return Array.from({ length: 4 }).map(() => `<div class="sk sk-row"></div>`).join('');
+}
+
 // ── Init ──────────────────────────────────────────────────
 export async function initBuilder() {
   state.token = localStorage.getItem(TOKEN_KEY);
@@ -70,7 +92,12 @@ export async function initBuilder() {
     </div>`;
     return;
   }
-  root.innerHTML = `<div class="cb-loading"><div class="cb-spinner"></div><p>Cargando tu catálogo…</p></div>`;
+  root.innerHTML = `
+    <header class="cb-head">
+      <a class="cb-back" href="/" title="Volver a la tienda">←</a>
+      <h1>Crear catálogo</h1>
+    </header>
+    <div class="cb-body">${skProductos()}</div>`;
   try {
     const [prods, cols, lista] = await Promise.all([
       fetchMayoreoProducts(state.token),
@@ -179,10 +206,7 @@ function renderProductos() {
     </div>` : ''}
     <div class="cb-tools">
       <input id="cb-buscar" class="cb-input" type="search" placeholder="Buscar producto…" value="${esc(state.busqueda)}" />
-      <select id="cb-coleccion" class="cb-input">
-        <option value="">Todas las colecciones</option>
-        ${state.colecciones.map(c => `<option value="${esc(c.handle)}" ${c.handle === state.filtroColeccion ? 'selected' : ''}>${esc(c.title)}</option>`).join('')}
-      </select>
+      <div class="cb-select" id="cb-coleccion"></div>
       <button class="cb-btn cb-btn--ghost" id="cb-add-todos">Agregar los ${lista.length} visibles</button>
     </div>
     <p class="cb-hint">
@@ -194,7 +218,7 @@ function renderProductos() {
         const on = state.sel.has(p.id);
         const img = imgDe(p);
         return `<button class="cb-pcard ${on ? 'is-on' : ''}" data-id="${esc(p.id)}">
-          <div class="cb-pcard__img">${img ? `<img src="${esc(img)}" alt="" loading="lazy"/>` : '🛍️'}
+          <div class="cb-pcard__img">${img ? `<img src="${esc(img)}" alt="" loading="lazy"/>` : NOIMG}
             <span class="cb-pcard__check">✓</span></div>
           <span class="cb-pcard__name">${esc(p.title)}</span>
         </button>`;
@@ -202,7 +226,7 @@ function renderProductos() {
     </div>`;
 
   $('#cb-buscar').addEventListener('input', (e) => { state.busqueda = e.target.value; renderProductos(); });
-  $('#cb-coleccion').addEventListener('change', (e) => { state.filtroColeccion = e.target.value; renderProductos(); });
+  montarSelectColeccion();
   $('#cb-add-todos').addEventListener('click', () => {
     productosFiltrados().forEach(p => addProducto(p));
     guardarBorrador(); renderProductos();
@@ -226,6 +250,48 @@ function toggleColeccion(handle) {
   else prods.forEach(p => addProducto(p));                 // si no: los agrega
 }
 
+// Select custom (dropdown lindo) para filtrar por colección.
+function montarSelectColeccion() {
+  const host = $('#cb-coleccion');
+  if (!host) return;
+  const opciones = [{ handle: '', title: 'Todas las colecciones', n: state.productos.length },
+    ...state.colecciones.map(c => ({ handle: c.handle, title: c.title, n: productosDeColeccion(c.handle).length }))];
+  const actual = opciones.find(o => o.handle === state.filtroColeccion) || opciones[0];
+
+  host.innerHTML = `
+    <button type="button" class="cb-select__btn" id="cb-sel-btn" aria-haspopup="listbox" aria-expanded="false">
+      <span class="cb-select__cur">${esc(actual.title)}</span>
+      <svg class="cb-select__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>`;
+
+  const btn = $('#cb-sel-btn');
+  const abrir = () => {
+    if (host.querySelector('.cb-select__panel')) return cerrar();
+    const panel = document.createElement('div');
+    panel.className = 'cb-select__panel';
+    panel.setAttribute('role', 'listbox');
+    panel.innerHTML = opciones.map(o => `
+      <button type="button" class="cb-select__opt ${o.handle === state.filtroColeccion ? 'is-sel' : ''}" data-h="${esc(o.handle)}">
+        <span>${esc(o.title)}</span><span class="cb-select__n">${o.n}</span>
+      </button>`).join('');
+    host.appendChild(panel);
+    host.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
+    panel.querySelectorAll('.cb-select__opt').forEach(b =>
+      b.addEventListener('click', () => { state.filtroColeccion = b.dataset.h; renderProductos(); }));
+    setTimeout(() => document.addEventListener('click', fuera), 0);
+  };
+  const cerrar = () => {
+    const panel = host.querySelector('.cb-select__panel');
+    if (panel) panel.remove();
+    host.classList.remove('is-open');
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', fuera);
+  };
+  const fuera = (e) => { if (!host.contains(e.target)) cerrar(); };
+  btn.addEventListener('click', (e) => { e.stopPropagation(); abrir(); });
+}
+
 function addProducto(p) {
   if (state.sel.has(p.id)) return;
   state.sel.set(p.id, { id: p.id, nombre: p.title, imagen: imgDe(p), precio: '' });
@@ -244,7 +310,7 @@ function renderPrecios() {
     <div class="cb-plist">
       ${items.map(it => `
         <div class="cb-prow" data-id="${esc(it.id)}">
-          <div class="cb-prow__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : '🛍️'}</div>
+          <div class="cb-prow__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : NOIMG}</div>
           <div class="cb-prow__name">${esc(it.nombre)}</div>
           <input class="cb-input cb-prow__price" type="text" inputmode="decimal"
                  placeholder="sin precio" value="${esc(it.precio)}" data-id="${esc(it.id)}" />
@@ -326,7 +392,7 @@ function actualizarPreview() {
   const cards = items.slice(0, 6).map(it => {
     const precio = precioMostrar(it.precio);
     return `<div class="pv-card">
-      <div class="pv-card__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : '🛍️'}</div>
+      <div class="pv-card__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : NOIMG}</div>
       <div class="pv-card__name">${esc(it.nombre)}</div>
       ${precio ? `<div class="pv-card__price" style="color:${esc(d.colorTexto)}">${esc(precio)}</div>` : ''}
     </div>`;
@@ -421,7 +487,7 @@ async function openMisCatalogos() {
   const body = $('#cb-body'); const steps = $('#cb-steps');
   steps.innerHTML = '';
   setFoot('← Volver', '+ Crear nuevo', () => crearNuevo(), () => { render(); });
-  body.innerHTML = `<div class="cb-loading"><div class="cb-spinner"></div><p>Cargando…</p></div>`;
+  body.innerHTML = `<div class="cb-mislist">${skLista()}</div>`;
   try {
     const { catalogos } = await listarCatalogos(state.token);
     if (!catalogos.length) {

@@ -72,11 +72,16 @@ export function renderCollectionSidebar(collections) {
       const cubiertos = prodsInC.filter(p => (p.tags || []).some(t => propias.has(t))).length;
       const bienCubierta = cubiertos / sizeC >= 0.6;
 
-      const tagsInCollection = bienCubierta
+      let tagsInCollection = bienCubierta
         ? [...propias].sort()
         : Object.keys(countInC)
             .filter(t => !esTrivial(t) && countInC[t] >= 2 && countInC[t] / sizeC >= 0.08)
             .sort();
+
+      // Salvaguarda para colecciones chicas (p. ej. 1–2 productos): las reglas
+      // de arriba podrían dejarla sin ninguna etiqueta. Si quedó vacía pero sí
+      // hay etiquetas presentes, las mostramos (mejor eso que "Sin etiquetas").
+      if (!tagsInCollection.length) tagsInCollection = Object.keys(countInC).sort();
 
       if (tagsInCollection.length) {
         sections.push(`

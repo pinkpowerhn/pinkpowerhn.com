@@ -138,7 +138,7 @@
 
   /* Paso 3: diseño + preview */
   .cb-design { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }
-  @media (min-width: 760px) { .cb-design { grid-template-columns: 1fr 320px; align-items: start; } }
+  @media (min-width: 920px) { .cb-design { grid-template-columns: minmax(0, 1fr) 460px; align-items: start; } }
   .cb-form { display: flex; flex-direction: column; gap: .9rem; }
   .cb-field { display: flex; flex-direction: column; gap: .35rem; font-size: .86rem; font-weight: 600; }
   .cb-field span { color: var(--muted); }
@@ -187,21 +187,22 @@
   .cb-switch input:checked + .cb-switch__track { background: var(--pp); }
   .cb-switch input:checked + .cb-switch__track::after { transform: translateX(18px); }
 
-  .cb-preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.3rem; position: sticky; top: 1rem; }
+  .cb-preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.4rem; }
   .cb-prev { display: flex; flex-direction: column; align-items: center; gap: .45rem; width: 100%; }
   .cb-prev__label { font-size: .78rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  /* Marco de computadora (navegador) */
-  .cb-browser { width: 100%; max-width: 340px; border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.16); }
-  .cb-browser__bar { height: 26px; background: #ece6ea; display: flex; align-items: center; gap: .35rem; padding: 0 .6rem; }
-  .cb-browser__bar i { width: 9px; height: 9px; border-radius: 50%; background: #c9bcc5; }
-  .cb-browser__screen { height: 250px; overflow-y: auto; background: #fff; }
+  /* Marco de computadora (navegador) — ocupa todo el ancho de la columna */
+  .cb-browser { width: 100%; border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.16); }
+  .cb-browser__bar { height: 28px; background: #ece6ea; display: flex; align-items: center; gap: .35rem; padding: 0 .7rem; flex: none; }
+  .cb-browser__bar i { width: 10px; height: 10px; border-radius: 50%; background: #c9bcc5; }
+  /* La pantalla es la que scrollea por dentro (no la página). */
+  .cb-browser__screen { height: 440px; overflow-y: auto; overflow-x: hidden; background: #fff; overscroll-behavior: contain; }
   /* Marco de celular */
   .cb-phone {
-    width: 232px; background: #1c1c1e; border-radius: 28px; padding: 9px;
+    width: 250px; background: #1c1c1e; border-radius: 30px; padding: 10px; flex: none;
     box-shadow: 0 12px 36px rgba(0,0,0,.22);
   }
   .cb-phone__screen {
-    background: #fff; border-radius: 20px; overflow-y: auto; height: 410px;
+    background: #fff; border-radius: 22px; overflow-y: auto; overflow-x: hidden; height: 460px; overscroll-behavior: contain;
   }
   /* Mini-réplica de la página pública */
   .pv { min-height: 100%; font-size: 12px; }

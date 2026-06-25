@@ -622,15 +622,25 @@ async function openMisCatalogos() {
   actualizarTituloHead();
   const body = $('#cb-body'); const steps = $('#cb-steps');
   steps.innerHTML = '';
-  setFoot('← Volver', '+ Crear nuevo', () => crearNuevo(), () => { render(); });
+  setFoot('← Volver a la tienda', '+ Crear catálogo', () => crearNuevo(), () => { location.href = '/'; });
   body.innerHTML = `<div class="cb-mislist">${skLista()}</div>`;
   try {
     const { catalogos } = await listarCatalogos(state.token);
+    const barra = `<div class="cb-mis-top">
+      <h2 class="cb-mis-top__t">Mis catálogos</h2>
+      <button class="cb-btn cb-btn--primary cb-btn--sm" id="cb-mis-crear">+ Crear catálogo</button>
+    </div>`;
     if (!catalogos.length) {
-      body.innerHTML = `<p class="cb-hint" style="text-align:center;padding:2rem">Todavía no has creado catálogos.</p>`;
+      body.innerHTML = `${barra}
+        <div class="cb-empty"><div class="cb-empty__icon">🛍️</div>
+          <p class="cb-hint">Todavía no has creado catálogos.</p>
+          <button class="cb-btn cb-btn--primary" id="cb-empty-crear">Crear mi primer catálogo</button>
+        </div>`;
+      $('#cb-mis-crear').addEventListener('click', crearNuevo);
+      $('#cb-empty-crear').addEventListener('click', crearNuevo);
       return;
     }
-    body.innerHTML = `<div class="cb-mislist">${catalogos.map((c, i) => {
+    body.innerHTML = `${barra}<div class="cb-mislist">${catalogos.map((c, i) => {
       const link = `${location.origin}/c/?c=${c.token}`;
       const exp = c.expirado;
       const fecha = new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' });
@@ -646,9 +656,17 @@ async function openMisCatalogos() {
         </div>
       </div>`;
     }).join('')}</div>`;
+    $('#cb-mis-crear').addEventListener('click', crearNuevo);
     body.querySelectorAll('[data-edit]').forEach(b =>
       b.addEventListener('click', () => editarCat(catalogos[+b.dataset.edit])));
     body.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+      const cat = catalogos.find(c => c.token === b.dataset.del);
+      const ok = await confirmar({
+        titulo: '¿Eliminar este catálogo?',
+        mensaje: `"${cat ? (cat.titulo || 'Sin título') : ''}" se borrará y su link dejará de funcionar para tus clientas. Esta acción no se puede deshacer.`,
+        ok: 'Sí, eliminar',
+      });
+      if (!ok) return;
       b.disabled = true; b.textContent = '…';
       try { await eliminarCatalogo(state.token, b.dataset.del); openMisCatalogos(); }
       catch (_) { b.disabled = false; b.textContent = 'Eliminar'; }
@@ -656,6 +674,34 @@ async function openMisCatalogos() {
   } catch (_) {
     body.innerHTML = `<p class="cb-error" style="text-align:center;padding:2rem">No se pudieron cargar.</p>`;
   }
+}
+
+// Diálogo de confirmación (para acciones destructivas). Devuelve Promise<bool>.
+function confirmar({ titulo, mensaje, ok = 'Aceptar', cancel = 'Cancelar' }) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'cb-confirm';
+    ov.innerHTML = `
+      <div class="cb-confirm__box" role="dialog" aria-modal="true">
+        <div class="cb-confirm__icon">🗑️</div>
+        <h3 class="cb-confirm__title">${esc(titulo)}</h3>
+        <p class="cb-confirm__msg">${esc(mensaje)}</p>
+        <div class="cb-confirm__acts">
+          <button class="cb-btn cb-btn--ghost" data-x="cancel">${esc(cancel)}</button>
+          <button class="cb-btn cb-btn--danger" data-x="ok">${esc(ok)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => ov.classList.add('is-open'));
+    const cerrar = (val) => { ov.classList.remove('is-open'); setTimeout(() => ov.remove(), 180); resolve(val); };
+    ov.addEventListener('click', e => {
+      if (e.target === ov || e.target.dataset.x === 'cancel') cerrar(false);
+      else if (e.target.dataset.x === 'ok') cerrar(true);
+    });
+    document.addEventListener('keydown', function esc2(e) {
+      if (e.key === 'Escape') { document.removeEventListener('keydown', esc2); cerrar(false); }
+    });
+  });
 }
 
 // Empezar un catálogo nuevo en blanco (descarta el borrador anterior).

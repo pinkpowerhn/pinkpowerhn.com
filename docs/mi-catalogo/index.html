@@ -227,7 +227,29 @@
   .cb-ok > .cb-btn { width: 100%; margin: 0; }
 
   /* Mis catálogos */
+  .cb-mis-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .cb-mis-top__t { font-size: 1.15rem; font-weight: 800; }
   .cb-mislist { display: flex; flex-direction: column; gap: .6rem; }
+  .cb-btn--danger { background: #e23b53; border-color: #e23b53; color: #fff; }
+  .cb-btn--danger:hover { background: #c92f45; border-color: #c92f45; }
+
+  /* Diálogo de confirmación */
+  .cb-confirm {
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    padding: 1.2rem; background: rgba(26,10,18,.5); opacity: 0; transition: opacity .18s ease;
+  }
+  .cb-confirm.is-open { opacity: 1; }
+  .cb-confirm__box {
+    background: #fff; border-radius: 16px; padding: 1.5rem 1.4rem 1.3rem; max-width: 380px; width: 100%;
+    text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.3);
+    transform: translateY(10px) scale(.97); transition: transform .18s ease;
+  }
+  .cb-confirm.is-open .cb-confirm__box { transform: translateY(0) scale(1); }
+  .cb-confirm__icon { font-size: 2.2rem; }
+  .cb-confirm__title { font-size: 1.15rem; font-weight: 800; margin: .4rem 0 .3rem; }
+  .cb-confirm__msg { color: var(--muted); font-size: .92rem; line-height: 1.5; }
+  .cb-confirm__acts { display: flex; gap: .6rem; margin-top: 1.2rem; }
+  .cb-confirm__acts .cb-btn { flex: 1; }
   .cb-miscard {
     display: flex; align-items: center; gap: .8rem; justify-content: space-between;
     background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .7rem .9rem;

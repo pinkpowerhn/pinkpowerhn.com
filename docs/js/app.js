@@ -6,6 +6,7 @@ import { openModal, closeModal } from './modal.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl, canAddNow } from './cart.js';
+import { onAdded } from './aroma.js';
 import { initMayoreo, restoreMayoreo, hasMayoreoSession } from './mayoreo.js';
 
 // iOS Safari solo aplica el estado :active (feedback al tocar) si existe
@@ -556,7 +557,7 @@ document.addEventListener('click', e => {
     }
     if (actionBtn.dataset.action === 'add-to-cart') {
       const variant = product.variants.find(v => v.availableForSale) || product.variants[0];
-      if (variant && canAddNow(variant.id)) showToast(addToCart(product, variant), product.title);
+      if (variant && canAddNow(variant.id)) onAdded(product, addToCart(product, variant));
     }
     return;
   }

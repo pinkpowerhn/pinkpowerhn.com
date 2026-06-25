@@ -2288,3 +2288,32 @@ body.menu-open nav {
 }
 .filter-chip--all:hover { background: var(--pink-dk, #c23a7e); border-color: var(--pink-dk, #c23a7e); }
 .shop-empty .btn { margin-top: 1rem; }
+
+/* ── Hoja "del mismo aroma" (al agregar al carrito) ──────── */
+.pp-aroma { position: fixed; inset: 0; z-index: 4000; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(26,10,18,.5); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+.pp-aroma.is-open { opacity: 1; pointer-events: auto; }
+.pp-aroma__panel { background: #fff; width: 100%; max-width: 560px; border-radius: 20px 20px 0 0;
+  padding: 1.2rem 1.1rem 1.4rem; box-shadow: 0 -10px 40px rgba(0,0,0,.25); position: relative;
+  transform: translateY(100%); transition: transform .26s cubic-bezier(.2,.8,.2,1); }
+.pp-aroma.is-open .pp-aroma__panel { transform: translateY(0); }
+@media (min-width: 600px) {
+  .pp-aroma { align-items: center; }
+  .pp-aroma__panel { border-radius: 20px; transform: translateY(16px) scale(.98); }
+  .pp-aroma.is-open .pp-aroma__panel { transform: none; }
+}
+.pp-aroma__x { position: absolute; top: .5rem; right: .7rem; border: none; background: none; font-size: 1.7rem; line-height: 1; color: #c01f6b; cursor: pointer; }
+.pp-aroma__ok { display: flex; align-items: center; gap: .5rem; font-weight: 700; color: #1a8a4a; font-size: .95rem; }
+.pp-aroma__check { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #1fae5f; color: #fff; font-size: .8rem; }
+.pp-aroma__title { font-size: 1.08rem; font-weight: 800; margin: .75rem 0 .65rem; color: #2a0f1c; }
+.pp-aroma__row { display: flex; gap: .6rem; overflow-x: auto; padding-bottom: .45rem; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.pp-aroma__card { flex: 0 0 132px; scroll-snap-align: start; background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.pp-aroma__img { aspect-ratio: 1/1; background: #f4eef1; display: grid; place-items: center; font-size: 1.6rem; }
+.pp-aroma__img img { width: 100%; height: 100%; object-fit: cover; }
+.pp-aroma__name { font-size: .78rem; font-weight: 600; color: #2a2a2a; padding: .45rem .5rem 0; line-height: 1.25; min-height: 2.3em; }
+.pp-aroma__price { font-size: .92rem; font-weight: 800; color: #e8437a; padding: .15rem .5rem .5rem; }
+.pp-aroma__add { margin: auto .45rem .55rem; border: none; background: #e8437a; color: #fff; font-weight: 700; font-size: .8rem; padding: .45rem; border-radius: 9px; cursor: pointer; transition: background .15s; }
+.pp-aroma__add:hover { background: #c01f6b; }
+.pp-aroma__foot { margin-top: 1rem; display: flex; justify-content: center; }
+.pp-aroma__btn--ghost { padding: .65rem 1.4rem; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff8fb; font-weight: 700; cursor: pointer; font-size: .9rem; color: #2a0f1c; }
+.pp-aroma__btn--ghost:hover { background: #ffe3ef; }

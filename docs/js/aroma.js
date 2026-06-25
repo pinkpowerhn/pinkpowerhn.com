@@ -121,7 +121,10 @@ function pintar(producto) {
     <div class="pp-aroma__panel" role="dialog" aria-label="Productos del mismo aroma">
       <button class="pp-aroma__x" data-aroma-close aria-label="Cerrar">&times;</button>
       <div class="pp-aroma__ok"><span class="pp-aroma__check">✓</span> Agregado al carrito</div>
-      <div class="pp-aroma__title">🌸 Del mismo aroma</div>
+      <div class="pp-aroma__promo">
+        <div class="pp-aroma__title">✨ ¡Completa tu set!</div>
+        <div class="pp-aroma__sub">Haz que tu aroma dure más combinándolo con estos productos de la misma colección.</div>
+      </div>
       <div class="pp-aroma__row">${sug.map(cardHTML).join('')}</div>
       <div class="pp-aroma__foot">
         <button class="pp-aroma__btn pp-aroma__btn--ghost" data-aroma-close>Seguir comprando</button>

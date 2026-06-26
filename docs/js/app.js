@@ -9,6 +9,21 @@ import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, 
 import { onAdded } from './aroma.js';
 import { initMayoreo, restoreMayoreo, hasMayoreoSession } from './mayoreo.js';
 
+// Orden del menú de categorías definido por el cliente. Las colecciones que
+// vengan de Shopify y no estén en esta lista se muestran después, en el orden
+// que las entrega Shopify (no se oculta ninguna).
+const MENU_ORDER = [
+  'body-care-fragancias', 'perfumes', 'sets-y-regalos', 'hogar',
+  'lenceria', 'hombres', 'accesorios',
+];
+function orderCollections(cols) {
+  const rank = h => {
+    const i = MENU_ORDER.indexOf(h);
+    return i === -1 ? MENU_ORDER.length : i;   // las no listadas, al final
+  };
+  return [...(cols || [])].sort((a, b) => rank(a.handle) - rank(b.handle));
+}
+
 // iOS Safari solo aplica el estado :active (feedback al tocar) si existe
 // algún listener de touch. Este listener vacío lo habilita en todo el sitio.
 document.addEventListener('touchstart', () => {}, { passive: true });
@@ -31,11 +46,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     // Primer lote grande → casi todas las categorías cargan de una.
     // Si el catálogo supera 250, el resto sigue en background.
-    const [firstPage, collections, config] = await Promise.all([
+    const [firstPage, collectionsRaw, config] = await Promise.all([
       fetchProductsPage({ first: 250 }),
       fetchCollections(),
       fetchConfig().catch(() => null),
     ]);
+    // Orden del menú a gusto del cliente (antes salían en el orden de Shopify).
+    const collections = orderCollections(collectionsRaw);
 
     const waNumber = config?.whatsapp ?? null;
     // Si hay sesión de mayoreo, no mostramos el catálogo normal (se quedan los

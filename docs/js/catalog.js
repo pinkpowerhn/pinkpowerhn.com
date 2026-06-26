@@ -21,6 +21,40 @@ export function renderSkeletons(n = 8) {
   `).join('');
 }
 
+// ── Íconos de categoría ───────────────────────────────────
+// Íconos de línea (heredan el color con currentColor → rosa del tema). Se eligen
+// por el handle de la colección; si llega una colección nueva de Shopify sin
+// ícono propio, se usa uno genérico de etiqueta.
+const _svg = paths =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+
+const COLLECTION_ICONS = {
+  // Body Care & Fragancias — frasco con dosificador y destello
+  'body-care-fragancias': _svg('<path d="M8 9.5h4.5a1.4 1.4 0 0 1 1.4 1.4v7.7a1.4 1.4 0 0 1-1.4 1.4H8a1.4 1.4 0 0 1-1.4-1.4v-7.7A1.4 1.4 0 0 1 8 9.5Z"/><path d="M9.6 9.5v-1.6h2.3"/><path d="M11.9 7.9V6.4h1.9"/><path d="M13.8 6.4v1.3"/><path d="M17.4 8.1l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4L15.5 10l1.4-.5.5-1.4Z"/>'),
+  // Perfumes — atomizador
+  'perfumes': _svg('<path d="M8.5 11h5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 7 18.5v-6A1.5 1.5 0 0 1 8.5 11Z"/><path d="M9.5 11V8h3v3"/><path d="M10 8V6.2h2V8"/><path d="M13.5 6.4h2.3V5"/><path d="M16.4 4.5h.01M17.2 5.6h.01M16.1 3.4h.01"/>'),
+  // Sets y Regalos — caja de regalo
+  'sets-y-regalos': _svg('<path d="M5.5 9.6h13V19a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V9.6Z"/><path d="M4.3 7.2h15.4v2.4H4.3Z"/><path d="M12 7.2V20"/><path d="M12 7.2C12 7.2 10.6 4 8.7 4 7.5 4 7.1 5 7.1 5.7 7.1 7 9 7.2 12 7.2Z"/><path d="M12 7.2C12 7.2 13.4 4 15.3 4 16.5 4 16.9 5 16.9 5.7 16.9 7 15 7.2 12 7.2Z"/>'),
+  // Hogar — casa con corazón
+  'hogar': _svg('<path d="M4.5 11.2 12 5l7.5 6.2"/><path d="M6.2 10v9.3h11.6V10"/><path d="M12 17.3 10.1 15.5a1.25 1.25 0 0 1 1.77-1.77l.13.12.13-.12a1.25 1.25 0 0 1 1.77 1.77L12 17.3Z"/>'),
+  // Ropa Interior — brassiere
+  'lenceria': _svg('<path d="M3.8 9.3h16.4"/><path d="M3.8 9.3c0 3.2 1.7 5 4.1 5S12 12.6 12 9.3"/><path d="M12 9.3c0 3.3 1.7 5 4.1 5s4.1-1.8 4.1-5"/><path d="M12 9.3v1.7"/><path d="M3.4 11l1-2.3M20.6 11l-1-2.3"/>'),
+  // Hombres — busto de persona
+  'hombres': _svg('<path d="M12 11.2A3.1 3.1 0 1 0 12 5a3.1 3.1 0 0 0 0 6.2Z"/><path d="M5.8 19.6c0-3.4 2.8-5.7 6.2-5.7s6.2 2.3 6.2 5.7"/>'),
+  // Accesorios — bolso
+  'accesorios': _svg('<path d="M5.3 9h13.4l-1 10.2a1 1 0 0 1-1 .9H7.3a1 1 0 0 1-1-.9L5.3 9Z"/><path d="M9 9V7.2a3 3 0 0 1 6 0V9"/>'),
+  // Cuidado Íntimo y Afeitado — rastrillo
+  'cuidado-intimo-y-afeitado': _svg('<path d="M7 4.5h10a1 1 0 0 1 1 1V8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z"/><path d="M8 9v1.2M10 9v1.2M12 9v1.2M14 9v1.2M16 9v1.2"/><path d="M11.2 10.4h1.6v8.4a.8.8 0 0 1-1.6 0V10.4Z"/>'),
+  // Ropa Deportiva — mancuerna
+  'ropa-deportiva': _svg('<path d="M7 8.5v7M9.3 6.8v10.4M14.7 6.8v10.4M17 8.5v7"/><path d="M9.3 12h5.4"/>'),
+};
+
+const ICON_DEFAULT = _svg('<path d="M20.6 13.4 13.4 20.6a1.5 1.5 0 0 1-2.1 0L4 13.2V5a1 1 0 0 1 1-1h8.2l7.4 7.3a1.5 1.5 0 0 1 0 2.1Z"/><path d="M8 8h.01"/>');
+
+function iconFor(handle) {
+  return COLLECTION_ICONS[handle] || ICON_DEFAULT;
+}
+
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────
 // Top level = Colecciones. Click en una colección la expande y muestra sus
 // etiquetas. Todo dinámico desde Shopify — no hay nada hardcoded.
@@ -48,6 +82,7 @@ export function renderCollectionSidebar(collections) {
     const isOpen = activeCollection === c.handle;
     sections.push(`
       <button class="collection-btn${isOpen ? ' is-active' : ''}" data-handle="${c.handle}" aria-expanded="${isOpen}">
+        <span class="collection-ic">${iconFor(c.handle)}</span>
         <span class="collection-name">${c.title}</span>
         <span class="collection-chevron" aria-label="${isOpen ? 'Minimizar' : 'Desplegar'}">${isOpen ? '−' : '+'}</span>
       </button>

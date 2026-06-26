@@ -360,7 +360,7 @@
   top: 6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0;
 }
 
 .sidebar-label {
@@ -390,11 +390,32 @@
   width: 100%;
 }
 
+/* Cada categoría: ícono + nombre + signo "+", con un divisor fino entre filas
+   y algo de aire (a gusto del cliente). */
+.collection-btn {
+  padding: 0.95rem 0.2rem;
+  gap: 0.85rem;
+  border-bottom: 1px solid rgba(26, 10, 18, 0.08);
+}
+
+.collection-ic {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pink-dk);
+}
+.collection-ic svg { width: 100%; height: 100%; display: block; }
+
+.collection-name { flex: 1 1 auto; }
+
 .collection-chevron {
-  font-size: 1.15rem;
+  font-size: 1.4rem;
   line-height: 1;
-  color: rgba(26, 10, 18, 0.45);
-  transition: color 0.22s;
+  color: var(--pink);
+  transition: color 0.22s, transform 0.22s;
   /* área tocable más amplia para el +/− sin desacomodar la fila */
   padding: 0.3rem 0.55rem;
   margin: -0.3rem -0.45rem -0.3rem 0;
@@ -403,7 +424,7 @@
 
 .collection-btn.is-active .collection-chevron,
 .collection-btn:hover .collection-chevron {
-  color: var(--pink);
+  color: var(--pink-dk);
 }
 
 .tag-group {
@@ -1343,23 +1364,32 @@ body.menu-open nav {
   border-top: 1px solid rgba(26, 10, 18, 0.08);
 }
 .menu-links a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   color: rgba(26, 10, 18, 0.85);
   text-decoration: none;
   font-family: 'Montserrat', sans-serif;
   font-size: 0.82rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.62rem 0.2rem;
+  padding: 0.72rem 0.2rem;
   transition: color 0.2s;
 }
 .menu-links a:hover { color: var(--pink); }
+.menu-links a svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  color: var(--pink-dk);
+}
 
 /* El menú de categorías dentro de la cinta: siempre en columna */
 .menu-panel .collection-sidebar {
   position: static;
   flex-direction: column;
   flex-wrap: nowrap;
-  gap: 0.4rem;
+  gap: 0;
 }
 
 /* En escritorio los enlaces de nav ya están arriba: ocultarlos en la cinta */

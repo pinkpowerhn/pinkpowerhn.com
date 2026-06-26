@@ -191,7 +191,16 @@ export async function postOrder(orderData, token = null) {
     headers,
     body: JSON.stringify(orderData),
   });
-  if (!res.ok) throw new Error(`Order POST failed: ${res.status}`);
+  if (!res.ok) {
+    // Conservar el cuerpo del error (p. ej. 409 con la lista de agotados) para
+    // que el checkout pueda reaccionar y avisar a la clienta.
+    let body = null;
+    try { body = await res.json(); } catch { /* sin cuerpo JSON */ }
+    const err = new Error(`Order POST failed: ${res.status}`);
+    err.status = res.status;
+    err.body = body;
+    throw err;
+  }
   return res.json();
 }
 

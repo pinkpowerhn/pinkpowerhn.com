@@ -1179,9 +1179,31 @@ async function submitCheckout(name, phone, email, checkout = null) {
 
   } catch (err) {
     console.error('[PinkPower] Order error:', err);
-    showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
+    const detail = err?.body?.detail;
+    // 409: algo se agotó entre que cargó la página y el momento de pagar. Se
+    // quitan esos productos del carrito y se le explica a la clienta.
+    if (err?.status === 409 && detail?.error === 'stock' && Array.isArray(detail.agotados)) {
+      quitarAgotados(detail.agotados);
+    } else {
+      showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
+    }
     if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
   }
+}
+
+// Quita del carrito los productos que se agotaron y avisa a la clienta para que
+// pueda terminar con el resto.
+function quitarAgotados(agotados) {
+  const ids = new Set(agotados.map(a => String(a.variant_id)));
+  const { cart } = getState();
+  const restante = cart.filter(i => !ids.has(String(i.variantId)));
+  setState({ cart: restante });
+
+  const nombres = [...new Set(agotados.map(a => a.title))].join(', ');
+  const seAgoto = agotados.length === 1 ? 'Se agotó' : 'Se agotaron';
+  showCoError(restante.length
+    ? `${seAgoto}: ${nombres}. Lo quitamos del carrito para que puedas finalizar con el resto.`
+    : `${seAgoto}: ${nombres}. Ya no queda nada disponible en tu carrito.`);
 }
 
 // ── Featured banner ───────────────────────────────────────

@@ -30,9 +30,14 @@ export function renderCollectionSidebar(collections) {
 
   const { activeCollection, activeTag, products, productsLoaded } = getState();
 
-  // Cada etiqueta se asigna a UNA colección (la que de verdad le corresponde)
-  // para que no se cuele en submenús ajenos. Ver computeTagAssignments.
-  const tagAssignment = computeTagAssignments(products, collections);
+  // Conteo global de cada etiqueta (en cuántos productos aparece en toda la
+  // tienda). Sirve para medir la "contención": qué parte de los productos de una
+  // etiqueta vive dentro de una colección. Una etiqueta cuyos productos viven casi
+  // todos aquí es "propia" de la colección; si está repartida (p. ej. un holder de
+  // Accesorios etiquetado con el producto que sostiene) no es propia y no se cuela.
+  const globalTag = {};
+  for (const p of products)
+    for (const t of new Set(p.tags || [])) globalTag[t] = (globalTag[t] || 0) + 1;
 
   // ── Build sidebar HTML ──
   // Las colecciones van directo (sin título "Colecciones" ni botón "Todos":
@@ -52,31 +57,36 @@ export function renderCollectionSidebar(collections) {
       // Qué etiquetas mostrar en el submenú de esta colección.
       //
       // Hay dos tipos de colección y se detectan solos (sin nombres fijos):
-      //  • De categoría (Accesorios, Hogar, Ropa…): sus propios productos ya
-      //    están cubiertos por sus etiquetas "propias". Mostramos solo esas, para
-      //    no colar etiquetas ajenas (p. ej. en Accesorios los "holders" llevan
-      //    también la etiqueta del producto que sostienen — eso no debe salir).
-      //  • Transversal (Hombres, Sets…): sus etiquetas propias cubren poco; el
-      //    filtro útil es la categoría real de cada producto (Perfumes, Cremas…),
-      //    cuyo hogar es otra colección. Ahí mostramos las categorías presentes.
-      // En ambos casos se ocultan las etiquetas que están sobre casi todos los
-      // productos (no filtran nada útil, p. ej. "Hombre" dentro de Hombres).
+      //  • De categoría (Accesorios, Hogar, Perfumes…): sus productos ya quedan
+      //    cubiertos por sus etiquetas "propias" (las que casi solo viven aquí).
+      //    Mostramos solo esas, para no colar etiquetas ajenas — p. ej. en
+      //    Accesorios los "holders" llevan también la etiqueta del producto que
+      //    sostienen, pero esa etiqueta vive mayormente en otra colección.
+      //  • Transversal (Hombres): sus propias cubren muy poco porque agrupa por
+      //    público, no por categoría. Ahí el filtro útil es la categoría real de
+      //    cada producto (Cremas, Jabones, Sets de Perfume…), así que mostramos
+      //    todas las subcategorías presentes.
+      // En ambos casos se oculta la etiqueta que está sobre casi todos los
+      // productos (no filtra nada útil, p. ej. "Hombre" dentro de Hombres).
       const prodsInC = products.filter(p => p.collectionHandles.includes(c.handle));
       const sizeC = prodsInC.length || 1;
       const countInC = {};
-      for (const p of prodsInC) for (const t of (p.tags || [])) countInC[t] = (countInC[t] || 0) + 1;
+      for (const p of prodsInC) for (const t of new Set(p.tags || [])) countInC[t] = (countInC[t] || 0) + 1;
 
+      const NATIVE = 0.85;   // contención mínima para que una etiqueta sea "propia"
       const esTrivial = t => countInC[t] >= 0.9 * sizeC;
+
+      // Propias: casi todos sus productos (en toda la tienda) viven en esta
+      // colección. Una etiqueta puede ser propia de más de una colección a la vez
+      // (p. ej. "Sets de Perfume" es propia de Perfumes y de Sets y Regalos).
       const propias = new Set(
-        Object.keys(countInC).filter(t => tagAssignment[t] === c.handle && !esTrivial(t)));
+        Object.keys(countInC).filter(t => !esTrivial(t) && countInC[t] / globalTag[t] >= NATIVE));
       const cubiertos = prodsInC.filter(p => (p.tags || []).some(t => propias.has(t))).length;
       const bienCubierta = cubiertos / sizeC >= 0.6;
 
       let tagsInCollection = bienCubierta
         ? [...propias].sort()
-        : Object.keys(countInC)
-            .filter(t => !esTrivial(t) && countInC[t] >= 2 && countInC[t] / sizeC >= 0.08)
-            .sort();
+        : Object.keys(countInC).filter(t => !esTrivial(t)).sort();
 
       // Salvaguarda para colecciones chicas (p. ej. 1–2 productos): las reglas
       // de arriba podrían dejarla sin ninguna etiqueta. Si quedó vacía pero sí
@@ -164,61 +174,6 @@ export function renderSizeBar(collections) {
       <button class="size-btn${activeSize === s ? ' is-active' : ''}" data-size="${escapeAttr(s)}">${s}</button>
     `).join('')}
   `;
-}
-
-// Asigna cada etiqueta a UNA sola colección: aquella donde vive casi toda
-// su "gente". Si casi todos los productos con la etiqueta T están dentro de la
-// colección C (contención ≥ 85%), T le pertenece a C. Si T califica para varias
-// colecciones, gana la más específica (la más pequeña). Si no llega al umbral en
-// ninguna pero su mayor concentración es razonable (≥ 50%), se asigna a esa; si
-// está muy repartida (marca, promos), no se muestra en ningún submenú.
-function computeTagAssignments(products, collections) {
-  const THRESHOLD   = 0.85; // "casi todos"
-  const MIN_FALLBACK = 0.6;  // concentración mínima para el respaldo (un 50/50
-                             // se considera transversal y no se muestra)
-
-  // Tamaño de cada colección (para elegir la más específica en empates)
-  const collSize = {};
-  for (const c of collections) {
-    collSize[c.handle] = products.filter(p => p.collectionHandles.includes(c.handle)).length;
-  }
-
-  // Productos por etiqueta
-  const byTag = {};
-  for (const p of products) {
-    for (const t of (p.tags || [])) {
-      (byTag[t] || (byTag[t] = [])).push(p);
-    }
-  }
-
-  const assignment = {};
-  for (const [tag, prods] of Object.entries(byTag)) {
-    const total = prods.length;
-    let best = null;            // mayor contención (para el respaldo)
-    const qualifying = [];      // colecciones que superan el umbral
-
-    for (const c of collections) {
-      const inC = prods.filter(p => p.collectionHandles.includes(c.handle)).length;
-      const containment = inC / total;
-      if (containment >= THRESHOLD) {
-        qualifying.push({ handle: c.handle, size: collSize[c.handle] });
-      }
-      if (!best || containment > best.containment) {
-        best = { handle: c.handle, containment };
-      }
-    }
-
-    if (qualifying.length) {
-      // La más específica = la colección con menos productos
-      qualifying.sort((a, b) => a.size - b.size);
-      assignment[tag] = qualifying[0].handle;
-    } else if (best && best.containment >= MIN_FALLBACK) {
-      assignment[tag] = best.handle;
-    } else {
-      assignment[tag] = null; // etiqueta transversal → no se muestra en submenús
-    }
-  }
-  return assignment;
 }
 
 function escapeAttr(s) {
@@ -376,6 +331,11 @@ export function renderProductGrid(products, collections, activeCollection, searc
   } else if (sortBy === 'price-desc') {
     filtered = [...filtered].sort((a, b) => b.price - a.price);
   }
+
+  // Los agotados siempre al final (sin alterar el orden dentro de cada grupo:
+  // Array.sort es estable, así que se respeta el orden por precio/relevancia).
+  filtered = [...filtered].sort((a, b) =>
+    (a.availableForSale === b.availableForSale) ? 0 : (a.availableForSale ? -1 : 1));
 
   if (!filtered.length) {
     // Si todavía hay productos cargando en background, mostrar skeleton

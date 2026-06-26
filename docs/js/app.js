@@ -1142,6 +1142,14 @@ async function submitCheckout(name, phone, email, checkout = null) {
 
   const { cart, waNumber } = getState();
 
+  // El carrito puede haber quedado vacío (p. ej. tras quitar los agotados): no
+  // tiene sentido mandar un pedido sin productos.
+  if (!cart.length) {
+    showCoError('Tu carrito quedó vacío. Agrega productos para finalizar.');
+    if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
+    return;
+  }
+
   // Si el cliente no deja correo, se arma uno técnico con su teléfono para que
   // Shopify lo identifique (con su nombre y teléfono) y no lo cree "desconocido".
   const phoneDigits = String(phone).replace(/\D/g, '');

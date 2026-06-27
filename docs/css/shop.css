@@ -1962,6 +1962,13 @@ body.menu-open nav {
 @media (max-width: 900px) {
   .modal-body { grid-template-columns: 1fr; }
   .modal-info { padding: 1.6rem; }
+
+  /* En móvil el modal se apila (foto arriba, info abajo). Limitamos la altura de
+     la foto y usamos dvh (altura real visible, descontando la barra del navegador)
+     para que TODO quepa en pantalla y el botón de agregar quede a la mano. */
+  .modal-panel { max-height: 92dvh; }
+  .carousel-track,
+  .carousel-placeholder { aspect-ratio: auto; height: min(44vh, 340px); }
 }
 
 @media (max-width: 768px) {
@@ -2000,9 +2007,20 @@ body.menu-open nav {
   .product-card__price { font-size: 0.88rem; }
 
   .modal-panel {
-    max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
   }
+
+  /* Pantallas pequeñas: foto más baja e info más compacta para que no se
+     desborde de la altura del teléfono. */
+  .carousel-track,
+  .carousel-placeholder { height: min(38vh, 300px); }
+  .modal-info { padding: 1.3rem 1.4rem 1.7rem; }
+  .modal-product-name { font-size: 1.5rem; }
+  .modal-price { font-size: 1.25rem; margin-bottom: 0.7rem; }
+  .modal-description { margin-bottom: 1rem; line-height: 1.7; }
+  .modal-variants { margin-bottom: 1rem; }
+  .modal-actions { padding-top: 1rem; }
 }
 
 /* ── Toast notification ───────────────────────────────── */

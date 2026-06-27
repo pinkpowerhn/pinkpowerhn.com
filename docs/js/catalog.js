@@ -68,6 +68,7 @@ const SUBCAT_ORDER = {
   'sets-y-regalos': ['Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
   'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro'],
   'lenceria': ['Panties', 'Brassieres', 'Set de Lencería'],
+  'hombres': ['Perfumes', 'Body Spray', 'Cremas', 'Jabones', 'Antibacteriales', 'Mini Body Care', 'Mini Perfumes'],
 };
 
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────

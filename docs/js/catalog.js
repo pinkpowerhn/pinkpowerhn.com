@@ -65,6 +65,7 @@ const SUBCAT_ORDER = {
     'Aceites y Serums', 'Afeitado', 'Antibacteriales', 'Mini Body Care',
   ],
   'perfumes': ['Perfumes', 'Mini Perfumes', 'Decants'],
+  'sets-y-regalos': ['Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
 };
 
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────

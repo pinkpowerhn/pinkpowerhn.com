@@ -66,6 +66,7 @@ const SUBCAT_ORDER = {
   ],
   'perfumes': ['Perfumes', 'Mini Perfumes', 'Decants'],
   'sets-y-regalos': ['Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
+  'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro'],
 };
 
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────

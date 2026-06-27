@@ -112,6 +112,17 @@ function buildModalHTML(p) {
     </div>
   ` : '';
 
+  // Botón para ver la foto completa (sin recorte). Por defecto la foto se muestra
+  // recortada para llenar el recuadro; al tocar este botón se ve la imagen entera.
+  const fitBtn = p.images.length ? `
+    <button class="carousel-fit" id="carousel-fit" type="button" aria-label="Ver la foto completa">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+      </svg>
+      <span class="carousel-fit__txt">Ver completa</span>
+    </button>
+  ` : '';
+
   // Variants
   const variantSection = hasRealVariants(p) ? `
     <div class="modal-variants">
@@ -160,6 +171,7 @@ function buildModalHTML(p) {
           <div class="carousel-track" id="carousel-track">${slides}</div>
           ${arrows}
           ${dots}
+          ${fitBtn}
           ${badgeHTML}
         </div>
 
@@ -198,6 +210,15 @@ function wireModalEvents(modal, product) {
 
   modal.querySelectorAll('.carousel-dot').forEach(dot => {
     dot.addEventListener('click', () => setCarouselIndex(parseInt(dot.dataset.dot, 10), modal, product));
+  });
+
+  // Ver foto completa / volver al encuadre normal
+  const carouselEl = modal.querySelector('.modal-carousel');
+  const fitBtn     = modal.querySelector('#carousel-fit');
+  fitBtn?.addEventListener('click', () => {
+    const full = carouselEl.classList.toggle('show-full');
+    const txt  = fitBtn.querySelector('.carousel-fit__txt');
+    if (txt) txt.textContent = full ? 'Ajustar' : 'Ver completa';
   });
 
   modal.querySelectorAll('.variant-btn').forEach(btn => {

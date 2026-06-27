@@ -1198,6 +1198,39 @@
 
 .carousel-dot.is-active { background: var(--pink); }
 
+/* Botón "Ver completa": muestra la foto entera (sin recorte) dentro del modal */
+.carousel-fit {
+  position: absolute;
+  bottom: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  background: rgba(26, 10, 18, 0.6);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.42rem 0.72rem;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s;
+}
+.carousel-fit:hover { background: var(--pink); }
+.carousel-fit svg   { width: 13px; height: 13px; }
+
+/* Al ver la foto completa: sin recorte y sobre un fondo claro neutro para que
+   el margen de la imagen no choque con el negro del recuadro. */
+.modal-carousel.show-full .carousel-track  { background: #f4eef1; }
+.modal-carousel.show-full .carousel-slide img { object-fit: contain; }
+
 /* Modal info panel */
 .modal-info {
   padding: 2.4rem;
@@ -1969,6 +2002,11 @@ body.menu-open nav {
   .modal-panel { max-height: 92dvh; }
   .carousel-track,
   .carousel-placeholder { aspect-ratio: auto; height: min(44vh, 340px); }
+
+  /* "Ver completa" en móvil: recupera el cuadrado para mostrar la foto entera y
+     grande (el panel crece y se desplaza si hace falta). */
+  .modal-carousel.show-full .carousel-track,
+  .modal-carousel.show-full .carousel-placeholder { aspect-ratio: 1 / 1; height: auto; }
 }
 
 @media (max-width: 768px) {

@@ -39,6 +39,8 @@ export function closeModal() {
   const modal = document.getElementById('product-modal');
   if (!modal || modal.hidden) return;
 
+  closeLightbox(); // por si quedó abierto el visor de foto
+
   const panel = modal.querySelector('.modal-panel');
 
   const finish = () => {
@@ -212,13 +214,12 @@ function wireModalEvents(modal, product) {
     dot.addEventListener('click', () => setCarouselIndex(parseInt(dot.dataset.dot, 10), modal, product));
   });
 
-  // Ver foto completa / volver al encuadre normal
-  const carouselEl = modal.querySelector('.modal-carousel');
-  const fitBtn     = modal.querySelector('#carousel-fit');
-  fitBtn?.addEventListener('click', () => {
-    const full = carouselEl.classList.toggle('show-full');
-    const txt  = fitBtn.querySelector('.carousel-fit__txt');
-    if (txt) txt.textContent = full ? 'Ajustar' : 'Ver completa';
+  // Ver la foto completa: al tocar la imagen (o el botón) se abre a pantalla
+  // completa en un visor aparte, sin alterar el tamaño del modal.
+  const openFull = () => openLightbox(product, _carouselIndex);
+  modal.querySelector('#carousel-fit')?.addEventListener('click', openFull);
+  modal.querySelectorAll('.carousel-slide img').forEach(img => {
+    img.addEventListener('click', openFull);
   });
 
   modal.querySelectorAll('.variant-btn').forEach(btn => {
@@ -301,4 +302,71 @@ function setCarouselIndex(index, modal, product) {
   modal.querySelectorAll('.carousel-dot').forEach((d, i) => {
     d.classList.toggle('is-active', i === index);
   });
+}
+
+// ── Visor de foto a pantalla completa (lightbox) ──────────
+function openLightbox(product, startIndex) {
+  const imgs = product.images || [];
+  if (!imgs.length) return;
+  let idx = startIndex || 0;
+
+  let lb = document.getElementById('img-lightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'img-lightbox';
+    lb.className = 'img-lightbox';
+    document.body.appendChild(lb);
+  }
+
+  const go = d => { idx = (idx + d + imgs.length) % imgs.length; render(); };
+
+  const render = () => {
+    const multi = imgs.length > 1;
+    const cur = imgs[idx];
+    lb.innerHTML = `
+      <button class="img-lightbox__close" id="lb-close" aria-label="Cerrar">&times;</button>
+      <img src="${cur.url}" alt="${cur.altText || product.title}" onerror="this.src='${FALLBACK_IMG}'">
+      ${multi ? `
+        <button class="img-lightbox__arrow img-lightbox__arrow--prev" id="lb-prev" aria-label="Anterior">&#8249;</button>
+        <button class="img-lightbox__arrow img-lightbox__arrow--next" id="lb-next" aria-label="Siguiente">&#8250;</button>
+        <div class="img-lightbox__count">${idx + 1} / ${imgs.length}</div>
+      ` : ''}
+    `;
+    lb.querySelector('#lb-close').addEventListener('click', closeLightbox);
+    lb.querySelector('#lb-prev')?.addEventListener('click', e => { e.stopPropagation(); go(-1); });
+    lb.querySelector('#lb-next')?.addEventListener('click', e => { e.stopPropagation(); go(+1); });
+    // Tocar la imagen cierra el visor (zoom-out)
+    lb.querySelector('img').addEventListener('click', closeLightbox);
+  };
+
+  render();
+  lb.hidden = false;
+
+  // Tocar el fondo cierra
+  lb.onclick = e => { if (e.target === lb) closeLightbox(); };
+
+  // Deslizar para cambiar de foto (móvil)
+  let x0 = null;
+  lb.ontouchstart = e => { x0 = e.changedTouches[0].clientX; };
+  lb.ontouchend = e => {
+    if (x0 == null) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (imgs.length > 1 && Math.abs(dx) > 45) go(dx < 0 ? +1 : -1);
+  };
+
+  // Teclado (escritorio)
+  lb._onKey = e => {
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowRight') go(+1);
+    else if (e.key === 'ArrowLeft') go(-1);
+  };
+  document.addEventListener('keydown', lb._onKey);
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('img-lightbox');
+  if (!lb) return;
+  lb.hidden = true;
+  lb.innerHTML = '';
+  if (lb._onKey) { document.removeEventListener('keydown', lb._onKey); lb._onKey = null; }
 }

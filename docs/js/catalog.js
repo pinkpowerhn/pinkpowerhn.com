@@ -38,7 +38,7 @@ const COLLECTION_ICONS = {
   // Hogar — casa con corazón
   'hogar': _svg('<path d="M4.5 11.2 12 5l7.5 6.2"/><path d="M6.2 10v9.3h11.6V10"/><path d="M12 17.3 10.1 15.5a1.25 1.25 0 0 1 1.77-1.77l.13.12.13-.12a1.25 1.25 0 0 1 1.77 1.77L12 17.3Z"/>'),
   // Ropa Interior — brassiere
-  'lenceria': _svg('<path d="M3.5 7.5h17v1.8c-3 .4-4.6 1.8-5.7 4.6-.7 1.7-1.3 3.1-2.8 3.1s-2.1-1.4-2.8-3.1C7.1 9.1 5.5 7.7 3.5 9.3V7.5Z"/>'),
+  'lenceria': _svg('<path d="M3.5 8H20.5V9.4C17.5 10 15.3 11.6 14 14.4 13.2 16.1 12.7 16.8 12 16.8 11.3 16.8 10.8 16.1 10 14.4 8.7 11.6 6.5 10 3.5 9.4Z"/>'),
   // Hombres — busto de persona
   'hombres': _svg('<path d="M12 11.2A3.1 3.1 0 1 0 12 5a3.1 3.1 0 0 0 0 6.2Z"/><path d="M5.8 19.6c0-3.4 2.8-5.7 6.2-5.7s6.2 2.3 6.2 5.7"/>'),
   // Accesorios — bolso

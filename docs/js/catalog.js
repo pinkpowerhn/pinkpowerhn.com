@@ -31,14 +31,14 @@ const _svg = paths =>
 const COLLECTION_ICONS = {
   // Body Care & Fragancias — frasco con dosificador y destello
   'body-care-fragancias': _svg('<path d="M8 9.5h4.5a1.4 1.4 0 0 1 1.4 1.4v7.7a1.4 1.4 0 0 1-1.4 1.4H8a1.4 1.4 0 0 1-1.4-1.4v-7.7A1.4 1.4 0 0 1 8 9.5Z"/><path d="M9.6 9.5v-1.6h2.3"/><path d="M11.9 7.9V6.4h1.9"/><path d="M13.8 6.4v1.3"/><path d="M17.4 8.1l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4L15.5 10l1.4-.5.5-1.4Z"/>'),
-  // Perfumes — atomizador
-  'perfumes': _svg('<path d="M8.5 11h5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 7 18.5v-6A1.5 1.5 0 0 1 8.5 11Z"/><path d="M9.5 11V8h3v3"/><path d="M10 8V6.2h2V8"/><path d="M13.5 6.4h2.3V5"/><path d="M16.4 4.5h.01M17.2 5.6h.01M16.1 3.4h.01"/>'),
+  // Perfumes — frasco redondo con atomizador
+  'perfumes': _svg('<circle cx="11.3" cy="15.1" r="5.2"/><path d="M9.6 10.1V8h3.4v2.1"/><path d="M10 8V6.2h2.6V8"/><path d="M13 7.1h2.5V5.4"/><circle cx="16.4" cy="4.7" r=".95"/><path d="M18 4h.01M18.4 5.5h.01"/>'),
   // Sets y Regalos — caja de regalo
   'sets-y-regalos': _svg('<path d="M5.5 9.6h13V19a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V9.6Z"/><path d="M4.3 7.2h15.4v2.4H4.3Z"/><path d="M12 7.2V20"/><path d="M12 7.2C12 7.2 10.6 4 8.7 4 7.5 4 7.1 5 7.1 5.7 7.1 7 9 7.2 12 7.2Z"/><path d="M12 7.2C12 7.2 13.4 4 15.3 4 16.5 4 16.9 5 16.9 5.7 16.9 7 15 7.2 12 7.2Z"/>'),
   // Hogar — casa con corazón
   'hogar': _svg('<path d="M4.5 11.2 12 5l7.5 6.2"/><path d="M6.2 10v9.3h11.6V10"/><path d="M12 17.3 10.1 15.5a1.25 1.25 0 0 1 1.77-1.77l.13.12.13-.12a1.25 1.25 0 0 1 1.77 1.77L12 17.3Z"/>'),
   // Ropa Interior — brassiere
-  'lenceria': _svg('<path d="M3.5 7.5h17v1.8c-3 .4-4.6 1.8-5.7 4.6-.7 1.7-1.3 3.1-2.8 3.1s-2.1-1.4-2.8-3.1C7.1 9.1 5.5 7.7 3.5 9.3V7.5Z"/>'),
+  'lenceria': _svg('<path d="M4 9.5C4 13 6 15 8 15c1.8 0 3.2-1.6 4-3.5.8 1.9 2.2 3.5 4 3.5 2 0 4-2 4-5.5"/><path d="M4.4 9.5 6 5.6"/><path d="M19.6 9.5 18 5.6"/>'),
   // Hombres — busto de persona
   'hombres': _svg('<path d="M12 11.2A3.1 3.1 0 1 0 12 5a3.1 3.1 0 0 0 0 6.2Z"/><path d="M5.8 19.6c0-3.4 2.8-5.7 6.2-5.7s6.2 2.3 6.2 5.7"/>'),
   // Accesorios — bolso

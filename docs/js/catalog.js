@@ -447,12 +447,23 @@ function renderPagination(totalPages, current) {
   el.innerHTML = items.join('');
 }
 
+// Un producto tiene variantes "reales" (tallas/opciones a elegir) si tiene más de
+// una variante, o una sola que no sea la genérica "Default Title". En esos casos
+// no se agrega directo al carrito: hay que elegir la talla primero (se abre el
+// modal). Así no se cuela un pedido sin talla.
+export function tieneVariantesReales(p) {
+  const vs = p.variants || [];
+  return vs.length > 1 || (vs.length === 1 && vs[0].title !== 'Default Title');
+}
+
 function productCardHTML(p) {
   const img      = p.images[0];
   const soldOut  = !p.availableForSale;
   const price    = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });
   const imgSrc   = img ? img.url : FALLBACK_IMG;
   const imgAlt   = img ? (img.altText || p.title) : p.title;
+  // Productos con talla: el botón lleva a elegir talla (abre el modal), no agrega.
+  const addLabel = !soldOut && tieneVariantesReales(p) ? 'Elegir talla' : 'Agregar';
 
   // Low-stock: any available variant with tracked inventory ≤ 5
   const availableVariants = p.variants.filter(v => v.availableForSale && v.inventoryQuantity !== null);
@@ -479,7 +490,7 @@ function productCardHTML(p) {
             : ''}
         <div class="product-card__overlay">
           ${!soldOut
-            ? `<button class="btn btn-primary" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`
+            ? `<button class="btn btn-primary" data-action="add-to-cart" data-id="${p.id}">${addLabel}</button>`
             : ''}
         </div>
       </div>
@@ -488,7 +499,7 @@ function productCardHTML(p) {
         <p class="product-card__type">${p.productType || ''}</p>
         <p class="product-card__price">L. ${price}</p>
         ${!soldOut
-          ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">Agregar</button>`
+          ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">${addLabel}</button>`
           : `<button class="btn product-card__mobile-add product-card__mobile-add--sold" disabled>Agotado</button>`}
       </div>
     </article>

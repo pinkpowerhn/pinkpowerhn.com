@@ -14,7 +14,9 @@ let _currentProduct  = null;
 export function openModal(product) {
   _currentProduct  = product;
   _carouselIndex   = 0;
-  _selectedVariant = getDefaultVariant(product);
+  // Con tallas reales NO se preselecciona ninguna: la clienta debe elegir una
+  // antes de poder agregar. Sin tallas (variante única), se usa la de siempre.
+  _selectedVariant = hasRealVariants(product) ? null : getDefaultVariant(product);
 
   const modal = document.getElementById('product-modal');
   if (!modal) return;
@@ -135,11 +137,17 @@ function buildModalHTML(p) {
     ? isAtLimit(_selectedVariant)
     : false;
 
+  // Falta elegir talla: el producto tiene variantes reales y aún no hay una
+  // seleccionada. El botón queda deshabilitado pidiendo elegir talla.
+  const faltaTalla = !soldOut && hasRealVariants(p) && !_selectedVariant;
+
   const addBtn = soldOut
     ? `<button class="btn btn-primary" disabled>Agotado</button>`
-    : `<button class="btn btn-primary" id="modal-add-btn"${atLimit ? ' disabled' : ''}>
-        ${atLimit ? 'Sin más stock' : 'Agregar al Carrito'}
-       </button>`;
+    : faltaTalla
+      ? `<button class="btn btn-primary" id="modal-add-btn" disabled>Elige una talla</button>`
+      : `<button class="btn btn-primary" id="modal-add-btn"${atLimit ? ' disabled' : ''}>
+          ${atLimit ? 'Sin más stock' : 'Agregar al Carrito'}
+         </button>`;
 
   return `
     <div class="modal-backdrop" id="modal-backdrop"></div>

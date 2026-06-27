@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar, tieneVariantesReales } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -573,6 +573,13 @@ document.addEventListener('click', e => {
       history.replaceState(null, '', `#shop/product/${id}`);
     }
     if (actionBtn.dataset.action === 'add-to-cart') {
+      // Con tallas/variantes reales no se agrega directo: se abre el modal para
+      // que la clienta elija la talla primero.
+      if (tieneVariantesReales(product)) {
+        openModal(product);
+        history.replaceState(null, '', `#shop/product/${id}`);
+        return;
+      }
       const variant = product.variants.find(v => v.availableForSale) || product.variants[0];
       if (variant && canAddNow(variant.id)) onAdded(product, addToCart(product, variant));
     }

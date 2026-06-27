@@ -267,6 +267,16 @@
       color: #fff;
     }
 
+    /* Deshabilitado (p. ej. "Elige una talla", "Agotado", "Sin más stock"):
+       gris/inactivo para que no parezca clickeable. */
+    .btn-primary:disabled,
+    .btn-primary[disabled] {
+      background: #e6e3e5;
+      color: rgba(26, 10, 18, 0.45);
+      border-color: #e6e3e5;
+      cursor: not-allowed;
+    }
+
     .btn-outline {
       background: transparent;
       color: var(--white);

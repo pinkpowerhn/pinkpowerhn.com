@@ -69,6 +69,9 @@ const SUBCAT_ORDER = {
   'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro'],
   'lenceria': ['Panties', 'Brassieres', 'Set de Lencería'],
   'hombres': ['Perfumes', 'Body Spray', 'Cremas', 'Jabones', 'Antibacteriales', 'Mini Body Care', 'Mini Perfumes'],
+  // Nota: la última etiqueta es "Candelabro para Velas" en Shopify (la clienta la
+  // llama "Candelabros"). Se usa el nombre real para que calce con los productos.
+  'accesorios': ['Bolsos y Carteras', 'Llaveros y Monederos', 'Maquillaje', 'Holder para Antibacterial', 'Difusores para Carro', 'Difusores Ambientales de Pared', 'Candelabro para Velas'],
 };
 
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────

@@ -55,6 +55,17 @@ function iconFor(handle) {
   return COLLECTION_ICONS[handle] || ICON_DEFAULT;
 }
 
+// Subcategorías definidas a mano por colección, a pedido del cliente. Cuando una
+// colección está aquí, se muestran EXACTAMENTE estas etiquetas (las presentes) y
+// en este orden, sin la detección automática. Así el cliente controla la lista y
+// el orden, y se excluye todo lo demás.
+const SUBCAT_ORDER = {
+  'body-care-fragancias': [
+    'Splash', 'Cremas', 'Jabones', 'Exfoliantes',
+    'Aceites y Serums', 'Afeitado', 'Antibacteriales', 'Mini Body Care',
+  ],
+};
+
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────
 // Top level = Colecciones. Click en una colección la expande y muestra sus
 // etiquetas. Todo dinámico desde Shopify — no hay nada hardcoded.
@@ -119,14 +130,21 @@ export function renderCollectionSidebar(collections) {
       const cubiertos = prodsInC.filter(p => (p.tags || []).some(t => propias.has(t))).length;
       const bienCubierta = cubiertos / sizeC >= 0.6;
 
-      let tagsInCollection = bienCubierta
-        ? [...propias].sort()
-        : Object.keys(countInC).filter(t => !esTrivial(t)).sort();
-
-      // Salvaguarda para colecciones chicas (p. ej. 1–2 productos): las reglas
-      // de arriba podrían dejarla sin ninguna etiqueta. Si quedó vacía pero sí
-      // hay etiquetas presentes, las mostramos (mejor eso que "Sin etiquetas").
-      if (!tagsInCollection.length) tagsInCollection = Object.keys(countInC).sort();
+      let tagsInCollection;
+      const ordenManual = SUBCAT_ORDER[c.handle];
+      if (ordenManual) {
+        // Lista manual del cliente: exactamente estas etiquetas, en este orden.
+        // Se muestran todas (la lista es curada) sin depender de cuántos productos
+        // hayan cargado ya, para que no falte ninguna mientras la tienda carga.
+        tagsInCollection = ordenManual.slice();
+      } else {
+        tagsInCollection = bienCubierta
+          ? [...propias].sort()
+          : Object.keys(countInC).filter(t => !esTrivial(t)).sort();
+        // Salvaguarda para colecciones chicas (p. ej. 1–2 productos): si quedó
+        // vacía pero sí hay etiquetas, las mostramos (mejor que "Sin etiquetas").
+        if (!tagsInCollection.length) tagsInCollection = Object.keys(countInC).sort();
+      }
 
       if (tagsInCollection.length) {
         sections.push(`

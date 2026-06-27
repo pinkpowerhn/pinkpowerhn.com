@@ -1282,7 +1282,15 @@
 
 .variant-btn:hover:not(:disabled)     { border-color: var(--pink); color: var(--pink); }
 .variant-btn.is-active                 { border-color: var(--pink); color: var(--pink); background: rgba(232,67,122,0.1); }
-.variant-btn.is-unavailable            { opacity: 0.32; cursor: not-allowed; }
+/* Talla agotada: gris, tachada y atenuada, para que se note de un vistazo que
+   esa talla no hay (antes solo bajaba un poco la opacidad y no se distinguía). */
+.variant-btn.is-unavailable {
+  color: rgba(26, 10, 18, 0.4);
+  background: #f1eef0;
+  border-color: #e6e3e5;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
 
 .modal-actions { margin-top: auto; padding-top: 1.4rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .modal-actions .btn { width: 100%; text-align: center; }

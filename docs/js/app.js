@@ -460,25 +460,14 @@ document.addEventListener('click', e => {
       return;
     }
 
-    // Clic en el NOMBRE de la colección
-    if (isOpen) {
-      // ya abierta → ir a TODA la categoría (todos los productos, sin filtro)
-      clearSearchInput();
-      setState({ activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
-      history.replaceState(null, '', `#shop/collection/${clicked}`);
-      closeMenuDrawer();
-      scrollToProductsMobile();
-      return;
-    }
-    // colapsada → desplegar su submenú
+    // Clic en el NOMBRE (o el ícono) → entrar a TODA la categoría (todos sus
+    // productos, sin filtro). El desplegar/colapsar subcategorías queda solo en
+    // el "+". Así: + abre las subcategorías, el texto entra a la categoría.
     clearSearchInput();
     setState({ activeCollection: clicked, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
     history.replaceState(null, '', `#shop/collection/${clicked}`);
-    // Si no tiene subcategorías, ir directo a la categoría
-    if (!document.querySelector('#collection-sidebar .tag-btn')) {
-      closeMenuDrawer();
-      scrollToProductsMobile();
-    }
+    closeMenuDrawer();
+    scrollToProductsMobile();
     return;
   }
 

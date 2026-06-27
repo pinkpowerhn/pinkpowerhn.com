@@ -64,6 +64,7 @@ const SUBCAT_ORDER = {
     'Splash', 'Cremas', 'Jabones', 'Exfoliantes',
     'Aceites y Serums', 'Afeitado', 'Antibacteriales', 'Mini Body Care',
   ],
+  'perfumes': ['Perfumes', 'Mini Perfumes', 'Decants'],
 };
 
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────

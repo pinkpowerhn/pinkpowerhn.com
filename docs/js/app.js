@@ -243,6 +243,8 @@ let _fbIndex = 0;    // colección visible (0..N-1)
 let _fbN = 0;        // cantidad de colecciones
 let _fbTimer = null;
 let _fbMode = 'normal';  // 'normal' | 'mayoreo' — para reconstruir el carrusel al entrar a mayoreo
+let _fbSwipeWired = false;   // para no duplicar los listeners de swipe
+let _fbSuppressClick = false; // tras un swipe, ignora el clic que pudiera dispararse
 let _fbReq = 0;          // secuencia para descartar precargas de imagen obsoletas (clicks rápidos)
 
 // Colecciones que tienen al menos un producto en la lista dada. En mayoreo,
@@ -282,6 +284,36 @@ function renderFeatured(products, collections) {
   // Pausa el auto-avance al pasar el mouse (desktop)
   section.onmouseenter = stopFbAuto;
   section.onmouseleave = startFbAuto;
+  // Deslizar con el dedo (móvil) para cambiar de colección.
+  wireFbSwipe(track);
+}
+
+// Swipe táctil en el carrusel: arrastrar a la izquierda avanza, a la derecha
+// retrocede. El #fb-track persiste entre renders (solo cambia su contenido), así
+// que los listeners se enganchan una sola vez.
+function wireFbSwipe(track) {
+  if (_fbSwipeWired || !track) return;
+  _fbSwipeWired = true;
+  let x0 = null, y0 = null;
+  track.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    x0 = t.clientX; y0 = t.clientY;
+    stopFbAuto();
+  }, { passive: true });
+  track.addEventListener('touchend', e => {
+    if (x0 == null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    x0 = y0 = null;
+    // Solo si es un arrastre horizontal claro (no un toque ni un scroll vertical)
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      _fbSuppressClick = true;                 // que el swipe no abra la colección
+      setTimeout(() => { _fbSuppressClick = false; }, 350);
+      if (dx < 0) showFbCollection(_fbIndex + 1, 1);
+      else        showFbCollection(_fbIndex - 1, -1);
+    }
+    startFbAuto();
+  }, { passive: true });
 }
 
 // Cambia el contenido del card a la colección i. La imagen se PRECARGA y el
@@ -534,7 +566,11 @@ document.addEventListener('click', e => {
     return;
   }
   const fbCol = e.target.closest('[data-fb-collection]');
-  if (fbCol) { goToCollection(fbCol.dataset.fbCollection); return; }
+  if (fbCol) {
+    if (_fbSuppressClick) return;   // venía de un swipe, no abrir la colección
+    goToCollection(fbCol.dataset.fbCollection);
+    return;
+  }
 
   // Product card click → open detail (unless hitting the add-to-cart button)
   const card = e.target.closest('.product-card');

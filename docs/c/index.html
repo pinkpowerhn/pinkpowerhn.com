@@ -22,13 +22,15 @@
     line-height: 1.4;
     position: relative;
   }
-  /* Brillo suave del color de acento detrás de todo (da profundidad sin tapar). */
+  /* Fondo con gradiente: varios brillos del color de acento (esquinas + abajo)
+     que dan profundidad sin tapar el contenido. */
   body::before {
     content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background:
-      radial-gradient(60vw 40vh at 50% -8%, var(--accent), transparent 70%),
-      radial-gradient(50vw 36vh at 92% 4%, var(--accent), transparent 72%);
-    opacity: .12;
+      radial-gradient(42vw 30vh at 6% -6%, var(--accent), transparent 60%),
+      radial-gradient(48vw 34vh at 96% 0%, var(--accent), transparent 62%),
+      radial-gradient(64vw 44vh at 50% 112%, var(--accent), transparent 60%);
+    opacity: .15;
   }
 
   /* Estados (vacío / expirado) */
@@ -210,14 +212,22 @@
   .wa-fab__txt { white-space: nowrap; }
   @media (max-width: 480px) { .wa-fab__txt { display: none; } .wa-fab { padding: .85rem; } }
 
-  /* Decoración: destellos flotando (detrás del contenido, sin estorbar) */
+  /* Decoración de fondo: orbes de color difuminados (dan profundidad y
+     movimiento) + unos pocos destellos delicados. Todo detrás del contenido. */
   .deco { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; color: var(--accent); }
-  .deco .star { position: absolute; opacity: .15; will-change: transform, opacity;
+  .deco .orb {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, var(--accent), transparent 70%);
+    opacity: .16; filter: blur(8px); will-change: transform;
+    animation: drift var(--d, 16s) ease-in-out infinite;
+  }
+  .deco .star { position: absolute; opacity: .14; will-change: transform, opacity;
     animation: twinkle var(--d, 6s) ease-in-out infinite, floaty calc(var(--d, 6s) * 1.7) ease-in-out infinite; }
   .deco .star svg { width: 100%; height: 100%; fill: currentColor; display: block; }
-  @keyframes twinkle { 0%, 100% { opacity: .10; transform: scale(.75); } 50% { opacity: .45; transform: scale(1); } }
-  @keyframes floaty { 0%, 100% { translate: 0 0; } 50% { translate: 0 -16px; } }
-  @media (prefers-reduced-motion: reduce) { .deco .star { animation: none; opacity: .2; } }
+  @keyframes drift { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(0, -26px) scale(1.07); } }
+  @keyframes twinkle { 0%, 100% { opacity: .08; transform: scale(.7); } 50% { opacity: .4; transform: scale(1); } }
+  @keyframes floaty { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
+  @media (prefers-reduced-motion: reduce) { .deco .orb, .deco .star { animation: none; } }
   .wrap { position: relative; z-index: 1; }
 </style>
 </head>
@@ -244,15 +254,22 @@ const NOIMG = `<div class="card__noimg"><svg viewBox="0 0 24 24" fill="none" str
 // Capa de destellos flotando (decorativa). Posiciones fijas y variadas.
 function decoHTML() {
   const estrella = `<svg viewBox="0 0 24 24"><path d="M12 0c.9 6.2 4.9 10.2 12 12-7.1 1.8-11.1 5.8-12 12-.9-6.2-4.9-10.2-12-12 7.1-1.8 11.1-5.8 12-12z"/></svg>`;
+  // Orbes suaves (manchas de color difuminadas) que flotan lento.
+  const orbsPos = [
+    [-6, -8, 280, 17], [84, 2, 320, 20], [-8, 64, 300, 15],
+    [90, 72, 300, 22], [42, 38, 220, 24], [22, 88, 240, 19],
+  ];
+  const orbs = orbsPos.map(([left, top, size, d], i) => `
+    <span class="orb" style="left:${left}%;top:${top}%;width:${size}px;height:${size}px;--d:${d}s;animation-delay:-${(i * 1.6).toFixed(1)}s"></span>`).join('');
+  // Destellos delicados (pocos y sutiles, para que no compitan con los orbes).
   const pts = [
-    [6, 8, 22, 6.5], [14, 86, 16, 7.5], [26, 16, 13, 5.5], [38, 92, 20, 8],
-    [52, 6, 15, 6], [60, 90, 24, 7], [72, 12, 14, 5], [80, 80, 18, 8.5],
-    [88, 20, 12, 6], [33, 50, 11, 7], [68, 46, 13, 6.5], [10, 60, 14, 7.8],
-    [46, 70, 12, 5.8], [92, 60, 16, 7.2],
+    [9, 12, 16, 6.5], [16, 84, 12, 7.5], [30, 22, 11, 5.5],
+    [62, 8, 13, 6], [70, 88, 15, 7], [82, 30, 11, 5.5],
+    [40, 64, 12, 7], [88, 58, 13, 7.2],
   ];
   const stars = pts.map(([top, left, size, d], i) => `
-    <span class="star" style="top:${top}%;left:${left}%;width:${size}px;height:${size}px;--d:${d}s;animation-delay:-${(i * 0.7).toFixed(1)}s">${estrella}</span>`).join('');
-  return `<div class="deco" aria-hidden="true">${stars}</div>`;
+    <span class="star" style="top:${top}%;left:${left}%;width:${size}px;height:${size}px;--d:${d}s;animation-delay:-${(i * 0.8).toFixed(1)}s">${estrella}</span>`).join('');
+  return `<div class="deco" aria-hidden="true">${orbs}${stars}</div>`;
 }
 
 function stateView(icon, title, msg) {

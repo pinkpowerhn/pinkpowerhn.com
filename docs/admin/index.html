@@ -48,7 +48,11 @@
   .btn:hover { background: var(--pink-dk); }
   .btn--ghost { background: #fff; color: var(--pink-dk); border: 1.5px solid #f0d6e2; }
   .btn--ghost:hover { background: #fff0f6; color: var(--pink-dk); border-color: var(--pink); }
+  .btn--danger { background: #fff; color: #d61f4a; border: 1.5px solid #f4c3d0; }
+  .btn--danger:hover { background: #ffeef2; color: #d61f4a; border-color: #d61f4a; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn--sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+  .acts { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
   .row { display: flex; gap: 0.7rem; align-items: flex-end; flex-wrap: wrap; }
   .row > div { flex: 1; min-width: 140px; }
   .row input { margin-bottom: 0; }
@@ -230,17 +234,23 @@ function renderCuentas(rows) {
       <td><b>${esc(r.usuario)}</b></td>
       <td>${esc(r.nombre || '')}</td>
       <td><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
-      <td style="text-align:right; white-space:nowrap">
-        <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}">Editar</button>
-        <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>
-        <button class="btn btn--ghost btn--sm act-estado" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
-          ${r.activo ? 'Desactivar' : 'Activar'}
-        </button>
+      <td>
+        <div class="acts">
+          <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}">Editar</button>
+          <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>
+          <button class="btn btn--ghost btn--sm act-estado" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
+            ${r.activo ? 'Desactivar' : 'Activar'}
+          </button>
+          <button class="btn btn--danger btn--sm act-delcat" data-user="${esc(r.usuario)}" data-n="${r.catalogos || 0}" ${(r.catalogos || 0) === 0 ? 'disabled' : ''}>
+            Borrar catálogos${(r.catalogos || 0) ? ` (${r.catalogos})` : ''}
+          </button>
+        </div>
       </td>
     </tr>`).join('');
   body.querySelectorAll('.act-estado').forEach(b => b.addEventListener('click', toggleEstado));
   body.querySelectorAll('.act-pass').forEach(b => b.addEventListener('click', cambiarPassword));
   body.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', editarCuenta));
+  body.querySelectorAll('.act-delcat').forEach(b => b.addEventListener('click', borrarCatalogos));
 }
 
 // ── Cambiar contraseña de una mayorista ──
@@ -303,6 +313,27 @@ async function toggleEstado(e) {
   try {
     await api('/admin/cuentas/estado', { method: 'POST', body: JSON.stringify({ usuario, activo: nuevo }) });
     panelMsg(`Cuenta "${usuario}" ${nuevo ? 'activada' : 'desactivada'}.`);
+    renderCuentas(await api('/admin/cuentas'));
+  } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
+}
+
+// ── Borrar por completo los catálogos de una mayorista ──
+async function borrarCatalogos(e) {
+  const b = e.currentTarget;
+  const usuario = b.dataset.user, n = +b.dataset.n || 0;
+  if (!n) return;
+  const r = await Swal.fire({
+    title: `¿Borrar los catálogos de "${usuario}"?`,
+    html: `Se eliminarán <b>${n}</b> catálogo${n === 1 ? '' : 's'} por completo y sus links dejarán de funcionar. Esta acción no se puede deshacer.`,
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d61f4a', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  b.disabled = true;
+  try {
+    const res = await api(`/admin/cuentas/${encodeURIComponent(usuario)}/catalogos`, { method: 'DELETE' });
+    panelMsg(`Se borraron ${res.eliminados} catálogo${res.eliminados === 1 ? '' : 's'} de "${usuario}".`);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
 }

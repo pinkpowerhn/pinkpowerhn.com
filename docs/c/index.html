@@ -121,7 +121,17 @@
   /* Grilla suelta (sin separar por colección): mismo tope de ancho. */
   .grid--solo { max-width: min(94vw, calc(var(--cols, 4) * 14rem)); margin: 0 auto; }
   /* En pantallas chicas nunca más de 2; respeta --cols solo desde tablet. */
-  @media (max-width: 539px) { .grid { grid-template-columns: repeat(min(var(--cols, 2), 2), 1fr); gap: .8rem; } }
+  @media (max-width: 539px) {
+    .grid { grid-template-columns: repeat(min(var(--cols, 2), 2), 1fr); gap: .8rem; }
+    /* En móvil achicamos los textos (sobre todo los nombres de categoría). */
+    .cat__title { font-size: clamp(1.5rem, 7.4vw, 2rem); }
+    .cat__subtitle { font-size: .88rem; }
+    .section__title { font-size: .95rem; gap: .5rem; padding: 1.3rem .15rem .75rem; }
+    .section__title::before { width: 11px; height: 17px; }
+    .section__count { font-size: .6rem; padding: .14rem .45rem; }
+    .card__name { font-size: .8rem; }
+    .card__price { font-size: .86rem; padding: .2rem .55rem; }
+  }
   @media (min-width: 540px) and (max-width: 860px) { .grid { grid-template-columns: repeat(min(var(--cols, 3), 3), 1fr); gap: 1rem; } }
 
   .card {

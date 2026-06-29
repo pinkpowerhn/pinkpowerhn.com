@@ -132,11 +132,9 @@ export async function initBuilder() {
     const conProd = new Set();
     prods.forEach(p => (p.collectionHandles || []).forEach(h => conProd.add(h)));
     state.colecciones = cols.filter(c => conProd.has(c.handle));
-    // Si había un catálogo a medias, reanudamos el asistente; si no, abrimos el
-    // apartado "Mis catálogos" como pantalla principal.
-    const hayBorrador = cargarBorrador();
-    if (hayBorrador) { renderShell(); render(); }
-    else mostrarLista();
+    // "Mis catálogos" (la lista) es SIEMPRE la pantalla de entrada. El asistente
+    // de creación se abre solo al tocar "Crear catálogo nuevo".
+    mostrarLista();
   } catch (e) {
     root.innerHTML = `<div class="cb-empty"><div class="cb-empty__icon">😕</div>
       <h2>No se pudo cargar</h2><p>Revisá tu conexión e intentá de nuevo.</p>
@@ -145,13 +143,14 @@ export async function initBuilder() {
 }
 
 // ── Shell (cabecera + pasos) ──────────────────────────────
+const ICON_BACK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+
 function renderShell() {
   $('#cb-root').innerHTML = `
-    <header class="cb-head">
-      <button class="cb-back" id="cb-back" title="Volver a Mis catálogos" aria-label="Volver a Mis catálogos">←</button>
-      <h1 id="cb-titulo-head">Crear catálogo</h1>
+    <header class="cb-head cb-head--wizard">
+      <button class="cb-back" id="cb-back" title="Volver a Mis catálogos" aria-label="Volver a Mis catálogos">${ICON_BACK}</button>
+      <nav class="cb-steps" id="cb-steps"></nav>
     </header>
-    <nav class="cb-steps" id="cb-steps"></nav>
     <main class="cb-body" id="cb-body"></main>
     <footer class="cb-foot" id="cb-foot"></footer>`;
   $('#cb-back').addEventListener('click', () => mostrarLista());
@@ -646,7 +645,7 @@ function mostrarLista() {
   state.editando = null;
   $('#cb-root').innerHTML = `
     <header class="cb-head">
-      <a class="cb-back" href="/" title="Volver a la tienda" aria-label="Volver a la tienda">←</a>
+      <a class="cb-back" href="/" title="Volver a la tienda" aria-label="Volver a la tienda">${ICON_BACK}</a>
       <h1>Mis catálogos</h1>
     </header>
     <main class="cb-body"><div class="cb-mislist">${skLista()}</div></main>`;

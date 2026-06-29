@@ -710,6 +710,19 @@ function openSearchOverlay() {
   ov.querySelector('#search-ov-close').addEventListener('click', closeSearchOverlay);
 
   ov.querySelector('#search-ov-results').addEventListener('click', e => {
+    // "Ver todos los resultados" → filtrar la tienda por esa búsqueda (todos,
+    // paginados) y cerrar el buscador.
+    const seeall = e.target.closest('.search-seeall');
+    if (seeall) {
+      const q = seeall.dataset.q || '';
+      closeSearchOverlay();
+      const si = document.getElementById('search-input');
+      if (si) si.value = q;
+      setState({ searchQuery: q, activeCollection: null, activeTag: null, activeSize: null, currentPage: 1 });
+      scrollToProducts('smooth');
+      return;
+    }
+
     // Sugerencia de colección o etiqueta → ir a esa categoría
     const cat = e.target.closest('.search-cat');
     if (cat) {
@@ -764,8 +777,11 @@ function renderSearchResults(query) {
   const collMatches = collections.filter(c => norm(c.title).includes(nq));
   const allTags = [...new Set(products.flatMap(p => p.tags || []))];
   const tagMatches = allTags.filter(t => norm(t).includes(nq)).slice(0, 8);
-  // Productos que coinciden
-  const prodMatches = searchProducts(products, q, collections).slice(0, 40);
+  // Productos que coinciden (mostramos los primeros; si hay más, abajo se ofrece
+  // "Ver todos" para verlos completos en la tienda).
+  const SHOWN = 40;
+  const allProd = searchProducts(products, q, collections);
+  const prodMatches = allProd.slice(0, SHOWN);
 
   if (!collMatches.length && !tagMatches.length && !prodMatches.length) {
     box.innerHTML = `<p class="search-ov__hint">No se encontraron resultados.</p>`;
@@ -802,6 +818,10 @@ function renderSearchResults(query) {
           </span>
         </button>`;
     }).join('');
+    // Si hay más resultados de los que caben, ofrecer verlos todos en la tienda.
+    if (allProd.length > prodMatches.length) {
+      html += `<button class="search-seeall" data-q="${attr(q)}">Ver todos los resultados (${allProd.length})</button>`;
+    }
   }
 
   box.innerHTML = html;

@@ -2387,6 +2387,26 @@ body.menu-open nav {
 }
 .search-ov__section:first-child { margin-top: 0; }
 
+/* Botón "Ver todos los resultados" al final del buscador. */
+.search-seeall {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin: 0.9rem 0 0.3rem;
+  padding: 0.85rem 1rem;
+  background: var(--pink);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.search-seeall:hover, .search-seeall:active { background: var(--pink-dk); }
+
 .search-cat {
   display: flex;
   align-items: center;

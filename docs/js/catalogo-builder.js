@@ -572,11 +572,13 @@ function renderGenerar() {
         <ul>
           <li><b>${state.sel.size}</b> producto${state.sel.size === 1 ? '' : 's'}</li>
           <li>Título: <b>${esc(state.diseno.titulo || '(sin título)')}</b></li>
-          <li>Duración del link: <b>${editando ? 'se conserva la del catálogo' : (dias ? dias + ' días' : 'la que configuró la tienda')}</b></li>
+          <li>Duración del link: <b>${editando ? 'se conserva la del catálogo' : (dias ? dias + ' días' : 'ilimitado (no vence)')}</b></li>
         </ul>
         <p class="cb-hint">${editando
-          ? 'Vas a guardar los cambios en el mismo link (no cambia ni se renueva el plazo).'
-          : 'La duración del link la define la tienda. Cuando se cumpla el plazo, el link deja de funcionar.'}</p>
+          ? 'Vas a guardar los cambios en el mismo link.'
+          : (dias
+              ? 'Cuando se cumpla el plazo, el link deja de funcionar.'
+              : 'El link no vence: lo podés compartir siempre.')}</p>
       </div>
       <button class="cb-btn cb-btn--primary cb-btn--big" id="cb-generar-btn">${editando ? 'Guardar cambios' : 'Generar link'}</button>
       <div id="cb-resultado"></div>
@@ -619,7 +621,9 @@ async function generar() {
       <div class="cb-ok">
         <div class="cb-ok__icon">✅</div>
         <h3>${editando ? '¡Cambios guardados!' : '¡Tu catálogo está listo!'}</h3>
-        <p class="cb-hint">${editando ? 'Tu catálogo se actualizó en el mismo link:' : `Dura ${dias} días. Compartí este link con tus clientas:`}</p>
+        <p class="cb-hint">${editando
+          ? 'Tu catálogo se actualizó en el mismo link:'
+          : (dias ? `Dura ${dias} días. Compartí este link con tus clientas:` : 'Compartí este link con tus clientas (no vence):')}</p>
         <div class="cb-linkbox">
           <input id="cb-link" class="cb-input" readonly value="${esc(link)}"/>
           <button class="cb-btn" id="cb-copy">Copiar</button>
@@ -671,11 +675,12 @@ async function cargarLista() {
         <div class="cb-mislist">${catalogos.map((c, i) => {
           const link = `${location.origin}/c/?c=${c.token}`;
           const exp = c.expirado;
-          const fecha = new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' });
+          const fecha = c.expiraEn ? new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' }) : '';
+          const venc = exp ? 'Expirado' : (c.expiraEn ? 'Vence el ' + fecha : 'Sin vencimiento');
           return `<div class="cb-miscard ${exp ? 'is-exp' : ''}">
             <div class="cb-miscard__info">
               <b>${esc(c.titulo || '(sin título)')}</b>
-              <span>${c.cantidad} producto${c.cantidad === 1 ? '' : 's'} · ${exp ? 'Expirado' : 'Vence el ' + fecha}</span>
+              <span>${c.cantidad} producto${c.cantidad === 1 ? '' : 's'} · ${venc}</span>
             </div>
             <div class="cb-miscard__acts">
               ${exp ? '' : `<a class="cb-btn cb-btn--sm" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>`}

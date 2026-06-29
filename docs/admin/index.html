@@ -72,6 +72,10 @@
   .msg--err { background: #ffeaf0; color: #d61f4a; }
   .msg--ok { background: #e3f9ec; color: #1c9e54; }
   .hidden { display: none; }
+  .chk { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 600;
+         color: var(--ink); text-transform: none; letter-spacing: 0; margin-bottom: 0.9rem; cursor: pointer; }
+  .chk input { width: auto; margin: 0; accent-color: var(--pink); }
+  .row.is-off { opacity: 0.45; pointer-events: none; }
   .login { max-width: 360px; margin: 8vh auto 0; }
   .login__icon { font-size: 2rem; text-align: center; margin-bottom: 0.4rem; }
   .muted { color: var(--muted); font-size: 0.8rem; }
@@ -125,11 +129,12 @@
     <!-- Duración de catálogos -->
     <div class="card">
       <h2>🔗 Duración de los catálogos</h2>
-      <p class="muted" style="margin-top:-0.6rem">Cuántos días dura el link que genera cada mayorista antes de expirar.</p>
-      <div class="row">
+      <p class="muted" style="margin-top:-0.6rem">Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
+      <label class="chk"><input type="checkbox" id="dias-ilimitado" /> Sin vencimiento (ilimitado)</label>
+      <div class="row" id="dias-row">
         <div>
           <label>Días</label>
-          <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="7" />
+          <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
         </div>
         <button class="btn" id="dias-save">Guardar</button>
       </div>
@@ -221,7 +226,7 @@ async function loadAll() {
   try {
     const cfg = await api('/admin/config');
     $('min-input').value = cfg.minimo_mensual || '';
-    $('dias-input').value = cfg.catalogo_dias || '';
+    setDiasUI(cfg.catalogo_dias);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }
 }
@@ -347,10 +352,22 @@ $('min-save').addEventListener('click', async () => {
 });
 
 // ── Días de duración de catálogos ──
+// catalogo_dias = null -> ilimitado (no vence). Un número -> vence en N días.
+function setDiasUI(dias) {
+  const ilimitado = (dias == null);
+  $('dias-ilimitado').checked = ilimitado;
+  $('dias-input').value = ilimitado ? '' : dias;
+  $('dias-row').classList.toggle('is-off', ilimitado);
+}
+$('dias-ilimitado').addEventListener('change', (e) => {
+  $('dias-row').classList.toggle('is-off', e.target.checked);
+});
 $('dias-save').addEventListener('click', async () => {
+  // Si está marcado "ilimitado" mandamos 0 (= sin vencimiento).
+  const valor = $('dias-ilimitado').checked ? 0 : $('dias-input').value;
   try {
-    const cfg = await api('/admin/config', { method: 'PUT', body: JSON.stringify({ catalogo_dias: $('dias-input').value }) });
-    $('dias-input').value = cfg.catalogo_dias || '';
+    const cfg = await api('/admin/config', { method: 'PUT', body: JSON.stringify({ catalogo_dias: valor }) });
+    setDiasUI(cfg.catalogo_dias);
     panelMsg('Duración de catálogos guardada.');
   } catch (ex) { panelMsg(ex.message, false); }
 });

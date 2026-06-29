@@ -125,7 +125,7 @@
   .card {
     background: #fff; border-radius: 18px; overflow: hidden;
     box-shadow: 0 6px 22px rgba(0,0,0,.09);
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; cursor: pointer;
     transition: transform .22s ease, box-shadow .22s ease;
     animation: cardIn .5s cubic-bezier(.2,.7,.25,1) both;
     animation-delay: calc(var(--i, 0) * 45ms);
@@ -161,6 +161,43 @@
   footer.cat { text-align: center; padding: 2.4rem 1rem 6rem; font-size: .82rem; opacity: .55; }
   @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
 
+  /* Modal de producto (al tocar una tarjeta se ve el producto completo) */
+  .pmodal { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .pmodal[hidden] { display: none; }
+  .pmodal__backdrop {
+    position: absolute; inset: 0; background: rgba(20,6,14,.62);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: pmFade .22s ease;
+  }
+  @keyframes pmFade { from { opacity: 0; } to { opacity: 1; } }
+  .pmodal__panel {
+    position: relative; z-index: 1; background: #fff; border-radius: 22px; overflow: hidden;
+    width: 100%; max-width: 420px; max-height: 92dvh; display: flex; flex-direction: column;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.5);
+    animation: pmIn .3s cubic-bezier(.2,.8,.25,1);
+  }
+  @keyframes pmIn { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+  .pmodal__close {
+    position: absolute; top: .7rem; right: .7rem; z-index: 2; width: 40px; height: 40px;
+    border: none; border-radius: 50%; background: rgba(255,255,255,.95); color: #c01f6b;
+    font-size: 1.5rem; line-height: 1; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.22);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pmodal__imgwrap { width: 100%; aspect-ratio: 1/1; background: #f4eef1; display: grid; place-items: center; overflow: hidden; }
+  .pmodal__imgwrap img { width: 100%; height: 100%; object-fit: contain; }
+  .pmodal__info { padding: 1.1rem 1.25rem 1.35rem; display: flex; flex-direction: column; gap: .7rem; }
+  .pmodal__name { font-size: 1.18rem; font-weight: 800; line-height: 1.25; color: #232323; }
+  .pmodal__price {
+    align-self: flex-start; font-size: 1.12rem; font-weight: 800; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, #fff); padding: .32rem .75rem; border-radius: 999px;
+  }
+  @supports not (color: color-mix(in srgb, red, blue)) { .pmodal__price { background: transparent; padding: 0; } }
+  .pmodal__wa {
+    margin-top: .2rem; display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+    background: #25d366; color: #fff; text-decoration: none; font-weight: 700; font-size: 1rem;
+    padding: .85rem; border-radius: 13px; box-shadow: 0 8px 22px rgba(37,211,102,.4);
+  }
+  .pmodal__wa svg { width: 20px; height: 20px; }
+
   /* Botón flotante de WhatsApp */
   .wa-fab {
     position: fixed; right: 16px; bottom: 16px; z-index: 50;
@@ -189,6 +226,7 @@
 
 <script>
 const API = 'https://api.pinkpowerhn.com';
+let _cat = null;   // catálogo cargado (para abrir el modal de cada producto)
 
 function getToken() {
   const q = new URLSearchParams(location.search).get('c');
@@ -238,18 +276,59 @@ function skeletonView() {
     <main class="grid" style="--cols:2">${cards}</main></div>`;
 }
 
-function cardHTML(it, i = 0) {
+function cardHTML(it, i = 0, dataI = 0) {
   const img = it.imagen
     ? `<img class="card__img" src="${esc(it.imagen)}" alt="${esc(it.nombre)}" loading="lazy" />`
     : NOIMG;
   const precio = it.precio ? `<div class="card__price">${esc(it.precio)}</div>` : '';
-  return `<article class="card" style="--i:${i % 12}">
+  return `<article class="card" style="--i:${i % 12}" data-i="${dataI}" role="button" tabindex="0">
     <div class="card__imgwrap">${img}</div>
     <div class="card__body">
       <div class="card__name">${esc(it.nombre)}</div>
       ${precio}
     </div>
   </article>`;
+}
+
+// Ícono de WhatsApp (para el botón del modal)
+const WA_ICON = `<svg viewBox="0 0 32 32" fill="currentColor"><path d="M16 3C9 3 3.5 8.5 3.5 15.5c0 2.4.7 4.6 1.8 6.5L3 29l7.2-2.3c1.8 1 3.9 1.5 6 1.5 7 0 12.5-5.5 12.5-12.5S23 3 16 3zm0 22.8c-1.9 0-3.7-.5-5.3-1.5l-.4-.2-4.3 1.4 1.4-4.2-.3-.4a10 10 0 0 1-1.6-5.6C5.6 9.7 10.3 5 16 5s10.4 4.7 10.4 10.5S21.7 25.8 16 25.8zm5.7-7.8c-.3-.2-1.8-.9-2.1-1s-.5-.2-.7.2-.8 1-.9 1.2-.3.2-.6.1c-1.7-.9-2.9-1.6-4-3.6-.3-.5.3-.5.8-1.6.1-.2 0-.4 0-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-1 1-1.3 2.3-.9 3.7.6 1.9 1.8 3.5 2 3.8.3.3 3.5 5.3 8.4 7 .8.2 1.5.4 2 .5.8.1 1.6.1 2.2.1.7-.1 2.1-.8 2.4-1.7.3-.8.3-1.6.2-1.7-.1-.2-.3-.3-.6-.4z"/></svg>`;
+
+// Modal: muestra el producto completo (foto grande sin recorte, nombre, precio
+// y botón para pedirlo por WhatsApp si la vendedora puso su número).
+function openProductModal(it) {
+  if (!it) return;
+  let m = document.getElementById('pmodal');
+  if (!m) { m = document.createElement('div'); m.id = 'pmodal'; m.className = 'pmodal'; document.body.appendChild(m); }
+
+  const wa = _cat && _cat.opciones && _cat.opciones.whatsapp;
+  const img = it.imagen ? `<img src="${esc(it.imagen)}" alt="${esc(it.nombre)}" />` : NOIMG;
+  const precio = it.precio ? `<div class="pmodal__price">${esc(it.precio)}</div>` : '';
+  const waText = encodeURIComponent(`Hola! Me interesa este producto: ${it.nombre}`);
+  const waBtn = wa
+    ? `<a class="pmodal__wa" href="https://wa.me/${esc(wa)}?text=${waText}" target="_blank" rel="noopener">${WA_ICON} Pedir por WhatsApp</a>`
+    : '';
+
+  m.innerHTML = `
+    <div class="pmodal__backdrop" data-close></div>
+    <div class="pmodal__panel">
+      <button class="pmodal__close" data-close aria-label="Cerrar">&times;</button>
+      <div class="pmodal__imgwrap">${img}</div>
+      <div class="pmodal__info">
+        <div class="pmodal__name">${esc(it.nombre)}</div>
+        ${precio}
+        ${waBtn}
+      </div>
+    </div>`;
+  m.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  const close = () => {
+    m.hidden = true; document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+  };
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  m.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', close));
+  document.addEventListener('keydown', onKey);
 }
 
 // Agrupa items por colección preservando el orden de aparición. El grupo de
@@ -270,6 +349,7 @@ function agrupar(items) {
 }
 
 function render(cat) {
+  _cat = cat;
   if (cat.colorFondo) document.documentElement.style.setProperty('--bg', cat.colorFondo);
   if (cat.colorTexto) document.documentElement.style.setProperty('--fg', cat.colorTexto);
   const op = cat.opciones || {};
@@ -292,11 +372,11 @@ function render(cat) {
       return `
       <section class="section" style="--cols:${cols}">
         <h2 class="section__title">${esc(titulo)}<span class="section__count">${g.items.length}</span></h2>
-        <div class="grid">${g.items.map(cardHTML).join('')}</div>
+        <div class="grid">${g.items.map((it, j) => cardHTML(it, j, items.indexOf(it))).join('')}</div>
       </section>`;
     }).join('');
   } else {
-    cuerpo = `<main class="grid grid--solo" style="--cols:${cols}">${items.map(cardHTML).join('')}</main>`;
+    cuerpo = `<main class="grid grid--solo" style="--cols:${cols}">${items.map((it, j) => cardHTML(it, j, j)).join('')}</main>`;
   }
 
   const logo = op.logo ? `<img class="cat__logo" src="${esc(op.logo)}" alt="" />` : '';
@@ -343,6 +423,20 @@ async function load() {
 }
 
 load();
+
+// Abrir el modal del producto al tocar una tarjeta (delegación de eventos).
+document.addEventListener('click', e => {
+  const card = e.target.closest('.card');
+  if (card && _cat && card.dataset.i != null) openProductModal(_cat.items[+card.dataset.i]);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = document.activeElement;
+  if (card && card.classList && card.classList.contains('card') && _cat && card.dataset.i != null) {
+    e.preventDefault();
+    openProductModal(_cat.items[+card.dataset.i]);
+  }
+});
 </script>
 </body>
 </html>

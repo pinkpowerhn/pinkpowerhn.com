@@ -180,7 +180,7 @@ function mountAccount(nombre) {
     menu.className = 'my-account__menu';
     menu.hidden = true;
     menu.innerHTML = `
-      <a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Crear catálogo</a>
+      <a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>
       <button class="my-account__logout" id="my-logout">Cerrar sesión</button>`;
     document.body.appendChild(menu);
 
@@ -226,7 +226,7 @@ function mountDrawerAccount(nombre) {
     block.innerHTML = `
       <p class="my-drawer-account__hello">Sesión de mayoreo</p>
       <p class="my-drawer-account__name"></p>
-      <a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Crear catálogo</a>
+      <a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>
       <button class="my-drawer-account__logout" id="my-drawer-logout">Cerrar sesión</button>`;
     panel.appendChild(block);
     block.querySelector('#my-drawer-logout').addEventListener('click', exitMayoreo);

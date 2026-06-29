@@ -132,9 +132,11 @@ export async function initBuilder() {
     const conProd = new Set();
     prods.forEach(p => (p.collectionHandles || []).forEach(h => conProd.add(h)));
     state.colecciones = cols.filter(c => conProd.has(c.handle));
-    cargarBorrador();   // si había trabajo a medias, lo recupera
-    renderShell();
-    render();
+    // Si había un catálogo a medias, reanudamos el asistente; si no, abrimos el
+    // apartado "Mis catálogos" como pantalla principal.
+    const hayBorrador = cargarBorrador();
+    if (hayBorrador) { renderShell(); render(); }
+    else mostrarLista();
   } catch (e) {
     root.innerHTML = `<div class="cb-empty"><div class="cb-empty__icon">😕</div>
       <h2>No se pudo cargar</h2><p>Revisá tu conexión e intentá de nuevo.</p>
@@ -146,14 +148,13 @@ export async function initBuilder() {
 function renderShell() {
   $('#cb-root').innerHTML = `
     <header class="cb-head">
-      <a class="cb-back" href="/" title="Volver a la tienda">←</a>
+      <button class="cb-back" id="cb-back" title="Volver a Mis catálogos" aria-label="Volver a Mis catálogos">←</button>
       <h1 id="cb-titulo-head">Crear catálogo</h1>
-      <a class="cb-mis" href="#" id="cb-ver-mis">Mis catálogos</a>
     </header>
     <nav class="cb-steps" id="cb-steps"></nav>
     <main class="cb-body" id="cb-body"></main>
     <footer class="cb-foot" id="cb-foot"></footer>`;
-  $('#cb-ver-mis').addEventListener('click', (e) => { e.preventDefault(); openMisCatalogos(); });
+  $('#cb-back').addEventListener('click', () => mostrarLista());
 }
 
 function actualizarTituloHead() {
@@ -632,7 +633,7 @@ async function generar() {
       try { await navigator.clipboard.writeText(link); $('#cb-copy').textContent = '¡Copiado!'; }
       catch (_) { $('#cb-link').select(); document.execCommand('copy'); $('#cb-copy').textContent = '¡Copiado!'; }
     });
-    $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); state.editando = null; openMisCatalogos(); });
+    $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); mostrarLista(); });
     btn.style.display = 'none';
   } catch (e) {
     btn.disabled = false; btn.textContent = editando ? 'Guardar cambios' : 'Generar link';
@@ -640,54 +641,69 @@ async function generar() {
   }
 }
 
-// ── Mis catálogos (lista + editar + eliminar) ─────────────
-async function openMisCatalogos() {
-  const body = $('#cb-body'); const steps = $('#cb-steps');
-  steps.innerHTML = '';
-  const head = $('#cb-titulo-head'); if (head) head.textContent = 'Mis catálogos';
-  setFoot('← Volver a la tienda', '+ Crear catálogo', () => crearNuevo(), () => { location.href = '/'; });
-  body.innerHTML = `<div class="cb-mislist">${skLista()}</div>`;
+// ── Mis catálogos (apartado propio: crear nuevo + lista + editar + eliminar) ──
+function mostrarLista() {
+  state.editando = null;
+  $('#cb-root').innerHTML = `
+    <header class="cb-head">
+      <a class="cb-back" href="/" title="Volver a la tienda" aria-label="Volver a la tienda">←</a>
+      <h1>Mis catálogos</h1>
+    </header>
+    <main class="cb-body"><div class="cb-mislist">${skLista()}</div></main>`;
+  cargarLista();
+}
+
+async function cargarLista() {
+  const cont = $('#cb-root .cb-body');
+  const crearCard = `
+    <button class="cb-newcard" id="cb-crear-nuevo">
+      <span class="cb-newcard__plus">+</span>
+      <span class="cb-newcard__txt"><b>Crear catálogo nuevo</b><small>Armá un catálogo y compartí el link con tus clientas</small></span>
+    </button>`;
   try {
     const { catalogos } = await listarCatalogos(state.token);
     if (!catalogos.length) {
-      body.innerHTML = `
+      cont.innerHTML = `${crearCard}
         <div class="cb-empty"><div class="cb-empty__icon">🛍️</div>
-          <p class="cb-hint">Todavía no has creado catálogos.<br>Usá el botón <b>“+ Crear catálogo”</b> de abajo para empezar.</p>
+          <p class="cb-hint">Todavía no has creado catálogos.<br>Tocá <b>“Crear catálogo nuevo”</b> para empezar.</p>
         </div>`;
-      return;
+    } else {
+      cont.innerHTML = `${crearCard}
+        <div class="cb-mislist">${catalogos.map((c, i) => {
+          const link = `${location.origin}/c/?c=${c.token}`;
+          const exp = c.expirado;
+          const fecha = new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' });
+          return `<div class="cb-miscard ${exp ? 'is-exp' : ''}">
+            <div class="cb-miscard__info">
+              <b>${esc(c.titulo || '(sin título)')}</b>
+              <span>${c.cantidad} producto${c.cantidad === 1 ? '' : 's'} · ${exp ? 'Expirado' : 'Vence el ' + fecha}</span>
+            </div>
+            <div class="cb-miscard__acts">
+              ${exp ? '' : `<a class="cb-btn cb-btn--sm" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>`}
+              <button class="cb-btn cb-btn--sm" data-edit="${i}">Editar</button>
+              <button class="cb-btn cb-btn--sm cb-btn--ghost" data-del="${esc(c.token)}">Eliminar</button>
+            </div>
+          </div>`;
+        }).join('')}</div>`;
+      cont.querySelectorAll('[data-edit]').forEach(b =>
+        b.addEventListener('click', () => editarCat(catalogos[+b.dataset.edit])));
+      cont.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+        const cat = catalogos.find(c => c.token === b.dataset.del);
+        const ok = await confirmar({
+          titulo: '¿Eliminar este catálogo?',
+          mensaje: `"${cat ? (cat.titulo || 'Sin título') : ''}" se borrará y su link dejará de funcionar para tus clientas. Esta acción no se puede deshacer.`,
+          ok: 'Sí, eliminar',
+        });
+        if (!ok) return;
+        b.disabled = true; b.textContent = '…';
+        try { await eliminarCatalogo(state.token, b.dataset.del); cargarLista(); }
+        catch (_) { b.disabled = false; b.textContent = 'Eliminar'; }
+      }));
     }
-    body.innerHTML = `<div class="cb-mislist">${catalogos.map((c, i) => {
-      const link = `${location.origin}/c/?c=${c.token}`;
-      const exp = c.expirado;
-      const fecha = new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' });
-      return `<div class="cb-miscard ${exp ? 'is-exp' : ''}">
-        <div class="cb-miscard__info">
-          <b>${esc(c.titulo || '(sin título)')}</b>
-          <span>${c.cantidad} producto${c.cantidad === 1 ? '' : 's'} · ${exp ? 'Expirado' : 'Vence el ' + fecha}</span>
-        </div>
-        <div class="cb-miscard__acts">
-          ${exp ? '' : `<a class="cb-btn cb-btn--sm" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>`}
-          <button class="cb-btn cb-btn--sm" data-edit="${i}">Editar</button>
-          <button class="cb-btn cb-btn--sm cb-btn--ghost" data-del="${esc(c.token)}">Eliminar</button>
-        </div>
-      </div>`;
-    }).join('')}</div>`;
-    body.querySelectorAll('[data-edit]').forEach(b =>
-      b.addEventListener('click', () => editarCat(catalogos[+b.dataset.edit])));
-    body.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
-      const cat = catalogos.find(c => c.token === b.dataset.del);
-      const ok = await confirmar({
-        titulo: '¿Eliminar este catálogo?',
-        mensaje: `"${cat ? (cat.titulo || 'Sin título') : ''}" se borrará y su link dejará de funcionar para tus clientas. Esta acción no se puede deshacer.`,
-        ok: 'Sí, eliminar',
-      });
-      if (!ok) return;
-      b.disabled = true; b.textContent = '…';
-      try { await eliminarCatalogo(state.token, b.dataset.del); openMisCatalogos(); }
-      catch (_) { b.disabled = false; b.textContent = 'Eliminar'; }
-    }));
+    $('#cb-crear-nuevo').addEventListener('click', crearNuevo);
   } catch (_) {
-    body.innerHTML = `<p class="cb-error" style="text-align:center;padding:2rem">No se pudieron cargar.</p>`;
+    cont.innerHTML = `${crearCard}<p class="cb-error" style="text-align:center;padding:2rem">No se pudieron cargar.</p>`;
+    const cn = $('#cb-crear-nuevo'); if (cn) cn.addEventListener('click', crearNuevo);
   }
 }
 
@@ -731,6 +747,7 @@ function crearNuevo() {
   state.busqueda = ''; state.filtroColeccion = '';
   state.paso = 'productos';
   limpiarBorrador();
+  renderShell();
   render();
 }
 
@@ -758,6 +775,7 @@ function editarCat(cat) {
   };
   state.busqueda = ''; state.filtroColeccion = '';
   state.paso = 'productos';
+  renderShell();
   render();
 }
 

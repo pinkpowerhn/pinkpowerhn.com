@@ -2,7 +2,7 @@ import { getState, setState } from './state.js';
 import { addToCart, canAddNow } from './cart.js';
 import { showToast } from './toast.js';
 import { onAdded } from './aroma.js';
-import { shareLink, siteUrl } from './share.js';
+import { shareLink, productShareUrl } from './share.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect fill='%231a0a0e' width='600' height='600'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -247,8 +247,8 @@ function wireModalEvents(modal, product) {
   });
 
   modal.querySelector('#modal-share')?.addEventListener('click', () => {
-    const url = siteUrl(`#shop/product/${encodeURIComponent(product.id)}`);
-    shareLink(url, product.title);
+    // Link que muestra la foto del producto en la vista previa al compartir.
+    shareLink(productShareUrl(product.id), product.title);
   });
 
   // Focus trap

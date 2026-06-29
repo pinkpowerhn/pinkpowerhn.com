@@ -5,6 +5,13 @@ export function siteUrl(hash = '') {
   return `${location.origin}${location.pathname}${hash}`;
 }
 
+// Link para COMPARTIR un producto. Pasa por el backend (/p/<id>) para que la
+// vista previa en WhatsApp/redes muestre la FOTO del producto (no el logo); al
+// abrirlo, redirige a la ficha real del producto en el sitio.
+export function productShareUrl(id) {
+  return `https://api.pinkpowerhn.com/p/${encodeURIComponent(id)}`;
+}
+
 // Mensaje breve de confirmación (cuando no hay menú nativo de compartir).
 function flash(msg) {
   let el = document.getElementById('pp-flash');

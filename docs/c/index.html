@@ -20,6 +20,15 @@
     color: var(--fg);
     -webkit-font-smoothing: antialiased;
     line-height: 1.4;
+    position: relative;
+  }
+  /* Brillo suave del color de acento detrás de todo (da profundidad sin tapar). */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(60vw 40vh at 50% -8%, var(--accent), transparent 70%),
+      radial-gradient(50vw 36vh at 92% 4%, var(--accent), transparent 72%);
+    opacity: .12;
   }
 
   /* Estados (vacío / expirado) */
@@ -50,61 +59,84 @@
   .wrap { max-width: 1040px; margin: 0 auto; }
   header.cat {
     text-align: center;
-    padding: 2.6rem 1.2rem 1.4rem;
+    padding: 3rem 1.2rem 1.6rem;
   }
   .cat__logo {
-    width: 92px; height: 92px; object-fit: cover; border-radius: 50%;
-    margin: 0 auto 1rem; display: block;
-    box-shadow: 0 8px 24px rgba(0,0,0,.16); background: #fff;
+    width: 96px; height: 96px; object-fit: cover; border-radius: 50%;
+    margin: 0 auto 1.1rem; display: block; background: #fff;
+    padding: 4px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18),
+                0 0 0 2px var(--accent),
+                0 0 0 6px rgba(255,255,255,.5);
   }
   .cat__title {
-    font-size: clamp(1.7rem, 6vw, 2.6rem);
-    font-weight: 800; letter-spacing: -.02em; line-height: 1.1;
+    font-size: clamp(1.8rem, 6.4vw, 2.8rem);
+    font-weight: 800; letter-spacing: -.025em; line-height: 1.08;
   }
   .cat__subtitle {
-    margin-top: .55rem; font-size: clamp(.95rem, 3.6vw, 1.12rem);
+    margin-top: .6rem; font-size: clamp(.95rem, 3.6vw, 1.12rem);
     opacity: .82; font-weight: 500; max-width: 34rem; margin-left: auto; margin-right: auto;
   }
   .cat__rule {
-    width: 52px; height: 3px; border-radius: 3px;
-    background: var(--accent); opacity: .9;
-    margin: 1.2rem auto 0;
+    width: 64px; height: 4px; border-radius: 4px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 1.3rem auto 0;
   }
 
   /* Secciones por colección. Ancho centrado en desktop según las columnas
      (~14rem por columna → 4 col ≈ 56rem = max-w-4xl). En móvil ocupa todo. */
   .section { padding: .6rem 1rem 0; max-width: min(94vw, calc(var(--cols, 4) * 14rem)); margin: 0 auto; }
   .section__title {
-    display: flex; align-items: center; gap: .7rem;
-    font-size: clamp(1.05rem, 4vw, 1.35rem); font-weight: 800;
-    padding: 1.4rem .2rem .9rem; letter-spacing: -.01em;
+    display: flex; align-items: center; gap: .65rem;
+    font-size: clamp(1.05rem, 4vw, 1.4rem); font-weight: 800;
+    padding: 1.6rem .2rem 1rem; letter-spacing: -.01em;
   }
   .section__title::before {
-    content: ""; width: 16px; height: 16px; border-radius: 5px;
-    background: var(--accent); flex: none;
+    content: ""; width: 14px; height: 22px; border-radius: 6px; flex: none;
+    background: linear-gradient(var(--accent), color-mix(in srgb, var(--accent) 55%, #000 0%));
+    background: var(--accent);
   }
-  .section:first-of-type .section__title { padding-top: .4rem; }
+  /* Cantidad de productos en la sección (chip suave al lado del título). */
+  .section__count {
+    font-size: .72rem; font-weight: 700; letter-spacing: .02em;
+    padding: .2rem .55rem; border-radius: 999px;
+    background: var(--accent); color: #fff; opacity: .85;
+  }
+  /* Línea fina que se extiende a la derecha del título. */
+  .section__title::after {
+    content: ""; flex: 1; height: 2px; border-radius: 2px;
+    background: var(--accent); opacity: .16;
+  }
+  .section:first-of-type .section__title { padding-top: .6rem; }
 
   /* Grilla de productos */
   .grid {
     display: grid;
     grid-template-columns: repeat(var(--cols, 2), 1fr);
-    gap: .9rem;
+    gap: 1rem;
     padding: 0 1rem;
   }
   /* Grilla suelta (sin separar por colección): mismo tope de ancho. */
   .grid--solo { max-width: min(94vw, calc(var(--cols, 4) * 14rem)); margin: 0 auto; }
   /* En pantallas chicas nunca más de 2; respeta --cols solo desde tablet. */
-  @media (max-width: 539px) { .grid { grid-template-columns: repeat(min(var(--cols, 2), 2), 1fr); } }
+  @media (max-width: 539px) { .grid { grid-template-columns: repeat(min(var(--cols, 2), 2), 1fr); gap: .8rem; } }
   @media (min-width: 540px) and (max-width: 860px) { .grid { grid-template-columns: repeat(min(var(--cols, 3), 3), 1fr); gap: 1rem; } }
 
   .card {
-    background: #fff; border-radius: 16px; overflow: hidden;
-    box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    background: #fff; border-radius: 18px; overflow: hidden;
+    box-shadow: 0 6px 22px rgba(0,0,0,.09);
     display: flex; flex-direction: column;
+    transition: transform .22s ease, box-shadow .22s ease;
+    animation: cardIn .5s cubic-bezier(.2,.7,.25,1) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
   }
-  .card__imgwrap { position: relative; width: 100%; aspect-ratio: 1/1; background: #f3f3f3; }
-  .card__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @media (hover: hover) {
+    .card:hover { transform: translateY(-5px); box-shadow: 0 16px 34px rgba(0,0,0,.16); }
+    .card:hover .card__img { transform: scale(1.06); }
+  }
+  .card__imgwrap { position: relative; width: 100%; aspect-ratio: 1/1; background: #f3f3f3; overflow: hidden; }
+  .card__img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
   .card__noimg {
     width: 100%; height: 100%;
     display: flex; flex-direction: column; gap: .25rem;
@@ -113,11 +145,21 @@
   }
   .card__noimg svg { width: 30px; height: 30px; }
   .card__noimg span { font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-  .card__body { padding: .7rem .8rem .9rem; display: flex; flex-direction: column; gap: .3rem; flex: 1; }
+  .card__body { padding: .75rem .85rem .95rem; display: flex; flex-direction: column; gap: .4rem; flex: 1; }
   .card__name { font-size: .92rem; font-weight: 600; color: #232323; line-height: 1.3; }
-  .card__price { margin-top: auto; font-size: 1.04rem; font-weight: 800; color: var(--accent); }
+  .card__price {
+    margin-top: auto; align-self: flex-start;
+    font-size: .98rem; font-weight: 800; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, #fff);
+    padding: .22rem .6rem; border-radius: 999px; line-height: 1.2;
+  }
+  /* Respaldo si el navegador no soporta color-mix: queda sin fondo, solo color. */
+  @supports not (color: color-mix(in srgb, red, blue)) {
+    .card__price { background: transparent; padding: 0; font-size: 1.04rem; }
+  }
 
-  footer.cat { text-align: center; padding: 2rem 1rem 6rem; font-size: .82rem; opacity: .6; }
+  footer.cat { text-align: center; padding: 2.4rem 1rem 6rem; font-size: .82rem; opacity: .55; }
+  @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
 
   /* Botón flotante de WhatsApp */
   .wa-fab {
@@ -196,12 +238,12 @@ function skeletonView() {
     <main class="grid" style="--cols:2">${cards}</main></div>`;
 }
 
-function cardHTML(it) {
+function cardHTML(it, i = 0) {
   const img = it.imagen
     ? `<img class="card__img" src="${esc(it.imagen)}" alt="${esc(it.nombre)}" loading="lazy" />`
     : NOIMG;
   const precio = it.precio ? `<div class="card__price">${esc(it.precio)}</div>` : '';
-  return `<article class="card">
+  return `<article class="card" style="--i:${i % 12}">
     <div class="card__imgwrap">${img}</div>
     <div class="card__body">
       <div class="card__name">${esc(it.nombre)}</div>
@@ -210,15 +252,20 @@ function cardHTML(it) {
   </article>`;
 }
 
-// Agrupa items por colección preservando el orden de aparición.
+// Agrupa items por colección preservando el orden de aparición. El grupo de
+// productos sin colección se manda SIEMPRE al final (como "Otros productos"),
+// para que no queden sueltos arriba de todo.
 function agrupar(items) {
   const grupos = [];
   const idx = new Map();
   items.forEach(it => {
     const key = it.coleccion || '__sin__';
-    if (!idx.has(key)) { idx.set(key, grupos.length); grupos.push({ titulo: it.coleccion || '', items: [] }); }
+    if (!idx.has(key)) { idx.set(key, grupos.length); grupos.push({ key, titulo: it.coleccion || '', items: [] }); }
     grupos[idx.get(key)].items.push(it);
   });
+  // Mover el grupo sin colección al final.
+  const i = grupos.findIndex(g => g.key === '__sin__');
+  if (i !== -1 && i !== grupos.length - 1) grupos.push(grupos.splice(i, 1)[0]);
   return grupos;
 }
 
@@ -240,11 +287,14 @@ function render(cat) {
   if (!items.length) {
     cuerpo = stateView('📭', 'Catálogo vacío', 'Este catálogo no tiene productos.');
   } else if (separar) {
-    cuerpo = agrupar(items).map(g => `
+    cuerpo = agrupar(items).map(g => {
+      const titulo = g.titulo || 'Otros productos';
+      return `
       <section class="section" style="--cols:${cols}">
-        ${g.titulo ? `<h2 class="section__title">${esc(g.titulo)}</h2>` : ''}
+        <h2 class="section__title">${esc(titulo)}<span class="section__count">${g.items.length}</span></h2>
         <div class="grid">${g.items.map(cardHTML).join('')}</div>
-      </section>`).join('');
+      </section>`;
+    }).join('');
   } else {
     cuerpo = `<main class="grid grid--solo" style="--cols:${cols}">${items.map(cardHTML).join('')}</main>`;
   }

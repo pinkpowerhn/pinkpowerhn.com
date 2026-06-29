@@ -200,6 +200,7 @@
   .cb-phone {
     width: 250px; background: #1c1c1e; border-radius: 30px; padding: 10px; flex: none;
     box-shadow: 0 12px 36px rgba(0,0,0,.22);
+    overflow: hidden;   /* asegura que nada se salga del marco redondeado */
   }
   .cb-phone__screen {
     background: #fff; border-radius: 22px; overflow-y: auto; overflow-x: hidden; height: 460px; overscroll-behavior: contain;
@@ -212,7 +213,9 @@
   .pv-sub { margin-top: .3rem; opacity: .8; font-weight: 500; }
   .pv-rule { width: 36px; height: 3px; border-radius: 3px; margin: .7rem auto 0; }
   .pv-sec { font-weight: 800; font-size: .92rem; padding: .8rem .8rem .2rem; display: flex; align-items: center; gap: .4rem; }
-  .pv-sec::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
+  .pv-sec::before { content: ""; width: 9px; height: 15px; border-radius: 4px; background: currentColor; flex: none; }
+  .pv-sec__n { font-size: .6rem; font-weight: 700; color: #fff; padding: .05rem .35rem; border-radius: 999px; opacity: .9; }
+  .pv-sec::after { content: ""; flex: 1; height: 1.5px; border-radius: 2px; background: currentColor; opacity: .16; }
   .pv-grid { display: grid; grid-template-columns: repeat(var(--pvcols, 2), 1fr); gap: .4rem; padding: .6rem; }
   .pv-wa { margin: .2rem .7rem 1rem; text-align: center; background: #25d366; color: #fff; font-weight: 700; font-size: .78rem; padding: .55rem; border-radius: 999px; }
   .pv-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,.1); }

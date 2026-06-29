@@ -225,6 +225,7 @@ function renderProductos() {
     <div class="cb-cols">
       <p class="cb-cols__label">Agregar una colección completa:</p>
       <div class="cb-chips">${chips}</div>
+      <p class="cb-hint" style="margin:.5rem 0 0">Un mismo producto puede estar en varias colecciones, por eso los números de las colecciones pueden sumar más que el total.</p>
     </div>` : ''}
     <div class="cb-tools">
       <input id="cb-buscar" class="cb-input" type="search" placeholder="Buscar producto…" value="${esc(state.busqueda)}" />
@@ -525,12 +526,16 @@ function previewInner(cols) {
     const grupos = [];
     const idx = new Map();
     items.forEach(it => {
-      const k = it.coleccion || '__';
-      if (!idx.has(k)) { idx.set(k, grupos.length); grupos.push({ t: it.coleccion || '', items: [] }); }
+      const k = it.coleccion || '__sin__';
+      if (!idx.has(k)) { idx.set(k, grupos.length); grupos.push({ key: k, t: it.coleccion || '', items: [] }); }
       grupos[idx.get(k)].items.push(it);
     });
-    cuerpo = grupos.slice(0, 4).map(g => `
-      ${g.t ? `<div class="pv-sec" style="color:${esc(d.colorAcento)}">${esc(g.t)}</div>` : ''}
+    // Los productos sin colección van SIEMPRE al final como "Otros productos"
+    // (antes quedaban sueltos arriba de todo, sin título).
+    const si = grupos.findIndex(g => g.key === '__sin__');
+    if (si !== -1 && si !== grupos.length - 1) grupos.push(grupos.splice(si, 1)[0]);
+    cuerpo = grupos.slice(0, 5).map(g => `
+      <div class="pv-sec" style="color:${esc(d.colorAcento)}">${esc(g.t || 'Otros productos')}<span class="pv-sec__n" style="background:${esc(d.colorAcento)}">${g.items.length}</span></div>
       <div class="pv-grid" style="--pvcols:${cols}">${g.items.slice(0, cols * 2).map(cardHTML).join('')}</div>`).join('');
   } else {
     cuerpo = `<div class="pv-grid" style="--pvcols:${cols}">${items.slice(0, cols * 3).map(cardHTML).join('')}</div>`;

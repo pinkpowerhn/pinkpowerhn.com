@@ -140,6 +140,14 @@
       </div>
     </div>
 
+    <!-- Ocultar agotados -->
+    <div class="card">
+      <h2>🛑 Productos agotados</h2>
+      <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, los productos agotados no aparecen en la tienda. Desactívalo cuando quieras que vuelvan a salir.</p>
+      <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
+      <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
+    </div>
+
     <!-- Crear mayorista -->
     <div class="card">
       <h2>➕ Nueva mayorista</h2>
@@ -227,6 +235,7 @@ async function loadAll() {
     const cfg = await api('/admin/config');
     $('min-input').value = cfg.minimo_mensual || '';
     setDiasUI(cfg.catalogo_dias);
+    setOcultarUI(!!cfg.ocultar_agotados);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }
 }
@@ -370,6 +379,22 @@ $('dias-save').addEventListener('click', async () => {
     setDiasUI(cfg.catalogo_dias);
     panelMsg('Duración de catálogos guardada.');
   } catch (ex) { panelMsg(ex.message, false); }
+});
+
+// ── Ocultar agotados (se guarda al tocar el interruptor) ──
+function setOcultarUI(on) {
+  $('ocultar-agotados').checked = on;
+  $('ocultar-estado').textContent = on
+    ? 'Activado: los agotados están ocultos en la tienda.'
+    : 'Desactivado: los agotados se muestran (al final).';
+}
+$('ocultar-agotados').addEventListener('change', async (e) => {
+  const on = e.target.checked;
+  try {
+    const cfg = await api('/admin/config', { method: 'PUT', body: JSON.stringify({ ocultar_agotados: on }) });
+    setOcultarUI(!!cfg.ocultar_agotados);
+    panelMsg(on ? 'Agotados ocultados.' : 'Agotados visibles de nuevo.');
+  } catch (ex) { panelMsg(ex.message, false); e.target.checked = !on; }
 });
 
 // ── Crear mayorista ──

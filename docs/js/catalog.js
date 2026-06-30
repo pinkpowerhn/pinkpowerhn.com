@@ -383,8 +383,11 @@ export function renderProductGrid(products, collections, activeCollection, searc
 
   renderActiveFilters(collections);
 
-  const { activeSize, activeTag, priceMin, priceMax, sortBy, currentPage, productsLoaded } = getState();
+  const { activeSize, activeTag, priceMin, priceMax, sortBy, currentPage, productsLoaded, hideSoldOut } = getState();
   let filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
+
+  // Ocultar agotados si la admin activó esa opción (temporal, desde el panel).
+  if (hideSoldOut) filtered = filtered.filter(p => p.availableForSale);
 
   // Orden por precio (el orden por relevancia ya lo da el filtro de búsqueda)
   if (sortBy === 'price-asc') {

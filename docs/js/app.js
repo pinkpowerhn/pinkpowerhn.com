@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       products: mayoreoSession ? [] : firstPage.products,
       collections,
       waNumber,
+      hideSoldOut: !!config?.ocultar_agotados,   // ocultar agotados (toggle admin)
     });
     if (waNumber) {
       document.querySelectorAll('.wa-link').forEach(el => {
@@ -780,7 +781,9 @@ function renderSearchResults(query) {
   // Productos que coinciden (mostramos los primeros; si hay más, abajo se ofrece
   // "Ver todos" para verlos completos en la tienda).
   const SHOWN = 40;
-  const allProd = searchProducts(products, q, collections);
+  let allProd = searchProducts(products, q, collections);
+  // Si la admin activó "ocultar agotados", no los mostramos en el buscador.
+  if (getState().hideSoldOut) allProd = allProd.filter(p => p.availableForSale);
   const prodMatches = allProd.slice(0, SHOWN);
 
   if (!collMatches.length && !tagMatches.length && !prodMatches.length) {

@@ -631,6 +631,25 @@
   margin: 2.2rem 0 1rem;
 }
 
+/* Centinela del scroll infinito (spinner mientras carga el siguiente lote). */
+.grid-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.8rem 0 2.6rem;
+  min-height: 30px;
+}
+.grid-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid rgba(232, 67, 122, 0.25);
+  border-top-color: var(--pink);
+  animation: gridspin 0.8s linear infinite;
+}
+@keyframes gridspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .grid-spinner { animation: none; } }
+
 .page-btn {
   background: transparent;
   border: 1px solid rgba(26, 10, 18, 0.18);

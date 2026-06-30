@@ -4,7 +4,12 @@ import { shareLink } from './share.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
-const PAGE_SIZE = 20;
+// Scroll infinito: 24 productos al inicio y se cargan de a 24 conforme se baja.
+const INITIAL = 24;
+const BATCH = 24;
+let _gridFiltered = [];   // lista filtrada actual (de donde se cargan más al bajar)
+let _gridShown = 0;       // cuántas tarjetas hay puestas en la grilla
+let _gridIO = null;       // IntersectionObserver del centinela del fondo
 
 // ── Skeletons ─────────────────────────────────────────────
 export function renderSkeletons(n = 8) {
@@ -424,7 +429,7 @@ export function renderProductGrid(products, collections, activeCollection, searc
       renderSkeletons(8);
       const rc = document.getElementById('result-count');
       if (rc) rc.textContent = '';
-      renderPagination(0, 1);
+      _teardownSentinel();
       return;
     }
     updateResultCount(0);
@@ -434,62 +439,63 @@ export function renderProductGrid(products, collections, activeCollection, searc
            <button class="btn btn-primary" data-clear="all">Limpiar filtros</button></div>`
       : `<div class="shop-empty"><p>No se encontraron productos.</p></div>`;
     grid.querySelector('[data-clear="all"]')?.addEventListener('click', () => clearFilter('all'));
-    renderPagination(0, 1);
+    _teardownSentinel();
     return;
   }
 
   updateResultCount(filtered.length);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const page = Math.min(Math.max(1, currentPage || 1), totalPages);
-  const start = (page - 1) * PAGE_SIZE;
-  const slice = filtered.slice(start, start + PAGE_SIZE);
-
-  grid.innerHTML = slice.map(p => productCardHTML(p)).join('');
-  renderPagination(totalPages, page);
+  // Scroll infinito: se muestran 24 y el resto se carga al bajar.
+  _gridFiltered = filtered;
+  _gridShown = Math.min(INITIAL, filtered.length);
+  grid.innerHTML = filtered.slice(0, _gridShown).map(p => productCardHTML(p)).join('');
+  _setupInfinite();
 }
 
-// ── Pagination ────────────────────────────────────────────
-function renderPagination(totalPages, current) {
+// ── Scroll infinito ───────────────────────────────────────
+// Quita el centinela y desconecta el observer.
+function _teardownSentinel() {
+  if (_gridIO) { _gridIO.disconnect(); _gridIO = null; }
+  document.querySelectorAll('#grid-sentinel, #pagination').forEach(n => n.remove());
+}
+
+// Carga el siguiente lote de productos al fondo de la grilla (sin recargarla).
+function _loadMore() {
+  const grid = document.getElementById('product-grid');
+  if (!grid) return;
+  if (_gridShown >= _gridFiltered.length) { _teardownSentinel(); return; }
+  const next = _gridFiltered.slice(_gridShown, _gridShown + BATCH);
+  grid.insertAdjacentHTML('beforeend', next.map(productCardHTML).join(''));
+  _gridShown += next.length;
+  if (_gridShown >= _gridFiltered.length) _teardownSentinel();
+}
+
+// Coloca un centinela debajo de la grilla; al acercarse, carga más.
+function _setupInfinite() {
+  _teardownSentinel();
+  if (_gridShown >= _gridFiltered.length) return;   // ya están todos
+
   const main = document.querySelector('.shop-main');
   if (!main) return;
+  const el = document.createElement('div');
+  el.id = 'grid-sentinel';
+  el.className = 'grid-sentinel';
+  el.innerHTML = '<span class="grid-spinner" aria-hidden="true"></span>';
+  main.appendChild(el);
 
-  // Defensa: eliminar cualquier #pagination huérfano fuera de .shop-main
-  // (puede pasar si una versión anterior del JS lo dejó en otro lugar)
-  document.querySelectorAll('#pagination').forEach(node => {
-    if (!main.contains(node)) node.remove();
-  });
-
-  let el = main.querySelector('#pagination');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'pagination';
-    el.className = 'pagination';
-    el.setAttribute('role', 'navigation');
-    el.setAttribute('aria-label', 'Paginación');
-    main.appendChild(el);
-  } else if (el.parentElement !== main || main.lastElementChild !== el) {
-    // Re-anclar como último hijo de .shop-main (debajo del grid)
-    main.appendChild(el);
+  // Sin IntersectionObserver (navegador viejo): mostrar todo de una.
+  if (!('IntersectionObserver' in window)) {
+    const grid = document.getElementById('product-grid');
+    if (grid) grid.insertAdjacentHTML('beforeend',
+      _gridFiltered.slice(_gridShown).map(productCardHTML).join(''));
+    _gridShown = _gridFiltered.length;
+    el.remove();
+    return;
   }
-
-  if (totalPages <= 1) { el.innerHTML = ''; return; }
-
-  // Truncated page list: 1 … (c-1) c (c+1) … last
-  const pages = new Set([1, totalPages, current, current - 1, current + 1]);
-  const list = [...pages].filter(n => n >= 1 && n <= totalPages).sort((a, b) => a - b);
-
-  const items = [];
-  items.push(`<button class="page-btn page-nav" data-page="${current - 1}" ${current === 1 ? 'disabled' : ''} aria-label="Anterior">‹</button>`);
-  let prev = 0;
-  for (const n of list) {
-    if (n - prev > 1) items.push(`<span class="page-ellipsis">…</span>`);
-    items.push(`<button class="page-btn${n === current ? ' is-active' : ''}" data-page="${n}">${n}</button>`);
-    prev = n;
-  }
-  items.push(`<button class="page-btn page-nav" data-page="${current + 1}" ${current === totalPages ? 'disabled' : ''} aria-label="Siguiente">›</button>`);
-
-  el.innerHTML = items.join('');
+  _gridIO = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting)) _loadMore();
+  }, { rootMargin: '700px 0px' });
+  _gridIO.observe(el);
 }
 
 // Un producto tiene variantes "reales" (tallas/opciones a elegir) si tiene más de

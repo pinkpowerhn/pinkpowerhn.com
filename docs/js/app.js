@@ -825,10 +825,12 @@ function renderSearchResults(query) {
           </span>
         </button>`;
     }).join('');
-    // Si hay más resultados de los que caben, ofrecer verlos todos en la tienda.
-    if (allProd.length > prodMatches.length) {
-      html += `<button class="search-seeall" data-q="${attr(q)}">Ver todos los resultados (${allProd.length})</button>`;
-    }
+    // Siempre ofrecer abrir estos resultados en la tienda (para verlos completos
+    // y para poder compartir el grupo con el botón "Compartir esta búsqueda").
+    const seeallLabel = allProd.length > prodMatches.length
+      ? `Ver todos los resultados (${allProd.length})`
+      : `Ver estos resultados en la tienda`;
+    html += `<button class="search-seeall" data-q="${attr(q)}">${seeallLabel}</button>`;
   }
 
   box.innerHTML = html;

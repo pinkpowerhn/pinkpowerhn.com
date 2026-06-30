@@ -1,5 +1,6 @@
 import { getState, setState } from './state.js';
 import { tokenize, buildCollMap, scoreProduct } from './search.js';
+import { shareLink } from './share.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -336,15 +337,29 @@ function activeFilterList(collections, st) {
 export function renderActiveFilters(collections) {
   const cont = document.getElementById('active-filters');
   if (!cont) return;
-  const list = activeFilterList(collections, getState());
+  const st = getState();
+  const list = activeFilterList(collections, st);
   if (!list.length) { cont.hidden = true; cont.innerHTML = ''; return; }
   cont.hidden = false;
-  cont.innerHTML =
+  let html =
     `<span class="active-filters__label">Filtros activos:</span>` +
     list.map(f => `<button class="filter-chip" data-clear="${f.key}">${_esc(f.label)}<span class="filter-chip__x" aria-hidden="true">×</span></button>`).join('') +
     `<button class="filter-chip filter-chip--all" data-clear="all">Limpiar todo</button>`;
+  // Si hay una búsqueda activa, ofrecer compartir ese grupo de productos por link.
+  if (st.searchQuery) {
+    html += `<button class="filter-share" id="share-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="10.7" x2="15.4" y2="6.3"></line><line x1="8.6" y1="13.3" x2="15.4" y2="17.7"></line></svg>
+      Compartir esta búsqueda</button>`;
+  }
+  cont.innerHTML = html;
   cont.querySelectorAll('[data-clear]').forEach(b =>
     b.addEventListener('click', () => clearFilter(b.dataset.clear)));
+  const sh = cont.querySelector('#share-search');
+  if (sh) sh.addEventListener('click', () => {
+    const q = getState().searchQuery;
+    const url = `${location.origin}${location.pathname}#shop/search/${encodeURIComponent(q)}`;
+    shareLink(url, `Mirá estos productos (${q}) en PinkPower HN`);
+  });
 }
 
 export function clearFilter(key) {
@@ -364,8 +379,9 @@ export function clearFilter(key) {
 // Pone la URL acorde a la colección/etiqueta activas. Se llama tras acciones del
 // usuario que cambian filtros (no en la carga inicial, para no pisar la ruta).
 export function syncCatalogHash() {
-  const { activeCollection, activeTag } = getState();
-  const h = activeTag ? `#shop/tag/${encodeURIComponent(activeTag)}`
+  const { activeCollection, activeTag, searchQuery } = getState();
+  const h = searchQuery ? `#shop/search/${encodeURIComponent(searchQuery)}`
+          : activeTag ? `#shop/tag/${encodeURIComponent(activeTag)}`
           : activeCollection ? `#shop/collection/${activeCollection}`
           : '#shop';
   if (location.hash.startsWith('#shop') && !location.hash.includes('/product/') && location.hash !== h) {

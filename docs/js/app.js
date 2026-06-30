@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar, tieneVariantesReales } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash } from './catalog.js';
 import { openModal, closeModal } from './modal.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -653,7 +653,10 @@ let _searchDebounce = null;
 document.addEventListener('input', e => {
   if (e.target.id !== 'search-input') return;
   clearTimeout(_searchDebounce);
-  _searchDebounce = setTimeout(() => setState({ searchQuery: e.target.value.trim(), currentPage: 1 }), 300);
+  _searchDebounce = setTimeout(() => {
+    setState({ searchQuery: e.target.value.trim(), currentPage: 1 });
+    syncCatalogHash();   // refleja la búsqueda en la URL (para compartir)
+  }, 300);
 });
 
 // Limpia el campo de búsqueda y cancela cualquier búsqueda pendiente.
@@ -720,6 +723,7 @@ function openSearchOverlay() {
       const si = document.getElementById('search-input');
       if (si) si.value = q;
       setState({ searchQuery: q, activeCollection: null, activeTag: null, activeSize: null, currentPage: 1 });
+      syncCatalogHash();
       scrollToProducts('smooth');
       return;
     }
@@ -1349,14 +1353,25 @@ function handleHashRoute() {
   // Cualquier ruta de catálogo: si había una ficha abierta, ciérrala
   if (getState().modalProductId) closeModal();
 
-  if (parts[0] === 'collection' && parts[1]) {
-    setState({ activeCollection: decodeURIComponent(parts[1]), activeTag: null, currentPage: 1 });
+  const setSearchInput = v => document.querySelectorAll('#search-input').forEach(i => { i.value = v; });
+
+  if (parts[0] === 'search' && parts[1]) {
+    // Link compartido de una búsqueda → mostrar ese grupo de productos.
+    const q = decodeURIComponent(parts.slice(1).join('/'));
+    setSearchInput(q);
+    setState({ activeCollection: null, activeTag: null, searchQuery: q, currentPage: 1 });
+    scrollToProductsWhenReady();
+  } else if (parts[0] === 'collection' && parts[1]) {
+    setSearchInput('');
+    setState({ activeCollection: decodeURIComponent(parts[1]), activeTag: null, searchQuery: '', currentPage: 1 });
     scrollToProductsWhenReady(); // link de categoría → bajar a los productos
   } else if (parts[0] === 'tag' && parts[1]) {
-    setState({ activeCollection: null, activeTag: decodeURIComponent(parts[1]), currentPage: 1 });
+    setSearchInput('');
+    setState({ activeCollection: null, activeTag: decodeURIComponent(parts[1]), searchQuery: '', currentPage: 1 });
     scrollToProductsWhenReady();
   } else {
-    setState({ activeCollection: null, activeTag: null, currentPage: 1 });
+    setSearchInput('');
+    setState({ activeCollection: null, activeTag: null, searchQuery: '', currentPage: 1 });
   }
 }
 

@@ -2469,6 +2469,26 @@ body.menu-open nav {
 }
 .filter-chip:hover { background: #ffd0e4; }
 .filter-chip__x { font-size: 1.05rem; line-height: 1; opacity: 0.65; }
+
+/* Botón para compartir el grupo de productos de una búsqueda (link). */
+.filter-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.34rem 0.85rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--pink, #e84b9a);
+  border: 1px solid var(--pink, #e84b9a);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.filter-share:hover { background: var(--pink-dk, #c01f6b); }
+.filter-share svg { width: 14px; height: 14px; }
 .filter-chip--all {
   padding: 0.34rem 0.85rem;
   background: var(--pink, #e84b9a);

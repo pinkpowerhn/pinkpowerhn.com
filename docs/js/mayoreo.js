@@ -7,6 +7,7 @@ import { mayoreoLogin, fetchMayoreoProducts } from './api.js';
 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const USER_KEY  = 'pinkpower_mayoreo_user';
+const TEL_KEY   = 'pinkpower_mayoreo_tel';
 
 // Envuelve un cambio de DOM en una transición de vista (si está disponible).
 function withViewTransition(fn) {
@@ -94,10 +95,12 @@ async function onSubmit(e) {
   try {
     const data = await mayoreoLogin(usuario, password);
     const nombre = data.nombre || data.usuario;
+    const telefono = data.telefono || '';
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, nombre);
+    localStorage.setItem(TEL_KEY, telefono);
     closeModal();
-    await enterMayoreo(data.token, nombre);
+    await enterMayoreo(data.token, nombre, telefono);
     // Llevar la vista al catálogo para que se vean los precios de mayoreo.
     document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (ex) {
@@ -110,7 +113,7 @@ async function onSubmit(e) {
 }
 
 // ── Entrar / salir del modo mayoreo ───────────────────────
-async function enterMayoreo(token, nombre) {
+async function enterMayoreo(token, nombre, telefono = '') {
   let productos;
   try {
     productos = await fetchMayoreoProducts(token);
@@ -144,6 +147,7 @@ async function enterMayoreo(token, nombre) {
     productsLoaded: true,
     mayoreo: true,
     mayoreoUser: nombre || '',
+    mayoreoTelefono: telefono || '',
     activeCollection: null, activeTag: null, activeSize: null,
     searchQuery: '', priceMin: null, priceMax: null, currentPage: 1,
   });
@@ -152,6 +156,7 @@ async function enterMayoreo(token, nombre) {
 function exitMayoreo() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TEL_KEY);
   unmountAccount();
   document.body.classList.remove('is-mayoreo');
   // Recargar es lo más seguro para restaurar el catálogo normal completo.
@@ -257,5 +262,6 @@ export function initMayoreo() {
 // Restaura la sesión guardada (se llama cuando el catálogo normal ya cargó).
 export async function restoreMayoreo() {
   const token = localStorage.getItem(TOKEN_KEY);
-  if (token) await enterMayoreo(token, localStorage.getItem(USER_KEY) || '');
+  if (token) await enterMayoreo(token, localStorage.getItem(USER_KEY) || '',
+                                localStorage.getItem(TEL_KEY) || '');
 }

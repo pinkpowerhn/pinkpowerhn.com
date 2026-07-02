@@ -1115,6 +1115,14 @@ function showCheckoutModal() {
 
   document.body.appendChild(modal);
 
+  // En mayoreo, prellenar nombre y teléfono con los datos del perfil de la
+  // mayorista (los deja editar por si quiere otro contacto para este pedido).
+  const stCo = getState();
+  if (stCo.mayoreo) {
+    if (stCo.mayoreoUser) modal.querySelector('#co-name').value = stCo.mayoreoUser;
+    if (stCo.mayoreoTelefono) modal.querySelector('#co-phone').value = stCo.mayoreoTelefono;
+  }
+
   // Totales iniciales + recálculo al cambiar entrega/pago
   updateCoTotals(modal);
   modal.querySelector('#co-form').addEventListener('change', e => {

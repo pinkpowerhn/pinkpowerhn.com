@@ -155,6 +155,7 @@
         <div><label>Usuario</label><input type="text" id="n-user" autocapitalize="none" /></div>
         <div><label>Contraseña</label><input type="text" id="n-pass" /></div>
         <div><label>Nombre / Tienda</label><input type="text" id="n-name" /></div>
+        <div><label>Teléfono</label><input type="tel" id="n-tel" placeholder="+504 0000-0000" /></div>
         <button class="btn" id="n-add">Crear</button>
       </div>
     </div>
@@ -250,7 +251,7 @@ function renderCuentas(rows) {
       <td><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
       <td>
         <div class="acts">
-          <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}">Editar</button>
+          <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}" data-tel="${esc(r.telefono || '')}">Editar</button>
           <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>
           <button class="btn btn--ghost btn--sm act-estado" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
             ${r.activo ? 'Desactivar' : 'Activar'}
@@ -292,13 +293,17 @@ async function cambiarPassword(e) {
 async function editarCuenta(e) {
   const usuario = e.currentTarget.dataset.user;
   const actual = e.currentTarget.dataset.nombre || '';
+  const actualTel = e.currentTarget.dataset.tel || '';
+  const lbl = 'display:block;text-align:left;font-size:.85rem;color:#8a6a78;margin:.2rem 0 .15rem';
   const { value: vals } = await Swal.fire({
     title: `Editar datos`,
     html:
-      `<label style="display:block;text-align:left;font-size:.85rem;color:#8a6a78;margin:.2rem 0 .15rem">Usuario de acceso</label>` +
+      `<label style="${lbl}">Usuario de acceso</label>` +
       `<input id="ed-user" class="swal2-input" style="margin:0 0 .6rem" value="${esc(usuario)}">` +
-      `<label style="display:block;text-align:left;font-size:.85rem;color:#8a6a78;margin:.2rem 0 .15rem">Nombre / Tienda</label>` +
-      `<input id="ed-nombre" class="swal2-input" style="margin:0" value="${esc(actual)}">`,
+      `<label style="${lbl}">Nombre / Tienda</label>` +
+      `<input id="ed-nombre" class="swal2-input" style="margin:0 0 .6rem" value="${esc(actual)}">` +
+      `<label style="${lbl}">Teléfono</label>` +
+      `<input id="ed-tel" class="swal2-input" style="margin:0" value="${esc(actualTel)}" placeholder="+504 0000-0000">`,
     focusConfirm: false,
     showCancelButton: true,
     confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
@@ -306,8 +311,9 @@ async function editarCuenta(e) {
     preConfirm: () => {
       const nu = document.getElementById('ed-user').value.trim();
       const nombre = document.getElementById('ed-nombre').value.trim();
+      const telefono = document.getElementById('ed-tel').value.trim();
       if (nu.length < 3) { Swal.showValidationMessage('El usuario debe tener al menos 3 caracteres'); return false; }
-      return { nuevo_usuario: nu, nombre };
+      return { nuevo_usuario: nu, nombre, telefono };
     },
   });
   if (!vals) return;   // canceló
@@ -323,7 +329,7 @@ async function editarCuenta(e) {
     if (!r.isConfirmed) return;
   }
   try {
-    await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario, nuevo_usuario: vals.nuevo_usuario, nombre: vals.nombre }) });
+    await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario, nuevo_usuario: vals.nuevo_usuario, nombre: vals.nombre, telefono: vals.telefono }) });
     panelMsg(`Datos de "${vals.nuevo_usuario}" actualizados.`);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }
@@ -418,10 +424,10 @@ $('ocultar-agotados').addEventListener('change', async (e) => {
 
 // ── Crear mayorista ──
 $('n-add').addEventListener('click', async () => {
-  const usuario = $('n-user').value.trim(), password = $('n-pass').value, nombre = $('n-name').value.trim();
+  const usuario = $('n-user').value.trim(), password = $('n-pass').value, nombre = $('n-name').value.trim(), telefono = $('n-tel').value.trim();
   try {
-    await api('/admin/cuentas', { method: 'POST', body: JSON.stringify({ usuario, password, nombre }) });
-    $('n-user').value = ''; $('n-pass').value = ''; $('n-name').value = '';
+    await api('/admin/cuentas', { method: 'POST', body: JSON.stringify({ usuario, password, nombre, telefono }) });
+    $('n-user').value = ''; $('n-pass').value = ''; $('n-name').value = ''; $('n-tel').value = '';
     panelMsg(`Mayorista "${usuario}" creada.`);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }

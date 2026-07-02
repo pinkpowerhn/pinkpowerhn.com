@@ -288,24 +288,43 @@ async function cambiarPassword(e) {
   } catch (ex) { panelMsg(ex.message, false); }
 }
 
-// ── Editar datos (nombre / tienda) de una mayorista ──
+// ── Editar datos (usuario de acceso y nombre / tienda) de una mayorista ──
 async function editarCuenta(e) {
   const usuario = e.currentTarget.dataset.user;
   const actual = e.currentTarget.dataset.nombre || '';
-  const { value: nombre } = await Swal.fire({
+  const { value: vals } = await Swal.fire({
     title: `Editar datos`,
-    html: `<p class="muted" style="margin:0 0 .6rem">Usuario <b>${esc(usuario)}</b></p>`,
-    input: 'text',
-    inputValue: actual,
-    inputLabel: 'Nombre / Tienda',
+    html:
+      `<label style="display:block;text-align:left;font-size:.85rem;color:#8a6a78;margin:.2rem 0 .15rem">Usuario de acceso</label>` +
+      `<input id="ed-user" class="swal2-input" style="margin:0 0 .6rem" value="${esc(usuario)}">` +
+      `<label style="display:block;text-align:left;font-size:.85rem;color:#8a6a78;margin:.2rem 0 .15rem">Nombre / Tienda</label>` +
+      `<input id="ed-nombre" class="swal2-input" style="margin:0" value="${esc(actual)}">`,
+    focusConfirm: false,
     showCancelButton: true,
     confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
     confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    preConfirm: () => {
+      const nu = document.getElementById('ed-user').value.trim();
+      const nombre = document.getElementById('ed-nombre').value.trim();
+      if (nu.length < 3) { Swal.showValidationMessage('El usuario debe tener al menos 3 caracteres'); return false; }
+      return { nuevo_usuario: nu, nombre };
+    },
   });
-  if (nombre === undefined) return;   // canceló
+  if (!vals) return;   // canceló
+  const cambiaUsuario = vals.nuevo_usuario.toLowerCase() !== usuario.toLowerCase();
+  if (cambiaUsuario) {
+    const r = await Swal.fire({
+      title: '¿Cambiar el usuario de acceso?',
+      html: `Iniciará sesión como <b>${esc(vals.nuevo_usuario)}</b> en vez de <b>${esc(usuario)}</b>. La contraseña y sus catálogos se conservan.`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    });
+    if (!r.isConfirmed) return;
+  }
   try {
-    await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario, nombre: nombre.trim() }) });
-    panelMsg(`Datos de "${usuario}" actualizados.`);
+    await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario, nuevo_usuario: vals.nuevo_usuario, nombre: vals.nombre }) });
+    panelMsg(`Datos de "${vals.nuevo_usuario}" actualizados.`);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }
 }

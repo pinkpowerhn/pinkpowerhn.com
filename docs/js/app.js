@@ -1245,6 +1245,10 @@ async function submitCheckout(name, phone, email, checkout = null) {
     customer_name: name,
     phone,
     email: customerEmail,
+    // Tipo de envío y de pago van a las notas del pedido en Shopify, para que
+    // Aylin los tenga aunque la clienta no llegue a mandar el mensaje de WhatsApp.
+    envio: checkout?.deliveryLabel || null,
+    pago:  checkout?.paymentLabel  || null,
     line_items: cart.map(i => ({
       variant_id: i.variantId,
       quantity:   i.quantity,

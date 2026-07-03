@@ -125,14 +125,10 @@ function buildPageHTML(p) {
 
 function buildTopbar(p) {
   const cat = primaryCollection(p);
-  // Ojo: el breadcrumb va en <div>, NO en <nav>: el CSS global `nav{position:fixed}`
-  // lo convertiría en una barra fija.
+  // Solo el breadcrumb: hace de "volver" (Inicio / Categoría). Va en <div>, NO en
+  // <nav>: el CSS global `nav{position:fixed}` lo convertiría en una barra fija.
   return `
     <div class="pp-topbar">
-      <button class="pp-back" id="pp-back" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-        <span>Regresar</span>
-      </button>
       <div class="pp-breadcrumb" role="navigation" aria-label="Ruta de navegación">
         <a href="#shop" data-pp-nav>Inicio</a>
         ${cat ? `<span class="pp-bc-sep" aria-hidden="true">›</span>
@@ -173,16 +169,10 @@ function buildCarousel(images, title) {
     <div class="carousel-dots">
       ${images.map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Imagen ${i + 1}"></button>`).join('')}
     </div>` : '';
-  const fit = images.length ? `
-    <button class="carousel-fit" id="carousel-fit" type="button" aria-label="Ver la foto completa">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
-      </svg>
-      <span class="carousel-fit__txt">Ver completa</span>
-    </button>` : '';
 
   // El viewport recorta; el track es una fila (flex) que se desliza con translateX.
-  return `<div class="carousel-viewport"><div class="carousel-track" id="carousel-track">${slides}</div></div>${arrows}${dots}${fit}`;
+  // Tocar la foto la abre completa (no hace falta un botón, ya se intuye).
+  return `<div class="carousel-viewport"><div class="carousel-track" id="carousel-track">${slides}</div></div>${arrows}${dots}`;
 }
 
 function buildInfo(p) {
@@ -253,7 +243,6 @@ function wirePageEvents(page, product) {
   });
 
   const openFull = () => openLightbox(product, _carouselIndex);
-  page.querySelector('#carousel-fit')?.addEventListener('click', openFull);
   page.querySelectorAll('.carousel-slide img').forEach(img => img.addEventListener('click', openFull));
 
   // Deslizar con el dedo para cambiar de foto (móvil).

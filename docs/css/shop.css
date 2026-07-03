@@ -1132,35 +1132,8 @@
 
 .carousel-dot.is-active { background: var(--pink); }
 
-/* Botón "Ver completa": muestra la foto entera (sin recorte) dentro del modal */
-.carousel-fit {
-  position: absolute;
-  bottom: 0.6rem;
-  right: 0.6rem;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.34rem;
-  background: rgba(26, 10, 18, 0.6);
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.42rem 0.72rem;
-  cursor: pointer;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.2s;
-}
-.carousel-fit:hover { background: var(--pink); }
-.carousel-fit svg   { width: 13px; height: 13px; }
-
-/* La foto del modal se puede tocar para verla completa en pantalla completa */
+/* La foto se puede tocar para verla completa en pantalla completa (el cursor de
+   zoom lo insinúa; por eso ya no hace falta un botón "Ver completa"). */
 .modal-carousel .carousel-slide img { cursor: zoom-in; }
 
 /* ── Visor de foto a pantalla completa (lightbox) ───────── */
@@ -1388,40 +1361,18 @@
   padding: var(--nav-h) 1.4rem 3rem;   /* deja libre el header fijo del sitio */
 }
 
-/* Barra de la ficha (Regresar + breadcrumb), pegada justo debajo del header. */
+/* Barra de la ficha (solo breadcrumb), pegada justo debajo del header. */
 .pp-topbar {
   position: sticky;
   top: var(--nav-h);
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 0.9rem;
   padding: 0.85rem 0;
   margin-bottom: 1.6rem;
   background: var(--black);
   border-bottom: 1px solid rgba(232, 67, 122, 0.14);
 }
-
-.pp-back {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: transparent;
-  border: 1px solid rgba(232, 67, 122, 0.3);
-  color: var(--pink-dk);
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  padding: 0.5rem 0.9rem;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.2s, background 0.2s, border-color 0.2s;
-  -webkit-tap-highlight-color: transparent;
-}
-.pp-back:hover { background: var(--pink); border-color: var(--pink); color: #fff; }
-.pp-back svg  { width: 16px; height: 16px; }
 
 .pp-breadcrumb {
   flex: 1 1 auto;
@@ -1447,7 +1398,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 45vw;
+  max-width: 70vw;
 }
 
 /* Contenido del producto SIN card: galería + info directo sobre el fondo. */
@@ -1481,9 +1432,7 @@
   .pp-shell   { padding: var(--nav-h) 1rem 2.4rem; }
   .pp-main    { grid-template-columns: 1fr; gap: 1.6rem; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .pp-back span { display: none; }   /* solo la flecha en móvil, ahorra espacio */
-  .pp-back    { padding: 0.5rem; }
-  .pp-bc-current { max-width: 55vw; }
+  .pp-bc-current { max-width: 80vw; }
 }
 
 /* ── Cart drawer ──────────────────────────────────────── */

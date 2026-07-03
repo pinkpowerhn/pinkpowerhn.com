@@ -700,13 +700,9 @@ document.addEventListener('keydown', e => {
   leaveProduct();
 });
 
-// ── Controles de la ficha de producto (barra superior) ───
-// El breadcrumb son anclas nativas (#shop/...) que cambian el hash y disparan la
-// navegación por handleHashRoute. Aquí solo el botón Regresar (el carrito y el
-// menú viven en el header del sitio, que se mantiene visible sobre la ficha).
-document.addEventListener('click', e => {
-  if (e.target.closest('#pp-back')) { e.preventDefault(); leaveProduct(); }
-});
+// El breadcrumb de la ficha son anclas nativas (#shop/...) que cambian el hash y
+// disparan la navegación por handleHashRoute; no necesita JS aquí. Cerrar con la
+// tecla Escape o el botón atrás del navegador sí usa leaveProduct().
 
 // ── Buscador de pantalla completa ─────────────────────────
 function escHtml(s) {

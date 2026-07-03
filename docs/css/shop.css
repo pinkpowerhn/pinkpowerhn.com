@@ -1395,6 +1395,16 @@
   gap: 0.5rem;
 }
 
+/* Existencias de la talla elegida (p. ej. "Solo queda 1 en talla S"). Vacía hasta
+   que se elige una talla; el naranja hace juego con el aviso de pocas unidades. */
+.modal-variant-stock {
+  margin-top: 0.55rem;
+  min-height: 1em;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #f5820a;
+}
+
 .variant-btn {
   background: transparent;
   border: 1px solid rgba(26, 10, 18, 0.22);

@@ -66,6 +66,17 @@ function getDefaultVariant(product) {
   return product.variants.find(v => v.availableForSale) || product.variants[0] || null;
 }
 
+// Nota de existencias de la talla elegida. Solo cuando esa talla lleva control de
+// inventario y quedan pocas (≤ 5), para que la clienta vea cuánto hay de ESA talla
+// (cada talla puede tener distinta cantidad). Con bastante stock no muestra nada.
+function variantStockNote(v) {
+  if (!v || !v.availableForSale || v.inventoryQuantity === null) return '';
+  const q = v.inventoryQuantity;
+  if (q <= 0 || q > 5) return '';
+  const talla = v.title && v.title !== 'Default Title' ? ` en talla ${v.title}` : '';
+  return q === 1 ? `Solo queda 1${talla}` : `Quedan ${q}${talla}`;
+}
+
 function hasRealVariants(product) {
   return product.variants.length > 1 ||
     (product.variants.length === 1 && product.variants[0].title !== 'Default Title');
@@ -77,14 +88,17 @@ function buildModalHTML(p) {
   const price   = (_selectedVariant?.price ?? p.price)
     .toLocaleString('es-HN', { minimumFractionDigits: 2 });
 
-  // Aviso de stock (mismo criterio que la tarjeta), arriba a la derecha de la foto
-  const availVars = p.variants.filter(v => v.availableForSale && v.inventoryQuantity !== null);
-  const minStock  = availVars.length ? Math.min(...availVars.map(v => v.inventoryQuantity)) : null;
-  const lowStock  = !soldOut && minStock !== null && minStock <= 3;
+  // Aviso de stock (mismo criterio que la tarjeta), arriba a la derecha de la foto:
+  // el TOTAL de todas las tallas disponibles, no el mínimo de una. El detalle por
+  // talla se muestra aparte al elegir la talla (variantStockNote).
+  const availVars = p.variants.filter(v => v.availableForSale);
+  const anyUntracked = availVars.some(v => v.inventoryQuantity === null);
+  const totalStock = anyUntracked ? null : availVars.reduce((s, v) => s + v.inventoryQuantity, 0);
+  const lowStock  = !soldOut && totalStock !== null && totalStock > 0 && totalStock <= 3;
   const badgeHTML = soldOut
     ? '<div class="modal-badge">Agotado</div>'
     : lowStock
-      ? `<div class="modal-badge modal-badge--low">${minStock === 1 ? 'Solo queda 1' : `Últimas ${minStock}`}</div>`
+      ? `<div class="modal-badge modal-badge--low">${totalStock === 1 ? 'Solo queda 1' : `Últimas ${totalStock}`}</div>`
       : '';
 
   // Carousel
@@ -138,6 +152,7 @@ function buildModalHTML(p) {
           >${v.title}</button>
         `).join('')}
       </div>
+      <p class="modal-variant-stock" id="modal-variant-stock">${variantStockNote(_selectedVariant)}</p>
     </div>
   ` : '';
 
@@ -235,6 +250,8 @@ function wireModalEvents(modal, product) {
       if (priceEl) {
         priceEl.textContent = `L. ${variant.price.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
       }
+      const stockEl = modal.querySelector('#modal-variant-stock');
+      if (stockEl) stockEl.textContent = variantStockNote(variant);
       refreshAddBtn(modal);
     });
   });

@@ -516,12 +516,16 @@ function productCardHTML(p) {
   // Productos con talla: el botón lleva a elegir talla (abre el modal), no agrega.
   const addLabel = !soldOut && tieneVariantesReales(p) ? 'Elegir talla' : 'Agregar';
 
-  // Low-stock: any available variant with tracked inventory ≤ 5
-  const availableVariants = p.variants.filter(v => v.availableForSale && v.inventoryQuantity !== null);
-  const minStock = availableVariants.length
-    ? Math.min(...availableVariants.map(v => v.inventoryQuantity))
-    : null;
-  const lowStock = !soldOut && minStock !== null && minStock <= 3;
+  // Aviso "pocas unidades" a nivel de PRODUCTO: se suman las existencias de todas
+  // las tallas disponibles, no se toma el mínimo de una sola. Antes un set con
+  // S=1, M=2, L=2 mostraba "Solo queda 1" aunque en total había 5. Si alguna talla
+  // disponible no lleva control de inventario, se trata como ilimitada y no se marca.
+  const availableVariants = p.variants.filter(v => v.availableForSale);
+  const anyUntracked = availableVariants.some(v => v.inventoryQuantity === null);
+  const totalStock = anyUntracked
+    ? null
+    : availableVariants.reduce((s, v) => s + v.inventoryQuantity, 0);
+  const lowStock = !soldOut && totalStock !== null && totalStock > 0 && totalStock <= 3;
 
   return `
     <article class="product-card${soldOut ? ' product-card--sold-out' : ''}" data-id="${p.id}">
@@ -537,7 +541,7 @@ function productCardHTML(p) {
         ${soldOut
           ? '<div class="product-card__badge">Agotado</div>'
           : lowStock
-            ? `<div class="product-card__badge product-card__badge--low">${minStock === 1 ? 'Solo queda 1' : `Últimas ${minStock}`}</div>`
+            ? `<div class="product-card__badge product-card__badge--low">${totalStock === 1 ? 'Solo queda 1' : `Últimas ${totalStock}`}</div>`
             : ''}
         <div class="product-card__overlay">
           ${!soldOut

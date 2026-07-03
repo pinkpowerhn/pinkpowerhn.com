@@ -1323,30 +1323,26 @@
 .modal-share svg { width: 16px; height: 16px; }
 
 /* ── Página de producto (ficha dedicada) ──────────────────
-   Su propio scroll; el catálogo queda debajo intacto para conservar la posición al
-   regresar. Empieza JUSTO debajo del header del sitio (top: --nav-h) para que su
-   barra de scroll quede libre en todo el recorrido y el header no la tape. El
-   contenido va SIN card, directo sobre el fondo. */
+   Se muestra en el flujo del documento y usa el scroll del navegador (como el
+   inicio): así la barra de scroll no la tapa el header y este queda transparente
+   igual que en el inicio. Mientras está abierta se oculta el catálogo (queda en el
+   DOM para restaurar la posición al regresar). El contenido va SIN card. */
 #product-page {
-  position: fixed;
-  top: var(--nav-h);           /* debajo del header: la barra de scroll no lo toca */
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 90;                 /* debajo del nav (100): el header se ve encima */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  min-height: 100vh;
   background: var(--black);
   animation: modalFade 0.22s ease;
   --nav-h: 72px;               /* product-page.js lo ajusta a la altura real del nav */
 }
 #product-page[hidden] { display: none; }
 
-/* Con la ficha abierta el header del sitio lleva fondo sólido: si no, su degradado
-   se vuelve transparente abajo y el contenido de la ficha se vería a través de él
-   al hacer scroll. Se une con la barra del breadcrumb (mismo color), y la única
-   línea es la de esa barra. */
-body.pp-open nav { background: var(--black); }
+/* Con la ficha abierta se oculta el catálogo/landing (sigue en el DOM). */
+body.pp-open > .hero,
+body.pp-open > #shop,
+body.pp-open > .values,
+body.pp-open > .location,
+body.pp-open > .newsletter,
+body.pp-open > footer,
+body.pp-open > .footer-bottom { display: none; }
 
 /* Entrada elegante: el fondo aparece, la barra hace fade y el contenido + los
    relacionados suben suavemente (con un leve escalonado). Se dispara al renderizar
@@ -1367,20 +1363,15 @@ body.pp-open nav { background: var(--black); }
 .pp-shell {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0 1.4rem 3rem;
+  padding: var(--nav-h) 1.4rem 3rem;   /* deja libre el header fijo del sitio */
 }
 
-/* Barra de la ficha (solo breadcrumb), pegada arriba del scroll (que ya empieza
-   debajo del header del sitio). */
+/* Barra del breadcrumb: en el flujo, transparente (el header ya es el fijo). */
 .pp-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
   padding: 0.85rem 0;
   margin-bottom: 1.6rem;
-  background: var(--black);
   border-bottom: 1px solid rgba(232, 67, 122, 0.14);
 }
 
@@ -1439,7 +1430,7 @@ body.pp-open nav { background: var(--black); }
 }
 
 @media (max-width: 768px) {
-  .pp-shell   { padding: 0 1rem 2.4rem; }
+  .pp-shell   { padding: var(--nav-h) 1rem 2.4rem; }
   .pp-main    { grid-template-columns: 1fr; gap: 1.6rem; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .pp-bc-current { max-width: 80vw; }

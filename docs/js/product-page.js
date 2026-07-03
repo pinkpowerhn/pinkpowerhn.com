@@ -20,8 +20,13 @@ const PAGE_ID = 'product-page';
 let _carouselIndex   = 0;
 let _selectedVariant = null;
 let _currentProduct  = null;
+let _catalogScrollY  = 0;   // posición del catálogo para restaurarla al cerrar
 
 // ── Abrir / cerrar ────────────────────────────────────────
+// La ficha se muestra en el flujo del documento (usa el scroll del navegador, como
+// el inicio), ocultando el catálogo mientras está abierta. Así la barra de scroll
+// no la tapa el header y este puede quedar transparente igual que en el inicio. El
+// catálogo queda en el DOM (oculto) para restaurar su posición exacta al regresar.
 export function openProductPage(product) {
   _currentProduct  = product;
   _carouselIndex   = 0;
@@ -32,16 +37,18 @@ export function openProductPage(product) {
   const page = document.getElementById(PAGE_ID);
   if (!page) return;
 
-  // El header del sitio se mantiene visible encima de la ficha: dejamos su altura
-  // real en una variable para separar el contenido y anclar la barra de la ficha.
+  // Al ENTRAR desde el catálogo (no al saltar entre relacionados) se guarda su
+  // posición de scroll para restaurarla al cerrar.
+  if (!document.body.classList.contains('pp-open')) _catalogScrollY = window.scrollY;
+
+  // El header queda fijo encima; se deja su altura real para separar el contenido.
   const nav = document.querySelector('nav');
   page.style.setProperty('--nav-h', `${nav ? nav.offsetHeight : 72}px`);
 
   page.innerHTML = buildPageHTML(product);
   page.hidden = false;
-  page.scrollTop = 0;                      // la ficha siempre empieza arriba
-  document.body.style.overflow = 'hidden'; // congela el catálogo de fondo
-  document.body.classList.add('pp-open');  // header sólido encima de la ficha
+  document.body.classList.add('pp-open');  // oculta el catálogo; la ficha usa el scroll del documento
+  window.scrollTo(0, 0);                    // la ficha empieza arriba
   setState({ modalProductId: product.id });
 
   wirePageEvents(page, product);
@@ -53,8 +60,8 @@ export function closeProductPage() {
   closeLightbox();                         // por si quedó abierto el visor
   page.hidden = true;
   page.innerHTML = '';
-  document.body.style.overflow = '';       // devuelve el scroll al catálogo
-  document.body.classList.remove('pp-open');
+  document.body.classList.remove('pp-open');   // vuelve a mostrar el catálogo
+  window.scrollTo(0, _catalogScrollY);          // restaura la posición del catálogo
   _currentProduct  = null;
   _selectedVariant = null;
   setState({ modalProductId: null });

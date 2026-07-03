@@ -41,6 +41,7 @@ export function openProductPage(product) {
   page.hidden = false;
   page.scrollTop = 0;                      // la ficha siempre empieza arriba
   document.body.style.overflow = 'hidden'; // congela el catálogo de fondo
+  document.body.classList.add('pp-open');  // header sólido encima de la ficha
   setState({ modalProductId: product.id });
 
   wirePageEvents(page, product);
@@ -53,6 +54,7 @@ export function closeProductPage() {
   page.hidden = true;
   page.innerHTML = '';
   document.body.style.overflow = '';       // devuelve el scroll al catálogo
+  document.body.classList.remove('pp-open');
   _currentProduct  = null;
   _selectedVariant = null;
   setState({ modalProductId: null });
@@ -125,15 +127,13 @@ function buildPageHTML(p) {
 
 function buildTopbar(p) {
   const cat = primaryCollection(p);
-  // Solo el breadcrumb: hace de "volver" (Inicio / Categoría). Va en <div>, NO en
-  // <nav>: el CSS global `nav{position:fixed}` lo convertiría en una barra fija.
+  // Solo el breadcrumb: la categoría hace de "volver". Va en <div>, NO en <nav>:
+  // el CSS global `nav{position:fixed}` lo convertiría en una barra fija.
   return `
     <div class="pp-topbar">
       <div class="pp-breadcrumb" role="navigation" aria-label="Ruta de navegación">
-        <a href="#shop" data-pp-nav>Inicio</a>
-        ${cat ? `<span class="pp-bc-sep" aria-hidden="true">›</span>
-          <a href="#shop/collection/${encodeURIComponent(cat.handle)}" data-pp-nav>${esc(cat.title)}</a>` : ''}
-        <span class="pp-bc-sep" aria-hidden="true">›</span>
+        ${cat ? `<a href="#shop/collection/${encodeURIComponent(cat.handle)}" data-pp-nav>${esc(cat.title)}</a>
+          <span class="pp-bc-sep" aria-hidden="true">›</span>` : ''}
         <span class="pp-bc-current" aria-current="page">${esc(p.title)}</span>
       </div>
     </div>`;

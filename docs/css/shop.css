@@ -1339,6 +1339,12 @@
 }
 #product-page[hidden] { display: none; }
 
+/* Con la ficha abierta el header del sitio lleva fondo sólido: si no, su degradado
+   se vuelve transparente abajo y el contenido de la ficha se vería a través de él
+   al hacer scroll. Se une con la barra del breadcrumb (mismo color), y la única
+   línea es la de esa barra. */
+body.pp-open nav { background: var(--black); }
+
 /* Entrada elegante: el fondo aparece, la barra hace fade y el contenido + los
    relacionados suben suavemente (con un leve escalonado). Se dispara al renderizar
    la ficha (también al pasar a un producto relacionado). */

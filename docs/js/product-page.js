@@ -7,7 +7,7 @@
 // ficha (galería, tallas, agregar, compartir, visor de foto). La animación de
 // entrada es puro CSS (se dispara al renderizar).
 import { getState, setState } from './state.js';
-import { addToCart, canAddNow, getCartCount } from './cart.js';
+import { addToCart, canAddNow } from './cart.js';
 import { onAdded } from './aroma.js';
 import { shareLink, productShareUrl } from './share.js';
 import { productCardHTML } from './catalog.js';
@@ -31,6 +31,11 @@ export function openProductPage(product) {
 
   const page = document.getElementById(PAGE_ID);
   if (!page) return;
+
+  // El header del sitio se mantiene visible encima de la ficha: dejamos su altura
+  // real en una variable para separar el contenido y anclar la barra de la ficha.
+  const nav = document.querySelector('nav');
+  page.style.setProperty('--nav-h', `${nav ? nav.offsetHeight : 72}px`);
 
   page.innerHTML = buildPageHTML(product);
   page.hidden = false;
@@ -56,16 +61,6 @@ export function closeProductPage() {
 export function isProductPageOpen() {
   const page = document.getElementById(PAGE_ID);
   return !!(page && !page.hidden);
-}
-
-// Refresca el contador del carrito de la barra superior (lo llama app.js al
-// cambiar el carrito, para que se actualice aunque se agregue desde esta ficha).
-export function refreshProductPageCart() {
-  const badge = document.getElementById('pp-cart-badge');
-  if (!badge) return;
-  const count = getCartCount();
-  badge.textContent = count;
-  badge.hidden = count === 0;
 }
 
 // ── Datos / helpers ───────────────────────────────────────
@@ -130,11 +125,10 @@ function buildPageHTML(p) {
 
 function buildTopbar(p) {
   const cat = primaryCollection(p);
-  const cartCount = getCartCount();
   // Ojo: el breadcrumb va en <div>, NO en <nav>: el CSS global `nav{position:fixed}`
-  // lo convertiría en una barra fija que taparía el resto de la barra superior.
+  // lo convertiría en una barra fija.
   return `
-    <header class="pp-topbar">
+    <div class="pp-topbar">
       <button class="pp-back" id="pp-back" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
         <span>Regresar</span>
@@ -146,14 +140,7 @@ function buildTopbar(p) {
         <span class="pp-bc-sep" aria-hidden="true">›</span>
         <span class="pp-bc-current" aria-current="page">${esc(p.title)}</span>
       </div>
-      <button class="pp-cart" id="pp-cart" type="button" aria-label="Ver carrito">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>
-          <path d="M2.5 3h2l2.2 12.2a1.5 1.5 0 0 0 1.5 1.2h8.8a1.5 1.5 0 0 0 1.5-1.2L21.5 7H6"/>
-        </svg>
-        <span class="pp-cart__badge" id="pp-cart-badge"${cartCount ? '' : ' hidden'}>${cartCount}</span>
-      </button>
-    </header>`;
+    </div>`;
 }
 
 function buildGallery(p) {
@@ -194,7 +181,8 @@ function buildCarousel(images, title) {
       <span class="carousel-fit__txt">Ver completa</span>
     </button>` : '';
 
-  return `<div class="carousel-track" id="carousel-track">${slides}</div>${arrows}${dots}${fit}`;
+  // El viewport recorta; el track es una fila (flex) que se desliza con translateX.
+  return `<div class="carousel-viewport"><div class="carousel-track" id="carousel-track">${slides}</div></div>${arrows}${dots}${fit}`;
 }
 
 function buildInfo(p) {
@@ -268,6 +256,18 @@ function wirePageEvents(page, product) {
   page.querySelector('#carousel-fit')?.addEventListener('click', openFull);
   page.querySelectorAll('.carousel-slide img').forEach(img => img.addEventListener('click', openFull));
 
+  // Deslizar con el dedo para cambiar de foto (móvil).
+  const viewport = page.querySelector('.carousel-viewport');
+  if (viewport && product.images.length > 1) {
+    let x0 = null;
+    viewport.addEventListener('touchstart', e => { x0 = e.changedTouches[0].clientX; }, { passive: true });
+    viewport.addEventListener('touchend', e => {
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) > 40) moveCarousel(dx < 0 ? +1 : -1, product);
+    }, { passive: true });
+  }
+
   page.querySelectorAll('.variant-btn').forEach(btn => {
     btn.addEventListener('click', () => selectVariant(page, product, btn.dataset.variantId));
   });
@@ -323,7 +323,8 @@ function moveCarousel(dir, product) {
 function setCarouselIndex(index, page) {
   if (!page) return;
   _carouselIndex = index;
-  page.querySelectorAll('.carousel-slide').forEach((s, i) => s.classList.toggle('is-active', i === index));
+  const track = page.querySelector('#carousel-track');
+  if (track) track.style.transform = `translateX(-${index * 100}%)`;
   page.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('is-active', i === index));
 }
 

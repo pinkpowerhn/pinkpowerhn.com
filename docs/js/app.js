@@ -2,7 +2,7 @@ import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash } from './catalog.js';
-import { openProductPage, closeProductPage, isProductPageOpen, refreshProductPageCart } from './product-page.js';
+import { openProductPage, closeProductPage, isProductPageOpen } from './product-page.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl, canAddNow } from './cart.js';
@@ -185,7 +185,6 @@ on('statechange', state => {
 
   renderCartDrawer();
   updateCartBadge();
-  refreshProductPageCart();   // contador del carrito en la barra de la ficha
 });
 
 // Hash del catálogo según los filtros activos (para restaurar la URL)
@@ -703,10 +702,10 @@ document.addEventListener('keydown', e => {
 
 // ── Controles de la ficha de producto (barra superior) ───
 // El breadcrumb son anclas nativas (#shop/...) que cambian el hash y disparan la
-// navegación por handleHashRoute. Aquí solo Regresar y el carrito.
+// navegación por handleHashRoute. Aquí solo el botón Regresar (el carrito y el
+// menú viven en el header del sitio, que se mantiene visible sobre la ficha).
 document.addEventListener('click', e => {
-  if (e.target.closest('#pp-back')) { e.preventDefault(); leaveProduct(); return; }
-  if (e.target.closest('#pp-cart')) { e.preventDefault(); openCart();    return; }
+  if (e.target.closest('#pp-back')) { e.preventDefault(); leaveProduct(); }
 });
 
 // ── Buscador de pantalla completa ─────────────────────────

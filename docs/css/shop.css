@@ -1053,18 +1053,26 @@
 }
 .modal-badge--low { background: #f5820a; }
 
-.carousel-track {
+/* Galería deslizante: el viewport recorta (cuadrado, esquinas redondeadas) y el
+   track es una fila que se desliza con translateX y una transición suave. */
+.carousel-viewport {
   overflow: hidden;
   aspect-ratio: 1 / 1;
+  border-radius: 16px;
+}
+
+.carousel-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.45s cubic-bezier(.4, 0, .2, 1);
+  will-change: transform;
 }
 
 .carousel-slide {
-  display: none;
+  flex: 0 0 100%;
   width: 100%;
   height: 100%;
 }
-
-.carousel-slide.is-active { display: block; }
 
 .carousel-slide img {
   width: 100%;
@@ -1075,7 +1083,7 @@
 
 .carousel-placeholder {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 100%;
   background: linear-gradient(135deg, var(--dark) 0%, rgba(232,67,122,0.12) 100%);
 }
 
@@ -1343,21 +1351,24 @@
 
 /* ── Página de producto (ficha dedicada) ──────────────────
    Ocupa toda la pantalla con su propio scroll; el catálogo queda debajo intacto
-   para conservar la posición al regresar. La tarjeta central imita al modal. */
+   para conservar la posición al regresar. El header del sitio se mantiene visible
+   encima (por eso el z-index queda por debajo del nav). El contenido va SIN card,
+   directo sobre el fondo. */
 #product-page {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 90;                 /* debajo del nav (100): el header se ve encima */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: var(--black);
   animation: modalFade 0.22s ease;
+  --nav-h: 72px;               /* product-page.js lo ajusta a la altura real del nav */
 }
 #product-page[hidden] { display: none; }
 
-/* Entrada elegante: el fondo aparece, la barra hace fade y la tarjeta + los
-   relacionados suben suavemente (con un leve escalonado). Se dispara solo al
-   renderizar la ficha (también al pasar a un producto relacionado). */
+/* Entrada elegante: el fondo aparece, la barra hace fade y el contenido + los
+   relacionados suben suavemente (con un leve escalonado). Se dispara al renderizar
+   la ficha (también al pasar a un producto relacionado). */
 @keyframes ppRise {
   from { opacity: 0; transform: translateY(22px); }
   to   { opacity: 1; transform: none; }
@@ -1368,23 +1379,25 @@
 
 @media (prefers-reduced-motion: reduce) {
   #product-page, .pp-topbar, .pp-main, .pp-related { animation: none; }
+  .carousel-track { transition: none; }
 }
 
 .pp-shell {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 0 1.4rem 3rem;
+  padding: var(--nav-h) 1.4rem 3rem;   /* deja libre el header fijo del sitio */
 }
 
+/* Barra de la ficha (Regresar + breadcrumb), pegada justo debajo del header. */
 .pp-topbar {
   position: sticky;
-  top: 0;
+  top: var(--nav-h);
   z-index: 5;
   display: flex;
   align-items: center;
   gap: 0.9rem;
   padding: 0.85rem 0;
-  margin-bottom: 1.3rem;
+  margin-bottom: 1.6rem;
   background: var(--black);
   border-bottom: 1px solid rgba(232, 67, 122, 0.14);
 }
@@ -1437,56 +1450,21 @@
   max-width: 45vw;
 }
 
-.pp-cart {
-  flex: 0 0 auto;
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: transparent;
-  border: 1px solid rgba(232, 67, 122, 0.3);
-  border-radius: 50%;
-  color: var(--pink-dk);
-  cursor: pointer;
-  transition: color 0.2s, background 0.2s, border-color 0.2s;
-  -webkit-tap-highlight-color: transparent;
-}
-.pp-cart:hover { background: var(--pink); border-color: var(--pink); color: #fff; }
-.pp-cart svg   { width: 20px; height: 20px; }
-.pp-cart__badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--pink);
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
-}
-.pp-cart__badge[hidden] { display: none; }
-
-/* Tarjeta central: galería + info, con el mismo look del modal */
+/* Contenido del producto SIN card: galería + info directo sobre el fondo. */
 .pp-main {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--dark);
-  border: 1px solid rgba(232, 67, 122, 0.12);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 24px 70px -30px rgba(154, 0, 73, 0.4);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.6rem;
+  align-items: start;
 }
 .pp-gallery { position: relative; }
-.pp-info    { min-width: 0; }
+.pp-info.modal-info { min-width: 0; padding: 0.2rem 0 0; }
+/* Sin card el alto no se estira a la galería: los botones siguen al contenido con
+   un espacio fijo (en vez del margin-top:auto que los empujaba al fondo). */
+.pp-info .modal-actions { margin-top: 1.8rem; }
 
 /* Productos relacionados */
-.pp-related { margin-top: 2.6rem; }
+.pp-related { margin-top: 3rem; }
 .pp-related__title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 1.5rem;
@@ -1500,8 +1478,8 @@
 }
 
 @media (max-width: 768px) {
-  .pp-shell   { padding: 0 1rem 2.4rem; }
-  .pp-main    { grid-template-columns: 1fr; border-radius: 16px; }
+  .pp-shell   { padding: var(--nav-h) 1rem 2.4rem; }
+  .pp-main    { grid-template-columns: 1fr; gap: 1.6rem; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .pp-back span { display: none; }   /* solo la flecha en móvil, ahorra espacio */
   .pp-back    { padding: 0.5rem; }
@@ -2176,8 +2154,7 @@ body.menu-open nav {
   /* En móvil la ficha se apila (foto arriba, info abajo). Limitamos la altura de
      la foto y usamos dvh (altura real visible, descontando la barra del navegador)
      para que la info quede a la mano sin una foto gigante. */
-  .carousel-track,
-  .carousel-placeholder { aspect-ratio: auto; height: min(44vh, 340px); }
+  .carousel-viewport { aspect-ratio: auto; height: min(44vh, 340px); }
 }
 
 @media (max-width: 768px) {
@@ -2217,9 +2194,7 @@ body.menu-open nav {
 
   /* Pantallas pequeñas: foto más baja e info más compacta para que no se
      desborde de la altura del teléfono. */
-  .carousel-track,
-  .carousel-placeholder { height: min(38vh, 300px); }
-  .modal-info { padding: 1.3rem 1.4rem 1.7rem; }
+  .carousel-viewport { height: min(38vh, 300px); }
   .modal-product-name { font-size: 1.5rem; }
   .modal-price { font-size: 1.25rem; margin-bottom: 0.7rem; }
   .modal-description { margin-bottom: 1rem; line-height: 1.7; }

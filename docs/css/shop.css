@@ -2135,7 +2135,7 @@ body.menu-open nav {
   #wa-fab svg { width: 24px; height: 24px; }
 
   /* Ficha de producto en móvil: sin flechas (basta con los puntitos + deslizar) y
-     título en sans-serif. */
+     títulos en sans-serif (el del producto y el de "También te puede gustar"). */
   .carousel-arrow { display: none; }
   .modal-product-name {
     font-family: 'Montserrat', sans-serif;
@@ -2143,6 +2143,11 @@ body.menu-open nav {
     font-size: 1.4rem;
     letter-spacing: 0.01em;
     line-height: 1.25;
+  }
+  .pp-related__title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.15rem;
+    letter-spacing: 0.01em;
   }
 }
 

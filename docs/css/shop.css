@@ -2101,10 +2101,10 @@ body.menu-open nav {
 @media (max-width: 900px) {
   .modal-info { padding: 1.6rem; }
 
-  /* En móvil la ficha se apila (foto arriba, info abajo). Limitamos la altura de
-     la foto y usamos dvh (altura real visible, descontando la barra del navegador)
-     para que la info quede a la mano sin una foto gigante. */
-  .carousel-viewport { aspect-ratio: auto; height: min(44vh, 340px); }
+  /* En móvil la ficha se apila (foto arriba, info abajo). La foto va en retrato 3/4
+     (igual que las tarjetas del catálogo) para que se vea más larga y casi no se
+     recorte. */
+  .carousel-viewport { aspect-ratio: 3 / 4; height: auto; }
 }
 
 @media (max-width: 768px) {
@@ -2133,6 +2133,17 @@ body.menu-open nav {
 
   #wa-fab { bottom: 1.2rem; right: 1.2rem; width: 50px; height: 50px; }
   #wa-fab svg { width: 24px; height: 24px; }
+
+  /* Ficha de producto en móvil: sin flechas (basta con los puntitos + deslizar) y
+     título en sans-serif. */
+  .carousel-arrow { display: none; }
+  .modal-product-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2142,10 +2153,7 @@ body.menu-open nav {
   .product-card__name { font-size: 0.74rem; }
   .product-card__price { font-size: 0.88rem; }
 
-  /* Pantallas pequeñas: foto más baja e info más compacta para que no se
-     desborde de la altura del teléfono. */
-  .carousel-viewport { height: min(38vh, 300px); }
-  .modal-product-name { font-size: 1.5rem; }
+  /* Pantallas pequeñas: info un poco más compacta. */
   .modal-price { font-size: 1.25rem; margin-bottom: 0.7rem; }
   .modal-description { margin-bottom: 1rem; line-height: 1.7; }
   .modal-variants { margin-bottom: 1rem; }

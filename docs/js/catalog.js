@@ -507,7 +507,7 @@ export function tieneVariantesReales(p) {
   return vs.length > 1 || (vs.length === 1 && vs[0].title !== 'Default Title');
 }
 
-function productCardHTML(p) {
+export function productCardHTML(p) {
   const img      = p.images[0];
   const soldOut  = !p.availableForSale;
   const price    = p.price.toLocaleString('es-HN', { minimumFractionDigits: 2 });

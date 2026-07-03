@@ -1022,106 +1022,13 @@
   letter-spacing: 0.1em;
 }
 
-/* ── Product modal ────────────────────────────────────── */
-#product-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-#product-modal[hidden] { display: none; }
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(26, 10, 18, 0.55);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
-  animation: modalFade 0.25s ease;
-}
-
+/* ── Ficha de producto: animación de entrada compartida ── */
 @keyframes modalFade {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-@keyframes modalPop {
-  from { opacity: 0; transform: translateY(18px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Animación de cierre del modal */
-@keyframes modalPopOut {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to   { opacity: 0; transform: translateY(12px) scale(0.97); }
-}
-@keyframes modalFadeOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
-}
-#product-modal.is-closing .modal-panel    { animation: modalPopOut 0.22s ease forwards; }
-#product-modal.is-closing .modal-backdrop { animation: modalFadeOut 0.22s ease forwards; }
-
-.modal-panel {
-  position: relative;
-  z-index: 1;
-  background: var(--dark);
-  border: 1px solid rgba(232, 67, 122, 0.12);
-  border-radius: 20px;
-  box-shadow: 0 30px 80px -26px rgba(154, 0, 73, 0.55);
-  width: 100%;
-  max-width: 920px;
-  max-height: 90vh;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--pink) transparent;
-  animation: modalPop 0.34s cubic-bezier(.2, .8, .25, 1);
-}
-
-.modal-body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.modal-close {
-  position: absolute;
-  top: 0.9rem;
-  right: 0.9rem;
-  z-index: 2;
-  background: rgba(255, 255, 255, 0.95);
-  border: none;
-  outline: none;
-  border-radius: 50%;
-  color: var(--pink-dk);
-  font-size: 1.3rem;
-  line-height: 1;
-  width: 38px;
-  height: 38px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(154, 0, 73, 0.22);
-  transition: color 0.2s, background 0.2s, transform 0.25s, box-shadow 0.2s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.modal-close:hover {
-  color: #fff;
-  background: var(--pink);
-  transform: rotate(90deg);
-  box-shadow: 0 6px 20px rgba(224, 0, 110, 0.4);
-}
-
-.modal-close:focus-visible {
-  box-shadow: 0 0 0 3px rgba(224, 0, 110, 0.45);
-}
-
-/* Carousel */
+/* Carousel (galería de la ficha) */
 .modal-carousel {
   position: relative;
   background: var(--black);
@@ -1433,6 +1340,158 @@
 .modal-actions .btn { width: 100%; text-align: center; }
 .modal-share { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
 .modal-share svg { width: 16px; height: 16px; }
+
+/* ── Página de producto (ficha dedicada) ──────────────────
+   Ocupa toda la pantalla con su propio scroll; el catálogo queda debajo intacto
+   para conservar la posición al regresar. La tarjeta central imita al modal. */
+#product-page {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--black);
+  animation: modalFade 0.2s ease;
+}
+#product-page[hidden] { display: none; }
+
+.pp-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.4rem 3rem;
+}
+
+.pp-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 0;
+  margin-bottom: 1.3rem;
+  background: var(--black);
+  border-bottom: 1px solid rgba(232, 67, 122, 0.14);
+}
+
+.pp-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1px solid rgba(232, 67, 122, 0.3);
+  color: var(--pink-dk);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.pp-back:hover { background: var(--pink); border-color: var(--pink); color: #fff; }
+.pp-back svg  { width: 16px; height: 16px; }
+
+.pp-breadcrumb {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+.pp-breadcrumb a {
+  color: rgba(26, 10, 18, 0.6);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.pp-breadcrumb a:hover { color: var(--pink); }
+.pp-bc-sep { color: rgba(26, 10, 18, 0.35); }
+.pp-bc-current {
+  color: var(--pink-dk);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45vw;
+}
+
+.pp-cart {
+  flex: 0 0 auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid rgba(232, 67, 122, 0.3);
+  border-radius: 50%;
+  color: var(--pink-dk);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.pp-cart:hover { background: var(--pink); border-color: var(--pink); color: #fff; }
+.pp-cart svg   { width: 20px; height: 20px; }
+.pp-cart__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--pink);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.pp-cart__badge[hidden] { display: none; }
+
+/* Tarjeta central: galería + info, con el mismo look del modal */
+.pp-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--dark);
+  border: 1px solid rgba(232, 67, 122, 0.12);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px -30px rgba(154, 0, 73, 0.4);
+}
+.pp-gallery { position: relative; }
+.pp-info    { min-width: 0; }
+
+/* Productos relacionados */
+.pp-related { margin-top: 2.6rem; }
+.pp-related__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--pink-dk);
+  margin-bottom: 1.2rem;
+}
+.pp-related__grid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+@media (max-width: 768px) {
+  .pp-shell   { padding: 0 1rem 2.4rem; }
+  .pp-main    { grid-template-columns: 1fr; border-radius: 16px; }
+  .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .pp-back span { display: none; }   /* solo la flecha en móvil, ahorra espacio */
+  .pp-back    { padding: 0.5rem; }
+  .pp-bc-current { max-width: 55vw; }
+}
 
 /* ── Cart drawer ──────────────────────────────────────── */
 #cart-drawer {
@@ -2097,13 +2156,11 @@ body.menu-open nav {
 
 /* ── Responsive ───────────────────────────────────────── */
 @media (max-width: 900px) {
-  .modal-body { grid-template-columns: 1fr; }
   .modal-info { padding: 1.6rem; }
 
-  /* En móvil el modal se apila (foto arriba, info abajo). Limitamos la altura de
+  /* En móvil la ficha se apila (foto arriba, info abajo). Limitamos la altura de
      la foto y usamos dvh (altura real visible, descontando la barra del navegador)
-     para que TODO quepa en pantalla y el botón de agregar quede a la mano. */
-  .modal-panel { max-height: 92dvh; }
+     para que la info quede a la mano sin una foto gigante. */
   .carousel-track,
   .carousel-placeholder { aspect-ratio: auto; height: min(44vh, 340px); }
 }
@@ -2142,11 +2199,6 @@ body.menu-open nav {
   .product-card__info { padding: 0.75rem 0.75rem 0.85rem; }
   .product-card__name { font-size: 0.74rem; }
   .product-card__price { font-size: 0.88rem; }
-
-  .modal-panel {
-    max-height: 100dvh;
-    border-radius: 0;
-  }
 
   /* Pantallas pequeñas: foto más baja e info más compacta para que no se
      desborde de la altura del teléfono. */

@@ -2,7 +2,7 @@ import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash } from './catalog.js';
-import { openModal, closeModal } from './modal.js';
+import { openProductPage, closeProductPage, isProductPageOpen, refreshProductPageCart } from './product-page.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl, canAddNow } from './cart.js';
@@ -149,7 +149,6 @@ async function loadRemainingProducts(cursor, hasNext) {
 // Así, al agregar al carrito (que solo cambia `cart`) NO se recrea el grid
 // — antes eso causaba un parpadeo/"recarga" al hacer click en hover.
 let _prevRender = {};
-let _prevModalId = null;
 on('statechange', state => {
   const { products, collections, activeCollection, activeTag, activeSize,
           priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded } = state;
@@ -184,16 +183,9 @@ on('statechange', state => {
   _prevRender = { products, collections, activeCollection, activeTag, activeSize,
                   priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded };
 
-  // Al cerrar la ficha de un producto, devolver la URL al catálogo
-  // (así un refresh no reabre el modal).
-  const mid = state.modalProductId;
-  if (_prevModalId && !mid && location.hash.includes('/product/')) {
-    history.replaceState(null, '', catalogHash());
-  }
-  _prevModalId = mid;
-
   renderCartDrawer();
   updateCartBadge();
+  refreshProductPageCart();   // contador del carrito en la barra de la ficha
 });
 
 // Hash del catálogo según los filtros activos (para restaurar la URL)
@@ -202,6 +194,34 @@ function catalogHash() {
   if (activeTag) return `#shop/tag/${encodeURIComponent(activeTag)}`;
   if (activeCollection) return `#shop/collection/${activeCollection}`;
   return '#shop';
+}
+
+// ── Navegación a la ficha de producto (página dedicada) ───
+// Abrir la ficha desde el catálogo o desde otra ficha (producto relacionado):
+// se apila una entrada en el historial para que "Regresar" y el botón atrás del
+// navegador vuelvan al catálogo EXACTAMENTE donde estaba (el catálogo queda
+// debajo, congelado, así se conserva la posición del scroll).
+let _productFromWithin = false;   // ¿se llegó a la ficha navegando dentro del sitio?
+function goToProduct(product) {
+  _productFromWithin = true;
+  openProductPage(product);
+  history.pushState(null, '', `#shop/product/${product.id}`);
+}
+
+// "Regresar" desde la ficha. Si se llegó navegando dentro del sitio, se usa el
+// historial (vuelve a donde estaba, con su scroll). Si se entró por un link
+// compartido directo, se va a la categoría del producto (o al catálogo).
+function leaveProduct() {
+  if (!isProductPageOpen()) return;
+  if (_productFromWithin) {
+    history.back();
+  } else {
+    const p = getState().products.find(x => String(x.id) === String(getState().modalProductId));
+    const { collections } = getState();
+    const known = new Set((collections || []).map(c => c.handle));
+    const handle = p && (p.collectionHandles || []).find(h => known.has(h));
+    location.hash = handle ? `#shop/collection/${encodeURIComponent(handle)}` : '#shop';
+  }
 }
 
 // Baja hasta el inicio de los productos (descontando el nav fijo).
@@ -579,10 +599,7 @@ document.addEventListener('click', e => {
     const id = card.dataset.id;
     const { products } = getState();
     const product = products.find(p => p.id === id);
-    if (product) {
-      openModal(product);
-      history.replaceState(null, '', `#shop/product/${id}`);
-    }
+    if (product) goToProduct(product);
     return;
   }
 
@@ -595,15 +612,13 @@ document.addEventListener('click', e => {
     if (!product) return;
 
     if (actionBtn.dataset.action === 'quick-view') {
-      openModal(product);
-      history.replaceState(null, '', `#shop/product/${id}`);
+      goToProduct(product);
     }
     if (actionBtn.dataset.action === 'add-to-cart') {
-      // Con tallas/variantes reales no se agrega directo: se abre el modal para
+      // Con tallas/variantes reales no se agrega directo: se abre la ficha para
       // que la clienta elija la talla primero.
       if (tieneVariantesReales(product)) {
-        openModal(product);
-        history.replaceState(null, '', `#shop/product/${id}`);
+        goToProduct(product);
         return;
       }
       const variant = product.variants.find(v => v.availableForSale) || product.variants[0];
@@ -676,11 +691,22 @@ document.addEventListener('change', e => {
 
 // ── Keyboard ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeSearchOverlay();
-    closeModal();
-    closeCheckoutModal();
-  }
+  if (e.key !== 'Escape') return;
+  // El visor de foto a pantalla completa cierra con su propio Escape; no salir de
+  // la ficha en ese caso.
+  const lb = document.getElementById('img-lightbox');
+  if (lb && !lb.hidden) return;
+  closeSearchOverlay();
+  closeCheckoutModal();
+  leaveProduct();
+});
+
+// ── Controles de la ficha de producto (barra superior) ───
+// El breadcrumb son anclas nativas (#shop/...) que cambian el hash y disparan la
+// navegación por handleHashRoute. Aquí solo Regresar y el carrito.
+document.addEventListener('click', e => {
+  if (e.target.closest('#pp-back')) { e.preventDefault(); leaveProduct(); return; }
+  if (e.target.closest('#pp-cart')) { e.preventDefault(); openCart();    return; }
 });
 
 // ── Buscador de pantalla completa ─────────────────────────
@@ -749,8 +775,7 @@ function openSearchOverlay() {
     const product = getState().products.find(p => p.id === btn.dataset.id);
     if (product) {
       closeSearchOverlay();
-      openModal(product);
-      history.replaceState(null, '', `#shop/product/${product.id}`);
+      goToProduct(product);
     }
   });
 
@@ -1342,51 +1367,65 @@ function shareViewTitle() {
 //   #shop                       → catálogo completo
 //   #shop/collection/<handle>   → una colección
 //   #shop/tag/<etiqueta>        → todos los productos con esa etiqueta
-//   #shop/product/<id>          → ficha de un producto (modal)
+//   #shop/product/<id>          → ficha de un producto (página dedicada)
 function handleHashRoute() {
-  const hash = location.hash;
-  if (!hash.startsWith('#shop')) return;
-
-  const path  = hash.replace('#shop', '').replace(/^\//, '');
+  const hash  = location.hash;
+  const isShop = hash.startsWith('#shop');
+  const path  = isShop ? hash.replace('#shop', '').replace(/^\//, '') : '';
   const parts = path.split('/').filter(Boolean);
 
-  // Producto → abrir su ficha
-  if (parts[0] === 'product' && parts[1]) {
+  // Producto → abrir su ficha (la URL ya la refleja, no se apila historial aquí)
+  if (isShop && parts[0] === 'product' && parts[1]) {
     const id = decodeURIComponent(parts[1]);
     const product = getState().products.find(p => String(p.id) === id);
     if (product) {
-      openModal(product);
+      openProductPage(product);
     } else {
       // Aún no cargó en el catálogo (está en un lote posterior). Se trae
       // directo por id para que un link compartido abra la ficha al instante.
-      fetchProductById(id).then(p => { if (p) openModal(p); }).catch(() => {});
+      fetchProductById(id).then(p => { if (p) openProductPage(p); }).catch(() => {});
     }
     return;
   }
 
-  // Cualquier ruta de catálogo: si había una ficha abierta, ciérrala
-  if (getState().modalProductId) closeModal();
+  // Cualquier otra ruta (catálogo, home u otra sección): si la ficha estaba
+  // abierta, se cierra. El catálogo quedó debajo intacto, así que al volver a la
+  // MISMA vista se conserva la posición y no se hace scroll; solo se baja a los
+  // productos en una navegación real a otra vista (p. ej. otra categoría).
+  const wasPageOpen = isProductPageOpen();
+  if (wasPageOpen) closeProductPage();
 
+  // Fuera de #shop no se tocan los filtros del catálogo (queda como estaba debajo).
+  if (!isShop) return;
+
+  const st = getState();
   const setSearchInput = v => document.querySelectorAll('#search-input').forEach(i => { i.value = v; });
 
+  let target, isFilterView;
   if (parts[0] === 'search' && parts[1]) {
-    // Link compartido de una búsqueda → mostrar ese grupo de productos.
     const q = decodeURIComponent(parts.slice(1).join('/'));
-    setSearchInput(q);
-    setState({ activeCollection: null, activeTag: null, searchQuery: q, currentPage: 1 });
-    scrollToProductsWhenReady();
+    target = { activeCollection: null, activeTag: null, searchQuery: q };
+    isFilterView = true;
   } else if (parts[0] === 'collection' && parts[1]) {
-    setSearchInput('');
-    setState({ activeCollection: decodeURIComponent(parts[1]), activeTag: null, searchQuery: '', currentPage: 1 });
-    scrollToProductsWhenReady(); // link de categoría → bajar a los productos
+    target = { activeCollection: decodeURIComponent(parts[1]), activeTag: null, searchQuery: '' };
+    isFilterView = true;
   } else if (parts[0] === 'tag' && parts[1]) {
-    setSearchInput('');
-    setState({ activeCollection: null, activeTag: decodeURIComponent(parts[1]), searchQuery: '', currentPage: 1 });
-    scrollToProductsWhenReady();
+    target = { activeCollection: null, activeTag: decodeURIComponent(parts[1]), searchQuery: '' };
+    isFilterView = true;
   } else {
-    setSearchInput('');
-    setState({ activeCollection: null, activeTag: null, searchQuery: '', currentPage: 1 });
+    target = { activeCollection: null, activeTag: null, searchQuery: '' };
+    isFilterView = false;
   }
+
+  const sameView = st.activeCollection === target.activeCollection
+                && st.activeTag === target.activeTag
+                && st.searchQuery === target.searchQuery;
+
+  setSearchInput(target.searchQuery);
+  setState({ ...target, currentPage: 1 });
+
+  // Bajar a los productos solo en navegación real (no al regresar a la misma vista).
+  if (isFilterView && !(wasPageOpen && sameView)) scrollToProductsWhenReady();
 }
 
 window.addEventListener('hashchange', () => {

@@ -1323,13 +1323,16 @@
 .modal-share svg { width: 16px; height: 16px; }
 
 /* ── Página de producto (ficha dedicada) ──────────────────
-   Ocupa toda la pantalla con su propio scroll; el catálogo queda debajo intacto
-   para conservar la posición al regresar. El header del sitio se mantiene visible
-   encima (por eso el z-index queda por debajo del nav). El contenido va SIN card,
-   directo sobre el fondo. */
+   Su propio scroll; el catálogo queda debajo intacto para conservar la posición al
+   regresar. Empieza JUSTO debajo del header del sitio (top: --nav-h) para que su
+   barra de scroll quede libre en todo el recorrido y el header no la tape. El
+   contenido va SIN card, directo sobre el fondo. */
 #product-page {
   position: fixed;
-  inset: 0;
+  top: var(--nav-h);           /* debajo del header: la barra de scroll no lo toca */
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 90;                 /* debajo del nav (100): el header se ve encima */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -1364,13 +1367,14 @@ body.pp-open nav { background: var(--black); }
 .pp-shell {
   max-width: 1100px;
   margin: 0 auto;
-  padding: var(--nav-h) 1.4rem 3rem;   /* deja libre el header fijo del sitio */
+  padding: 0 1.4rem 3rem;
 }
 
-/* Barra de la ficha (solo breadcrumb), pegada justo debajo del header. */
+/* Barra de la ficha (solo breadcrumb), pegada arriba del scroll (que ya empieza
+   debajo del header del sitio). */
 .pp-topbar {
   position: sticky;
-  top: var(--nav-h);
+  top: 0;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -1435,7 +1439,7 @@ body.pp-open nav { background: var(--black); }
 }
 
 @media (max-width: 768px) {
-  .pp-shell   { padding: var(--nav-h) 1rem 2.4rem; }
+  .pp-shell   { padding: 0 1rem 2.4rem; }
   .pp-main    { grid-template-columns: 1fr; gap: 1.6rem; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .pp-bc-current { max-width: 80vw; }

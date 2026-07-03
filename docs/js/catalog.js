@@ -1,6 +1,7 @@
 import { getState, setState } from './state.js';
 import { tokenize, buildCollMap, scoreProduct } from './search.js';
 import { shareLink } from './share.js';
+import { lowStockLabel } from './stock.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -516,16 +517,8 @@ export function productCardHTML(p) {
   // Productos con talla: el botón lleva a elegir talla (abre el modal), no agrega.
   const addLabel = !soldOut && tieneVariantesReales(p) ? 'Elegir talla' : 'Agregar';
 
-  // Aviso "pocas unidades" a nivel de PRODUCTO: se suman las existencias de todas
-  // las tallas disponibles, no se toma el mínimo de una sola. Antes un set con
-  // S=1, M=2, L=2 mostraba "Solo queda 1" aunque en total había 5. Si alguna talla
-  // disponible no lleva control de inventario, se trata como ilimitada y no se marca.
-  const availableVariants = p.variants.filter(v => v.availableForSale);
-  const anyUntracked = availableVariants.some(v => v.inventoryQuantity === null);
-  const totalStock = anyUntracked
-    ? null
-    : availableVariants.reduce((s, v) => s + v.inventoryQuantity, 0);
-  const lowStock = !soldOut && totalStock !== null && totalStock > 0 && totalStock <= 3;
+  // Aviso "pocas unidades" a nivel de producto (suma de todas las tallas). Ver stock.js.
+  const lowLabel = lowStockLabel(p);
 
   return `
     <article class="product-card${soldOut ? ' product-card--sold-out' : ''}" data-id="${p.id}">
@@ -540,8 +533,8 @@ export function productCardHTML(p) {
         />
         ${soldOut
           ? '<div class="product-card__badge">Agotado</div>'
-          : lowStock
-            ? `<div class="product-card__badge product-card__badge--low">${totalStock === 1 ? 'Solo queda 1' : `Últimas ${totalStock}`}</div>`
+          : lowLabel
+            ? `<div class="product-card__badge product-card__badge--low">${lowLabel}</div>`
             : ''}
         <div class="product-card__overlay">
           ${!soldOut

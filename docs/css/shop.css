@@ -1351,9 +1351,24 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: var(--black);
-  animation: modalFade 0.2s ease;
+  animation: modalFade 0.22s ease;
 }
 #product-page[hidden] { display: none; }
+
+/* Entrada elegante: el fondo aparece, la barra hace fade y la tarjeta + los
+   relacionados suben suavemente (con un leve escalonado). Se dispara solo al
+   renderizar la ficha (también al pasar a un producto relacionado). */
+@keyframes ppRise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: none; }
+}
+.pp-topbar  { animation: modalFade 0.35s ease both; }
+.pp-main    { animation: ppRise 0.42s cubic-bezier(.2, .8, .25, 1) both; }
+.pp-related { animation: ppRise 0.5s cubic-bezier(.2, .8, .25, 1) 0.06s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  #product-page, .pp-topbar, .pp-main, .pp-related { animation: none; }
+}
 
 .pp-shell {
   max-width: 1100px;

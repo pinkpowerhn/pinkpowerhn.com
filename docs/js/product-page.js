@@ -4,20 +4,22 @@
 // catálogo queda debajo intacto, así al regresar se conserva la posición del
 // scroll donde se hizo clic. La navegación (regresar/breadcrumb/carrito/tarjetas
 // relacionadas) la maneja app.js por delegación; aquí solo va lo interno de la
-// ficha (galería, tallas, agregar, compartir, visor de foto).
+// ficha (galería, tallas, agregar, compartir, visor de foto). La animación de
+// entrada es puro CSS (se dispara al renderizar).
 import { getState, setState } from './state.js';
 import { addToCart, canAddNow, getCartCount } from './cart.js';
 import { onAdded } from './aroma.js';
 import { shareLink, productShareUrl } from './share.js';
 import { productCardHTML } from './catalog.js';
+import { lowStockLabel, variantStockNote } from './stock.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect fill='%231a0a0e' width='600' height='600'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
+
+const PAGE_ID = 'product-page';
 
 let _carouselIndex   = 0;
 let _selectedVariant = null;
 let _currentProduct  = null;
-
-const PAGE_ID = 'product-page';
 
 // ── Abrir / cerrar ────────────────────────────────────────
 export function openProductPage(product) {
@@ -56,7 +58,17 @@ export function isProductPageOpen() {
   return !!(page && !page.hidden);
 }
 
-// ── Helpers de datos ──────────────────────────────────────
+// Refresca el contador del carrito de la barra superior (lo llama app.js al
+// cambiar el carrito, para que se actualice aunque se agregue desde esta ficha).
+export function refreshProductPageCart() {
+  const badge = document.getElementById('pp-cart-badge');
+  if (!badge) return;
+  const count = getCartCount();
+  badge.textContent = count;
+  badge.hidden = count === 0;
+}
+
+// ── Datos / helpers ───────────────────────────────────────
 function getDefaultVariant(product) {
   return product.variants.find(v => v.availableForSale) || product.variants[0] || null;
 }
@@ -64,17 +76,6 @@ function getDefaultVariant(product) {
 function hasRealVariants(product) {
   return product.variants.length > 1 ||
     (product.variants.length === 1 && product.variants[0].title !== 'Default Title');
-}
-
-// Nota de existencias de la talla elegida. Solo cuando esa talla lleva control de
-// inventario y quedan pocas (≤ 5), para que se vea cuánto hay de ESA talla (cada
-// talla puede tener distinta cantidad). Con bastante stock no muestra nada.
-function variantStockNote(v) {
-  if (!v || !v.availableForSale || v.inventoryQuantity === null) return '';
-  const q = v.inventoryQuantity;
-  if (q <= 0 || q > 5) return '';
-  const talla = v.title && v.title !== 'Default Title' ? ` en talla ${v.title}` : '';
-  return q === 1 ? `Solo queda 1${talla}` : `Quedan ${q}${talla}`;
 }
 
 // Colección "principal" del producto para el breadcrumb: la que se está viendo si
@@ -89,8 +90,8 @@ function primaryCollection(p) {
   return c ? { handle: c.handle, title: c.title } : null;
 }
 
-// Productos relacionados: los que comparten colección (peso 2) o etiqueta (peso 1)
-// con este. Se priorizan los disponibles y luego el puntaje. Máximo `limit`.
+// Productos relacionados: comparten colección (peso 2) o etiqueta (peso 1) con
+// este. Se priorizan los disponibles y luego el puntaje. Máximo `limit`.
 function relatedProducts(p, limit = 10) {
   const { products } = getState();
   const myColls = new Set(p.collectionHandles || []);
@@ -112,43 +113,80 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-// ── HTML de la página ─────────────────────────────────────
+const priceHN = n => n.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+
+// ── HTML: se arma por secciones para que se lea fácil ─────
 function buildPageHTML(p) {
+  return `
+    <div class="pp-shell">
+      ${buildTopbar(p)}
+      <div class="pp-main">
+        <div class="pp-gallery">${buildGallery(p)}</div>
+        ${buildInfo(p)}
+      </div>
+      ${buildRelated(p)}
+    </div>`;
+}
+
+function buildTopbar(p) {
+  const cat = primaryCollection(p);
+  const cartCount = getCartCount();
+  // Ojo: el breadcrumb va en <div>, NO en <nav>: el CSS global `nav{position:fixed}`
+  // lo convertiría en una barra fija que taparía el resto de la barra superior.
+  return `
+    <header class="pp-topbar">
+      <button class="pp-back" id="pp-back" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Regresar</span>
+      </button>
+      <div class="pp-breadcrumb" role="navigation" aria-label="Ruta de navegación">
+        <a href="#shop" data-pp-nav>Inicio</a>
+        ${cat ? `<span class="pp-bc-sep" aria-hidden="true">›</span>
+          <a href="#shop/collection/${encodeURIComponent(cat.handle)}" data-pp-nav>${esc(cat.title)}</a>` : ''}
+        <span class="pp-bc-sep" aria-hidden="true">›</span>
+        <span class="pp-bc-current" aria-current="page">${esc(p.title)}</span>
+      </div>
+      <button class="pp-cart" id="pp-cart" type="button" aria-label="Ver carrito">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>
+          <path d="M2.5 3h2l2.2 12.2a1.5 1.5 0 0 0 1.5 1.2h8.8a1.5 1.5 0 0 0 1.5-1.2L21.5 7H6"/>
+        </svg>
+        <span class="pp-cart__badge" id="pp-cart-badge"${cartCount ? '' : ' hidden'}>${cartCount}</span>
+      </button>
+    </header>`;
+}
+
+function buildGallery(p) {
   const soldOut = !p.availableForSale;
-  const price   = (_selectedVariant?.price ?? p.price)
-    .toLocaleString('es-HN', { minimumFractionDigits: 2 });
-
-  // Aviso de stock a nivel de producto: el TOTAL de todas las tallas disponibles.
-  const availVars = p.variants.filter(v => v.availableForSale);
-  const anyUntracked = availVars.some(v => v.inventoryQuantity === null);
-  const totalStock = anyUntracked ? null : availVars.reduce((s, v) => s + v.inventoryQuantity, 0);
-  const lowStock  = !soldOut && totalStock !== null && totalStock > 0 && totalStock <= 3;
-  const badgeHTML = soldOut
+  const low = soldOut ? null : lowStockLabel(p);
+  const badge = soldOut
     ? '<div class="modal-badge">Agotado</div>'
-    : lowStock
-      ? `<div class="modal-badge modal-badge--low">${totalStock === 1 ? 'Solo queda 1' : `Últimas ${totalStock}`}</div>`
-      : '';
+    : low ? `<div class="modal-badge modal-badge--low">${low}</div>` : '';
+  return `
+    <div class="modal-carousel">
+      ${buildCarousel(p.images, p.title)}
+      ${badge}
+    </div>`;
+}
 
-  // Galería (carrusel)
-  const slides = p.images.length
-    ? p.images.map((img, i) => `
+function buildCarousel(images, title) {
+  const slides = images.length
+    ? images.map((img, i) => `
         <div class="carousel-slide${i === 0 ? ' is-active' : ''}" data-index="${i}">
-          <img src="${img.url}" alt="${esc(img.altText || p.title)}"
+          <img src="${img.url}" alt="${esc(img.altText || title)}"
                loading="${i === 0 ? 'eager' : 'lazy'}" onerror="this.src='${FALLBACK_IMG}'">
         </div>`).join('')
     : `<div class="carousel-slide is-active"><div class="carousel-placeholder"></div></div>`;
 
-  const arrows = p.images.length > 1 ? `
+  const multi = images.length > 1;
+  const arrows = multi ? `
     <button class="carousel-arrow carousel-arrow--prev" id="carousel-prev" aria-label="Anterior">&#8249;</button>
     <button class="carousel-arrow carousel-arrow--next" id="carousel-next" aria-label="Siguiente">&#8250;</button>` : '';
-
-  const dots = p.images.length > 1 ? `
+  const dots = multi ? `
     <div class="carousel-dots">
-      ${p.images.map((_, i) => `
-        <button class="carousel-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Imagen ${i + 1}"></button>`).join('')}
+      ${images.map((_, i) => `<button class="carousel-dot${i === 0 ? ' is-active' : ''}" data-dot="${i}" aria-label="Imagen ${i + 1}"></button>`).join('')}
     </div>` : '';
-
-  const fitBtn = p.images.length ? `
+  const fit = images.length ? `
     <button class="carousel-fit" id="carousel-fit" type="button" aria-label="Ver la foto completa">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
@@ -156,35 +194,13 @@ function buildPageHTML(p) {
       <span class="carousel-fit__txt">Ver completa</span>
     </button>` : '';
 
-  // Breadcrumb (los enlaces son anclas nativas → cambian el hash y app.js navega)
-  const cat = primaryCollection(p);
-  // Ojo: usar <div>, NO <nav>. El CSS global `nav {position:fixed}` convertiría el
-  // breadcrumb en una barra fija que taparía el resto de la barra superior.
-  const breadcrumb = `
-    <div class="pp-breadcrumb" role="navigation" aria-label="Ruta de navegación">
-      <a href="#shop" data-pp-nav>Inicio</a>
-      ${cat ? `<span class="pp-bc-sep" aria-hidden="true">›</span>
-        <a href="#shop/collection/${encodeURIComponent(cat.handle)}" data-pp-nav>${esc(cat.title)}</a>` : ''}
-      <span class="pp-bc-sep" aria-hidden="true">›</span>
-      <span class="pp-bc-current" aria-current="page">${esc(p.title)}</span>
-    </div>`;
+  return `<div class="carousel-track" id="carousel-track">${slides}</div>${arrows}${dots}${fit}`;
+}
 
-  // Descripción
-  const descSection = p.description ? `<p class="modal-description">${p.description}</p>` : '';
-
-  // Tallas / variantes
-  const variantSection = hasRealVariants(p) ? `
-    <div class="modal-variants">
-      <p class="modal-variants__label">Talla / Variante</p>
-      <div class="modal-variants__options">
-        ${p.variants.map(v => `
-          <button
-            class="variant-btn${v.id === _selectedVariant?.id ? ' is-active' : ''}${!v.availableForSale ? ' is-unavailable' : ''}"
-            data-variant-id="${v.id}" ${!v.availableForSale ? 'disabled' : ''}
-          >${esc(v.title)}</button>`).join('')}
-      </div>
-      <p class="modal-variant-stock" id="modal-variant-stock">${variantStockNote(_selectedVariant)}</p>
-    </div>` : '';
+function buildInfo(p) {
+  const soldOut = !p.availableForSale;
+  const price   = priceHN(_selectedVariant?.price ?? p.price);
+  const desc    = p.description ? `<p class="modal-description">${p.description}</p>` : '';
 
   const atLimit    = !soldOut && _selectedVariant ? isAtLimit(_selectedVariant) : false;
   const faltaTalla = !soldOut && hasRealVariants(p) && !_selectedVariant;
@@ -194,66 +210,50 @@ function buildPageHTML(p) {
       ? `<button class="btn btn-primary" id="modal-add-btn" disabled>Elige una talla</button>`
       : `<button class="btn btn-primary" id="modal-add-btn"${atLimit ? ' disabled' : ''}>${atLimit ? 'Sin más stock' : 'Agregar al Carrito'}</button>`;
 
-  // Relacionados
+  return `
+    <div class="pp-info modal-info">
+      <p class="modal-product-name">${esc(p.title)}</p>
+      ${p.productType ? `<p class="modal-product-type">${esc(p.productType)}</p>` : ''}
+      <p class="modal-price" id="modal-price">L. ${price}</p>
+      ${soldOut ? '<p class="modal-sold-out-label">Producto agotado</p>' : ''}
+      ${desc}
+      ${buildVariants(p)}
+      <div class="modal-actions">
+        ${addBtn}
+        <button class="btn btn-outline modal-share" id="modal-share" type="button" aria-label="Compartir producto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.6" y1="10.7" x2="15.4" y2="6.3"></line><line x1="8.6" y1="13.3" x2="15.4" y2="17.7"></line>
+          </svg>
+          Compartir
+        </button>
+      </div>
+    </div>`;
+}
+
+function buildVariants(p) {
+  if (!hasRealVariants(p)) return '';
+  const opts = p.variants.map(v => `
+    <button
+      class="variant-btn${v.id === _selectedVariant?.id ? ' is-active' : ''}${!v.availableForSale ? ' is-unavailable' : ''}"
+      data-variant-id="${v.id}" ${!v.availableForSale ? 'disabled' : ''}
+    >${esc(v.title)}</button>`).join('');
+  return `
+    <div class="modal-variants">
+      <p class="modal-variants__label">Talla / Variante</p>
+      <div class="modal-variants__options">${opts}</div>
+      <p class="modal-variant-stock" id="modal-variant-stock">${variantStockNote(_selectedVariant)}</p>
+    </div>`;
+}
+
+function buildRelated(p) {
   const rel = relatedProducts(p);
-  const relatedHTML = rel.length ? `
+  if (!rel.length) return '';
+  return `
     <section class="pp-related">
       <h3 class="pp-related__title">También te puede gustar</h3>
-      <div class="product-grid pp-related__grid">
-        ${rel.map(productCardHTML).join('')}
-      </div>
-    </section>` : '';
-
-  const cartCount = getCartCount();
-
-  return `
-    <div class="pp-shell">
-      <header class="pp-topbar">
-        <button class="pp-back" id="pp-back" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-          <span>Regresar</span>
-        </button>
-        ${breadcrumb}
-        <button class="pp-cart" id="pp-cart" type="button" aria-label="Ver carrito">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>
-            <path d="M2.5 3h2l2.2 12.2a1.5 1.5 0 0 0 1.5 1.2h8.8a1.5 1.5 0 0 0 1.5-1.2L21.5 7H6"/>
-          </svg>
-          <span class="pp-cart__badge" id="pp-cart-badge"${cartCount ? '' : ' hidden'}>${cartCount}</span>
-        </button>
-      </header>
-
-      <div class="pp-main">
-        <div class="pp-gallery">
-          <div class="modal-carousel">
-            <div class="carousel-track" id="carousel-track">${slides}</div>
-            ${arrows}${dots}${fitBtn}${badgeHTML}
-          </div>
-        </div>
-        <div class="pp-info modal-info">
-          <p class="modal-product-name">${esc(p.title)}</p>
-          ${p.productType ? `<p class="modal-product-type">${esc(p.productType)}</p>` : ''}
-          <p class="modal-price" id="modal-price">L. ${price}</p>
-          ${soldOut ? '<p class="modal-sold-out-label">Producto agotado</p>' : ''}
-          ${descSection}
-          ${variantSection}
-          <div class="modal-actions">
-            ${addBtn}
-            <button class="btn btn-outline modal-share" id="modal-share" type="button" aria-label="Compartir producto">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.6" y1="10.7" x2="15.4" y2="6.3"></line><line x1="8.6" y1="13.3" x2="15.4" y2="17.7"></line>
-              </svg>
-              Compartir
-            </button>
-          </div>
-        </div>
-      </div>
-
-      ${relatedHTML}
-    </div>`;
+      <div class="product-grid pp-related__grid">${rel.map(productCardHTML).join('')}</div>
+    </section>`;
 }
 
 // ── Eventos internos de la ficha ──────────────────────────
@@ -261,7 +261,7 @@ function wirePageEvents(page, product) {
   page.querySelector('#carousel-prev')?.addEventListener('click', () => moveCarousel(-1, product));
   page.querySelector('#carousel-next')?.addEventListener('click', () => moveCarousel(+1, product));
   page.querySelectorAll('.carousel-dot').forEach(dot => {
-    dot.addEventListener('click', () => setCarouselIndex(parseInt(dot.dataset.dot, 10), page, product));
+    dot.addEventListener('click', () => setCarouselIndex(parseInt(dot.dataset.dot, 10), page));
   });
 
   const openFull = () => openLightbox(product, _carouselIndex);
@@ -269,20 +269,7 @@ function wirePageEvents(page, product) {
   page.querySelectorAll('.carousel-slide img').forEach(img => img.addEventListener('click', openFull));
 
   page.querySelectorAll('.variant-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const variant = product.variants.find(v => v.id === btn.dataset.variantId);
-      if (!variant || !variant.availableForSale) return;
-      _selectedVariant = variant;
-
-      page.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-
-      const priceEl = page.querySelector('#modal-price');
-      if (priceEl) priceEl.textContent = `L. ${variant.price.toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
-      const stockEl = page.querySelector('#modal-variant-stock');
-      if (stockEl) stockEl.textContent = variantStockNote(variant);
-      refreshAddBtn(page);
-    });
+    btn.addEventListener('click', () => selectVariant(page, product, btn.dataset.variantId));
   });
 
   page.querySelector('#modal-add-btn')?.addEventListener('click', () => {
@@ -297,23 +284,26 @@ function wirePageEvents(page, product) {
   });
 }
 
-// Refresca el contador del carrito de la barra superior (lo llama app.js al cambiar
-// el carrito, para que se actualice aunque se agregue desde esta misma ficha).
-export function refreshProductPageCart() {
-  const badge = document.getElementById('pp-cart-badge');
-  if (!badge) return;
-  const count = getCartCount();
-  badge.textContent = count;
-  badge.hidden = count === 0;
+function selectVariant(page, product, variantId) {
+  const variant = product.variants.find(v => v.id === variantId);
+  if (!variant || !variant.availableForSale) return;
+  _selectedVariant = variant;
+
+  page.querySelectorAll('.variant-btn').forEach(b =>
+    b.classList.toggle('is-active', b.dataset.variantId === variantId));
+
+  const priceEl = page.querySelector('#modal-price');
+  if (priceEl) priceEl.textContent = `L. ${priceHN(variant.price)}`;
+  const stockEl = page.querySelector('#modal-variant-stock');
+  if (stockEl) stockEl.textContent = variantStockNote(variant);
+  refreshAddBtn(page);
 }
 
 // ── Estado del botón agregar ──────────────────────────────
 function isAtLimit(variant) {
   if (variant.inventoryQuantity === null) return false; // sin control = sin límite
-  const cart = getState().cart;
-  const inCart = cart.find(i => i.variantId === variant.id);
-  const qty = inCart ? inCart.quantity : 0;
-  return qty >= variant.inventoryQuantity;
+  const inCart = getState().cart.find(i => i.variantId === variant.id);
+  return (inCart ? inCart.quantity : 0) >= variant.inventoryQuantity;
 }
 
 function refreshAddBtn(page) {
@@ -327,11 +317,10 @@ function refreshAddBtn(page) {
 // ── Carrusel ──────────────────────────────────────────────
 function moveCarousel(dir, product) {
   const total = product.images.length;
-  const page = document.getElementById(PAGE_ID);
-  setCarouselIndex((_carouselIndex + dir + total) % total, page, product);
+  setCarouselIndex((_carouselIndex + dir + total) % total, document.getElementById(PAGE_ID));
 }
 
-function setCarouselIndex(index, page, _product) {
+function setCarouselIndex(index, page) {
   if (!page) return;
   _carouselIndex = index;
   page.querySelectorAll('.carousel-slide').forEach((s, i) => s.classList.toggle('is-active', i === index));

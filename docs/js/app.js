@@ -223,6 +223,15 @@ function leaveProduct() {
   }
 }
 
+// Si se está en la ficha de un producto y el usuario navega a una categoría/etiqueta
+// (desde el menú o el buscador), hay que cerrar la ficha; si no, `body.pp-open`
+// sigue ocultando el catálogo y "no pasa nada". Devuelve true si estaba abierta.
+function closeProductIfOpen() {
+  if (!isProductPageOpen()) return false;
+  closeProductPage();
+  return true;
+}
+
 // Baja hasta el inicio de los productos (descontando el nav fijo).
 function scrollToProducts(behavior = 'smooth') {
   const grid = document.getElementById('product-grid');
@@ -516,10 +525,11 @@ document.addEventListener('click', e => {
     // productos, sin filtro). El desplegar/colapsar subcategorías queda solo en
     // el "+". Así: + abre las subcategorías, el texto entra a la categoría.
     clearSearchInput();
+    const fromProduct = closeProductIfOpen();  // si venía del detalle, cierra la ficha
     setState({ activeCollection: clicked, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
     history.replaceState(null, '', `#shop/collection/${clicked}`);
     closeMenuDrawer();
-    scrollToProductsMobile();
+    if (fromProduct) scrollToProducts('auto'); else scrollToProductsMobile();
     return;
   }
 
@@ -529,6 +539,7 @@ document.addEventListener('click', e => {
     const tag = tagBtn.dataset.tag || null;
     // Limpiar tallas y búsqueda al cambiar de etiqueta del submenú
     clearSearchInput();
+    const fromProduct = closeProductIfOpen();  // si venía del detalle, cierra la ficha
     setState({ activeTag: tag, activeSize: null, searchQuery: '', currentPage: 1 });
     // URL compartible: etiqueta sola, o la colección si eligió "Todas"
     const { activeCollection } = getState();
@@ -536,7 +547,7 @@ document.addEventListener('click', e => {
       ? `#shop/tag/${encodeURIComponent(tag)}`
       : (activeCollection ? `#shop/collection/${activeCollection}` : '#shop'));
     closeMenuDrawer();
-    scrollToProductsMobile();
+    if (fromProduct) scrollToProducts('auto'); else scrollToProductsMobile();
     return;
   }
 
@@ -741,6 +752,7 @@ function openSearchOverlay() {
     if (seeall) {
       const q = seeall.dataset.q || '';
       closeSearchOverlay();
+      closeProductIfOpen();
       const si = document.getElementById('search-input');
       if (si) si.value = q;
       setState({ searchQuery: q, activeCollection: null, activeTag: null, activeSize: null, currentPage: 1 });
@@ -754,6 +766,7 @@ function openSearchOverlay() {
     if (cat) {
       closeSearchOverlay();
       clearSearchInput();
+      closeProductIfOpen();
       if (cat.dataset.collection) {
         setState({ activeCollection: cat.dataset.collection, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
         history.replaceState(null, '', `#shop/collection/${cat.dataset.collection}`);

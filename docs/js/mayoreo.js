@@ -3,11 +3,15 @@
 // transiciones suaves (View Transitions API) y degradado elegante si el
 // navegador no la soporta.
 import { getState, setState } from './state.js';
-import { mayoreoLogin, fetchMayoreoProducts } from './api.js';
+import { mayoreoLogin, fetchMayoreoProducts, fetchConfig } from './api.js';
 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const USER_KEY  = 'pinkpower_mayoreo_user';
 const TEL_KEY   = 'pinkpower_mayoreo_tel';
+
+// ¿La admin tiene habilitados los catálogos para mayoristas? Se refresca en cada
+// carga de sesión (enterMayoreo). Por defecto true: un fallo de red no oculta nada.
+let catalogoHabilitado = true;
 
 // Envuelve un cambio de DOM en una transición de vista (si está disponible).
 function withViewTransition(fn) {
@@ -114,6 +118,8 @@ async function onSubmit(e) {
 
 // ── Entrar / salir del modo mayoreo ───────────────────────
 async function enterMayoreo(token, nombre, telefono = '') {
+  // El flag de catálogos se pide en paralelo; no es crítico para entrar.
+  const cfgPromise = fetchConfig().catch(() => null);
   let productos;
   try {
     productos = await fetchMayoreoProducts(token);
@@ -126,6 +132,8 @@ async function enterMayoreo(token, nombre, telefono = '') {
     }
     return;
   }
+  const cfg = await cfgPromise;
+  catalogoHabilitado = !cfg || cfg.catalogo_habilitado !== false;
   // Actualización directa (sin view-transition: chocaba con el cierre del modal
   // y dejaba la pantalla en el estado viejo hasta refrescar).
   document.body.classList.add('is-mayoreo');
@@ -185,7 +193,7 @@ function mountAccount(nombre) {
     menu.className = 'my-account__menu';
     menu.hidden = true;
     menu.innerHTML = `
-      <a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>
+      ${catalogoHabilitado ? '<a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>' : ''}
       <button class="my-account__logout" id="my-logout">Cerrar sesión</button>`;
     document.body.appendChild(menu);
 
@@ -231,7 +239,7 @@ function mountDrawerAccount(nombre) {
     block.innerHTML = `
       <p class="my-drawer-account__hello">Sesión de mayoreo</p>
       <p class="my-drawer-account__name"></p>
-      <a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>
+      ${catalogoHabilitado ? '<a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>' : ''}
       <button class="my-drawer-account__logout" id="my-drawer-logout">Cerrar sesión</button>`;
     panel.appendChild(block);
     block.querySelector('#my-drawer-logout').addEventListener('click', exitMayoreo);

@@ -126,6 +126,16 @@ export async function initBuilder() {
       fetchCollections(),
       listarCatalogos(state.token).catch(() => ({ dias: null, catalogos: [] })),
     ]);
+    // La admin puede tener los catálogos deshabilitados: no mostramos el módulo.
+    if (lista.habilitado === false) {
+      root.innerHTML = `<div class="cb-empty">
+        <div class="cb-empty__icon">🔒</div>
+        <h2>Catálogos no disponibles</h2>
+        <p>Esta función está deshabilitada por el momento.</p>
+        <a class="cb-btn cb-btn--primary" href="/">Volver a la tienda</a>
+      </div>`;
+      return;
+    }
     state.productos = prods;
     state.diasConfig = lista.dias;
     // Solo colecciones que tienen al menos un producto de mayoreo.

@@ -126,6 +126,14 @@
       </div>
     </div>
 
+    <!-- Habilitar catálogos para mayoristas -->
+    <div class="card">
+      <h2>🛍️ Catálogos de mayoristas</h2>
+      <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links de catálogos ya compartidos siguen funcionando.</p>
+      <label class="chk"><input type="checkbox" id="catalogo-habilitado" /> Permitir catálogos a las mayoristas</label>
+      <p class="muted" id="catalogo-hab-estado" style="margin:0; font-size:0.8rem"></p>
+    </div>
+
     <!-- Duración de catálogos -->
     <div class="card">
       <h2>🔗 Duración de los catálogos</h2>
@@ -236,6 +244,7 @@ async function loadAll() {
     const cfg = await api('/admin/config');
     $('min-input').value = cfg.minimo_mensual || '';
     setDiasUI(cfg.catalogo_dias);
+    setCatalogoHabUI(cfg.catalogo_habilitado !== false);
     setOcultarUI(!!cfg.ocultar_agotados);
     renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }
@@ -404,6 +413,22 @@ $('dias-save').addEventListener('click', async () => {
     setDiasUI(cfg.catalogo_dias);
     panelMsg('Duración de catálogos guardada.');
   } catch (ex) { panelMsg(ex.message, false); }
+});
+
+// ── Habilitar catálogos de mayoristas (se guarda al tocar el interruptor) ──
+function setCatalogoHabUI(on) {
+  $('catalogo-habilitado').checked = on;
+  $('catalogo-hab-estado').textContent = on
+    ? 'Activado: las mayoristas pueden ver y crear catálogos.'
+    : 'Desactivado: la opción de catálogos está oculta para las mayoristas.';
+}
+$('catalogo-habilitado').addEventListener('change', async (e) => {
+  const on = e.target.checked;
+  try {
+    const cfg = await api('/admin/config', { method: 'PUT', body: JSON.stringify({ catalogo_habilitado: on }) });
+    setCatalogoHabUI(cfg.catalogo_habilitado !== false);
+    panelMsg(on ? 'Catálogos habilitados para mayoristas.' : 'Catálogos deshabilitados para mayoristas.');
+  } catch (ex) { panelMsg(ex.message, false); e.target.checked = !on; }
 });
 
 // ── Ocultar agotados (se guarda al tocar el interruptor) ──

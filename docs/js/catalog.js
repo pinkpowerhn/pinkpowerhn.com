@@ -81,6 +81,45 @@ const SUBCAT_ORDER = {
   'accesorios': ['Bolsos y Carteras', 'Llaveros y Monederos', 'Maquillaje', 'Holder para Antibacterial', 'Difusores para Carro', 'Difusores Ambientales de Pared', 'Candelabro para Velas'],
 };
 
+// Conteo global de cada etiqueta (en cuántos productos aparece en toda la
+// tienda). Sirve para medir la "contención" de una etiqueta en una colección.
+export function collectionTagCounts(products) {
+  const globalTag = {};
+  for (const p of products)
+    for (const t of new Set(p.tags || [])) globalTag[t] = (globalTag[t] || 0) + 1;
+  return globalTag;
+}
+
+// Etiquetas (subcategorías) a mostrar dentro de una colección. Misma lógica que
+// usa el sidebar, extraída para que el megamenú de escritorio muestre EXACTAMENTE
+// lo mismo. Si la colección está en SUBCAT_ORDER, se usa esa lista curada; si no,
+// se detectan las etiquetas "propias" y se descartan las triviales/ajenas.
+export function subcategoriesFor(c, products, globalTag) {
+  globalTag = globalTag || collectionTagCounts(products);
+
+  const ordenManual = SUBCAT_ORDER[c.handle];
+  if (ordenManual) return ordenManual.slice();
+
+  const prodsInC = products.filter(p => p.collectionHandles.includes(c.handle));
+  const sizeC = prodsInC.length || 1;
+  const countInC = {};
+  for (const p of prodsInC) for (const t of new Set(p.tags || [])) countInC[t] = (countInC[t] || 0) + 1;
+
+  const NATIVE = 0.85;   // contención mínima para que una etiqueta sea "propia"
+  const esTrivial = t => countInC[t] >= 0.9 * sizeC;
+
+  const propias = new Set(
+    Object.keys(countInC).filter(t => !esTrivial(t) && countInC[t] / globalTag[t] >= NATIVE));
+  const cubiertos = prodsInC.filter(p => (p.tags || []).some(t => propias.has(t))).length;
+  const bienCubierta = cubiertos / sizeC >= 0.6;
+
+  let tags = bienCubierta
+    ? [...propias].sort()
+    : Object.keys(countInC).filter(t => !esTrivial(t)).sort();
+  if (!tags.length) tags = Object.keys(countInC).sort();
+  return tags;
+}
+
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────
 // Top level = Colecciones. Click en una colección la expande y muestra sus
 // etiquetas. Todo dinámico desde Shopify — no hay nada hardcoded.
@@ -95,9 +134,7 @@ export function renderCollectionSidebar(collections) {
   // etiqueta vive dentro de una colección. Una etiqueta cuyos productos viven casi
   // todos aquí es "propia" de la colección; si está repartida (p. ej. un holder de
   // Accesorios etiquetado con el producto que sostiene) no es propia y no se cuela.
-  const globalTag = {};
-  for (const p of products)
-    for (const t of new Set(p.tags || [])) globalTag[t] = (globalTag[t] || 0) + 1;
+  const globalTag = collectionTagCounts(products);
 
   // ── Build sidebar HTML ──
   // Las colecciones van directo (sin título "Colecciones" ni botón "Todos":
@@ -115,51 +152,9 @@ export function renderCollectionSidebar(collections) {
     `);
 
     if (isOpen) {
-      // Qué etiquetas mostrar en el submenú de esta colección.
-      //
-      // Hay dos tipos de colección y se detectan solos (sin nombres fijos):
-      //  • De categoría (Accesorios, Hogar, Perfumes…): sus productos ya quedan
-      //    cubiertos por sus etiquetas "propias" (las que casi solo viven aquí).
-      //    Mostramos solo esas, para no colar etiquetas ajenas — p. ej. en
-      //    Accesorios los "holders" llevan también la etiqueta del producto que
-      //    sostienen, pero esa etiqueta vive mayormente en otra colección.
-      //  • Transversal (Hombres): sus propias cubren muy poco porque agrupa por
-      //    público, no por categoría. Ahí el filtro útil es la categoría real de
-      //    cada producto (Cremas, Jabones, Sets de Perfume…), así que mostramos
-      //    todas las subcategorías presentes.
-      // En ambos casos se oculta la etiqueta que está sobre casi todos los
-      // productos (no filtra nada útil, p. ej. "Hombre" dentro de Hombres).
-      const prodsInC = products.filter(p => p.collectionHandles.includes(c.handle));
-      const sizeC = prodsInC.length || 1;
-      const countInC = {};
-      for (const p of prodsInC) for (const t of new Set(p.tags || [])) countInC[t] = (countInC[t] || 0) + 1;
-
-      const NATIVE = 0.85;   // contención mínima para que una etiqueta sea "propia"
-      const esTrivial = t => countInC[t] >= 0.9 * sizeC;
-
-      // Propias: casi todos sus productos (en toda la tienda) viven en esta
-      // colección. Una etiqueta puede ser propia de más de una colección a la vez
-      // (p. ej. "Sets de Perfume" es propia de Perfumes y de Sets y Regalos).
-      const propias = new Set(
-        Object.keys(countInC).filter(t => !esTrivial(t) && countInC[t] / globalTag[t] >= NATIVE));
-      const cubiertos = prodsInC.filter(p => (p.tags || []).some(t => propias.has(t))).length;
-      const bienCubierta = cubiertos / sizeC >= 0.6;
-
-      let tagsInCollection;
-      const ordenManual = SUBCAT_ORDER[c.handle];
-      if (ordenManual) {
-        // Lista manual del cliente: exactamente estas etiquetas, en este orden.
-        // Se muestran todas (la lista es curada) sin depender de cuántos productos
-        // hayan cargado ya, para que no falte ninguna mientras la tienda carga.
-        tagsInCollection = ordenManual.slice();
-      } else {
-        tagsInCollection = bienCubierta
-          ? [...propias].sort()
-          : Object.keys(countInC).filter(t => !esTrivial(t)).sort();
-        // Salvaguarda para colecciones chicas (p. ej. 1–2 productos): si quedó
-        // vacía pero sí hay etiquetas, las mostramos (mejor que "Sin etiquetas").
-        if (!tagsInCollection.length) tagsInCollection = Object.keys(countInC).sort();
-      }
+      // Qué etiquetas mostrar en el submenú de esta colección (ver subcategoriesFor:
+      // usa la lista curada del cliente o detecta las etiquetas "propias").
+      const tagsInCollection = subcategoriesFor(c, products, globalTag);
 
       if (tagsInCollection.length) {
         sections.push(`
@@ -179,6 +174,44 @@ export function renderCollectionSidebar(collections) {
   //  el filtro de precio se quitó del menú a pedido del cliente.)
 
   sidebar.innerHTML = sections.join('');
+}
+
+// ── Megamenú de escritorio (hover sobre "Productos") ──────
+// Panel que baja del nav al hacer hover en "Productos". A la izquierda una cinta
+// con las colecciones; al pasar sobre una, a la derecha aparecen sus
+// subcategorías. Click en la colección → entra a toda la categoría; click en una
+// subcategoría → filtra por esa etiqueta. Misma data que el sidebar móvil.
+const _megaArrow = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+
+export function renderMegaMenu(collections) {
+  const rail = document.getElementById('mega-rail');
+  const panels = document.getElementById('mega-panels');
+  if (!rail || !panels) return;
+
+  const { products } = getState();
+  const globalTag = collectionTagCounts(products);
+
+  rail.innerHTML = collections.map((c, i) => `
+    <button class="mega-col${i === 0 ? ' is-active' : ''}" data-handle="${c.handle}" data-idx="${i}" role="tab" aria-selected="${i === 0}">
+      <span class="mega-col__ic">${iconFor(c.handle)}</span>
+      <span class="mega-col__name">${c.title}</span>
+      <span class="mega-col__chev" aria-hidden="true">›</span>
+    </button>
+  `).join('');
+
+  panels.innerHTML = collections.map((c, i) => {
+    const tags = subcategoriesFor(c, products, globalTag);
+    const grid = tags.length
+      ? `<div class="mega-panel__grid">${tags.map(t =>
+          `<button class="mega-tag" data-handle="${c.handle}" data-tag="${escapeAttr(t)}">${t}</button>`).join('')}</div>`
+      : `<p class="mega-panel__empty">Ver todos los productos de esta colección.</p>`;
+    return `
+      <div class="mega-panel${i === 0 ? ' is-active' : ''}" data-idx="${i}" role="tabpanel">
+        <button class="mega-panel__all" data-handle="${c.handle}">Ver todo ${c.title} ${_megaArrow}</button>
+        ${grid}
+      </div>
+    `;
+  }).join('');
 }
 
 // ── Barra de tallas en el toolbar (solo en la categoría de ropa interior) ──

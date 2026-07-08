@@ -96,6 +96,147 @@
 
     nav ul a:hover { color: var(--pink); }
 
+    /* ── Megamenú de "Productos" (escritorio) ── */
+    .nav-mega-item { position: static; }
+
+    .mega {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      padding: 0.5rem 3rem 1.6rem;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: opacity 0.26s ease, transform 0.26s ease, visibility 0s linear 0.26s;
+      pointer-events: none;
+    }
+    .mega.is-open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      transition: opacity 0.26s ease, transform 0.26s ease;
+      pointer-events: auto;
+    }
+
+    .mega__card {
+      display: grid;
+      grid-template-columns: minmax(210px, 250px) 1fr;
+      width: min(880px, 100%);
+      background: #fff;
+      border: 1px solid rgba(224, 0, 110, 0.12);
+      border-radius: 18px;
+      box-shadow: 0 30px 60px -26px rgba(224, 0, 110, 0.45);
+      overflow: hidden;
+    }
+
+    /* Cinta izquierda con las colecciones */
+    .mega__rail {
+      background: var(--dark);
+      padding: 0.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border-right: 1px solid rgba(224, 0, 110, 0.1);
+    }
+    .mega-col {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      width: 100%;
+      padding: 0.62rem 0.75rem;
+      background: none;
+      border: none;
+      border-radius: 11px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--white);
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+    .mega-col__ic { display: flex; flex-shrink: 0; color: var(--pink); }
+    .mega-col__ic svg { width: 20px; height: 20px; }
+    .mega-col__name {
+      flex: 1;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .mega-col__chev {
+      font-size: 1.1rem;
+      line-height: 1;
+      color: var(--pink);
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .mega-col:hover,
+    .mega-col.is-active { background: #fff; color: var(--pink-dk); }
+    .mega-col.is-active .mega-col__chev { opacity: 1; transform: translateX(0); }
+
+    /* Panel derecho con las subcategorías */
+    .mega__panels { position: relative; padding: 1.3rem 1.5rem; min-height: 236px; }
+    .mega-panel {
+      position: absolute;
+      inset: 1.3rem 1.5rem;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(8px);
+      transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
+      pointer-events: none;
+    }
+    .mega-panel.is-active {
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      pointer-events: auto;
+    }
+    .mega-panel__all {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 1rem;
+      padding: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--pink-dk);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.16s ease;
+    }
+    .mega-panel__all svg { width: 14px; height: 14px; transition: transform 0.18s ease; }
+    .mega-panel__all:hover { color: var(--pink); }
+    .mega-panel__all:hover svg { transform: translateX(3px); }
+    .mega-panel__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.15rem 1.4rem;
+    }
+    .mega-tag {
+      text-align: left;
+      padding: 0.5rem 0.5rem;
+      background: none;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      color: rgba(26, 10, 18, 0.72);
+      font-family: inherit;
+      font-size: 0.82rem;
+      transition: color 0.16s ease, background 0.16s ease;
+    }
+    .mega-tag:hover { color: var(--pink); background: var(--dark); }
+    .mega-panel__empty { color: rgba(26, 10, 18, 0.5); font-size: 0.82rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mega, .mega.is-open,
+      .mega-panel, .mega-panel.is-active { transition: none; }
+    }
+
     /* Botón hamburguesa — oculto en escritorio */
     .nav-toggle {
       display: none;
@@ -811,6 +952,9 @@
       }
       nav ul li:last-child a { border-bottom: none; }
 
+      /* El megamenú es solo de escritorio; en móvil manda la cinta lateral */
+      .mega { display: none; }
+
       .nav-toggle { display: flex; }
       .nav-cta { display: none; }
 
@@ -868,7 +1012,15 @@
     <a href="#" class="nav-logo"><img src="img/logo.png" alt="PinkPower HN" /></a>
 
     <ul>
-      <li><a href="#shop">Productos</a></li>
+      <li class="nav-mega-item">
+        <a href="#shop" id="nav-productos" aria-haspopup="true" aria-expanded="false">Productos</a>
+        <div class="mega" id="mega-menu" aria-hidden="true">
+          <div class="mega__card">
+            <div class="mega__rail" id="mega-rail" role="tablist" aria-label="Colecciones"></div>
+            <div class="mega__panels" id="mega-panels"></div>
+          </div>
+        </div>
+      </li>
       <li><a href="#ubicacion">Ubicación</a></li>
       <li><a href="https://wa.me/" class="wa-link" target="_blank" rel="noopener noreferrer">WhatsApp</a></li>
     </ul>

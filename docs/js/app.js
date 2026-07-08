@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash } from './catalog.js';
 import { openProductPage, closeProductPage, isProductPageOpen } from './product-page.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -32,6 +32,7 @@ document.addEventListener('touchstart', () => {}, { passive: true });
 document.addEventListener('DOMContentLoaded', async () => {
   initState();
   initMayoreo();
+  initMegaMenu();
   updateCartBadge();
   renderSkeletons(12);
 
@@ -169,6 +170,7 @@ on('statechange', state => {
   if (gridChanged && products.length) {
     renderProductGrid(products, collections, activeCollection, searchQuery);
     renderCollectionSidebar(collections);
+    renderMegaMenu(collections);
     renderSizeBar(collections);
   }
 
@@ -494,6 +496,43 @@ document.addEventListener('click', e => {
   if (e.target.closest('.menu-links a')) {
     closeMenuDrawer();
     // sin return: el ancla navega normalmente
+  }
+
+  // ── Megamenú de escritorio ──
+  // Clic en "Productos": va al catálogo (todos) y cierra el panel.
+  if (e.target.closest('#nav-productos')) {
+    closeMegaMenu();
+    // sin return: el ancla #shop navega/hace scroll normalmente
+  }
+
+  // Colección del megamenú (cinta izquierda o "Ver todo X") → toda la categoría.
+  const megaCol = e.target.closest('.mega-col, .mega-panel__all');
+  if (megaCol) {
+    const handle = megaCol.dataset.handle;
+    if (!handle) return;
+    clearSearchInput();
+    const fromProduct = closeProductIfOpen();
+    setState({ activeCollection: handle, activeTag: null, activeSize: null, searchQuery: '', currentPage: 1 });
+    history.replaceState(null, '', `#shop/collection/${handle}`);
+    closeMegaMenu();
+    scrollToProducts(fromProduct ? 'auto' : 'smooth');
+    return;
+  }
+
+  // Subcategoría del megamenú → filtra por esa etiqueta dentro de la colección.
+  const megaTag = e.target.closest('.mega-tag');
+  if (megaTag) {
+    const handle = megaTag.dataset.handle;
+    const tag = megaTag.dataset.tag || null;
+    clearSearchInput();
+    const fromProduct = closeProductIfOpen();
+    setState({ activeCollection: handle, activeTag: tag, activeSize: null, searchQuery: '', currentPage: 1 });
+    history.replaceState(null, '', tag
+      ? `#shop/tag/${encodeURIComponent(tag)}`
+      : `#shop/collection/${handle}`);
+    closeMegaMenu();
+    scrollToProducts(fromProduct ? 'auto' : 'smooth');
+    return;
   }
 
   // Colección. El chevron (+/−) solo despliega/colapsa el submenú; el NOMBRE
@@ -904,6 +943,60 @@ function closeCart() {
     drawer.hidden = true;
   };
   panel.addEventListener('animationend', finish);
+}
+
+// ── Megamenú de escritorio (hover en "Productos") ───────────
+// Abre al pasar el mouse por "Productos" o el propio panel; cierra al salir con
+// un pequeño retardo (para poder mover el mouse del enlace al panel sin que se
+// cierre). Al pasar sobre una colección de la cinta, cambia el panel de la
+// derecha. Los clics (colección/subcategoría) los maneja la delegación global.
+function closeMegaMenu() {
+  const mega = document.getElementById('mega-menu');
+  if (!mega) return;
+  mega.classList.remove('is-open');
+  mega.setAttribute('aria-hidden', 'true');
+  document.getElementById('nav-productos')?.setAttribute('aria-expanded', 'false');
+}
+
+function setMegaActive(idx) {
+  document.querySelectorAll('.mega-col').forEach(c => {
+    const on = c.dataset.idx === idx;
+    c.classList.toggle('is-active', on);
+    c.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.mega-panel').forEach(p =>
+    p.classList.toggle('is-active', p.dataset.idx === idx));
+}
+
+function initMegaMenu() {
+  const item = document.querySelector('.nav-mega-item');
+  const mega = document.getElementById('mega-menu');
+  if (!item || !mega) return;
+
+  let closeT = null;
+  const openMega = () => {
+    // Solo en escritorio (en móvil el panel está oculto y manda la cinta lateral).
+    if (!window.matchMedia('(min-width: 769px)').matches) return;
+    clearTimeout(closeT);
+    mega.classList.add('is-open');
+    mega.setAttribute('aria-hidden', 'false');
+    document.getElementById('nav-productos')?.setAttribute('aria-expanded', 'true');
+  };
+  const scheduleClose = () => { clearTimeout(closeT); closeT = setTimeout(closeMegaMenu, 140); };
+
+  item.addEventListener('mouseenter', openMega);
+  item.addEventListener('mouseleave', scheduleClose);
+  // Accesibilidad con teclado: al enfocar/tabular dentro, se abre.
+  item.addEventListener('focusin', openMega);
+  item.addEventListener('focusout', e => {
+    if (!item.contains(e.relatedTarget)) scheduleClose();
+  });
+
+  // Pasar el mouse por una colección de la cinta cambia el panel derecho.
+  document.getElementById('mega-rail')?.addEventListener('mouseover', e => {
+    const col = e.target.closest('.mega-col');
+    if (col) setMegaActive(col.dataset.idx);
+  });
 }
 
 // ── Cinta lateral del menú de productos (con animación) ──────

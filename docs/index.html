@@ -104,20 +104,21 @@
       top: 100%;
       left: 0;
       right: 0;
+      margin-top: -14px;          /* sube la tarjeta para que quede pegada al navbar */
       display: flex;
       justify-content: center;
-      padding: 0.5rem 3rem 1.6rem;
+      padding: 0 3rem 1.6rem;
       opacity: 0;
       visibility: hidden;
-      transform: translateY(-10px);
-      transition: opacity 0.26s ease, transform 0.26s ease, visibility 0s linear 0.26s;
+      transform: translateY(-8px);
+      transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
       pointer-events: none;
     }
     .mega.is-open {
       opacity: 1;
       visibility: visible;
       transform: translateY(0);
-      transition: opacity 0.26s ease, transform 0.26s ease;
+      transition: opacity 0.22s ease, transform 0.22s ease;
       pointer-events: auto;
     }
 
@@ -175,23 +176,16 @@
     .mega-col.is-active { background: #fff; color: var(--pink-dk); }
     .mega-col.is-active .mega-col__chev { opacity: 1; transform: translateX(0); }
 
-    /* Panel derecho con las subcategorías */
-    .mega__panels { position: relative; padding: 1.3rem 1.5rem; min-height: 236px; }
-    .mega-panel {
-      position: absolute;
-      inset: 1.3rem 1.5rem;
-      opacity: 0;
-      visibility: hidden;
-      transform: translateX(8px);
-      transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s linear 0.22s;
-      pointer-events: none;
-    }
-    .mega-panel.is-active {
-      opacity: 1;
-      visibility: visible;
-      transform: none;
-      transition: opacity 0.22s ease, transform 0.22s ease;
-      pointer-events: auto;
+    /* Panel derecho con las subcategorías. Solo se muestra el activo (nunca dos a
+       la vez), con una animación de entrada limpia — así al pasar entre
+       colecciones no se enciman ni parpadean. La altura mínima mantiene la
+       tarjeta estable aunque cada colección tenga distinta cantidad de etiquetas. */
+    .mega__panels { position: relative; padding: 1.3rem 1.5rem; min-height: 232px; }
+    .mega-panel { display: none; }
+    .mega-panel.is-active { display: block; animation: megaPanelIn 0.2s ease; }
+    @keyframes megaPanelIn {
+      from { opacity: 0; transform: translateX(10px); }
+      to   { opacity: 1; transform: none; }
     }
     .mega-panel__all {
       display: inline-flex;
@@ -233,8 +227,8 @@
     .mega-panel__empty { color: rgba(26, 10, 18, 0.5); font-size: 0.82rem; }
 
     @media (prefers-reduced-motion: reduce) {
-      .mega, .mega.is-open,
-      .mega-panel, .mega-panel.is-active { transition: none; }
+      .mega, .mega.is-open { transition: none; }
+      .mega-panel.is-active { animation: none; }
     }
 
     /* Botón hamburguesa — oculto en escritorio */

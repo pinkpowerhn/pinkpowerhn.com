@@ -196,10 +196,10 @@
 }
 .my-account__link:hover { background: #fff0f6; }
 
-/* Enlace discreto en el footer */
-#mayoreo-access { cursor: pointer; }
-/* Si ya hay sesión de mayoreo, se oculta el acceso del footer. */
-body.is-mayoreo #mayoreo-access-item { display: none; }
+/* Acceso a mayoreo: aparece en el header, en la cinta lateral (móvil) y en el footer */
+.mayoreo-access { cursor: pointer; }
+/* Si ya hay sesión de mayoreo, se ocultan todos los accesos (manda el menú de cuenta). */
+body.is-mayoreo .mayoreo-access-item { display: none; }
 
 /* ── Sesión de mayoreo dentro de la cinta lateral (móvil) ── */
 /* En escritorio mandamos el dropdown del nav: este bloque queda oculto. */

@@ -263,8 +263,20 @@ export function hasMayoreoSession() {
 
 export function initMayoreo() {
   ensureMarkup();
-  const link = document.getElementById('mayoreo-access');
-  if (link) link.addEventListener('click', e => { e.preventDefault(); openModal(); });
+  // El acceso está en varios lugares (header, cinta lateral y footer), así que se
+  // escucha por delegación. Si el clic viene de la cinta lateral, primero se cierra
+  // (la cinta va por encima del modal) y luego se abre el login.
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.mayoreo-access')) return;
+    e.preventDefault();
+    const drawer = document.getElementById('menu-drawer');
+    if (drawer && !drawer.hidden) {
+      document.getElementById('menu-close')?.click();
+      setTimeout(openModal, 260);   // espera a que termine de cerrarse
+      return;
+    }
+    openModal();
+  });
 }
 
 // Restaura la sesión guardada (se llama cuando el catálogo normal ya cargó).

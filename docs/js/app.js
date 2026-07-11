@@ -250,47 +250,58 @@ function scrollToProducts(behavior = 'smooth') {
 // que el salto no dispare cargas, se baja de una vez, y se reactiva cuando el
 // usuario vuelve a subir hacia la parrilla. Es instantáneo: no se toca el DOM.
 function scrollToLocation() {
-  const go = () => {
-    pauseInfinite();
-    const sec = document.getElementById('ubicacion');
-    if (!sec) return;
-    const navOffset = 80;
-    const top = sec.getBoundingClientRect().top + window.scrollY - navOffset;
-    window.scrollTo({ top, behavior: 'smooth' });
+  // pauseInfinite suspende el scroll infinito (frena cargas que corran la sección).
+  // El salto es INSTANTÁNEO a propósito: mientras el streaming de productos sigue,
+  // cada lote rehace grid.innerHTML y eso cancelaba un scroll suave en curso, así
+  // que "tardaba" en llegar. Un salto instantáneo no se puede cancelar. Además se
+  // reafirma la posición mientras dura el streaming, por si algún re-render la mueve,
+  // y se suelta apenas el usuario decide desplazarse (rueda o touch).
+  pauseInfinite();
+  const sec = document.getElementById('ubicacion');
+  if (!sec) return;
+  const navOffset = 80;
+  // OJO: behavior 'instant' (no 'auto'). 'auto' respeta el scroll-behavior:smooth
+  // del CSS y haría un scroll suave — lento y cancelable por los re-render. 'instant'
+  // salta de una.
+  const pin = () => window.scrollTo({
+    top: sec.getBoundingClientRect().top + window.scrollY - navOffset, behavior: 'instant' });
+
+  pin();   // baja de inmediato, sin retardo
+
+  let ticks = 0;
+  const stop = () => {
+    clearInterval(iv);
+    window.removeEventListener('wheel', stop);
+    window.removeEventListener('touchmove', stop);
     armInfiniteResume();
   };
-  // Si todavía llega el streaming de productos (cada lote re-renderiza la parrilla
-  // y repone el centinela), se espera a que termine para que la pausa no se pierda.
-  // En el uso real ya cargó, así que es inmediato.
-  if (getState().productsLoaded) { go(); return; }
-  const t = setInterval(() => {
-    if (getState().productsLoaded) { clearInterval(t); go(); }
-  }, 100);
-  setTimeout(() => clearInterval(t), 8000);   // tope de seguridad
+  const iv = setInterval(() => {
+    pin();
+    if (getState().productsLoaded || ++ticks > 60) stop();   // hasta que cargue todo (tope ~5 s)
+  }, 80);
+  // Si el usuario empieza a desplazarse, dejamos de reafirmar al instante.
+  window.addEventListener('wheel', stop, { passive: true });
+  window.addEventListener('touchmove', stop, { passive: true });
 }
 
 // Reactiva el scroll infinito cuando el usuario sube y el centinela vuelve a quedar
 // por debajo de la vista. Así, al reconectar el observer, no dispara una carga que
-// mueva la página estando en la ubicación; la carga vuelve al bajar de nuevo.
-// Importante: se empieza a vigilar el regreso SOLO cuando el scroll hacia la
-// ubicación ya terminó (scrollend); si no, la propia bajada cumpliría la condición
-// y reactivaría el observer a medio camino, corriendo la sección.
+// mueva la página estando en la ubicación; la carga vuelve al bajar de nuevo. Se
+// arma cuando ya estamos posados en la ubicación (scroll abajo), así que la
+// condición empieza en falso y solo se cumple al subir de vuelta hacia la parrilla.
+// (Además, si el usuario navega a otra colección, catalog.js levanta la suspensión.)
 function armInfiniteResume() {
-  const watchScrollUp = () => {
-    const onScroll = () => {
-      const sent = document.getElementById('grid-sentinel');
-      if (!sent) { cleanup(); return; }   // todo cargado o parrilla rehecha
-      const sentTop = sent.getBoundingClientRect().top + window.scrollY;
-      if (window.scrollY + window.innerHeight < sentTop) {
-        resumeInfinite();
-        cleanup();
-      }
-    };
-    const cleanup = () => window.removeEventListener('scroll', onScroll);
-    window.addEventListener('scroll', onScroll, { passive: true });
+  const onScroll = () => {
+    const sent = document.getElementById('grid-sentinel');
+    if (!sent) { cleanup(); return; }   // todo cargado o parrilla rehecha
+    const sentTop = sent.getBoundingClientRect().top + window.scrollY;
+    if (window.scrollY + window.innerHeight < sentTop) {
+      resumeInfinite();
+      cleanup();
+    }
   };
-  if ('onscrollend' in window) window.addEventListener('scrollend', watchScrollUp, { once: true });
-  else setTimeout(watchScrollUp, 1200);   // navegadores sin scrollend
+  const cleanup = () => window.removeEventListener('scroll', onScroll);
+  window.addEventListener('scroll', onScroll, { passive: true });
 }
 
 // En móvil, baja a los productos tras elegir un filtro.

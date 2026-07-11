@@ -11,6 +11,8 @@ const BATCH = 24;
 let _gridFiltered = [];   // lista filtrada actual (de donde se cargan más al bajar)
 let _gridShown = 0;       // cuántas tarjetas hay puestas en la grilla
 let _gridIO = null;       // IntersectionObserver del centinela del fondo
+let _infiniteSuspended = false;  // true al ir a "Ubicación": el centinela no carga
+let _lastViewKey = null;         // vista actual (para saber cuándo se navegó de verdad)
 
 // ── Skeletons ─────────────────────────────────────────────
 export function renderSkeletons(n = 8) {
@@ -439,6 +441,17 @@ export function renderProductGrid(products, collections, activeCollection, searc
   renderActiveFilters(collections);
 
   const { activeSize, activeTag, priceMin, priceMax, sortBy, currentPage, productsLoaded, hideSoldOut } = getState();
+
+  // Solo un cambio de vista REAL (navegar a otra colección/etiqueta/búsqueda/orden)
+  // levanta la suspensión del scroll infinito que pudo dejar un viaje a "Ubicación".
+  // Un re-render por streaming mantiene la MISMA vista, así que ahí la suspensión se
+  // conserva y la sección de abajo no se mueve. El primer render (_lastViewKey null)
+  // tampoco cuenta: si contara, un clic a "Ubicación" durante los esqueletos se
+  // perdería al llegar el primer lote de productos.
+  const viewKey = [activeCollection, activeTag, searchQuery, activeSize, priceMin, priceMax, sortBy, hideSoldOut].join('|');
+  if (_lastViewKey !== null && viewKey !== _lastViewKey) _infiniteSuspended = false;
+  _lastViewKey = viewKey;
+
   let filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
 
   // Ocultar agotados si la admin activó esa opción (temporal, desde el panel).
@@ -495,6 +508,7 @@ function _teardownSentinel() {
 
 // Carga el siguiente lote de productos al fondo de la grilla (sin recargarla).
 function _loadMore() {
+  if (_infiniteSuspended) return;   // en pausa (yendo a "Ubicación")
   const grid = document.getElementById('product-grid');
   if (!grid) return;
   if (_gridShown >= _gridFiltered.length) { _teardownSentinel(); return; }
@@ -504,17 +518,21 @@ function _loadMore() {
   if (_gridShown >= _gridFiltered.length) _teardownSentinel();
 }
 
-// Pausa el scroll infinito: desconecta el observer pero deja el centinela y las
-// tarjetas como están. Se usa al ir a "Ubicación" para que el salto hacia la
-// sección de abajo NO dispare cargas que la corran (sin aplanar la parrilla, así
-// que es instantáneo — no se insertan cientos de tarjetas).
+// Pausa el scroll infinito: desconecta el observer y marca la suspensión. Se usa
+// al ir a "Ubicación" para que el salto hacia la sección de abajo NO dispare cargas
+// que la corran (sin aplanar la parrilla, así que es instantáneo — no se insertan
+// cientos de tarjetas). El flag sobrevive a los re-render del streaming: aunque
+// llegue un lote y se rehaga la parrilla, _setupInfinite respeta la suspensión y no
+// vuelve a observar, así que la sección se queda quieta.
 export function pauseInfinite() {
+  _infiniteSuspended = true;
   if (_gridIO) { _gridIO.disconnect(); _gridIO = null; }
 }
 
 // Reactiva el scroll infinito volviendo a observar el centinela que quedó. Si ya
 // no hay centinela (todo cargado o parrilla rehecha) o ya está activo, no hace nada.
 export function resumeInfinite() {
+  _infiniteSuspended = false;
   const el = document.getElementById('grid-sentinel');
   if (!el || _gridIO || !('IntersectionObserver' in window)) return;
   _gridIO = new IntersectionObserver(entries => {
@@ -545,6 +563,10 @@ function _setupInfinite() {
     el.remove();
     return;
   }
+  // Suspendido (yendo a "Ubicación"): se deja el centinela pero no se observa, para
+  // que un re-render por streaming no reactive la carga y corra la sección. Se
+  // reactiva con resumeInfinite (al subir de nuevo hacia la parrilla).
+  if (_infiniteSuspended) return;
   _gridIO = new IntersectionObserver(entries => {
     if (entries.some(e => e.isIntersecting)) _loadMore();
   }, { rootMargin: '700px 0px' });

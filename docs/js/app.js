@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash, flushGrid } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash, pauseInfinite, resumeInfinite } from './catalog.js';
 import { openProductPage, closeProductPage, isProductPageOpen } from './product-page.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -243,30 +243,54 @@ function scrollToProducts(behavior = 'smooth') {
   window.scrollTo({ top, behavior });
 }
 
-// Baja de forma confiable hasta la sección de ubicación. El reto es doble: los
-// productos llegan en streaming (cada lote re-renderiza la parrilla y repone el
-// centinela del scroll infinito) y, al saltar hacia abajo, el scroll infinito
-// carga más y corre la sección. Por eso se espera a que terminen de llegar todos
-// los productos (productsLoaded), luego se aplana la parrilla (flushGrid) para que
-// ya nada la mueva y recién ahí se baja. Como las tarjetas reservan su altura
-// (aspect-ratio), la posición es estable aunque las imágenes carguen después.
+// Baja hasta la sección de ubicación. Con scroll infinito la sección está debajo
+// de la parrilla y, al saltar, el scroll infinito carga más productos y la corre,
+// así que uno cae en medio. En vez de aplanar toda la parrilla (insertar cientos
+// de tarjetas era lento, ~2 s antes de moverse), se PAUSA el scroll infinito para
+// que el salto no dispare cargas, se baja de una vez, y se reactiva cuando el
+// usuario vuelve a subir hacia la parrilla. Es instantáneo: no se toca el DOM.
 function scrollToLocation() {
   const go = () => {
-    flushGrid();
+    pauseInfinite();
     const sec = document.getElementById('ubicacion');
     if (!sec) return;
-    requestAnimationFrame(() => {
-      const navOffset = 80;
-      const top = sec.getBoundingClientRect().top + window.scrollY - navOffset;
-      window.scrollTo({ top, behavior: 'smooth' });
-    });
+    const navOffset = 80;
+    const top = sec.getBoundingClientRect().top + window.scrollY - navOffset;
+    window.scrollTo({ top, behavior: 'smooth' });
+    armInfiniteResume();
   };
+  // Si todavía llega el streaming de productos (cada lote re-renderiza la parrilla
+  // y repone el centinela), se espera a que termine para que la pausa no se pierda.
+  // En el uso real ya cargó, así que es inmediato.
   if (getState().productsLoaded) { go(); return; }
-  // Aún cargando: se espera a que terminen (suele ser casi inmediato) y se baja.
   const t = setInterval(() => {
     if (getState().productsLoaded) { clearInterval(t); go(); }
   }, 100);
   setTimeout(() => clearInterval(t), 8000);   // tope de seguridad
+}
+
+// Reactiva el scroll infinito cuando el usuario sube y el centinela vuelve a quedar
+// por debajo de la vista. Así, al reconectar el observer, no dispara una carga que
+// mueva la página estando en la ubicación; la carga vuelve al bajar de nuevo.
+// Importante: se empieza a vigilar el regreso SOLO cuando el scroll hacia la
+// ubicación ya terminó (scrollend); si no, la propia bajada cumpliría la condición
+// y reactivaría el observer a medio camino, corriendo la sección.
+function armInfiniteResume() {
+  const watchScrollUp = () => {
+    const onScroll = () => {
+      const sent = document.getElementById('grid-sentinel');
+      if (!sent) { cleanup(); return; }   // todo cargado o parrilla rehecha
+      const sentTop = sent.getBoundingClientRect().top + window.scrollY;
+      if (window.scrollY + window.innerHeight < sentTop) {
+        resumeInfinite();
+        cleanup();
+      }
+    };
+    const cleanup = () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+  };
+  if ('onscrollend' in window) window.addEventListener('scrollend', watchScrollUp, { once: true });
+  else setTimeout(watchScrollUp, 1200);   // navegadores sin scrollend
 }
 
 // En móvil, baja a los productos tras elegir un filtro.

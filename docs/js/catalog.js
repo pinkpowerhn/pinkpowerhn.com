@@ -504,18 +504,23 @@ function _loadMore() {
   if (_gridShown >= _gridFiltered.length) _teardownSentinel();
 }
 
-// Muestra de una vez todos los productos que faltan y quita el centinela. Se usa
-// al ir a "Ubicación": con la parrilla completa, la sección de abajo deja de
-// desplazarse y el scroll llega siempre a su destino (con scroll infinito, saltar
-// hacia abajo dispara más cargas y la sección se corre). Las imágenes siguen con
-// loading="lazy", así que no se descargan todas de golpe.
-export function flushGrid() {
-  const grid = document.getElementById('product-grid');
-  if (!grid || _gridShown >= _gridFiltered.length) { _teardownSentinel(); return; }
-  grid.insertAdjacentHTML('beforeend',
-    _gridFiltered.slice(_gridShown).map(productCardHTML).join(''));
-  _gridShown = _gridFiltered.length;
-  _teardownSentinel();
+// Pausa el scroll infinito: desconecta el observer pero deja el centinela y las
+// tarjetas como están. Se usa al ir a "Ubicación" para que el salto hacia la
+// sección de abajo NO dispare cargas que la corran (sin aplanar la parrilla, así
+// que es instantáneo — no se insertan cientos de tarjetas).
+export function pauseInfinite() {
+  if (_gridIO) { _gridIO.disconnect(); _gridIO = null; }
+}
+
+// Reactiva el scroll infinito volviendo a observar el centinela que quedó. Si ya
+// no hay centinela (todo cargado o parrilla rehecha) o ya está activo, no hace nada.
+export function resumeInfinite() {
+  const el = document.getElementById('grid-sentinel');
+  if (!el || _gridIO || !('IntersectionObserver' in window)) return;
+  _gridIO = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting)) _loadMore();
+  }, { rootMargin: '700px 0px' });
+  _gridIO.observe(el);
 }
 
 // Coloca un centinela debajo de la grilla; al acercarse, carga más.

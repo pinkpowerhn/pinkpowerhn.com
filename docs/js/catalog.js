@@ -504,6 +504,20 @@ function _loadMore() {
   if (_gridShown >= _gridFiltered.length) _teardownSentinel();
 }
 
+// Muestra de una vez todos los productos que faltan y quita el centinela. Se usa
+// al ir a "Ubicación": con la parrilla completa, la sección de abajo deja de
+// desplazarse y el scroll llega siempre a su destino (con scroll infinito, saltar
+// hacia abajo dispara más cargas y la sección se corre). Las imágenes siguen con
+// loading="lazy", así que no se descargan todas de golpe.
+export function flushGrid() {
+  const grid = document.getElementById('product-grid');
+  if (!grid || _gridShown >= _gridFiltered.length) { _teardownSentinel(); return; }
+  grid.insertAdjacentHTML('beforeend',
+    _gridFiltered.slice(_gridShown).map(productCardHTML).join(''));
+  _gridShown = _gridFiltered.length;
+  _teardownSentinel();
+}
+
 // Coloca un centinela debajo de la grilla; al acercarse, carga más.
 function _setupInfinite() {
   _teardownSentinel();

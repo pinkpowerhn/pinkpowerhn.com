@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash, flushGrid } from './catalog.js';
 import { openProductPage, closeProductPage, isProductPageOpen } from './product-page.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -241,6 +241,32 @@ function scrollToProducts(behavior = 'smooth') {
   const navOffset = 80;
   const top = grid.getBoundingClientRect().top + window.scrollY - navOffset;
   window.scrollTo({ top, behavior });
+}
+
+// Baja de forma confiable hasta la sección de ubicación. El reto es doble: los
+// productos llegan en streaming (cada lote re-renderiza la parrilla y repone el
+// centinela del scroll infinito) y, al saltar hacia abajo, el scroll infinito
+// carga más y corre la sección. Por eso se espera a que terminen de llegar todos
+// los productos (productsLoaded), luego se aplana la parrilla (flushGrid) para que
+// ya nada la mueva y recién ahí se baja. Como las tarjetas reservan su altura
+// (aspect-ratio), la posición es estable aunque las imágenes carguen después.
+function scrollToLocation() {
+  const go = () => {
+    flushGrid();
+    const sec = document.getElementById('ubicacion');
+    if (!sec) return;
+    requestAnimationFrame(() => {
+      const navOffset = 80;
+      const top = sec.getBoundingClientRect().top + window.scrollY - navOffset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
+  };
+  if (getState().productsLoaded) { go(); return; }
+  // Aún cargando: se espera a que terminen (suele ser casi inmediato) y se baja.
+  const t = setInterval(() => {
+    if (getState().productsLoaded) { clearInterval(t); go(); }
+  }, 100);
+  setTimeout(() => clearInterval(t), 8000);   // tope de seguridad
 }
 
 // En móvil, baja a los productos tras elegir un filtro.
@@ -495,7 +521,17 @@ document.addEventListener('click', e => {
   // Cerrar la cinta lateral al tocar un enlace de navegación (deja que navegue)
   if (e.target.closest('.menu-links a')) {
     closeMenuDrawer();
-    // sin return: el ancla navega normalmente
+    // sin return: el ancla navega normalmente (salvo "Ubicación", abajo)
+  }
+
+  // "Ubicación" (header o cinta lateral): con scroll infinito el ancla nativa no
+  // llega — al saltar hacia abajo se cargan más productos y la sección se corre,
+  // así que uno cae en medio de la parrilla. Se cargan todos los productos y se
+  // baja con un scroll confiable hasta el recuadro del mapa.
+  if (e.target.closest('a[href="#ubicacion"]')) {
+    e.preventDefault();
+    scrollToLocation();
+    return;
   }
 
   // ── Megamenú de escritorio ──

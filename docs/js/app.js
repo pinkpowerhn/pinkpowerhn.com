@@ -1350,6 +1350,8 @@ function showCheckoutModal() {
     const { delivery, payment } = getCoSelection(modal);
     const totals  = computeCheckout(delivery, payment);
     const checkout = {
+      customerName:  name,
+      customerPhone: phone,
       deliveryLabel: DELIVERY[delivery].label,
       paymentLabel:  PAYMENT[payment].label,
       ...totals,

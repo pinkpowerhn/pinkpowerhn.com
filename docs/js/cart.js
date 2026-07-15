@@ -131,7 +131,16 @@ export function buildWhatsAppMessage(orderName = null, checkout = null) {
     ? `Hola! Acabo de realizar el pedido *${orderName}* en PinkPower HN.\n\n`
     : `Hola! Me gustaría hacer el siguiente pedido:\n\n`;
 
-  return `${header}${lines.join('\n')}\n\n${totalsBlock}`;
+  // Datos de contacto de la clienta, para que Aylin sepa quién escribe aunque el
+  // número de WhatsApp del remitente sea distinto al que dejó en el formulario.
+  let contactBlock = '';
+  if (checkout && checkout.customerName) {
+    const rows = [`Cliente: ${checkout.customerName}`];
+    if (checkout.customerPhone) rows.push(`Teléfono: ${checkout.customerPhone}`);
+    contactBlock = `\n\n${rows.join('\n')}`;
+  }
+
+  return `${header}${lines.join('\n')}\n\n${totalsBlock}${contactBlock}`;
 }
 
 export function buildWhatsAppUrl(number, orderName = null, checkout = null) {

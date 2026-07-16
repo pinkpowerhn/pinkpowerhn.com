@@ -84,7 +84,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mayoreoSession) {
       // Sesión de mayoreo guardada: entra a modo mayoreo y NO carga el catálogo
       // normal en background (evita la carrera que pisaba la restauración).
-      restoreMayoreo();
+      restoreMayoreo().then(() => {
+        if (!getState().mayoreo) {
+          // No se pudo restaurar (token vencido/borrado o error de red): mostrar
+          // el catálogo normal en vez de dejar la página en skeletons para siempre.
+          setState({ products: firstPage.products });
+          loadRemainingProducts(firstPage.cursor, firstPage.hasNext);
+        }
+        // Re-aplicar el link compartido (#shop/search/..., colección, etc.):
+        // entrar a mayoreo limpia los filtros y pisaba la ruta; y si la
+        // restauración falló, la primera pasada corrió con el catálogo vacío.
+        handleHashRoute();
+      });
     } else {
       // Carga el resto en background sin bloquear la UI. Cada batch se
       // mergea en state → statechange dispara re-render del grid/sidebar.

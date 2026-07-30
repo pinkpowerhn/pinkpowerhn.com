@@ -1142,11 +1142,11 @@
 
 .carousel-dot.is-active { background: #fff; }
 
-/* Botón de compartir flotante sobre la foto (arriba a la derecha, sin tapar el badge
-   de stock que va a la izquierda). Estilo redondo como las flechas del carrusel. */
+/* Botón de compartir flotante sobre la foto, esquina INFERIOR derecha (los puntitos
+   van centrados abajo, así no se traslapan). Estilo redondo como las flechas. */
 .pp-share-float {
   position: absolute;
-  top: 0.7rem;
+  bottom: 0.7rem;
   right: 0.7rem;
   z-index: 3;
   width: 40px;
@@ -1295,8 +1295,32 @@
   line-height: 1.9;
   color: rgba(26, 10, 18, 0.6);
   letter-spacing: 0.04em;
-  margin-bottom: 1.4rem;
+  /* Recortada a 4 líneas por defecto; "Ver más" la despliega. El espacio hacia el
+     botón lo controla el wrapper (antes había un hueco grande). */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
 }
+.modal-description.is-expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.modal-desc-wrap { margin-bottom: 1rem; }
+.modal-desc-toggle {
+  margin-top: 0.4rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--pink);
+}
+.modal-desc-toggle:hover { color: var(--pink-dk); }
 
 .modal-variants {
   margin-bottom: 1.4rem;
@@ -1352,8 +1376,9 @@
 
 .modal-actions { margin-top: auto; padding-top: 1.4rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .modal-actions .btn { width: 100%; text-align: center; }
-.modal-share { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
-.modal-share svg { width: 16px; height: 16px; }
+/* Botón "Agregar al Carrito" con icono de bolsita al inicio + etiqueta. */
+#modal-add-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; }
+.btn-bag { width: 17px; height: 17px; flex: 0 0 auto; }
 
 /* ── Página de producto (ficha dedicada) ──────────────────
    Se muestra en el flujo del documento y usa el scroll del navegador (como el
@@ -1452,7 +1477,7 @@ body.pp-open > .footer-bottom { display: none; }
 .pp-info.modal-info { min-width: 0; padding: 0.2rem 0 0; }
 /* Sin card el alto no se estira a la galería: los botones siguen al contenido con
    un espacio fijo (en vez del margin-top:auto que los empujaba al fondo). */
-.pp-info .modal-actions { margin-top: 1.8rem; }
+.pp-info .modal-actions { margin-top: 1rem; }
 
 /* Productos relacionados */
 .pp-related { margin-top: 3rem; }
@@ -2199,7 +2224,7 @@ body.menu-open nav {
 
   /* Pantallas pequeñas: info un poco más compacta. */
   .modal-price { font-size: 1.25rem; margin-bottom: 0.7rem; }
-  .modal-description { margin-bottom: 1rem; line-height: 1.7; }
+  .modal-description { margin: 0; line-height: 1.7; }
   .modal-variants { margin-bottom: 1rem; }
   .modal-actions { padding-top: 1rem; }
 }

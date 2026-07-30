@@ -17,6 +17,9 @@ const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 
 const PAGE_ID = 'product-page';
 
+// Icono de bolsita de compras para el botón "Agregar al Carrito".
+const BAG_SVG = `<svg class="btn-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`;
+
 let _carouselIndex   = 0;
 let _selectedVariant = null;
 let _currentProduct  = null;
@@ -199,15 +202,27 @@ function buildCarousel(images, title) {
 function buildInfo(p) {
   const soldOut = !p.availableForSale;
   const price   = priceHN(_selectedVariant?.price ?? p.price);
-  const desc    = p.description ? `<p class="modal-description">${p.description}</p>` : '';
+  // Descripción colapsable: se recorta a unas líneas y, si sobra texto, aparece
+  // "Ver más" para desplegarla (el botón se muestra desde wirePageEvents solo si
+  // realmente se desborda). El botón "Compartir" de abajo se quitó: ahora se
+  // comparte con el icono flotante sobre la foto.
+  const desc = p.description ? `
+    <div class="modal-desc-wrap">
+      <div class="modal-description" id="modal-desc">${p.description}</div>
+      <button class="modal-desc-toggle" id="modal-desc-toggle" type="button" hidden>Ver más</button>
+    </div>` : '';
 
   const atLimit    = !soldOut && _selectedVariant ? isAtLimit(_selectedVariant) : false;
   const faltaTalla = !soldOut && hasRealVariants(p) && !_selectedVariant;
+  // Botón con icono de bolsita al inicio y la etiqueta en un <span> aparte (así se
+  // puede cambiar el texto sin borrar el icono).
+  const bagBtn = (label, id, disabled) =>
+    `<button class="btn btn-primary"${id ? ` id="${id}"` : ''}${disabled ? ' disabled' : ''}>${BAG_SVG}<span class="btn-label">${label}</span></button>`;
   const addBtn = soldOut
-    ? `<button class="btn btn-primary" disabled>Agotado</button>`
+    ? bagBtn('Agotado', null, true)
     : faltaTalla
-      ? `<button class="btn btn-primary" id="modal-add-btn" disabled>Elige una talla</button>`
-      : `<button class="btn btn-primary" id="modal-add-btn"${atLimit ? ' disabled' : ''}>${atLimit ? 'Sin más stock' : 'Agregar al Carrito'}</button>`;
+      ? bagBtn('Elige una talla', 'modal-add-btn', true)
+      : bagBtn(atLimit ? 'Sin más stock' : 'Agregar al Carrito', 'modal-add-btn', atLimit);
 
   return `
     <div class="pp-info modal-info">
@@ -219,13 +234,6 @@ function buildInfo(p) {
       ${buildVariants(p)}
       <div class="modal-actions">
         ${addBtn}
-        <button class="btn btn-outline modal-share" id="modal-share" type="button" aria-label="Compartir producto">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.6" y1="10.7" x2="15.4" y2="6.3"></line><line x1="8.6" y1="13.3" x2="15.4" y2="17.7"></line>
-          </svg>
-          Compartir
-        </button>
       </div>
     </div>`;
 }
@@ -289,14 +297,22 @@ function wirePageEvents(page, product) {
     refreshAddBtn(page);
   });
 
-  page.querySelector('#modal-share')?.addEventListener('click', () => {
-    shareLink(productShareUrl(product.id), product.title);
-  });
-
-  // Compartir flotante sobre la foto (mismo comportamiento que el botón de acciones).
+  // Compartir: solo el icono flotante sobre la foto (el botón cuadrado de abajo se quitó).
   page.querySelector('#pp-share-float')?.addEventListener('click', () => {
     shareLink(productShareUrl(product.id), product.title);
   });
+
+  // Descripción "Ver más / Ver menos": el botón solo aparece si el texto se
+  // desborda del recorte; al tocarlo, despliega o vuelve a colapsar.
+  const descEl = page.querySelector('#modal-desc');
+  const descToggle = page.querySelector('#modal-desc-toggle');
+  if (descEl && descToggle) {
+    if (descEl.scrollHeight - descEl.clientHeight > 4) descToggle.hidden = false;
+    descToggle.addEventListener('click', () => {
+      const expanded = descEl.classList.toggle('is-expanded');
+      descToggle.textContent = expanded ? 'Ver menos' : 'Ver más';
+    });
+  }
 }
 
 function selectVariant(page, product, variantId) {
@@ -326,7 +342,8 @@ function refreshAddBtn(page) {
   if (!btn || !_selectedVariant) return;
   const at = isAtLimit(_selectedVariant);
   btn.disabled = at;
-  btn.textContent = at ? 'Sin más stock' : 'Agregar al Carrito';
+  const label = btn.querySelector('.btn-label');
+  if (label) label.textContent = at ? 'Sin más stock' : 'Agregar al Carrito';
 }
 
 // ── Carrusel ──────────────────────────────────────────────

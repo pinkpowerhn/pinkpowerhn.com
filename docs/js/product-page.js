@@ -208,16 +208,16 @@ function buildCarousel(images, title) {
 function buildInfo(p) {
   const soldOut = !p.availableForSale;
   const price   = priceHN(_selectedVariant?.price ?? p.price);
-  // Descripción al FINAL de la ficha, en un recuadro rosa con florecita. Se muestra
-  // en UNA sola línea y, si el texto se corta, aparece "Ver más" en esa misma línea
-  // (al final). Al tocarlo se despliega el texto completo. El "Ver más" solo aparece
-  // si el texto realmente no cabe (se decide en wirePageEvents).
+  // Descripción al FINAL de la ficha, en un recuadro rosa con florecita. Se recorta
+  // a 2 líneas y, si sobra texto, aparece "Ver más" (con chevron) debajo para
+  // desplegarla. El botón solo se muestra si realmente se desborda (wirePageEvents).
   const desc = p.description ? `
     <div class="modal-desc-wrap">
-      <div class="modal-desc-row">
-        <span class="modal-description" id="modal-desc"><span class="modal-desc-flower" aria-hidden="true">🌸</span>${p.description}</span>
-        <button class="modal-desc-toggle" id="modal-desc-toggle" type="button" hidden>Ver más</button>
-      </div>
+      <div class="modal-description" id="modal-desc"><span class="modal-desc-flower" aria-hidden="true">🌸</span>${p.description}</div>
+      <button class="modal-desc-toggle" id="modal-desc-toggle" type="button" hidden>
+        <span class="modal-desc-toggle__txt">Ver más</span>
+        <svg class="modal-desc-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
     </div>` : '';
 
   const atLimit    = !soldOut && _selectedVariant ? isAtLimit(_selectedVariant) : false;
@@ -330,11 +330,13 @@ function wirePageEvents(page, product) {
   const descToggle = page.querySelector('#modal-desc-toggle');
   const descWrap = page.querySelector('.modal-desc-wrap');
   if (descEl && descToggle && descWrap) {
-    // Va en una línea recortada con "…"; si el texto no cabe, se muestra "Ver más".
-    if (descEl.scrollWidth - descEl.clientWidth > 2) descToggle.hidden = false;
+    // Recortada a 2 líneas; si el texto se desborda, se muestra "Ver más".
+    if (descEl.scrollHeight - descEl.clientHeight > 4) descToggle.hidden = false;
     descToggle.addEventListener('click', () => {
       const expanded = descWrap.classList.toggle('is-expanded');
-      descToggle.textContent = expanded ? 'Ver menos' : 'Ver más';
+      descToggle.classList.toggle('is-expanded', expanded);   // rota el chevron
+      const txt = descToggle.querySelector('.modal-desc-toggle__txt');
+      if (txt) txt.textContent = expanded ? 'Ver menos' : 'Ver más';
     });
   }
 }

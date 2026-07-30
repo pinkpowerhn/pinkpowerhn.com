@@ -1290,9 +1290,8 @@
 }
 .modal-stock-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
-/* Descripción al final de la ficha, en un recuadro rosa suave con florecita. Va en
-   UNA sola línea recortada con "…" y, si el texto no cabe, un "Ver más" al final de
-   esa misma línea la despliega. */
+/* Descripción al final de la ficha, en un recuadro rosa suave con florecita.
+   Se recorta a 2 líneas y "Ver más" (debajo) la despliega. */
 .modal-desc-wrap {
   margin-top: 1.3rem;
   background: rgba(232, 67, 122, 0.06);
@@ -1300,31 +1299,31 @@
   border-radius: 14px;
   padding: 0.7rem 0.9rem;
 }
-.modal-desc-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-}
 .modal-description {
   font-size: 0.78rem;
   line-height: 1.7;
   color: rgba(26, 10, 18, 0.66);
   letter-spacing: 0.04em;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1 1 auto;
   margin: 0;
+}
+.modal-desc-wrap.is-expanded .modal-description {
+  -webkit-line-clamp: unset;
+  overflow: visible;
 }
 .modal-desc-flower { margin-right: 0.3rem; }
 .modal-desc-toggle {
-  flex: 0 0 auto;
-  white-space: nowrap;
+  margin-top: 0.35rem;
   padding: 0;
   background: none;
   border: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   font-family: 'Montserrat', sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
@@ -1333,11 +1332,8 @@
 }
 .modal-desc-toggle:hover { color: var(--pink-dk); }
 .modal-desc-toggle[hidden] { display: none; }
-/* Expandido: el texto se muestra completo (varias líneas) y "Ver menos" queda
-   inline al final del texto. */
-.modal-desc-wrap.is-expanded .modal-desc-row { display: block; }
-.modal-desc-wrap.is-expanded .modal-description { white-space: normal; overflow: visible; }
-.modal-desc-wrap.is-expanded .modal-desc-toggle { margin-left: 0.35rem; }
+.modal-desc-toggle__chev { width: 13px; height: 13px; transition: transform 0.2s ease; }
+.modal-desc-toggle.is-expanded .modal-desc-toggle__chev { transform: rotate(180deg); }
 
 .modal-variants {
   margin-bottom: 1.4rem;

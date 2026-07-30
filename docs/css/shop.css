@@ -2208,11 +2208,11 @@ body.menu-open nav {
 @media (max-width: 900px) {
   .modal-info { padding: 1.6rem; }
 
-  /* En móvil la ficha se apila (foto arriba, info abajo). Antes iba en retrato 3/4
-     y quedaba muy alta: los botones de "Agregar al carrito"/"Compartir" caían fuera
-     de la pantalla. Se recorta ~40% el alto (aspect 5/4) para que las acciones
-     queden a la vista sin tener que bajar. */
-  .carousel-viewport { aspect-ratio: 5 / 4; height: auto; }
+  /* En móvil la ficha se apila (foto arriba, info abajo). Cuadrada (1/1): más alta
+     que el 5/4 anterior para que las fotos se vean más completas (algunas se
+     recortaban de más). El espacio extra se compensa quitando el breadcrumb en
+     móvil y con la descripción de una sola línea. */
+  .carousel-viewport { aspect-ratio: 1 / 1; height: auto; }
 }
 
 @media (max-width: 768px) {
@@ -2245,6 +2245,11 @@ body.menu-open nav {
   /* Ficha de producto en móvil: sin flechas (basta con los puntitos + deslizar) y
      títulos en sans-serif (el del producto y el de "También te puede gustar"). */
   .carousel-arrow { display: none; }
+  /* Se quita el breadcrumb en móvil: no es necesario y ese espacio permite una foto
+     más alta y que asome "También te puede gustar" sin bajar tanto. */
+  .pp-topbar { display: none; }
+  /* Descripción a una sola línea; el resto se ve con "Ver más". */
+  .modal-description { -webkit-line-clamp: 1; }
   .modal-product-name {
     font-family: 'Montserrat', sans-serif;
     font-weight: 700;

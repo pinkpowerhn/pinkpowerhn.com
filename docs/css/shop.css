@@ -1390,7 +1390,7 @@
 }
 
 .modal-actions { margin-top: auto; padding-top: 1.4rem; display: flex; flex-direction: column; gap: 0.6rem; }
-.modal-actions .btn { width: 100%; text-align: center; }
+.modal-actions .btn { width: 100%; text-align: center; border-radius: 12px; }
 /* Botón "Agregar al Carrito" con icono de bolsita al inicio + etiqueta. */
 #modal-add-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; }
 .btn-bag { width: 17px; height: 17px; flex: 0 0 auto; }
@@ -2263,9 +2263,10 @@ body.menu-open nav {
   }
   /* Espacios más compactos entre nombre, categoría, precio, franja y el botón. */
   .modal-product-type   { margin-bottom: 0.35rem; }
-  .modal-price          { margin-bottom: 0.5rem; }
+  .modal-price          { font-size: 1.15rem; margin-bottom: 0.5rem; }
   .modal-sold-out-label { margin-bottom: 0.5rem; }
-  .modal-stock-banner   { margin-bottom: 0.5rem; font-size: 0.66rem; padding: 0.35rem 0.75rem; }
+  .modal-stock-banner   { margin-bottom: 0.5rem; font-size: 0.6rem; padding: 0.32rem 0.7rem; }
+  .modal-stock-banner svg { width: 13px; height: 13px; }
   .modal-actions        { padding-top: 0; }
   .pp-info .modal-actions { margin-top: 0.35rem; }
   /* Textos un poco más chicos: botón de agregar e íconos de confianza. */
@@ -2287,7 +2288,7 @@ body.menu-open nav {
   .product-card__price { font-size: 0.88rem; }
 
   /* Pantallas pequeñas: info un poco más compacta. */
-  .modal-price { font-size: 1.25rem; margin-bottom: 0.5rem; }
+  .modal-price { margin-bottom: 0.5rem; }
   .modal-description { margin: 0; line-height: 1.7; }
   .modal-variants { margin-bottom: 0.8rem; }
   .modal-actions { padding-top: 0; }

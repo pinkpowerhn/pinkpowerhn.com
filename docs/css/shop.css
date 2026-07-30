@@ -1344,16 +1344,16 @@ body.pp-open > .newsletter,
 body.pp-open > footer,
 body.pp-open > .footer-bottom { display: none; }
 
-/* Entrada elegante: el fondo aparece, la barra hace fade y el contenido + los
-   relacionados suben suavemente (con un leve escalonado). Se dispara al renderizar
-   la ficha (también al pasar a un producto relacionado). */
-@keyframes ppRise {
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: none; }
+/* Entrada elegante: todo el contenido aparece con un fade suave (sin el
+   deslizamiento hacia arriba que se sentía brusco). Se dispara al renderizar la
+   ficha (también al pasar a un producto relacionado). */
+@keyframes ppFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-.pp-topbar  { animation: modalFade 0.35s ease both; }
-.pp-main    { animation: ppRise 0.42s cubic-bezier(.2, .8, .25, 1) both; }
-.pp-related { animation: ppRise 0.5s cubic-bezier(.2, .8, .25, 1) 0.06s both; }
+.pp-topbar  { animation: ppFade 0.4s ease both; }
+.pp-main    { animation: ppFade 0.5s ease both; }
+.pp-related { animation: ppFade 0.55s ease 0.08s both; }
 
 @media (prefers-reduced-motion: reduce) {
   #product-page, .pp-topbar, .pp-main, .pp-related { animation: none; }
@@ -2101,10 +2101,11 @@ body.menu-open nav {
 @media (max-width: 900px) {
   .modal-info { padding: 1.6rem; }
 
-  /* En móvil la ficha se apila (foto arriba, info abajo). La foto va en retrato 3/4
-     (igual que las tarjetas del catálogo) para que se vea más larga y casi no se
-     recorte. */
-  .carousel-viewport { aspect-ratio: 3 / 4; height: auto; }
+  /* En móvil la ficha se apila (foto arriba, info abajo). Antes iba en retrato 3/4
+     y quedaba muy alta: los botones de "Agregar al carrito"/"Compartir" caían fuera
+     de la pantalla. Se recorta ~40% el alto (aspect 5/4) para que las acciones
+     queden a la vista sin tener que bajar. */
+  .carousel-viewport { aspect-ratio: 5 / 4; height: auto; }
 }
 
 @media (max-width: 768px) {

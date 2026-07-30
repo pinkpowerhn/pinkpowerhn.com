@@ -48,7 +48,10 @@ export function openProductPage(product) {
   page.innerHTML = buildPageHTML(product);
   page.hidden = false;
   document.body.classList.add('pp-open');  // oculta el catálogo; la ficha usa el scroll del documento
-  window.scrollTo(0, 0);                    // la ficha empieza arriba
+  // 'instant' a propósito: sin behavior, el scroll respeta el `scroll-behavior:smooth`
+  // global (index.html) y hace un desplazamiento suave hacia arriba que se veía como
+  // si el detalle "subiera". Así el salto al inicio es inmediato.
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });   // la ficha empieza arriba
   setState({ modalProductId: product.id });
 
   wirePageEvents(page, product);
@@ -61,7 +64,9 @@ export function closeProductPage() {
   page.hidden = true;
   page.innerHTML = '';
   document.body.classList.remove('pp-open');   // vuelve a mostrar el catálogo
-  window.scrollTo(0, _catalogScrollY);          // restaura la posición del catálogo
+  // Instantáneo también aquí: restaura la posición exacta del catálogo sin el scroll
+  // suave (que se vería como un deslizamiento al regresar).
+  window.scrollTo({ top: _catalogScrollY, left: 0, behavior: 'instant' });   // restaura la posición del catálogo
   _currentProduct  = null;
   _selectedVariant = null;
   setState({ modalProductId: null });

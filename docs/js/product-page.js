@@ -157,9 +157,18 @@ function buildGallery(p) {
   const badge = soldOut
     ? '<div class="modal-badge">Agotado</div>'
     : low ? `<div class="modal-badge modal-badge--low">${low}</div>` : '';
+  // Botón de compartir flotante sobre la foto (arriba a la derecha), estilo Amazon.
+  const shareFloat = `
+    <button class="pp-share-float" id="pp-share-float" type="button" aria-label="Compartir producto">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.6" y1="10.7" x2="15.4" y2="6.3"></line><line x1="8.6" y1="13.3" x2="15.4" y2="17.7"></line>
+      </svg>
+    </button>`;
   return `
     <div class="modal-carousel">
       ${buildCarousel(p.images, p.title)}
+      ${shareFloat}
       ${badge}
     </div>`;
 }
@@ -281,6 +290,11 @@ function wirePageEvents(page, product) {
   });
 
   page.querySelector('#modal-share')?.addEventListener('click', () => {
+    shareLink(productShareUrl(product.id), product.title);
+  });
+
+  // Compartir flotante sobre la foto (mismo comportamiento que el botón de acciones).
+  page.querySelector('#pp-share-float')?.addEventListener('click', () => {
     shareLink(productShareUrl(product.id), product.title);
   });
 }

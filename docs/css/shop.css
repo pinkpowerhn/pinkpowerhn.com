@@ -1111,26 +1111,59 @@
 .carousel-arrow--prev        { left:  0.6rem; }
 .carousel-arrow--next        { right: 0.6rem; }
 
+/* Los puntitos van SOBRE la foto, centrados abajo (estilo Amazon), en una pastilla
+   translúcida para que se vean sobre cualquier imagen. */
 .carousel-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 0.7rem;
+  transform: translateX(-50%);
+  z-index: 2;
   display: flex;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.75rem 0;
-  background: var(--black);
+  padding: 0.4rem 0.65rem;
+  background: rgba(10, 4, 7, 0.42);
+  border-radius: 999px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 
 .carousel-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: rgba(26, 10, 18, 0.18);
+  background: rgba(255, 255, 255, 0.55);
   border: none;
   cursor: pointer;
   padding: 0;
   transition: background 0.2s;
 }
 
-.carousel-dot.is-active { background: var(--pink); }
+.carousel-dot.is-active { background: #fff; }
+
+/* Botón de compartir flotante sobre la foto (arriba a la derecha, sin tapar el badge
+   de stock que va a la izquierda). Estilo redondo como las flechas del carrusel. */
+.pp-share-float {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(232, 67, 122, 0.25);
+  color: var(--pink-dk);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(154, 0, 73, 0.22);
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.pp-share-float:hover { color: #fff; background: var(--pink); border-color: var(--pink); }
+.pp-share-float svg { width: 18px; height: 18px; }
 
 /* La foto se puede tocar para verla completa en pantalla completa (el cursor de
    zoom lo insinúa; por eso ya no hace falta un botón "Ver completa"). */
@@ -1223,7 +1256,7 @@
 
 .modal-product-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1.8rem;
+  font-size: 1.44rem;   /* ~20% menos que antes (1.8rem) */
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.15;
@@ -1380,7 +1413,10 @@ body.pp-open > .footer-bottom { display: none; }
   min-width: 0;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  /* Una sola línea: si el título es largo NO baja a otro renglón (eso empujaba la
+     foto y los botones fuera de la pantalla). La categoría y el separador no se
+     encogen; el título del producto se recorta con "…". */
+  flex-wrap: nowrap;
   gap: 0.4rem;
   font-family: 'Montserrat', sans-serif;
   font-size: 0.72rem;
@@ -1390,16 +1426,19 @@ body.pp-open > .footer-bottom { display: none; }
   color: rgba(26, 10, 18, 0.6);
   text-decoration: none;
   transition: color 0.2s;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .pp-breadcrumb a:hover { color: var(--pink); }
-.pp-bc-sep { color: rgba(26, 10, 18, 0.35); }
+.pp-bc-sep { color: rgba(26, 10, 18, 0.35); flex: 0 0 auto; }
 .pp-bc-current {
   color: var(--pink-dk);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 70vw;
+  flex: 0 1 auto;   /* ocupa lo que queda y se recorta con "…" antes de saltar de línea */
+  min-width: 0;
 }
 
 /* Contenido del producto SIN card: galería + info directo sobre el fondo. */
@@ -1433,7 +1472,6 @@ body.pp-open > .footer-bottom { display: none; }
   .pp-shell   { padding: var(--nav-h) 1rem 2.4rem; }
   .pp-main    { grid-template-columns: 1fr; gap: 1.6rem; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .pp-bc-current { max-width: 80vw; }
 }
 
 /* ── Cart drawer ──────────────────────────────────────── */
@@ -2141,7 +2179,7 @@ body.menu-open nav {
   .modal-product-name {
     font-family: 'Montserrat', sans-serif;
     font-weight: 700;
-    font-size: 1.4rem;
+    font-size: 1.12rem;   /* ~20% menos que antes (1.4rem) */
     letter-spacing: 0.01em;
     line-height: 1.25;
   }

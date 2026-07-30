@@ -1290,52 +1290,54 @@
 }
 .modal-stock-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
-/* Descripción al final de la ficha, en un recuadro rosa suave con florecita. */
+/* Descripción al final de la ficha, en un recuadro rosa suave con florecita. Va en
+   UNA sola línea recortada con "…" y, si el texto no cabe, un "Ver más" al final de
+   esa misma línea la despliega. */
 .modal-desc-wrap {
   margin-top: 1.3rem;
   background: rgba(232, 67, 122, 0.06);
   border: 1px solid rgba(232, 67, 122, 0.12);
   border-radius: 14px;
-  padding: 1rem 1.15rem;
+  padding: 0.7rem 0.9rem;
+}
+.modal-desc-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
 }
 .modal-description {
   font-size: 0.78rem;
-  line-height: 1.8;
+  line-height: 1.7;
   color: rgba(26, 10, 18, 0.66);
   letter-spacing: 0.04em;
-  /* Recortada a 2 líneas por defecto; "Ver más" la despliega. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
   margin: 0;
 }
-.modal-description.is-expanded {
-  -webkit-line-clamp: unset;
-  overflow: visible;
-}
-.modal-desc-flower { margin-right: 0.35rem; }
+.modal-desc-flower { margin-right: 0.3rem; }
 .modal-desc-toggle {
-  margin-top: 0.5rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 0;
   background: none;
   border: none;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
   font-family: 'Montserrat', sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: var(--pink);
 }
 .modal-desc-toggle:hover { color: var(--pink-dk); }
-/* El display:inline-flex gana al display:none del atributo [hidden]; esta regla
-   restablece que "Ver más" quede oculto cuando la descripción no se desborda. */
 .modal-desc-toggle[hidden] { display: none; }
-.modal-desc-toggle__chev { width: 14px; height: 14px; transition: transform 0.2s ease; }
-.modal-desc-toggle.is-expanded .modal-desc-toggle__chev { transform: rotate(180deg); }
+/* Expandido: el texto se muestra completo (varias líneas) y "Ver menos" queda
+   inline al final del texto. */
+.modal-desc-wrap.is-expanded .modal-desc-row { display: block; }
+.modal-desc-wrap.is-expanded .modal-description { white-space: normal; overflow: visible; }
+.modal-desc-wrap.is-expanded .modal-desc-toggle { margin-left: 0.35rem; }
 
 .modal-variants {
   margin-bottom: 1.4rem;
@@ -2250,9 +2252,10 @@ body.menu-open nav {
   /* Se quita el breadcrumb en móvil: no es necesario y ese espacio permite una foto
      más alta y que asome "También te puede gustar" sin bajar tanto. */
   .pp-topbar { display: none; }
-  /* Descripción a una sola línea, texto más chico y caja más compacta. */
-  .modal-description { -webkit-line-clamp: 1; font-size: 0.72rem; line-height: 1.7; }
-  .modal-desc-wrap { padding: 0.65rem 0.8rem; margin-top: 0.9rem; }
+  /* Descripción en una línea, texto más chico y caja bien compacta. */
+  .modal-description { font-size: 0.72rem; }
+  .modal-desc-toggle { font-size: 0.68rem; }
+  .modal-desc-wrap { padding: 0.5rem 0.75rem; margin-top: 0.9rem; }
   .modal-product-name {
     font-family: 'Montserrat', sans-serif;
     font-weight: 700;
@@ -2273,6 +2276,8 @@ body.menu-open nav {
   .modal-actions .btn { font-size: 0.64rem; }
   .pp-trust__item { font-size: 0.6rem; gap: 0.4rem; }
   .pp-trust__item svg { width: 22px; height: 22px; }
+  /* Íconos de confianza mucho más cerca del botón de agregar. */
+  .pp-trust { margin-top: 0.55rem; padding-top: 0.7rem; }
   .pp-related__title {
     font-family: 'Montserrat', sans-serif;
     font-size: 1.15rem;

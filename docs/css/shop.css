@@ -1034,25 +1034,6 @@
   background: var(--black);
 }
 
-/* Aviso de stock dentro del pop up del producto. Va arriba a la IZQUIERDA para
-   no traslaparse con el botón de cerrar (X), que está arriba a la derecha. */
-.modal-badge {
-  position: absolute;
-  top: 0.7rem;
-  left: 0.7rem;
-  z-index: 2;
-  background: #e60023;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 0.36rem 0.78rem;
-  border-radius: 999px;
-  pointer-events: none;
-}
-.modal-badge--low { background: #f5820a; }
-
 /* Galería deslizante: el viewport recorta (cuadrado, esquinas redondeadas) y el
    track es una fila que se desliza con translateX y una transición suave. */
 .carousel-viewport {
@@ -1290,15 +1271,34 @@
   margin-bottom: 1rem;
 }
 
+/* Franja naranja de "pocas unidades" (antes iba encima de la foto). Píldora con
+   ícono de llama, debajo del precio. */
+.modal-stock-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  background: #f5820a;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+.modal-stock-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
+
 .modal-description {
   font-size: 0.78rem;
   line-height: 1.9;
   color: rgba(26, 10, 18, 0.6);
   letter-spacing: 0.04em;
-  /* Recortada a 4 líneas por defecto; "Ver más" la despliega. El espacio hacia el
+  /* Recortada a 2 líneas por defecto; "Ver más" la despliega. El espacio hacia el
      botón lo controla el wrapper (antes había un hueco grande). */
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 0;
@@ -1478,6 +1478,32 @@ body.pp-open > .footer-bottom { display: none; }
 /* Sin card el alto no se estira a la galería: los botones siguen al contenido con
    un espacio fijo (en vez del margin-top:auto que los empujaba al fondo). */
 .pp-info .modal-actions { margin-top: 1rem; }
+
+/* Íconos de confianza al pie de la ficha (envío / originalidad / pago). Tres
+   columnas con separadores, para dar confianza a la clienta. */
+.pp-trust {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 1.3rem 0 0;
+  border-top: 1px solid rgba(232, 67, 122, 0.14);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.pp-trust__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(26, 10, 18, 0.72);
+}
+.pp-trust__item + .pp-trust__item { border-left: 1px solid rgba(232, 67, 122, 0.14); }
+.pp-trust__item svg { width: 26px; height: 26px; color: var(--pink); }
 
 /* Productos relacionados */
 .pp-related { margin-top: 3rem; }

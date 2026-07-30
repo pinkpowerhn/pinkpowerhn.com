@@ -20,6 +20,16 @@ const PAGE_ID = 'product-page';
 // Icono de bolsita de compras para el botón "Agregar al Carrito".
 const BAG_SVG = `<svg class="btn-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`;
 
+// Llamita para la franja naranja de "pocas unidades" (va rellena de blanco).
+const FIRE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 23a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5S5 14 5 16a7 7 0 0 0 7 7z"></path></svg>`;
+
+// Íconos de confianza (línea inferior de la ficha): envío, originalidad y pago.
+const TRUST = [
+  { label: 'Envíos a todo Honduras', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="14" height="12" rx="1"></rect><path d="M15 8h4l3 3v5h-7z"></path><circle cx="5.5" cy="18.5" r="2"></circle><circle cx="18" cy="18.5" r="2"></circle></svg>` },
+  { label: 'Productos 100% originales', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m9.5 8.7 1.8 1.8 3.2-3.4"></path><path d="M8.5 14.2 7 22l5-2.6L17 22l-1.5-7.8"></path></svg>` },
+  { label: 'Pago seguro', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 11.5 2 2 4-4"></path></svg>` },
+];
+
 let _carouselIndex   = 0;
 let _selectedVariant = null;
 let _currentProduct  = null;
@@ -155,12 +165,9 @@ function buildTopbar(p) {
 }
 
 function buildGallery(p) {
-  const soldOut = !p.availableForSale;
-  const low = soldOut ? null : lowStockLabel(p);
-  const badge = soldOut
-    ? '<div class="modal-badge">Agotado</div>'
-    : low ? `<div class="modal-badge modal-badge--low">${low}</div>` : '';
-  // Botón de compartir flotante sobre la foto (arriba a la derecha), estilo Amazon.
+  // Botón de compartir flotante sobre la foto (esquina inferior derecha, estilo Amazon).
+  // El aviso de "pocas unidades" ya NO va encima de la foto: ahora es una franja
+  // naranja debajo del precio (ver buildInfo), para dejar la foto limpia.
   const shareFloat = `
     <button class="pp-share-float" id="pp-share-float" type="button" aria-label="Compartir producto">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -172,7 +179,6 @@ function buildGallery(p) {
     <div class="modal-carousel">
       ${buildCarousel(p.images, p.title)}
       ${shareFloat}
-      ${badge}
     </div>`;
 }
 
@@ -224,17 +230,31 @@ function buildInfo(p) {
       ? bagBtn('Elige una talla', 'modal-add-btn', true)
       : bagBtn(atLimit ? 'Sin más stock' : 'Agregar al Carrito', 'modal-add-btn', atLimit);
 
+  // Franja naranja de "pocas unidades", debajo del precio (antes iba encima de la foto).
+  const low = soldOut ? null : lowStockLabel(p);
+  const stockBanner = low
+    ? `<p class="modal-stock-banner">${FIRE_SVG}<span>${low === 'Solo queda 1' ? '¡Solo queda 1 disponible!' : `¡${esc(low)} disponibles!`}</span></p>`
+    : '';
+
+  // Íconos de confianza (envío / originalidad / pago) al pie de la ficha.
+  const trust = `
+    <ul class="pp-trust">
+      ${TRUST.map(t => `<li class="pp-trust__item">${t.svg}<span>${t.label}</span></li>`).join('')}
+    </ul>`;
+
   return `
     <div class="pp-info modal-info">
       <p class="modal-product-name">${esc(p.title)}</p>
       ${p.productType ? `<p class="modal-product-type">${esc(p.productType)}</p>` : ''}
       <p class="modal-price" id="modal-price">L. ${price}</p>
       ${soldOut ? '<p class="modal-sold-out-label">Producto agotado</p>' : ''}
+      ${stockBanner}
       ${desc}
       ${buildVariants(p)}
       <div class="modal-actions">
         ${addBtn}
       </div>
+      ${trust}
     </div>`;
 }
 

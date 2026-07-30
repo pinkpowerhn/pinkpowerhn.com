@@ -2251,7 +2251,15 @@ body.menu-open nav {
     font-size: 1.12rem;   /* ~20% menos que antes (1.4rem) */
     letter-spacing: 0.01em;
     line-height: 1.25;
+    margin-bottom: 0.12rem;
   }
+  /* Espacios más compactos entre nombre, categoría, precio, franja y el botón. */
+  .modal-product-type   { margin-bottom: 0.35rem; }
+  .modal-price          { margin-bottom: 0.5rem; }
+  .modal-sold-out-label { margin-bottom: 0.5rem; }
+  .modal-stock-banner   { margin-bottom: 0.5rem; }
+  .modal-actions        { padding-top: 0; }
+  .pp-info .modal-actions { margin-top: 0.35rem; }
   .pp-related__title {
     font-family: 'Montserrat', sans-serif;
     font-size: 1.15rem;
@@ -2267,10 +2275,10 @@ body.menu-open nav {
   .product-card__price { font-size: 0.88rem; }
 
   /* Pantallas pequeñas: info un poco más compacta. */
-  .modal-price { font-size: 1.25rem; margin-bottom: 0.7rem; }
+  .modal-price { font-size: 1.25rem; margin-bottom: 0.5rem; }
   .modal-description { margin: 0; line-height: 1.7; }
-  .modal-variants { margin-bottom: 1rem; }
-  .modal-actions { padding-top: 1rem; }
+  .modal-variants { margin-bottom: 0.8rem; }
+  .modal-actions { padding-top: 0; }
 }
 
 /* ── Toast notification ───────────────────────────────── */

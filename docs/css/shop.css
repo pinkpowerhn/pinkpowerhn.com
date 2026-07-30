@@ -1539,7 +1539,9 @@ body.pp-open > .footer-bottom { display: none; }
   /* Menos espacios en móvil: el breadcrumb más pegado a la foto, y la foto más
      pegada al título (la ficha se apila foto→info). */
   .pp-topbar  { padding: 0.5rem 0 0.55rem; margin-bottom: 0.85rem; }
-  .pp-main    { grid-template-columns: 1fr; gap: 1rem; }
+  /* Foto casi pegada al título (antes tenía bastante aire). */
+  .pp-main    { grid-template-columns: 1fr; gap: 0.4rem; }
+  .pp-info.modal-info { padding-top: 0; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 
@@ -2248,12 +2250,13 @@ body.menu-open nav {
   /* Se quita el breadcrumb en móvil: no es necesario y ese espacio permite una foto
      más alta y que asome "También te puede gustar" sin bajar tanto. */
   .pp-topbar { display: none; }
-  /* Descripción a una sola línea; el resto se ve con "Ver más". */
-  .modal-description { -webkit-line-clamp: 1; }
+  /* Descripción a una sola línea, texto más chico y caja más compacta. */
+  .modal-description { -webkit-line-clamp: 1; font-size: 0.72rem; line-height: 1.7; }
+  .modal-desc-wrap { padding: 0.65rem 0.8rem; margin-top: 0.9rem; }
   .modal-product-name {
     font-family: 'Montserrat', sans-serif;
     font-weight: 700;
-    font-size: 1.12rem;   /* ~20% menos que antes (1.4rem) */
+    font-size: 1rem;      /* un poco más pequeño en móvil */
     letter-spacing: 0.01em;
     line-height: 1.25;
     margin-bottom: 0.12rem;
@@ -2262,9 +2265,13 @@ body.menu-open nav {
   .modal-product-type   { margin-bottom: 0.35rem; }
   .modal-price          { margin-bottom: 0.5rem; }
   .modal-sold-out-label { margin-bottom: 0.5rem; }
-  .modal-stock-banner   { margin-bottom: 0.5rem; }
+  .modal-stock-banner   { margin-bottom: 0.5rem; font-size: 0.66rem; padding: 0.35rem 0.75rem; }
   .modal-actions        { padding-top: 0; }
   .pp-info .modal-actions { margin-top: 0.35rem; }
+  /* Textos un poco más chicos: botón de agregar e íconos de confianza. */
+  .modal-actions .btn { font-size: 0.64rem; }
+  .pp-trust__item { font-size: 0.6rem; gap: 0.4rem; }
+  .pp-trust__item svg { width: 22px; height: 22px; }
   .pp-related__title {
     font-family: 'Montserrat', sans-serif;
     font-size: 1.15rem;

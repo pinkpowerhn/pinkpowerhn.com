@@ -208,14 +208,16 @@ function buildCarousel(images, title) {
 function buildInfo(p) {
   const soldOut = !p.availableForSale;
   const price   = priceHN(_selectedVariant?.price ?? p.price);
-  // Descripción colapsable: se recorta a unas líneas y, si sobra texto, aparece
-  // "Ver más" para desplegarla (el botón se muestra desde wirePageEvents solo si
-  // realmente se desborda). El botón "Compartir" de abajo se quitó: ahora se
-  // comparte con el icono flotante sobre la foto.
+  // Descripción colapsable, al FINAL de la ficha, en un recuadro rosa con florecita
+  // y "Ver más" (se recorta a 2 líneas y, si sobra texto, aparece el botón — que se
+  // muestra desde wirePageEvents solo si realmente se desborda).
   const desc = p.description ? `
     <div class="modal-desc-wrap">
-      <div class="modal-description" id="modal-desc">${p.description}</div>
-      <button class="modal-desc-toggle" id="modal-desc-toggle" type="button" hidden>Ver más</button>
+      <div class="modal-description" id="modal-desc"><span class="modal-desc-flower" aria-hidden="true">🌸</span>${p.description}</div>
+      <button class="modal-desc-toggle" id="modal-desc-toggle" type="button" hidden>
+        <span class="modal-desc-toggle__txt">Ver más</span>
+        <svg class="modal-desc-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
     </div>` : '';
 
   const atLimit    = !soldOut && _selectedVariant ? isAtLimit(_selectedVariant) : false;
@@ -249,12 +251,12 @@ function buildInfo(p) {
       <p class="modal-price" id="modal-price">L. ${price}</p>
       ${soldOut ? '<p class="modal-sold-out-label">Producto agotado</p>' : ''}
       ${stockBanner}
-      ${desc}
       ${buildVariants(p)}
       <div class="modal-actions">
         ${addBtn}
       </div>
       ${trust}
+      ${desc}
     </div>`;
 }
 
@@ -330,7 +332,9 @@ function wirePageEvents(page, product) {
     if (descEl.scrollHeight - descEl.clientHeight > 4) descToggle.hidden = false;
     descToggle.addEventListener('click', () => {
       const expanded = descEl.classList.toggle('is-expanded');
-      descToggle.textContent = expanded ? 'Ver menos' : 'Ver más';
+      descToggle.classList.toggle('is-expanded', expanded);   // rota el chevron
+      const txt = descToggle.querySelector('.modal-desc-toggle__txt');
+      if (txt) txt.textContent = expanded ? 'Ver menos' : 'Ver más';
     });
   }
 }

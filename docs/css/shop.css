@@ -1290,13 +1290,20 @@
 }
 .modal-stock-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
+/* Descripción al final de la ficha, en un recuadro rosa suave con florecita. */
+.modal-desc-wrap {
+  margin-top: 1.3rem;
+  background: rgba(232, 67, 122, 0.06);
+  border: 1px solid rgba(232, 67, 122, 0.12);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+}
 .modal-description {
   font-size: 0.78rem;
-  line-height: 1.9;
-  color: rgba(26, 10, 18, 0.6);
+  line-height: 1.8;
+  color: rgba(26, 10, 18, 0.66);
   letter-spacing: 0.04em;
-  /* Recortada a 2 líneas por defecto; "Ver más" la despliega. El espacio hacia el
-     botón lo controla el wrapper (antes había un hueco grande). */
+  /* Recortada a 2 líneas por defecto; "Ver más" la despliega. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1307,20 +1314,28 @@
   -webkit-line-clamp: unset;
   overflow: visible;
 }
-.modal-desc-wrap { margin-bottom: 0.55rem; }
+.modal-desc-flower { margin-right: 0.35rem; }
 .modal-desc-toggle {
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
   padding: 0;
   background: none;
   border: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   font-family: 'Montserrat', sans-serif;
   font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   color: var(--pink);
 }
 .modal-desc-toggle:hover { color: var(--pink-dk); }
+/* El display:inline-flex gana al display:none del atributo [hidden]; esta regla
+   restablece que "Ver más" quede oculto cuando la descripción no se desborda. */
+.modal-desc-toggle[hidden] { display: none; }
+.modal-desc-toggle__chev { width: 14px; height: 14px; transition: transform 0.2s ease; }
+.modal-desc-toggle.is-expanded .modal-desc-toggle__chev { transform: rotate(180deg); }
 
 .modal-variants {
   margin-bottom: 1.4rem;

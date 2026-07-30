@@ -1307,7 +1307,7 @@
   -webkit-line-clamp: unset;
   overflow: visible;
 }
-.modal-desc-wrap { margin-bottom: 1rem; }
+.modal-desc-wrap { margin-bottom: 0.55rem; }
 .modal-desc-toggle {
   margin-top: 0.4rem;
   padding: 0;
@@ -1477,7 +1477,7 @@ body.pp-open > .footer-bottom { display: none; }
 .pp-info.modal-info { min-width: 0; padding: 0.2rem 0 0; }
 /* Sin card el alto no se estira a la galería: los botones siguen al contenido con
    un espacio fijo (en vez del margin-top:auto que los empujaba al fondo). */
-.pp-info .modal-actions { margin-top: 1rem; }
+.pp-info .modal-actions { margin-top: 0.6rem; }
 
 /* Íconos de confianza al pie de la ficha (envío / originalidad / pago). Tres
    columnas con separadores, para dar confianza a la clienta. */
@@ -1521,7 +1521,10 @@ body.pp-open > .footer-bottom { display: none; }
 
 @media (max-width: 768px) {
   .pp-shell   { padding: var(--nav-h) 1rem 2.4rem; }
-  .pp-main    { grid-template-columns: 1fr; gap: 1.6rem; }
+  /* Menos espacios en móvil: el breadcrumb más pegado a la foto, y la foto más
+     pegada al título (la ficha se apila foto→info). */
+  .pp-topbar  { padding: 0.5rem 0 0.55rem; margin-bottom: 0.85rem; }
+  .pp-main    { grid-template-columns: 1fr; gap: 1rem; }
   .pp-related__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 

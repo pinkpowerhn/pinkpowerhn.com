@@ -38,6 +38,9 @@ function normalizeProduct(node) {
     id:                stripGid(node.id),
     title:             node.title || '',
     description:       node.description || '',
+    // Versión con formato (párrafos/saltos) para respetar el espaciado que la
+    // dueña escribe en Shopify; el campo `description` plano ya viene sin saltos.
+    descriptionHtml:   node.descriptionHtml || '',
     productType:       node.productType || '',
     tags:              Array.isArray(node.tags) ? node.tags : [],
     collectionHandles,

@@ -205,15 +205,38 @@ function buildCarousel(images, title) {
   return `<div class="carousel-viewport"><div class="carousel-track" id="carousel-track">${slides}</div></div>${arrows}${dots}`;
 }
 
+// Convierte el descriptionHtml de Shopify en texto plano CONSERVANDO los saltos
+// de párrafo (los <p> y <br> pasan a saltos de línea reales). Se pinta luego con
+// textContent + CSS white-space: pre-line, así respetamos el espaciado que la
+// dueña escribe en Shopify sin inyectar HTML (cero riesgo de XSS). Si no hay
+// HTML, cae al texto plano tal cual.
+function descriptionToText(html, plain) {
+  if (!html) return plain || '';
+  let s = html
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')                 // <br> -> salto
+    .replace(/<\/\s*(p|div|li|h[1-6]|ul|ol|tr)\s*>/gi, '\n') // fin de bloque -> salto
+    .replace(/<[^>]+>/g, '');                            // fuera el resto de etiquetas
+  // Decodifica entidades (&aacute;, &amp;, …) de forma segura: el textarea nunca
+  // ejecuta nada, solo devuelve el texto en .value.
+  const ta = document.createElement('textarea');
+  ta.innerHTML = s;
+  s = ta.value;
+  return s
+    .replace(/ /g, ' ')      // &nbsp; -> espacio normal
+    .replace(/[ \t]+\n/g, '\n')   // sin espacios colgando al final de línea
+    .replace(/\n{3,}/g, '\n\n')   // máximo una línea en blanco entre párrafos
+    .trim();
+}
+
 function buildInfo(p) {
   const soldOut = !p.availableForSale;
   const price   = priceHN(_selectedVariant?.price ?? p.price);
   // Descripción al FINAL de la ficha, en un recuadro rosa con florecita. Se recorta
   // a 2 líneas y, si sobra texto, aparece "Ver más" (con chevron) debajo para
   // desplegarla. El botón solo se muestra si realmente se desborda (wirePageEvents).
-  const desc = p.description ? `
+  const desc = (p.descriptionHtml || p.description) ? `
     <div class="modal-desc-wrap">
-      <div class="modal-description" id="modal-desc"><span class="modal-desc-flower" aria-hidden="true">🌸</span>${p.description}</div>
+      <div class="modal-description" id="modal-desc"><span class="modal-desc-flower" aria-hidden="true">🌸</span><span class="modal-desc-text" id="modal-desc-text"></span></div>
       <button class="modal-desc-toggle" id="modal-desc-toggle" type="button" hidden>
         <span class="modal-desc-toggle__txt">Ver más</span>
         <svg class="modal-desc-toggle__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -329,6 +352,11 @@ function wirePageEvents(page, product) {
   const descEl = page.querySelector('#modal-desc');
   const descToggle = page.querySelector('#modal-desc-toggle');
   const descWrap = page.querySelector('.modal-desc-wrap');
+  const descText = page.querySelector('#modal-desc-text');
+  if (descText) {
+    // textContent (no innerHTML): respeta los saltos con CSS pre-line y evita XSS.
+    descText.textContent = descriptionToText(product.descriptionHtml, product.description);
+  }
   if (descEl && descToggle && descWrap) {
     // Recortada a 2 líneas; si el texto se desborda, se muestra "Ver más".
     if (descEl.scrollHeight - descEl.clientHeight > 4) descToggle.hidden = false;

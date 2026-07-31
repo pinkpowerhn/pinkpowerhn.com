@@ -1309,6 +1309,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 0;
+  white-space: pre-line;   /* respeta los saltos de párrafo que trae la descripción */
 }
 .modal-desc-wrap.is-expanded .modal-description {
   -webkit-line-clamp: unset;

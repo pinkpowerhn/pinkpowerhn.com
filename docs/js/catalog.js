@@ -1,7 +1,7 @@
 import { getState, setState } from './state.js';
 import { tokenize, buildCollMap, scoreProduct } from './search.js';
 import { shareLink } from './share.js';
-import { lowStockLabel } from './stock.js';
+import { lowStockLabel, productStockTotal } from './stock.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -594,6 +594,14 @@ export function productCardHTML(p) {
   // Aviso "pocas unidades" a nivel de producto (suma de todas las tallas). Ver stock.js.
   const lowLabel = lowStockLabel(p);
 
+  // Solo en mayoreo: las mayoristas pidieron ver cuántas unidades hay en stock.
+  // Se muestra el total disponible (suma de tallas). El desglose por talla queda
+  // en la ficha del producto. Si el inventario no se controla (null), no se muestra.
+  const stockTotal = productStockTotal(p);
+  const stockMayoreo = (getState().mayoreo && !soldOut && stockTotal !== null)
+    ? `<p class="product-card__stock">${stockTotal === 1 ? '1 disponible' : `${stockTotal} disponibles`}</p>`
+    : '';
+
   return `
     <article class="product-card${soldOut ? ' product-card--sold-out' : ''}" data-id="${p.id}">
       <div class="product-card__image">
@@ -620,6 +628,7 @@ export function productCardHTML(p) {
         <p class="product-card__name">${p.title}</p>
         <p class="product-card__type">${p.productType || ''}</p>
         <p class="product-card__price">L. ${price}</p>
+        ${stockMayoreo}
         ${!soldOut
           ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">${addLabel}</button>`
           : `<button class="btn product-card__mobile-add product-card__mobile-add--sold" disabled>Agotado</button>`}

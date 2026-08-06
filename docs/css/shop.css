@@ -1002,6 +1002,27 @@
   letter-spacing: 0.02em;
 }
 
+/* Stock disponible — solo en mayoreo (las mayoristas piden ver las cantidades). */
+.product-card__stock {
+  margin-top: 0.2rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #1f9d55;                 /* verde: "hay disponibilidad" */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+.product-card__stock::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1f9d55;
+  flex: 0 0 auto;
+}
+
 /* Sold-out state */
 .product-card--sold-out .product-card__image img {
   filter: grayscale(30%);

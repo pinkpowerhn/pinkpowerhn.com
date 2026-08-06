@@ -1346,15 +1346,35 @@ function showCheckoutModal() {
   modal.querySelector('#co-backdrop').addEventListener('click', closeCheckoutModal);
   modal.querySelector('#co-close').addEventListener('click', closeCheckoutModal);
 
+  // Al escribir, quitar el resaltado rojo del campo ya corregido.
+  ['#co-name', '#co-phone'].forEach(sel => {
+    const el = modal.querySelector(sel);
+    if (el) el.addEventListener('input', () => el.classList.remove('is-invalid'));
+  });
+
   // Wire submit
   modal.querySelector('#co-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const name  = modal.querySelector('#co-name').value.trim();
-    const phone = modal.querySelector('#co-phone').value.trim();
+    const nameEl  = modal.querySelector('#co-name');
+    const phoneEl = modal.querySelector('#co-phone');
+    const name  = nameEl.value.trim();
+    const phone = phoneEl.value.trim();
     const email = modal.querySelector('#co-email').value.trim();
 
-    if (!name || !phone) {
-      showCoError('Por favor completa nombre y teléfono.');
+    // Validar y marcar en rojo los campos que falten, apuntando a lo que hace
+    // falta. Antes el aviso era genérico y opaco y la clienta no lo notaba.
+    nameEl.classList.remove('is-invalid');
+    phoneEl.classList.remove('is-invalid');
+    const faltan = [];
+    if (!name) { nameEl.classList.add('is-invalid'); faltan.push('nombre'); }
+    // El teléfono arranca con "+504 "; exige que de verdad escriban el número
+    // (8 dígitos), si no dejar solo el prefijo pasaba como válido.
+    if (phone.replace(/\D/g, '').length < 8) { phoneEl.classList.add('is-invalid'); faltan.push('teléfono'); }
+    if (faltan.length) {
+      showCoError(`Falta tu ${faltan.join(' y ')}. Complétalo para finalizar tu pedido.`);
+      const primero = faltan[0] === 'nombre' ? nameEl : phoneEl;
+      primero.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      primero.focus();
       return;
     }
 
@@ -1430,6 +1450,11 @@ function showCoError(msg) {
   if (!el) return;
   el.textContent = msg;
   el.hidden = false;
+  // Reiniciar la animación de "shake" para que llame la atención cada vez que
+  // se muestra (aunque el mensaje sea el mismo que la vez anterior).
+  el.classList.remove('co-error--shake');
+  void el.offsetWidth;   // fuerza un reflow para reiniciar la animación
+  el.classList.add('co-error--shake');
 }
 
 async function submitCheckout(name, phone, email, checkout = null) {

@@ -2211,13 +2211,47 @@ body.menu-open nav {
 .co-field > input:focus         { border-color: var(--pink); }
 
 .co-error {
-  font-size: 0.72rem;
-  color: #ff6b6b;
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #b91c1c;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
   margin-bottom: 1rem;
-  padding: 0.5rem 0.8rem;
-  background: rgba(255, 107, 107, 0.08);
-  border-left: 2px solid #ff6b6b;
+  padding: 0.75rem 0.9rem;
+  background: #fde3e3;
+  border: 1.5px solid #e02424;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(224, 36, 36, 0.18);
+}
+/* El atributo [hidden] pone display:none; hay que reafirmarlo porque arriba
+   pusimos display:flex (si no, el error se vería aunque esté "hidden"). */
+.co-error[hidden] { display: none; }
+.co-error::before {
+  content: '⚠️';
+  font-size: 1.05rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+/* Pequeño "shake" para que la clienta note el error al finalizar. */
+@keyframes coErrorShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+.co-error--shake { animation: coErrorShake 0.4s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .co-error--shake { animation: none; }
+}
+
+/* Campo obligatorio sin llenar: borde y fondo rojos para que salte a la vista. */
+.co-field > input.is-invalid {
+  border-color: #e02424;
+  background: rgba(224, 36, 36, 0.07);
 }
 
 .co-submit {

@@ -1154,7 +1154,7 @@ function renderCartDrawer() {
                   ${i.maxQty !== null && i.quantity >= i.maxQty ? 'disabled' : ''}>+</button>
               </div>
               ${i.maxQty !== null && i.maxQty <= 3
-                ? `<span class="qty-stock-warn">Solo ${i.maxQty} disponibles</span>`
+                ? `<span class="qty-stock-warn">Solo ${i.maxQty} ${i.maxQty === 1 ? 'disponible' : 'disponibles'}</span>`
                 : ''}
             </div>
             <button class="cart-item__remove" data-cart-remove="${i._key}" aria-label="Eliminar">✕</button>

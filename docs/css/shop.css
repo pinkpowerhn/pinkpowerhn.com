@@ -1829,10 +1829,11 @@ body.menu-open nav {
 
 .qty-stock-warn {
   display: block;
-  font-size: 0.6rem;
-  letter-spacing: 0.12em;
-  color: #e8a23a;
-  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 800;                /* negrita — Aylin pidió que se note más */
+  letter-spacing: 0.06em;
+  color: #d9660a;                  /* naranja fuerte, no el ámbar pálido de antes */
+  margin-top: 0.3rem;
 }
 
 .cart-item__remove {

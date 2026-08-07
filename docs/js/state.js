@@ -2,6 +2,7 @@
 const _state = {
   products:          [],
   productsLoaded:    false,   // true cuando terminó la carga en background
+  searchIndex:       [],     // índice ligero de TODO el catálogo (solo buscador)
   collections:       [],
   activeCollection:  null,   // collection handle | null = all
   searchQuery:       '',

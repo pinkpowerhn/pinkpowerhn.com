@@ -1,6 +1,6 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
-import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById } from './api.js';
+import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById, fetchProductsIndex } from './api.js';
 import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash, pauseInfinite, resumeInfinite } from './catalog.js';
 import { openProductPage, closeProductPage, isProductPageOpen } from './product-page.js';
 import { searchProducts, norm } from './search.js';
@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           // el catálogo normal en vez de dejar la página en skeletons para siempre.
           setState({ products: firstPage.products });
           loadRemainingProducts(firstPage.cursor, firstPage.hasNext);
+          loadSearchIndex();
         }
         // Re-aplicar el link compartido (#shop/search/..., colección, etc.):
         // entrar a mayoreo limpia los filtros y pisaba la ruta; y si la
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Carga el resto en background sin bloquear la UI. Cada batch se
       // mergea en state → statechange dispara re-render del grid/sidebar.
       loadRemainingProducts(firstPage.cursor, firstPage.hasNext);
+      loadSearchIndex();
     }
   } catch (err) {
     console.error('[PinkPower] Data load error:', err);
@@ -154,6 +156,17 @@ async function loadRemainingProducts(cursor, hasNext) {
   // se le quita el shimmer para que no parpadee para siempre.
   fbFillFeaturedImages(getState().products);
   document.querySelectorAll('#fb-track .fb-slide__imgskel').forEach(el => el.classList.remove('skeleton'));
+}
+
+// Índice ligero para que el buscador cubra TODO el catálogo desde el inicio, sin
+// esperar a que la grilla termine de cargar por lotes (los productos viejos van
+// al final de esa carga y, hasta entonces, no aparecían en la búsqueda). Solo en
+// tienda normal; en mayoreo se busca sobre los productos de mayoreo, que ya se
+// cargan completos de una vez.
+function loadSearchIndex() {
+  fetchProductsIndex()
+    .then(idx => setState({ searchIndex: idx }))
+    .catch(err => console.warn('[PinkPower] Search index load failed:', err));
 }
 
 // ── State subscription ────────────────────────────────────
@@ -866,7 +879,7 @@ function openSearchOverlay() {
   input.addEventListener('input', () => renderSearchResults(input.value));
   ov.querySelector('#search-ov-close').addEventListener('click', closeSearchOverlay);
 
-  ov.querySelector('#search-ov-results').addEventListener('click', e => {
+  ov.querySelector('#search-ov-results').addEventListener('click', async e => {
     // "Ver todos los resultados" → filtrar la tienda por esa búsqueda (todos,
     // paginados) y cerrar el buscador.
     const seeall = e.target.closest('.search-seeall');
@@ -901,11 +914,13 @@ function openSearchOverlay() {
 
     const btn = e.target.closest('.search-result');
     if (!btn) return;
-    const product = getState().products.find(p => p.id === btn.dataset.id);
-    if (product) {
-      closeSearchOverlay();
-      goToProduct(product);
-    }
+    const id = btn.dataset.id;
+    closeSearchOverlay();
+    // Si el producto ya está cargado en la grilla, se abre directo. Si viene del
+    // índice ligero (aún no cargado), se traen sus datos completos por id.
+    let product = getState().products.find(p => p.id === id);
+    if (!product) product = await fetchProductById(id).catch(() => null);
+    if (product) goToProduct(product);
   });
 
   setTimeout(() => input.focus(), 60);
@@ -923,7 +938,10 @@ function renderSearchResults(query) {
   if (!box) return;
 
   const q = String(query).trim();
-  const { products, collections } = getState();
+  const { products, collections, searchIndex, mayoreo } = getState();
+  // En tienda normal se busca sobre el índice ligero (TODO el catálogo) apenas
+  // cargó; en mayoreo, sobre los productos de mayoreo (ya cargados completos).
+  const pool = (!mayoreo && searchIndex && searchIndex.length) ? searchIndex : products;
 
   if (!q) {
     box.innerHTML = `<p class="search-ov__hint">Escribe para buscar entre nuestros productos.</p>`;
@@ -934,18 +952,22 @@ function renderSearchResults(query) {
 
   // Colecciones y etiquetas que coinciden con la búsqueda
   const collMatches = collections.filter(c => norm(c.title).includes(nq));
-  const allTags = [...new Set(products.flatMap(p => p.tags || []))];
+  const allTags = [...new Set(pool.flatMap(p => p.tags || []))];
   const tagMatches = allTags.filter(t => norm(t).includes(nq)).slice(0, 8);
   // Productos que coinciden (mostramos los primeros; si hay más, abajo se ofrece
   // "Ver todos" para verlos completos en la tienda).
   const SHOWN = 40;
-  let allProd = searchProducts(products, q, collections);
+  let allProd = searchProducts(pool, q, collections);
   // Si la admin activó "ocultar agotados", no los mostramos en el buscador.
   if (getState().hideSoldOut) allProd = allProd.filter(p => p.availableForSale);
   const prodMatches = allProd.slice(0, SHOWN);
 
   if (!collMatches.length && !tagMatches.length && !prodMatches.length) {
-    box.innerHTML = `<p class="search-ov__hint">No se encontraron resultados.</p>`;
+    // Si el catálogo aún se está cargando, avisar en vez de decir "no hay nada".
+    const cargando = !mayoreo && !(searchIndex && searchIndex.length) && !getState().productsLoaded;
+    box.innerHTML = `<p class="search-ov__hint">${cargando
+      ? 'Cargando productos… intenta de nuevo en un momento.'
+      : 'No se encontraron resultados.'}</p>`;
     return;
   }
 

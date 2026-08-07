@@ -86,6 +86,27 @@ export async function fetchCollections() {
   return _collections;
 }
 
+// Índice ligero de TODOS los productos, solo para el buscador (sin descripción
+// ni variantes ni fotos múltiples). Se trae de una sola vez al inicio para que
+// el buscador cubra el catálogo completo sin esperar la carga por lotes del grid.
+export async function fetchProductsIndex() {
+  const res = await fetch(`${BASE}/search-index`);
+  if (!res.ok) throw new Error(`Search index fetch failed: ${res.status}`);
+  const json = await res.json();
+  return (json.products || []).map(p => ({
+    id:                String(p.id),
+    title:             p.title || '',
+    description:       '',                   // el índice no trae descripción
+    productType:       p.productType || '',
+    tags:              Array.isArray(p.tags) ? p.tags : [],
+    collectionHandles: Array.isArray(p.collectionHandles) ? p.collectionHandles : [],
+    price:             Number(p.price) || 0,
+    availableForSale:  Boolean(p.availableForSale),
+    images:            p.image ? [{ url: p.image, altText: '' }] : [],
+    _light:            true,                 // es del índice; sin datos completos
+  }));
+}
+
 export async function fetchProductById(id) {
   const res = await fetch(`${BASE}/products/${id}`);
   if (!res.ok) throw new Error(`Product ${id} fetch failed: ${res.status}`);

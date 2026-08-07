@@ -14,6 +14,9 @@ function normalizeVariant(node) {
     id: stripGid(node.id),
     title: node.title || 'Default Title',
     price: parseFloat(node.price) || 0,
+    // Precio de detalle (original). Solo llega en productos de mayoreo; en tienda
+    // normal es null. Sirve para mostrar el ahorro junto al precio de mayoreo.
+    retailPrice: node.retailPrice != null ? (parseFloat(node.retailPrice) || null) : null,
     availableForSale: Boolean(node.availableForSale),
     // null = inventory not tracked for this variant (treat as unlimited)
     inventoryQuantity: node.inventoryQuantity ?? null,
@@ -46,6 +49,8 @@ function normalizeProduct(node) {
     collectionHandles,
     availableForSale:  variants.some(v => v.availableForSale),
     price:             displayVariant ? displayVariant.price : 0,
+    // Precio de detalle del variante mostrado (solo en mayoreo; null si no aplica).
+    retailPrice:       displayVariant ? (displayVariant.retailPrice ?? null) : null,
     variants,
     images,
   };

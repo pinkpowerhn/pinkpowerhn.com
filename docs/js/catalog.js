@@ -2,6 +2,7 @@ import { getState, setState } from './state.js';
 import { tokenize, buildCollMap, scoreProduct } from './search.js';
 import { shareLink } from './share.js';
 import { lowStockLabel, productStockTotal } from './stock.js';
+import { discountPct, fmtL } from './price.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533'%3E%3Crect fill='%231a0a0e' width='400' height='533'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='13' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -582,6 +583,20 @@ export function tieneVariantesReales(p) {
   return vs.length > 1 || (vs.length === 1 && vs[0].title !== 'Default Title');
 }
 
+// Bloque de precio de la tarjeta. En mayoreo: precio de mayoreo (grande) + precio
+// de detalle tachado + % de descuento. En tienda normal: solo el precio.
+function mayoreoPriceHTML(p, priceStr, mayoreo) {
+  const retail = p.retailPrice;
+  if (!(mayoreo && retail && retail > p.price)) {
+    return `<p class="product-card__price">L. ${priceStr}</p>`;
+  }
+  const pct = discountPct(p.price, retail);
+  return `<p class="product-card__price">L. ${priceStr}` +
+    `<span class="product-card__retail">L. ${fmtL(retail)}</span>` +
+    (pct > 0 ? `<span class="product-card__disc">-${pct}%</span>` : '') +
+    `</p>`;
+}
+
 export function productCardHTML(p) {
   const img      = p.images[0];
   const soldOut  = !p.availableForSale;
@@ -594,13 +609,19 @@ export function productCardHTML(p) {
   // Aviso "pocas unidades" a nivel de producto (suma de todas las tallas). Ver stock.js.
   const lowLabel = lowStockLabel(p);
 
+  const mayoreo = getState().mayoreo;
+
   // Solo en mayoreo: las mayoristas pidieron ver cuántas unidades hay en stock.
   // Se muestra el total disponible (suma de tallas). El desglose por talla queda
   // en la ficha del producto. Si el inventario no se controla (null), no se muestra.
   const stockTotal = productStockTotal(p);
-  const stockMayoreo = (getState().mayoreo && !soldOut && stockTotal !== null)
+  const stockMayoreo = (mayoreo && !soldOut && stockTotal !== null)
     ? `<p class="product-card__stock">${stockTotal === 1 ? '1 disponible' : `${stockTotal} disponibles`}</p>`
     : '';
+
+  // Solo en mayoreo: junto al precio de mayoreo (grande) mostrar el precio de
+  // detalle tachado y el % de descuento, para que se vea el ahorro.
+  const priceHTML = mayoreoPriceHTML(p, price, mayoreo);
 
   return `
     <article class="product-card${soldOut ? ' product-card--sold-out' : ''}" data-id="${p.id}">
@@ -627,7 +648,7 @@ export function productCardHTML(p) {
       <div class="product-card__info">
         <p class="product-card__name">${p.title}</p>
         <p class="product-card__type">${p.productType || ''}</p>
-        <p class="product-card__price">L. ${price}</p>
+        ${priceHTML}
         ${stockMayoreo}
         ${!soldOut
           ? `<button class="btn btn-primary product-card__mobile-add" data-action="add-to-cart" data-id="${p.id}">${addLabel}</button>`

@@ -12,6 +12,7 @@ import { onAdded } from './aroma.js';
 import { shareLink, productShareUrl } from './share.js';
 import { productCardHTML } from './catalog.js';
 import { lowStockLabel, variantStockNote } from './stock.js';
+import { discountPct, fmtL } from './price.js';
 
 const FALLBACK_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Crect fill='%231a0a0e' width='600' height='600'/%3E%3Ctext fill='%23e8437a' font-family='sans-serif' font-size='14' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EPinkPower HN%3C/text%3E%3C/svg%3E";
 
@@ -136,6 +137,17 @@ function esc(s) {
 }
 
 const priceHN = n => n.toLocaleString('es-HN', { minimumFractionDigits: 2 });
+
+// Solo en mayoreo: precio de detalle (tachado) + % de descuento junto al precio
+// de mayoreo. '' si no aplica (tienda normal o sin precio de detalle mayor).
+function retailInfoHTML(variant, p) {
+  const price  = variant?.price ?? p.price;
+  const retail = variant?.retailPrice ?? p.retailPrice;
+  if (!(getState().mayoreo && retail && retail > price)) return '';
+  const pct = discountPct(price, retail);
+  return `<span class="modal-price__retail">L. ${fmtL(retail)}</span>` +
+    (pct > 0 ? `<span class="modal-price__disc">-${pct}%</span>` : '');
+}
 
 // ── HTML: se arma por secciones para que se lea fácil ─────
 function buildPageHTML(p) {
@@ -271,7 +283,7 @@ function buildInfo(p) {
     <div class="pp-info modal-info">
       <p class="modal-product-name">${esc(p.title)}</p>
       ${p.productType ? `<p class="modal-product-type">${esc(p.productType)}</p>` : ''}
-      <p class="modal-price" id="modal-price">L. ${price}</p>
+      <p class="modal-price" id="modal-price"><span id="modal-price-main">L. ${price}</span><span id="modal-price-extra">${retailInfoHTML(_selectedVariant, p)}</span></p>
       ${soldOut ? '<p class="modal-sold-out-label">Producto agotado</p>' : ''}
       ${stockBanner}
       ${buildVariants(p)}
@@ -377,8 +389,10 @@ function selectVariant(page, product, variantId) {
   page.querySelectorAll('.variant-btn').forEach(b =>
     b.classList.toggle('is-active', b.dataset.variantId === variantId));
 
-  const priceEl = page.querySelector('#modal-price');
-  if (priceEl) priceEl.textContent = `L. ${priceHN(variant.price)}`;
+  const priceMain = page.querySelector('#modal-price-main');
+  if (priceMain) priceMain.textContent = `L. ${priceHN(variant.price)}`;
+  const priceExtra = page.querySelector('#modal-price-extra');
+  if (priceExtra) priceExtra.innerHTML = retailInfoHTML(variant, product);
   const stockEl = page.querySelector('#modal-variant-stock');
   if (stockEl) stockEl.textContent = variantStockNote(variant);
   refreshAddBtn(page);

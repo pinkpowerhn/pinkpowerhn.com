@@ -1023,6 +1023,30 @@
   flex: 0 0 auto;
 }
 
+/* Mayoreo: precio de detalle (tachado) + % de descuento junto al de mayoreo. */
+.product-card__retail {
+  margin-left: 0.4rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(26, 10, 18, 0.4);
+  text-decoration: line-through;
+  letter-spacing: 0.01em;
+}
+.product-card__disc {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--pink-dk);
+  background: rgba(232, 67, 122, 0.12);
+  padding: 0.06rem 0.32rem;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 /* Sold-out state */
 .product-card--sold-out .product-card__image img {
   filter: grayscale(30%);
@@ -1282,6 +1306,27 @@
   color: var(--pink);
   letter-spacing: 0.01em;
   margin-bottom: 1rem;
+}
+/* Mayoreo: precio de detalle (tachado) + % de descuento junto al de mayoreo. */
+.modal-price__retail {
+  margin-left: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(26, 10, 18, 0.42);
+  text-decoration: line-through;
+  letter-spacing: 0.01em;
+}
+.modal-price__disc {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--pink-dk);
+  background: rgba(232, 67, 122, 0.12);
+  padding: 0.1rem 0.45rem;
+  border-radius: 7px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
 }
 
 .modal-sold-out-label {

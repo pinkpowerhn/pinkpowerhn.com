@@ -455,8 +455,11 @@ export function renderProductGrid(products, collections, activeCollection, searc
 
   let filtered = filterProducts(products, collections, activeCollection, searchQuery, activeSize, activeTag, priceMin, priceMax);
 
-  // Ocultar agotados si la admin activó esa opción (temporal, desde el panel).
-  if (hideSoldOut) filtered = filtered.filter(p => p.availableForSale);
+  // Nunca mostrar productos sin stock (0 unidades), aunque estén activos. Cubre
+  // también los "activos" con inventario 0 que Shopify marca availableForSale por
+  // "seguir vendiendo sin stock". productStockTotal devuelve null cuando el
+  // inventario no se rastrea (ilimitado) → ese sí se muestra.
+  filtered = filtered.filter(p => productStockTotal(p) !== 0);
 
   // Orden por precio (el orden por relevancia ya lo da el filtro de búsqueda)
   if (sortBy === 'price-asc') {

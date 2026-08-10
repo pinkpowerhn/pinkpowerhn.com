@@ -355,8 +355,12 @@ function wirePageEvents(page, product) {
   });
 
   // Compartir: solo el icono flotante sobre la foto (el botón cuadrado de abajo se quitó).
+  // El mensaje lleva el nombre y el PRECIO en negrita (WhatsApp usa *asteriscos*),
+  // así el precio también sale en el texto del mensaje, no solo en la vista previa.
   page.querySelector('#pp-share-float')?.addEventListener('click', () => {
-    shareLink(productShareUrl(product.id), product.title);
+    const precio = priceHN(_selectedVariant?.price ?? product.price);
+    const texto = `${product.title}\n*L. ${precio}*`;
+    shareLink(productShareUrl(product.id), texto);
   });
 
   // Descripción "Ver más / Ver menos": el botón solo aparece si el texto se

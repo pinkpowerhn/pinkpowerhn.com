@@ -29,20 +29,20 @@ function flash(msg) {
 }
 
 // Comparte un enlace. En móvil abre el menú nativo (WhatsApp, redes, etc.).
-// En escritorio copia el mensaje (texto + enlace) al portapapeles y avisa.
-// `text` puede traer varias líneas y negritas de WhatsApp (*así*), p. ej. el
-// nombre del producto y el precio; el enlace va al final para que WhatsApp arme
-// igual la vista previa.
+// En escritorio copia el mensaje al portapapeles y avisa.
+// El mensaje va TODO junto (nombre / precio / enlace) con el enlace en su PROPIA
+// línea. Se manda entero en `text` (sin pasar `url` aparte) para controlar el
+// formato exacto; WhatsApp igual detecta el enlace y arma la vista previa.
 export async function shareLink(url, text = '') {
+  const mensaje = text ? `${text}\n${url}` : url;
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'PinkPower HN', text: text || 'PinkPower HN', url });
+      await navigator.share({ text: mensaje });
       return;
     } catch (_) {
       return; // el usuario canceló
     }
   }
-  const mensaje = text ? `${text}\n${url}` : url;
   try {
     await navigator.clipboard.writeText(mensaje);
     flash('Copiado ✓');

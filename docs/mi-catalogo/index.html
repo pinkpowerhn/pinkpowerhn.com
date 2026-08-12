@@ -122,6 +122,19 @@
   /* Paso 1: herramientas + grilla */
   .cb-tools { display: grid; grid-template-columns: 1fr; gap: .55rem; margin-bottom: .3rem; }
   @media (min-width: 640px) { .cb-tools { grid-template-columns: 1fr 1fr auto; } }
+  /* Buscador con botón de limpiar (x) */
+  .cb-search { position: relative; display: block; }
+  .cb-search .cb-input { padding-right: 2.3rem; }
+  /* Ocultamos la x nativa del type=search para no tener dos. */
+  .cb-search .cb-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+  .cb-search__x {
+    position: absolute; right: .45rem; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; border: none; border-radius: 50%; padding: 0;
+    background: rgba(42,15,28,.08); color: var(--muted); cursor: pointer;
+    display: grid; place-items: center; font-size: .82rem; line-height: 1; font-family: inherit;
+  }
+  .cb-search__x:hover { background: rgba(42,15,28,.16); color: var(--ink); }
+  .cb-search__x[hidden] { display: none; }
   .cb-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem;
   }

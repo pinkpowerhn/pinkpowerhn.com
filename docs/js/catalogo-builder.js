@@ -211,11 +211,25 @@ function render() {
 }
 
 // ── Paso 1: Productos ─────────────────────────────────────
+// Normaliza para buscar: minúsculas y SIN tildes/ñ→n, para que "bano" encuentre
+// "Baño", "locion" encuentre "Loción", etc. (los nombres traen muchas tildes y
+// en el teléfono se suele escribir sin ellas).
+function normalizarBusqueda(s) {
+  return String(s == null ? '' : s)
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function productosFiltrados() {
-  const q = state.busqueda.trim().toLowerCase();
+  // Cada palabra escrita debe aparecer en el título (en cualquier orden), así
+  // "gel bano" encuentra "Gel de Baño".
+  const terminos = normalizarBusqueda(state.busqueda).trim().split(/\s+/).filter(Boolean);
   return state.productos.filter(p => {
     if (state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
-    if (q && !p.title.toLowerCase().includes(q)) return false;
+    if (terminos.length) {
+      const titulo = normalizarBusqueda(p.title);
+      if (!terminos.every(t => titulo.includes(t))) return false;
+    }
     return true;
   });
 }
@@ -273,7 +287,10 @@ function renderProductos() {
       <p class="cb-hint" style="margin:.5rem 0 0">Un mismo producto puede estar en varias colecciones, por eso los números de las colecciones pueden sumar más que el total.</p>
     </div>` : ''}
     <div class="cb-tools">
-      <input id="cb-buscar" class="cb-input" type="search" placeholder="Buscar producto…" value="${esc(state.busqueda)}" />
+      <div class="cb-search">
+        <input id="cb-buscar" class="cb-input" type="search" autocomplete="off" placeholder="Buscar producto…" value="${esc(state.busqueda)}" />
+        <button type="button" class="cb-search__x" id="cb-buscar-x" aria-label="Limpiar búsqueda"${state.busqueda ? '' : ' hidden'}>✕</button>
+      </div>
       <div class="cb-select" id="cb-coleccion"></div>
       <button class="cb-btn cb-btn--ghost" id="cb-add-todos">Agregar los ${lista.length} visibles</button>
     </div>
@@ -288,10 +305,21 @@ function renderProductos() {
   // Buscar: actualiza solo la grilla (con un pequeño retraso) para no re-crear el
   // input en cada tecla; así se puede escribir la palabra completa sin perder el
   // foco ni el cursor.
-  $('#cb-buscar').addEventListener('input', (e) => {
+  const buscarInp = $('#cb-buscar');
+  const buscarX = $('#cb-buscar-x');
+  buscarInp.addEventListener('input', (e) => {
     state.busqueda = e.target.value;
+    if (buscarX) buscarX.hidden = !e.target.value;
     clearTimeout(_busqTimer);
     _busqTimer = setTimeout(actualizarGrilla, 200);
+  });
+  // La "x" limpia el filtro y vuelve a enfocar para seguir escribiendo.
+  if (buscarX) buscarX.addEventListener('click', () => {
+    state.busqueda = '';
+    buscarInp.value = '';
+    buscarX.hidden = true;
+    buscarInp.focus();
+    actualizarGrilla();
   });
   montarSelectColeccion();
   $('#cb-add-todos').addEventListener('click', () => {

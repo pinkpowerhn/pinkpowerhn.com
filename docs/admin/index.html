@@ -178,11 +178,19 @@
     .acts { justify-content: flex-start; }
     .acts .btn { flex: 1 1 auto; text-align: center; }
     .list-head { flex-wrap: wrap; }
-    .list-head .btn { flex: 1 1 100%; }
+    .list-head .btn { flex: 1 1 100%; padding: 0.5rem 1rem; font-size: 0.78rem; }
     .search { max-width: none; min-width: 0; flex: 1 1 100%; }
+    .search input { font-size: 0.85rem; }
     .pager { justify-content: center; }
     .pager__nav { flex: 1 1 100%; justify-content: space-between; }
-    .tab { padding: 0.7rem 0.9rem; font-size: 0.85rem; }
+    .tab { padding: 0.7rem 0.85rem; font-size: 0.82rem; }
+    /* Textos un poco más pequeños en móvil */
+    tbody tr td:not(.td-acts) { font-size: 0.84rem; }
+    tbody tr td:not(.td-acts)::before { font-size: 0.58rem; }
+    .acts .btn { font-size: 0.72rem; padding: 0.4rem 0.6rem; }
+    .card h2 { font-size: 0.9rem; }
+    .card .muted, .pager__info { font-size: 0.76rem; }
+    .chk { font-size: 0.85rem; }
   }
 </style>
 </head>
@@ -228,7 +236,7 @@
         <div class="list-head">
           <div class="search">
             <span class="search__ic">🔍</span>
-            <input type="search" id="search" placeholder="Buscar por usuario, nombre o emprendimiento…" autocomplete="off" />
+            <input type="search" id="search" placeholder="Buscar por mayorista" autocomplete="off" />
           </div>
           <button class="btn" id="open-new">＋ Nueva mayorista</button>
         </div>

@@ -124,6 +124,31 @@
   .modal__acts { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.2rem; }
   .modal__acts .btn { padding: 0.7rem 1.5rem; }
 
+  /* ── Tabs (segmentan el panel: Mayoristas / Catálogos / General) ── */
+  .tabs { display: flex; gap: 0.2rem; border-bottom: 2px solid #f4e4ec; margin-bottom: 1.4rem; overflow-x: auto; }
+  .tabs::-webkit-scrollbar { height: 0; }
+  .tab {
+    background: none; border: none; cursor: pointer; white-space: nowrap;
+    padding: 0.75rem 1.15rem; font-family: inherit; font-weight: 600; font-size: 0.9rem;
+    color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px;
+    display: inline-flex; align-items: center; gap: 0.45rem; transition: color 0.16s ease;
+  }
+  .tab:hover { color: var(--pink-dk); }
+  .tab.is-active { color: var(--pink-dk); border-bottom-color: var(--pink); }
+  .tab-panel { display: none; }
+  .tab-panel.is-active { display: block; animation: tabIn 0.22s ease; }
+  @keyframes tabIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ── Buscador de mayoristas ── */
+  .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
+  .search__ic { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9rem; pointer-events: none; }
+  .search input { width: 100%; margin: 0; padding-left: 2.2rem; }
+
+  /* ── Paginación ── */
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-top: 1.1rem; flex-wrap: wrap; }
+  .pager__nav { display: flex; align-items: center; gap: 0.5rem; }
+  .pager__info { font-size: 0.8rem; color: var(--muted); }
+
   /* ── Móvil: la tabla de mayoristas se rompía (5 columnas + 4 botones en la
      última celda). En pantallas angostas cada fila se muestra como una tarjeta
      apilada, con el nombre del campo (data-label) a la izquierda y los botones
@@ -154,6 +179,10 @@
     .acts .btn { flex: 1 1 auto; text-align: center; }
     .list-head { flex-wrap: wrap; }
     .list-head .btn { flex: 1 1 100%; }
+    .search { max-width: none; min-width: 0; flex: 1 1 100%; }
+    .pager { justify-content: center; }
+    .pager__nav { flex: 1 1 100%; justify-content: space-between; }
+    .tab { padding: 0.7rem 0.9rem; font-size: 0.85rem; }
   }
 </style>
 </head>
@@ -186,68 +215,88 @@
       <button class="btn btn--ghost btn--sm" id="logout">Salir</button>
     </div>
 
-    <!-- Configuración (grilla que aprovecha el ancho) -->
-    <div class="settings-grid">
-      <!-- Mínimo mensual -->
+    <!-- Tabs de navegación del panel -->
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="mayoristas">👥 Mayoristas</button>
+      <button class="tab" data-tab="catalogos">🛍️ Catálogos</button>
+      <button class="tab" data-tab="general">⚙️ General</button>
+    </div>
+
+    <!-- TAB: Mayoristas (lista con buscador + paginación) -->
+    <section class="tab-panel is-active" data-tab="mayoristas">
       <div class="card">
-        <h2>📅 Mínimo de compra mensual</h2>
-        <p class="muted" style="margin-top:-0.6rem">Monto que cada mayorista debe alcanzar al mes (en Lempiras).</p>
-        <div class="row">
-          <div>
-            <label>Mínimo mensual</label>
-            <div class="money">
-              <span>L.</span>
-              <input type="number" id="min-input" min="0" step="100" placeholder="0" />
+        <div class="list-head">
+          <div class="search">
+            <span class="search__ic">🔍</span>
+            <input type="search" id="search" placeholder="Buscar por usuario, nombre o emprendimiento…" autocomplete="off" />
+          </div>
+          <button class="btn" id="open-new">＋ Nueva mayorista</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="cuentas-body"></tbody>
+          </table>
+        </div>
+        <div class="pager" id="pager"></div>
+      </div>
+    </section>
+
+    <!-- TAB: Catálogos -->
+    <section class="tab-panel" data-tab="catalogos">
+      <div class="settings-grid">
+        <!-- Habilitar catálogos para mayoristas -->
+        <div class="card">
+          <h2>🛍️ Catálogos de mayoristas</h2>
+          <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links de catálogos ya compartidos siguen funcionando.</p>
+          <label class="chk"><input type="checkbox" id="catalogo-habilitado" /> Permitir catálogos a las mayoristas</label>
+          <p class="muted" id="catalogo-hab-estado" style="margin:0; font-size:0.8rem"></p>
+        </div>
+
+        <!-- Duración de catálogos -->
+        <div class="card">
+          <h2>🔗 Duración de los catálogos</h2>
+          <p class="muted" style="margin-top:-0.6rem">Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
+          <label class="chk"><input type="checkbox" id="dias-ilimitado" /> Sin vencimiento (ilimitado)</label>
+          <div class="row" id="dias-row">
+            <div>
+              <label>Días</label>
+              <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
             </div>
+            <button class="btn" id="dias-save">Guardar</button>
           </div>
-          <button class="btn" id="min-save">Guardar</button>
         </div>
       </div>
+    </section>
 
-      <!-- Habilitar catálogos para mayoristas -->
-      <div class="card">
-        <h2>🛍️ Catálogos de mayoristas</h2>
-        <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links de catálogos ya compartidos siguen funcionando.</p>
-        <label class="chk"><input type="checkbox" id="catalogo-habilitado" /> Permitir catálogos a las mayoristas</label>
-        <p class="muted" id="catalogo-hab-estado" style="margin:0; font-size:0.8rem"></p>
-      </div>
-
-      <!-- Duración de catálogos -->
-      <div class="card">
-        <h2>🔗 Duración de los catálogos</h2>
-        <p class="muted" style="margin-top:-0.6rem">Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
-        <label class="chk"><input type="checkbox" id="dias-ilimitado" /> Sin vencimiento (ilimitado)</label>
-        <div class="row" id="dias-row">
-          <div>
-            <label>Días</label>
-            <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
+    <!-- TAB: General -->
+    <section class="tab-panel" data-tab="general">
+      <div class="settings-grid">
+        <!-- Mínimo mensual -->
+        <div class="card">
+          <h2>📅 Mínimo de compra mensual</h2>
+          <p class="muted" style="margin-top:-0.6rem">Monto que cada mayorista debe alcanzar al mes (en Lempiras).</p>
+          <div class="row">
+            <div>
+              <label>Mínimo mensual</label>
+              <div class="money">
+                <span>L.</span>
+                <input type="number" id="min-input" min="0" step="100" placeholder="0" />
+              </div>
+            </div>
+            <button class="btn" id="min-save">Guardar</button>
           </div>
-          <button class="btn" id="dias-save">Guardar</button>
+        </div>
+
+        <!-- Ocultar agotados -->
+        <div class="card">
+          <h2>🛑 Productos agotados</h2>
+          <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, los productos agotados no aparecen en la tienda. Desactívalo cuando quieras que vuelvan a salir.</p>
+          <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
+          <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
         </div>
       </div>
-
-      <!-- Ocultar agotados -->
-      <div class="card">
-        <h2>🛑 Productos agotados</h2>
-        <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, los productos agotados no aparecen en la tienda. Desactívalo cuando quieras que vuelvan a salir.</p>
-        <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
-        <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
-      </div>
-    </div>
-
-    <!-- Lista de mayoristas (a lo ancho) -->
-    <div class="card">
-      <div class="list-head">
-        <h2>👥 Mayoristas</h2>
-        <button class="btn" id="open-new">＋ Nueva mayorista</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="cuentas-body"></tbody>
-        </table>
-      </div>
-    </div>
+    </section>
   </div>
 
   <!-- MODAL: crear / editar mayorista (compartido) -->
@@ -348,6 +397,13 @@ function logout() {
 }
 $('logout').addEventListener('click', logout);
 
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+function setTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.tab === name));
+}
+
 // ── Datos ──
 async function loadAll() {
   try {
@@ -356,13 +412,74 @@ async function loadAll() {
     setDiasUI(cfg.catalogo_dias);
     setCatalogoHabUI(cfg.catalogo_habilitado !== false);
     setOcultarUI(!!cfg.ocultar_agotados);
-    renderCuentas(await api('/admin/cuentas'));
+    await reloadCuentas();
   } catch (ex) { panelMsg(ex.message, false); }
 }
 
-function renderCuentas(rows) {
+// Lista de mayoristas: se trae completa y se filtra/pagina en el navegador.
+const PAGE_SIZE = 10;
+let cuentasAll = [];
+let cuentasPage = 1;
+let cuentasQuery = '';
+
+async function reloadCuentas() {
+  cuentasAll = await api('/admin/cuentas');
+  renderCuentas();
+}
+
+$('search').addEventListener('input', (e) => {
+  cuentasQuery = e.target.value;
+  cuentasPage = 1;
+  renderCuentas();
+});
+
+function filtrarCuentas() {
+  const q = cuentasQuery.trim().toLowerCase();
+  if (!q) return cuentasAll;
+  return cuentasAll.filter(r =>
+    (r.usuario || '').toLowerCase().includes(q) ||
+    (r.nombre || '').toLowerCase().includes(q) ||
+    (r.emprendimiento || '').toLowerCase().includes(q) ||
+    (r.telefono || '').toLowerCase().includes(q));
+}
+
+function renderPager(total, pages) {
+  const pager = $('pager');
+  if (total === 0) { pager.innerHTML = ''; return; }
+  const from = (cuentasPage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(cuentasPage * PAGE_SIZE, total);
+  const info = pages <= 1
+    ? `${total} ${total === 1 ? 'mayorista' : 'mayoristas'}`
+    : `${from}–${to} de ${total}`;
+  const nav = pages <= 1 ? '' : `
+    <div class="pager__nav">
+      <button class="btn btn--ghost btn--sm" id="pg-prev" ${cuentasPage === 1 ? 'disabled' : ''}>‹ Anterior</button>
+      <span class="pager__info">Página ${cuentasPage} de ${pages}</span>
+      <button class="btn btn--ghost btn--sm" id="pg-next" ${cuentasPage === pages ? 'disabled' : ''}>Siguiente ›</button>
+    </div>`;
+  pager.innerHTML = `<span class="pager__info">${info}</span>${nav}`;
+  const prev = $('pg-prev'), next = $('pg-next');
+  if (prev) prev.addEventListener('click', () => { if (cuentasPage > 1) { cuentasPage--; renderCuentas(); } });
+  if (next) next.addEventListener('click', () => { if (cuentasPage < pages) { cuentasPage++; renderCuentas(); } });
+}
+
+function renderCuentas() {
   const body = $('cuentas-body');
-  if (!rows.length) { body.innerHTML = '<tr><td colspan="5" class="muted">Sin mayoristas todavía.</td></tr>'; return; }
+  if (!cuentasAll.length) {
+    body.innerHTML = '<tr><td colspan="5" class="muted">Sin mayoristas todavía.</td></tr>';
+    $('pager').innerHTML = '';
+    return;
+  }
+  const filtered = filtrarCuentas();
+  if (!filtered.length) {
+    body.innerHTML = `<tr><td colspan="5" class="muted">Sin resultados para “${esc(cuentasQuery.trim())}”.</td></tr>`;
+    $('pager').innerHTML = '';
+    return;
+  }
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (cuentasPage > pages) cuentasPage = pages;
+  if (cuentasPage < 1) cuentasPage = 1;
+  const rows = filtered.slice((cuentasPage - 1) * PAGE_SIZE, cuentasPage * PAGE_SIZE);
   body.innerHTML = rows.map(r => `
     <tr>
       <td data-label="Usuario"><b>${esc(r.usuario)}</b></td>
@@ -389,6 +506,7 @@ function renderCuentas(rows) {
     openMayoristaModal('edit', { usuario: d.user, nombre: d.nombre, emprendimiento: d.emp, telefono: d.tel });
   }));
   body.querySelectorAll('.act-delcat').forEach(b => b.addEventListener('click', borrarCatalogos));
+  renderPager(filtered.length, pages);
 }
 
 // ── Modal crear / editar mayorista (compartido) ──
@@ -454,7 +572,7 @@ $('mm-form').addEventListener('submit', async (e) => {
       panelMsg(`Datos de "${usuario}" actualizados.`);
     }
     closeMayoristaModal();
-    renderCuentas(await api('/admin/cuentas'));
+    await reloadCuentas();
   } catch (ex) { mmError(ex.message); }
   finally { btn.disabled = false; }
 });
@@ -497,7 +615,7 @@ async function toggleEstado(e) {
   try {
     await api('/admin/cuentas/estado', { method: 'POST', body: JSON.stringify({ usuario, activo: nuevo }) });
     panelMsg(`Cuenta "${usuario}" ${nuevo ? 'activada' : 'desactivada'}.`);
-    renderCuentas(await api('/admin/cuentas'));
+    await reloadCuentas();
   } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
 }
 
@@ -518,7 +636,7 @@ async function borrarCatalogos(e) {
   try {
     const res = await api(`/admin/cuentas/${encodeURIComponent(usuario)}/catalogos`, { method: 'DELETE' });
     panelMsg(`Se borraron ${res.eliminados} catálogo${res.eliminados === 1 ? '' : 's'} de "${usuario}".`);
-    renderCuentas(await api('/admin/cuentas'));
+    await reloadCuentas();
   } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
 }
 

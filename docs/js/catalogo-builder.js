@@ -136,7 +136,10 @@ export async function initBuilder() {
       </div>`;
       return;
     }
-    state.productos = prods;
+    // Solo productos con existencia: no tiene sentido armar un catálogo con
+    // productos agotados (availableForSale ya contempla el inventario no
+    // rastreado como disponible). Esto es solo para el armado del catálogo.
+    state.productos = prods.filter(p => p.availableForSale);
     state.diasConfig = lista.dias;
     // Solo colecciones que tienen al menos un producto de mayoreo.
     const conProd = new Set();
@@ -221,6 +224,38 @@ function productosDeColeccion(handle) {
   return state.productos.filter(p => (p.collectionHandles || []).includes(handle));
 }
 
+// Tarjeta de un producto en la grilla de selección.
+function pcardHTML(p) {
+  const on = state.sel.has(p.id);
+  const img = imgDe(p);
+  return `<button class="cb-pcard ${on ? 'is-on' : ''}" data-id="${esc(p.id)}">
+    <div class="cb-pcard__img">${img ? `<img src="${esc(img)}" alt="" loading="lazy"/>` : NOIMG}
+      <span class="cb-pcard__check">✓</span></div>
+    <span class="cb-pcard__name">${esc(p.title)}</span>
+  </button>`;
+}
+
+// Vuelve a enganchar el click de cada tarjeta (agregar/quitar del catálogo).
+function wireGridCards() {
+  $('#cb-body').querySelectorAll('.cb-pcard').forEach(b =>
+    b.addEventListener('click', () => { toggleProducto(b.dataset.id); guardarBorrador(); renderProductos(); }));
+}
+
+// Actualiza SOLO la grilla y el contador de "visibles" sin re-renderizar todo el
+// paso. Clave para que el buscador no pierda el foco al escribir (antes se
+// re-creaba el input en cada tecla y no dejaba seguir escribiendo).
+function actualizarGrilla() {
+  const grid = $('#cb-grid');
+  if (!grid) return;
+  const lista = productosFiltrados();
+  grid.innerHTML = lista.map(pcardHTML).join('') || '<p class="cb-hint">No hay productos con ese filtro.</p>';
+  wireGridCards();
+  const addBtn = $('#cb-add-todos');
+  if (addBtn) addBtn.textContent = `Agregar los ${lista.length} visibles`;
+}
+
+let _busqTimer = null;
+
 function renderProductos() {
   const lista = productosFiltrados();
   const chips = state.colecciones.map(c => {
@@ -246,19 +281,18 @@ function renderProductos() {
       ${state.sel.size} seleccionado${state.sel.size === 1 ? '' : 's'}. Tocá un producto para agregarlo o quitarlo.
       ${state.sel.size ? '<button class="cb-link-btn" id="cb-quitar-todos">Quitar todos</button>' : ''}
     </p>
-    <div class="cb-grid">
-      ${lista.map(p => {
-        const on = state.sel.has(p.id);
-        const img = imgDe(p);
-        return `<button class="cb-pcard ${on ? 'is-on' : ''}" data-id="${esc(p.id)}">
-          <div class="cb-pcard__img">${img ? `<img src="${esc(img)}" alt="" loading="lazy"/>` : NOIMG}
-            <span class="cb-pcard__check">✓</span></div>
-          <span class="cb-pcard__name">${esc(p.title)}</span>
-        </button>`;
-      }).join('') || '<p class="cb-hint">No hay productos con ese filtro.</p>'}
+    <div class="cb-grid" id="cb-grid">
+      ${lista.map(pcardHTML).join('') || '<p class="cb-hint">No hay productos con ese filtro.</p>'}
     </div>`;
 
-  $('#cb-buscar').addEventListener('input', (e) => { state.busqueda = e.target.value; renderProductos(); });
+  // Buscar: actualiza solo la grilla (con un pequeño retraso) para no re-crear el
+  // input en cada tecla; así se puede escribir la palabra completa sin perder el
+  // foco ni el cursor.
+  $('#cb-buscar').addEventListener('input', (e) => {
+    state.busqueda = e.target.value;
+    clearTimeout(_busqTimer);
+    _busqTimer = setTimeout(actualizarGrilla, 200);
+  });
   montarSelectColeccion();
   $('#cb-add-todos').addEventListener('click', () => {
     productosFiltrados().forEach(p => addProducto(p));
@@ -269,8 +303,7 @@ function renderProductos() {
   // Chips de colección: agregan/quitan la colección entera.
   $('#cb-body').querySelectorAll('.cb-chip').forEach(b =>
     b.addEventListener('click', () => { toggleColeccion(b.dataset.col); guardarBorrador(); renderProductos(); }));
-  $('#cb-body').querySelectorAll('.cb-pcard').forEach(b =>
-    b.addEventListener('click', () => { toggleProducto(b.dataset.id); guardarBorrador(); renderProductos(); }));
+  wireGridCards();
 
   setFoot(`${state.sel.size} producto${state.sel.size === 1 ? '' : 's'}`,
           state.sel.size ? 'Siguiente →' : '', () => irA('precios'));

@@ -13,14 +13,17 @@
     margin: 0; font-family: 'Montserrat', system-ui, sans-serif;
     background: #fff5fa; color: var(--ink); min-height: 100vh;
   }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 1.5rem 1.1rem 4rem; }
+  /* Contenedor angosto solo para el login. */
+  .wrap { max-width: 420px; margin: 0 auto; padding: 1.5rem 1.1rem 4rem; }
+  /* Panel: aprovecha todo el ancho de la pantalla (con un tope razonable). */
+  .admin { max-width: 1440px; margin: 0 auto; padding: 1.3rem 1.6rem 4rem; }
   h1 { font-size: 1.35rem; margin: 0; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.6rem; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
   .top__brand { display: flex; align-items: center; gap: 0.6rem; }
   .top__brand b { color: var(--pink-dk); }
   .card {
     background: #fff; border-radius: 14px; padding: 1.3rem 1.3rem;
-    box-shadow: 0 8px 28px rgba(150,30,80,0.10); margin-bottom: 1.3rem;
+    box-shadow: 0 8px 28px rgba(150,30,80,0.10);
   }
   .card h2 { font-size: 0.95rem; margin: 0 0 1rem; letter-spacing: 0.02em; }
   label { display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em;
@@ -43,9 +46,10 @@
   .btn {
     background: var(--pink); color: #fff; border: none; border-radius: 9px;
     padding: 0.65rem 1.3rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, transform 0.12s ease;
   }
   .btn:hover { background: var(--pink-dk); }
+  .btn:active { transform: translateY(1px); }
   .btn--ghost { background: #fff; color: var(--pink-dk); border: 1.5px solid #f0d6e2; }
   .btn--ghost:hover { background: #fff0f6; color: var(--pink-dk); border-color: var(--pink); }
   .btn--danger { background: #fff; color: #d61f4a; border: 1.5px solid #f4c3d0; }
@@ -63,8 +67,9 @@
   }
   .money input { padding-left: 2.1rem; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 0.6rem 0.4rem; font-size: 0.88rem; border-bottom: 1px solid #f4e4ec; }
+  th, td { text-align: left; padding: 0.7rem 0.5rem; font-size: 0.9rem; border-bottom: 1px solid #f4e4ec; }
   th { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  tbody tr:hover { background: #fff8fb; }
   .pill { font-size: 0.66rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 999px; }
   .pill--on { background: #e3f9ec; color: #1c9e54; }
   .pill--off { background: #ffe6ec; color: #d61f4a; }
@@ -80,17 +85,58 @@
   .login__icon { font-size: 2rem; text-align: center; margin-bottom: 0.4rem; }
   .muted { color: var(--muted); font-size: 0.8rem; }
 
+  /* ── Layout del panel: en desktop la configuración va en una grilla que ocupa
+     el ancho, y la lista de mayoristas a lo ancho debajo. En móvil todo se
+     apila en una sola columna. ── */
+  .settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.2rem; margin-bottom: 1.2rem; align-items: start;
+  }
+  .list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .list-head h2 { margin: 0; }
+  .table-wrap { overflow-x: auto; }
+
+  /* ── Modal (crear / editar mayorista) ── */
+  .modal {
+    position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
+    padding: 1rem; opacity: 0; visibility: hidden;
+    transition: opacity 0.24s ease, visibility 0s linear 0.24s;
+  }
+  .modal.is-open { opacity: 1; visibility: visible; transition: opacity 0.24s ease; }
+  .modal__backdrop { position: absolute; inset: 0; background: rgba(58,20,36,0.48); backdrop-filter: blur(3px); }
+  .modal__card {
+    position: relative; background: #fff; border-radius: 18px; width: min(480px, 100%);
+    max-height: 92vh; overflow-y: auto; padding: 1.4rem 1.5rem 1.5rem;
+    box-shadow: 0 30px 70px -18px rgba(150,30,80,0.55);
+    transform: translateY(14px) scale(0.97); transition: transform 0.26s cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .modal.is-open .modal__card { transform: none; }
+  .modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; }
+  .modal__head h2 { margin: 0; font-size: 1.1rem; }
+  .modal__x {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 1.1rem; line-height: 1; padding: 0.3rem; border-radius: 8px;
+  }
+  .modal__x:hover { color: var(--pink-dk); background: #fff0f6; }
+  .field { margin-bottom: 0.85rem; }
+  .field label { margin-bottom: 0.32rem; }
+  .field input { margin-bottom: 0; }
+  .modal__acts { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.2rem; }
+  .modal__acts .btn { padding: 0.7rem 1.5rem; }
+
   /* ── Móvil: la tabla de mayoristas se rompía (5 columnas + 4 botones en la
      última celda). En pantallas angostas cada fila se muestra como una tarjeta
      apilada, con el nombre del campo (data-label) a la izquierda y los botones
      de acción en su propia fila, para que no se desborden. ── */
   @media (max-width: 640px) {
+    .admin { padding: 1.1rem 1rem 3.5rem; }
     table, tbody, tr, td { display: block; width: 100%; }
     thead { display: none; }
     tbody tr {
       background: #fff8fb; border: 1.5px solid #f0d6e2; border-radius: 12px;
       padding: 0.5rem 0.8rem; margin-bottom: 0.8rem;
     }
+    tbody tr:hover { background: #fff8fb; }
     tbody tr td { border: none; padding: 0.32rem 0; }
     tbody tr td:not(.td-acts) {
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
@@ -106,6 +152,8 @@
     .td-acts { padding-top: 0.5rem !important; margin-top: 0.15rem; border-top: 1px solid #f4e4ec !important; }
     .acts { justify-content: flex-start; }
     .acts .btn { flex: 1 1 auto; text-align: center; }
+    .list-head { flex-wrap: wrap; }
+    .list-head .btn { flex: 1 1 100%; }
   }
 </style>
 </head>
@@ -132,78 +180,111 @@
   </div>
 
   <!-- PANEL -->
-  <div id="panel-view" class="wrap hidden">
+  <div id="panel-view" class="admin hidden">
     <div class="top">
       <div class="top__brand"><span>🛍️</span><h1>Mayoreo · <b>PinkPower</b></h1></div>
       <button class="btn btn--ghost btn--sm" id="logout">Salir</button>
     </div>
 
-    <!-- Mínimo mensual -->
-    <div class="card">
-      <h2>📅 Mínimo de compra mensual</h2>
-      <p class="muted" style="margin-top:-0.6rem">Monto que cada mayorista debe alcanzar al mes (en Lempiras).</p>
-      <div class="row">
-        <div>
-          <label>Mínimo mensual</label>
-          <div class="money">
-            <span>L.</span>
-            <input type="number" id="min-input" min="0" step="100" placeholder="0" />
+    <!-- Configuración (grilla que aprovecha el ancho) -->
+    <div class="settings-grid">
+      <!-- Mínimo mensual -->
+      <div class="card">
+        <h2>📅 Mínimo de compra mensual</h2>
+        <p class="muted" style="margin-top:-0.6rem">Monto que cada mayorista debe alcanzar al mes (en Lempiras).</p>
+        <div class="row">
+          <div>
+            <label>Mínimo mensual</label>
+            <div class="money">
+              <span>L.</span>
+              <input type="number" id="min-input" min="0" step="100" placeholder="0" />
+            </div>
           </div>
+          <button class="btn" id="min-save">Guardar</button>
         </div>
-        <button class="btn" id="min-save">Guardar</button>
       </div>
-    </div>
 
-    <!-- Habilitar catálogos para mayoristas -->
-    <div class="card">
-      <h2>🛍️ Catálogos de mayoristas</h2>
-      <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links de catálogos ya compartidos siguen funcionando.</p>
-      <label class="chk"><input type="checkbox" id="catalogo-habilitado" /> Permitir catálogos a las mayoristas</label>
-      <p class="muted" id="catalogo-hab-estado" style="margin:0; font-size:0.8rem"></p>
-    </div>
+      <!-- Habilitar catálogos para mayoristas -->
+      <div class="card">
+        <h2>🛍️ Catálogos de mayoristas</h2>
+        <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links de catálogos ya compartidos siguen funcionando.</p>
+        <label class="chk"><input type="checkbox" id="catalogo-habilitado" /> Permitir catálogos a las mayoristas</label>
+        <p class="muted" id="catalogo-hab-estado" style="margin:0; font-size:0.8rem"></p>
+      </div>
 
-    <!-- Duración de catálogos -->
-    <div class="card">
-      <h2>🔗 Duración de los catálogos</h2>
-      <p class="muted" style="margin-top:-0.6rem">Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
-      <label class="chk"><input type="checkbox" id="dias-ilimitado" /> Sin vencimiento (ilimitado)</label>
-      <div class="row" id="dias-row">
-        <div>
-          <label>Días</label>
-          <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
+      <!-- Duración de catálogos -->
+      <div class="card">
+        <h2>🔗 Duración de los catálogos</h2>
+        <p class="muted" style="margin-top:-0.6rem">Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
+        <label class="chk"><input type="checkbox" id="dias-ilimitado" /> Sin vencimiento (ilimitado)</label>
+        <div class="row" id="dias-row">
+          <div>
+            <label>Días</label>
+            <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
+          </div>
+          <button class="btn" id="dias-save">Guardar</button>
         </div>
-        <button class="btn" id="dias-save">Guardar</button>
+      </div>
+
+      <!-- Ocultar agotados -->
+      <div class="card">
+        <h2>🛑 Productos agotados</h2>
+        <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, los productos agotados no aparecen en la tienda. Desactívalo cuando quieras que vuelvan a salir.</p>
+        <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
+        <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
       </div>
     </div>
 
-    <!-- Ocultar agotados -->
+    <!-- Lista de mayoristas (a lo ancho) -->
     <div class="card">
-      <h2>🛑 Productos agotados</h2>
-      <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, los productos agotados no aparecen en la tienda. Desactívalo cuando quieras que vuelvan a salir.</p>
-      <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
-      <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
-    </div>
-
-    <!-- Crear mayorista -->
-    <div class="card">
-      <h2>➕ Nueva mayorista</h2>
-      <div class="row">
-        <div><label>Usuario</label><input type="text" id="n-user" autocapitalize="none" /></div>
-        <div><label>Contraseña</label><input type="text" id="n-pass" /></div>
-        <div><label>Nombre de la clienta</label><input type="text" id="n-name" /></div>
-        <div><label>Emprendimiento</label><input type="text" id="n-emp" /></div>
-        <div><label>Teléfono</label><input type="tel" id="n-tel" placeholder="+504 0000-0000" /></div>
-        <button class="btn" id="n-add">Crear</button>
+      <div class="list-head">
+        <h2>👥 Mayoristas</h2>
+        <button class="btn" id="open-new">＋ Nueva mayorista</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="cuentas-body"></tbody>
+        </table>
       </div>
     </div>
+  </div>
 
-    <!-- Lista de mayoristas -->
-    <div class="card">
-      <h2>👥 Mayoristas</h2>
-      <table>
-        <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th></th></tr></thead>
-        <tbody id="cuentas-body"></tbody>
-      </table>
+  <!-- MODAL: crear / editar mayorista (compartido) -->
+  <div id="mm-modal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="mm-title">
+      <div class="modal__head">
+        <h2 id="mm-title">Nueva mayorista</h2>
+        <button type="button" class="modal__x" data-close aria-label="Cerrar">✕</button>
+      </div>
+      <div id="mm-msg" class="msg msg--err hidden"></div>
+      <form id="mm-form">
+        <div class="field">
+          <label>Usuario de acceso</label>
+          <input type="text" id="mm-user" autocapitalize="none" autocomplete="off" />
+        </div>
+        <div class="field" id="mm-pass-field">
+          <label>Contraseña</label>
+          <input type="text" id="mm-pass" autocomplete="off" placeholder="Mínimo 4 caracteres" />
+        </div>
+        <div class="field">
+          <label>Nombre de la clienta</label>
+          <input type="text" id="mm-nombre" />
+        </div>
+        <div class="field">
+          <label>Emprendimiento</label>
+          <input type="text" id="mm-emp" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Teléfono</label>
+          <input type="tel" id="mm-tel" placeholder="+504 0000-0000" />
+        </div>
+        <div class="modal__acts">
+          <button type="button" class="btn btn--ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn" id="mm-save">Crear</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -303,9 +384,80 @@ function renderCuentas(rows) {
     </tr>`).join('');
   body.querySelectorAll('.act-estado').forEach(b => b.addEventListener('click', toggleEstado));
   body.querySelectorAll('.act-pass').forEach(b => b.addEventListener('click', cambiarPassword));
-  body.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', editarCuenta));
+  body.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', (e) => {
+    const d = e.currentTarget.dataset;
+    openMayoristaModal('edit', { usuario: d.user, nombre: d.nombre, emprendimiento: d.emp, telefono: d.tel });
+  }));
   body.querySelectorAll('.act-delcat').forEach(b => b.addEventListener('click', borrarCatalogos));
 }
+
+// ── Modal crear / editar mayorista (compartido) ──
+const mm = $('mm-modal');
+let mmMode = 'create';
+let mmOrigUser = '';
+
+function openMayoristaModal(mode, data = {}) {
+  mmMode = mode;
+  mmOrigUser = data.usuario || '';
+  $('mm-title').textContent = mode === 'edit' ? 'Editar datos' : 'Nueva mayorista';
+  $('mm-save').textContent = mode === 'edit' ? 'Guardar' : 'Crear';
+  // La contraseña solo se pide al crear; para cambiarla en una cuenta existente
+  // está el botón "Clave" (evita sobrescribirla sin querer al editar datos).
+  $('mm-pass-field').classList.toggle('hidden', mode === 'edit');
+  $('mm-user').value = data.usuario || '';
+  $('mm-pass').value = '';
+  $('mm-nombre').value = data.nombre || '';
+  $('mm-emp').value = data.emprendimiento || '';
+  $('mm-tel').value = data.telefono || '';
+  const msg = $('mm-msg'); msg.classList.add('hidden'); msg.textContent = '';
+  mm.classList.add('is-open'); mm.setAttribute('aria-hidden', 'false');
+  setTimeout(() => $('mm-user').focus(), 80);
+}
+function closeMayoristaModal() {
+  mm.classList.remove('is-open'); mm.setAttribute('aria-hidden', 'true');
+}
+function mmError(text) { const m = $('mm-msg'); m.textContent = text; m.classList.remove('hidden'); }
+
+mm.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeMayoristaModal));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && mm.classList.contains('is-open')) closeMayoristaModal();
+});
+$('open-new').addEventListener('click', () => openMayoristaModal('create'));
+
+$('mm-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const usuario = $('mm-user').value.trim();
+  const nombre = $('mm-nombre').value.trim();
+  const emprendimiento = $('mm-emp').value.trim();
+  const telefono = $('mm-tel').value.trim();
+  if (usuario.length < 3) { mmError('El usuario debe tener al menos 3 caracteres.'); return; }
+  const btn = $('mm-save'); btn.disabled = true;
+  try {
+    if (mmMode === 'create') {
+      const password = $('mm-pass').value;
+      if (password.length < 4) { mmError('La contraseña debe tener al menos 4 caracteres.'); btn.disabled = false; return; }
+      await api('/admin/cuentas', { method: 'POST', body: JSON.stringify({ usuario, password, nombre, emprendimiento, telefono }) });
+      panelMsg(`Mayorista "${usuario}" creada.`);
+    } else {
+      const cambiaUsuario = usuario.toLowerCase() !== mmOrigUser.toLowerCase();
+      if (cambiaUsuario) {
+        const r = await Swal.fire({
+          title: '¿Cambiar el usuario de acceso?',
+          html: `Iniciará sesión como <b>${esc(usuario)}</b> en vez de <b>${esc(mmOrigUser)}</b>. La contraseña y sus catálogos se conservan.`,
+          icon: 'warning', showCancelButton: true,
+          confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar',
+          confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+        });
+        if (!r.isConfirmed) { btn.disabled = false; return; }
+      }
+      await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario: mmOrigUser, nuevo_usuario: usuario, nombre, emprendimiento, telefono }) });
+      panelMsg(`Datos de "${usuario}" actualizados.`);
+    }
+    closeMayoristaModal();
+    renderCuentas(await api('/admin/cuentas'));
+  } catch (ex) { mmError(ex.message); }
+  finally { btn.disabled = false; }
+});
 
 // ── Cambiar contraseña de una mayorista ──
 async function cambiarPassword(e) {
@@ -325,56 +477,6 @@ async function cambiarPassword(e) {
   try {
     await api('/admin/cuentas/password', { method: 'POST', body: JSON.stringify({ usuario, password: pass.trim() }) });
     panelMsg(`Contraseña de "${usuario}" actualizada.`);
-  } catch (ex) { panelMsg(ex.message, false); }
-}
-
-// ── Editar datos (usuario de acceso y nombre / tienda) de una mayorista ──
-async function editarCuenta(e) {
-  const usuario = e.currentTarget.dataset.user;
-  const actual = e.currentTarget.dataset.nombre || '';
-  const actualEmp = e.currentTarget.dataset.emp || '';
-  const actualTel = e.currentTarget.dataset.tel || '';
-  const lbl = 'display:block;text-align:left;font-size:.85rem;color:#8a6a78;margin:.2rem 0 .15rem';
-  const { value: vals } = await Swal.fire({
-    title: `Editar datos`,
-    html:
-      `<label style="${lbl}">Usuario de acceso</label>` +
-      `<input id="ed-user" class="swal2-input" style="margin:0 0 .6rem" value="${esc(usuario)}">` +
-      `<label style="${lbl}">Nombre de la clienta</label>` +
-      `<input id="ed-nombre" class="swal2-input" style="margin:0 0 .6rem" value="${esc(actual)}">` +
-      `<label style="${lbl}">Emprendimiento</label>` +
-      `<input id="ed-emp" class="swal2-input" style="margin:0 0 .6rem" value="${esc(actualEmp)}">` +
-      `<label style="${lbl}">Teléfono</label>` +
-      `<input id="ed-tel" class="swal2-input" style="margin:0" value="${esc(actualTel)}" placeholder="+504 0000-0000">`,
-    focusConfirm: false,
-    showCancelButton: true,
-    confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    preConfirm: () => {
-      const nu = document.getElementById('ed-user').value.trim();
-      const nombre = document.getElementById('ed-nombre').value.trim();
-      const emprendimiento = document.getElementById('ed-emp').value.trim();
-      const telefono = document.getElementById('ed-tel').value.trim();
-      if (nu.length < 3) { Swal.showValidationMessage('El usuario debe tener al menos 3 caracteres'); return false; }
-      return { nuevo_usuario: nu, nombre, emprendimiento, telefono };
-    },
-  });
-  if (!vals) return;   // canceló
-  const cambiaUsuario = vals.nuevo_usuario.toLowerCase() !== usuario.toLowerCase();
-  if (cambiaUsuario) {
-    const r = await Swal.fire({
-      title: '¿Cambiar el usuario de acceso?',
-      html: `Iniciará sesión como <b>${esc(vals.nuevo_usuario)}</b> en vez de <b>${esc(usuario)}</b>. La contraseña y sus catálogos se conservan.`,
-      icon: 'warning', showCancelButton: true,
-      confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    });
-    if (!r.isConfirmed) return;
-  }
-  try {
-    await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario, nuevo_usuario: vals.nuevo_usuario, nombre: vals.nombre, emprendimiento: vals.emprendimiento, telefono: vals.telefono }) });
-    panelMsg(`Datos de "${vals.nuevo_usuario}" actualizados.`);
-    renderCuentas(await api('/admin/cuentas'));
   } catch (ex) { panelMsg(ex.message, false); }
 }
 
@@ -479,17 +581,6 @@ $('ocultar-agotados').addEventListener('change', async (e) => {
     setOcultarUI(!!cfg.ocultar_agotados);
     panelMsg(on ? 'Agotados ocultados.' : 'Agotados visibles de nuevo.');
   } catch (ex) { panelMsg(ex.message, false); e.target.checked = !on; }
-});
-
-// ── Crear mayorista ──
-$('n-add').addEventListener('click', async () => {
-  const usuario = $('n-user').value.trim(), password = $('n-pass').value, nombre = $('n-name').value.trim(), emprendimiento = $('n-emp').value.trim(), telefono = $('n-tel').value.trim();
-  try {
-    await api('/admin/cuentas', { method: 'POST', body: JSON.stringify({ usuario, password, nombre, emprendimiento, telefono }) });
-    $('n-user').value = ''; $('n-pass').value = ''; $('n-name').value = ''; $('n-emp').value = ''; $('n-tel').value = '';
-    panelMsg(`Mayorista "${usuario}" creada.`);
-    renderCuentas(await api('/admin/cuentas'));
-  } catch (ex) { panelMsg(ex.message, false); }
 });
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }

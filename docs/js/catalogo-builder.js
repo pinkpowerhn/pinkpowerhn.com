@@ -140,6 +140,10 @@ export async function initBuilder() {
     // productos agotados (availableForSale ya contempla el inventario no
     // rastreado como disponible). Esto es solo para el armado del catálogo.
     state.productos = prods.filter(p => p.availableForSale);
+    // Texto buscable precomputado (una vez): nombre + marca (productType) +
+    // tipo (tags) + descripción, todo sin tildes. Así el buscador filtra por
+    // cualquiera de esos campos, no solo por el nombre.
+    state.productos.forEach(p => { p._buscable = textoBuscable(p); });
     state.diasConfig = lista.dias;
     // Solo colecciones que tienen al menos un producto de mayoreo.
     const conProd = new Set();
@@ -220,15 +224,26 @@ function normalizarBusqueda(s) {
     .normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+// Texto donde busca el filtro: nombre + marca (productType) + tipo (tags) +
+// descripción, todo normalizado (sin tildes).
+function textoBuscable(p) {
+  return normalizarBusqueda([
+    p.title,
+    p.productType,
+    (p.tags || []).join(' '),
+    p.description,
+  ].filter(Boolean).join(' '));
+}
+
 function productosFiltrados() {
-  // Cada palabra escrita debe aparecer en el título (en cualquier orden), así
-  // "gel bano" encuentra "Gel de Baño".
+  // Cada palabra escrita debe aparecer en el texto buscable (en cualquier orden),
+  // así "bbw gel" o "vanilla jabon" encuentran el producto por marca/tipo/nombre.
   const terminos = normalizarBusqueda(state.busqueda).trim().split(/\s+/).filter(Boolean);
   return state.productos.filter(p => {
     if (state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
     if (terminos.length) {
-      const titulo = normalizarBusqueda(p.title);
-      if (!terminos.every(t => titulo.includes(t))) return false;
+      const txt = p._buscable != null ? p._buscable : textoBuscable(p);
+      if (!terminos.every(t => txt.includes(t))) return false;
     }
     return true;
   });
@@ -288,7 +303,7 @@ function renderProductos() {
     </div>` : ''}
     <div class="cb-tools">
       <div class="cb-search">
-        <input id="cb-buscar" class="cb-input" type="search" autocomplete="off" placeholder="Buscar producto…" value="${esc(state.busqueda)}" />
+        <input id="cb-buscar" class="cb-input" type="search" autocomplete="off" placeholder="Buscar por nombre, marca o tipo…" value="${esc(state.busqueda)}" />
         <button type="button" class="cb-search__x" id="cb-buscar-x" aria-label="Limpiar búsqueda"${state.busqueda ? '' : ' hidden'}>✕</button>
       </div>
       <div class="cb-select" id="cb-coleccion"></div>

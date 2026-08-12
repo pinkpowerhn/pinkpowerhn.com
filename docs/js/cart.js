@@ -105,42 +105,49 @@ export function buildWhatsAppMessage(orderName = null, checkout = null) {
   const cart = getState().cart;
   if (!cart.length) return '';
 
-  const lines = cart.map(i => {
-    const variantLabel = i.variantTitle !== 'Default Title' ? ` (${i.variantTitle})` : '';
-    const price = (i.price * i.quantity).toLocaleString('es-HN', { minimumFractionDigits: 2 });
-    return `• ${i.productTitle}${variantLabel} x${i.quantity} — L. ${price}`;
-  });
-
   const fmt = n => Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2 });
 
+  const lines = cart.map(i => {
+    const variantLabel = i.variantTitle !== 'Default Title' ? ` (${i.variantTitle})` : '';
+    const price = fmt(i.price * i.quantity);
+    return `* ${i.productTitle}${variantLabel} x${i.quantity} — L. ${price}`;
+  });
+
+  // Encabezado con el número de pedido (o intención de pedido si aún no existe).
+  const header = orderName
+    ? `¡Hola! 👋\n\nAcabo de realizar mi pedido ${orderName} en Pink Power 💗`
+    : `¡Hola! 👋\n\nMe gustaría hacer el siguiente pedido en Pink Power 💗`;
+
+  // Totales: subtotal, envío (si aplica), comisión (si aplica) y total a pagar.
   let totalsBlock;
   if (checkout) {
-    const rows = [
-      `Subtotal: L. ${fmt(checkout.productsTotal)}`,
-      `Entrega: ${checkout.deliveryLabel}${checkout.shipping ? ` — L. ${fmt(checkout.shipping)}` : ' — Gratis'}`,
-      `Pago: ${checkout.paymentLabel}`,
-    ];
-    if (checkout.commission > 0) rows.push(`Comisión contra entrega (5%): L. ${fmt(checkout.commission)}`);
-    rows.push(`*Total a pagar: L. ${fmt(checkout.finalTotal)}*`);
+    const rows = [`Subtotal: L. ${fmt(checkout.productsTotal)}`];
+    if (checkout.shipping > 0) rows.push(`Envío: L. ${fmt(checkout.shipping)}`);
+    if (checkout.commission > 0) rows.push(`Comisión por pago contra entrega (5%): L. ${fmt(checkout.commission)}`);
+    rows.push(`Total a pagar: L. ${fmt(checkout.finalTotal)}`);
     totalsBlock = rows.join('\n');
   } else {
     totalsBlock = `Total: L. ${fmt(getCartTotal())}`;
   }
 
-  const header = orderName
-    ? `Hola! Acabo de realizar el pedido *${orderName}* en PinkPower HN.\n\n`
-    : `Hola! Me gustaría hacer el siguiente pedido:\n\n`;
-
-  // Datos de contacto de la clienta, para que Aylin sepa quién escribe aunque el
-  // número de WhatsApp del remitente sea distinto al que dejó en el formulario.
-  let contactBlock = '';
+  // Datos de entrega: nombre y teléfono de la clienta, método de entrega y forma
+  // de pago. Así Aylin sabe quién escribe aunque el WhatsApp del remitente sea
+  // distinto al número que dejó en el formulario.
+  let dataBlock = '';
   if (checkout && checkout.customerName) {
-    const rows = [`Cliente: ${checkout.customerName}`];
+    const rows = ['📦 Datos de Entrega:', `Nombre: ${checkout.customerName}`];
     if (checkout.customerPhone) rows.push(`Teléfono: ${checkout.customerPhone}`);
-    contactBlock = `\n\n${rows.join('\n')}`;
+    if (checkout.deliveryLabel) rows.push(checkout.deliveryLabel);
+    if (checkout.paymentLabel) {
+      const pago = checkout.cashOnDelivery ? 'Efectivo contra entrega' : checkout.paymentLabel;
+      rows.push(`Pago: ${pago}`);
+    }
+    dataBlock = `\n\n${rows.join('\n')}`;
   }
 
-  return `${header}${lines.join('\n')}\n\n${totalsBlock}${contactBlock}`;
+  const footer = '\n\n¡Quedo pendiente de la confirmación de mi pedido! ✨';
+
+  return `${header}\n\n${lines.join('\n')}\n\n${totalsBlock}${dataBlock}${footer}`;
 }
 
 export function buildWhatsAppUrl(number, orderName = null, checkout = null) {

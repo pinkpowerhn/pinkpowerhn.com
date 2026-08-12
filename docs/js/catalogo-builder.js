@@ -770,6 +770,7 @@ async function cargarLista() {
             </div>
             <div class="cb-miscard__acts">
               ${exp ? '' : `<a class="cb-btn cb-btn--sm" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>`}
+              ${exp ? '' : `<a class="cb-btn cb-btn--sm" href="${esc(link + '&pdf=1')}" target="_blank" rel="noopener" title="Descargar el catálogo en PDF">PDF</a>`}
               <button class="cb-btn cb-btn--sm" data-edit="${i}">Editar</button>
               <button class="cb-btn cb-btn--sm cb-btn--ghost" data-del="${esc(c.token)}">Eliminar</button>
             </div>

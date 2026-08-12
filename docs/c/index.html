@@ -239,6 +239,23 @@
   @keyframes floaty { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
   @media (prefers-reduced-motion: reduce) { .deco .orb, .deco .star { animation: none; } }
   .wrap { position: relative; z-index: 1; }
+
+  /* ── Impresión / Guardar como PDF ─────────────────────────
+     Se ocultan decoraciones y botones; se conservan los colores de marca
+     (fondo y acento) y se evita cortar una tarjeta entre dos páginas. */
+  @media print {
+    body::before, .deco, .wa-fab, .cat__actions, footer.cat { display: none !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { margin: 12mm; }
+    body { background: var(--bg) !important; }
+    .card { animation: none !important; box-shadow: none !important;
+            border: 1px solid rgba(0,0,0,.14); break-inside: avoid; }
+    .section, .grid--solo { max-width: none !important; }
+    .section__title { break-after: avoid; }
+    /* Layout de PDF consistente en cualquier navegador: 3 por fila. */
+    .grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8mm !important; }
+    header.cat { padding: .4rem 1rem 1rem; }
+  }
 </style>
 </head>
 <body>
@@ -444,9 +461,34 @@ async function load() {
     }
     if (!res.ok) throw new Error('fetch');
     render(await res.json());
+    if (quiereDescargar()) descargarPDF();
   } catch (_) {
     root.innerHTML = stateView('😕', 'No se pudo cargar', 'Revisá tu conexión e intentá de nuevo.');
   }
+}
+
+// Descargar el catálogo en PDF con la impresión del navegador (Guardar como PDF):
+// texto nítido, imágenes a plena resolución y paginación automática, sin librerías.
+// No hay botón dentro del catálogo (eso lo ven las clientas); la descarga se
+// dispara desde la lista "Mis catálogos", que abre el link con &pdf=1. Antes de
+// imprimir se fuerza la carga de todas las imágenes para que ninguna salga en
+// blanco (las 'lazy' podrían no haberse cargado aún).
+async function descargarPDF() {
+  const imgs = [...document.querySelectorAll('.card__img, .cat__logo')];
+  imgs.forEach(im => { try { im.loading = 'eager'; } catch (_) {} });
+  await Promise.all(imgs.map(im => (im.complete && im.naturalWidth)
+    ? null
+    : new Promise(res => {
+        im.addEventListener('load', res, { once: true });
+        im.addEventListener('error', res, { once: true });
+        setTimeout(res, 4000);   // tope: una imagen trabada no cuelga la descarga
+      })));
+  window.print();
+}
+
+// ¿El link pide descargar (viene con &pdf=1)? Entonces, tras renderizar, imprimimos.
+function quiereDescargar() {
+  return new URLSearchParams(location.search).get('pdf') === '1';
 }
 
 load();

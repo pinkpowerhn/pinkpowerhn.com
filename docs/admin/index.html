@@ -79,6 +79,34 @@
   .login { max-width: 360px; margin: 8vh auto 0; }
   .login__icon { font-size: 2rem; text-align: center; margin-bottom: 0.4rem; }
   .muted { color: var(--muted); font-size: 0.8rem; }
+
+  /* ── Móvil: la tabla de mayoristas se rompía (5 columnas + 4 botones en la
+     última celda). En pantallas angostas cada fila se muestra como una tarjeta
+     apilada, con el nombre del campo (data-label) a la izquierda y los botones
+     de acción en su propia fila, para que no se desborden. ── */
+  @media (max-width: 640px) {
+    table, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tbody tr {
+      background: #fff8fb; border: 1.5px solid #f0d6e2; border-radius: 12px;
+      padding: 0.5rem 0.8rem; margin-bottom: 0.8rem;
+    }
+    tbody tr td { border: none; padding: 0.32rem 0; }
+    tbody tr td:not(.td-acts) {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    tbody tr td:not(.td-acts)::before {
+      content: attr(data-label);
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); flex: 0 0 auto;
+    }
+    /* Fila "sin mayoristas" (colspan) no lleva etiqueta ni flex */
+    tbody tr td[colspan] { display: block; }
+    tbody tr td[colspan]::before { display: none; }
+    .td-acts { padding-top: 0.5rem !important; margin-top: 0.15rem; border-top: 1px solid #f4e4ec !important; }
+    .acts { justify-content: flex-start; }
+    .acts .btn { flex: 1 1 auto; text-align: center; }
+  }
 </style>
 </head>
 <body>
@@ -256,11 +284,11 @@ function renderCuentas(rows) {
   if (!rows.length) { body.innerHTML = '<tr><td colspan="5" class="muted">Sin mayoristas todavía.</td></tr>'; return; }
   body.innerHTML = rows.map(r => `
     <tr>
-      <td><b>${esc(r.usuario)}</b></td>
-      <td>${esc(r.nombre || '')}</td>
-      <td>${esc(r.emprendimiento || '')}</td>
-      <td><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
-      <td>
+      <td data-label="Usuario"><b>${esc(r.usuario)}</b></td>
+      <td data-label="Nombre">${esc(r.nombre || '')}</td>
+      <td data-label="Emprendimiento">${esc(r.emprendimiento || '')}</td>
+      <td data-label="Estado"><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
+      <td class="td-acts">
         <div class="acts">
           <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}" data-emp="${esc(r.emprendimiento || '')}" data-tel="${esc(r.telefono || '')}">Editar</button>
           <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>

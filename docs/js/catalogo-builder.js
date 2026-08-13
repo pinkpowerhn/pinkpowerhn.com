@@ -297,7 +297,7 @@ function renderProductos() {
   $('#cb-body').innerHTML = `
     ${state.colecciones.length ? `
     <div class="cb-cols">
-      <p class="cb-cols__label">Agregar una colección completa:</p>
+      <p class="cb-cols__label">Tocá una colección para verla y agregarla completa:</p>
       <div class="cb-chips">${chips}</div>
       <p class="cb-hint" style="margin:.5rem 0 0">Un mismo producto puede estar en varias colecciones, por eso los números de las colecciones pueden sumar más que el total.</p>
     </div>` : ''}
@@ -343,9 +343,15 @@ function renderProductos() {
   });
   const quitar = $('#cb-quitar-todos');
   if (quitar) quitar.addEventListener('click', () => { state.sel.clear(); guardarBorrador(); renderProductos(); });
-  // Chips de colección: agregan/quitan la colección entera.
+  // Chips de colección: filtran la grilla a esa colección Y marcan/desmarcan
+  // todos sus productos. Así al tocar una colección SOLO quedan visibles (y con
+  // el check) los que son de ella, sin mezclarse con los de otras colecciones.
   $('#cb-body').querySelectorAll('.cb-chip').forEach(b =>
-    b.addEventListener('click', () => { toggleColeccion(b.dataset.col); guardarBorrador(); renderProductos(); }));
+    b.addEventListener('click', () => {
+      state.filtroColeccion = b.dataset.col;
+      toggleColeccion(b.dataset.col);
+      guardarBorrador(); renderProductos();
+    }));
   wireGridCards();
 
   setFoot(`${state.sel.size} producto${state.sel.size === 1 ? '' : 's'}`,

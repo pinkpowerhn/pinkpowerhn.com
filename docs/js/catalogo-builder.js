@@ -722,6 +722,7 @@ async function generar() {
         </div>
         <a class="cb-btn cb-btn--wa" href="https://wa.me/?text=${waText}" target="_blank" rel="noopener">Compartir por WhatsApp</a>
         <a class="cb-btn cb-btn--ghost" href="${esc(link)}" target="_blank" rel="noopener">Ver cómo quedó</a>
+        <a class="cb-btn cb-btn--ghost" href="${esc(link + '&pdf=1')}" target="_blank" rel="noopener">Descargar PDF</a>
         <a class="cb-btn cb-btn--ghost" href="#" id="cb-ver-mis2">Mis catálogos</a>
       </div>`;
     $('#cb-copy').addEventListener('click', async () => {

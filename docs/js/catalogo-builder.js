@@ -7,6 +7,10 @@ import { fetchMayoreoProducts, fetchCollections, crearCatalogo, editarCatalogo, 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const DRAFT_KEY = 'pinkpower_catalogo_draft';
 
+// Dominio neutro (marca blanca) donde se sirven los catálogos públicos. Los links
+// que comparte la mayorista salen con este dominio, sin rastro de PinkPower.
+const CATALOGO_BASE = 'https://tucatalogo.shop';
+
 const PASOS = ['productos', 'precios', 'diseno', 'generar'];
 
 // Paletas de color listas (un toque y queda bonito).
@@ -707,7 +711,7 @@ async function generar() {
       catToken = r.token; dias = r.dias;
     }
     limpiarBorrador();
-    const link = `${location.origin}/c/?c=${catToken}`;
+    const link = `${CATALOGO_BASE}/c/?c=${catToken}`;
     const waText = encodeURIComponent(`Mirá mi catálogo 🛍️\n${link}`);
     $('#cb-resultado').innerHTML = `
       <div class="cb-ok">
@@ -766,7 +770,7 @@ async function cargarLista() {
     } else {
       cont.innerHTML = `${crearCard}
         <div class="cb-mislist">${catalogos.map((c, i) => {
-          const link = `${location.origin}/c/?c=${c.token}`;
+          const link = `${CATALOGO_BASE}/c/?c=${c.token}`;
           const exp = c.expirado;
           const fecha = c.expiraEn ? new Date(c.expiraEn).toLocaleDateString('es-HN', { day: 'numeric', month: 'long' }) : '';
           const venc = exp ? 'Expirado' : (c.expiraEn ? 'Vence el ' + fecha : 'Sin vencimiento');

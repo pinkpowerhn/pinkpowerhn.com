@@ -2,7 +2,7 @@
 // Página aparte (paso a paso): elegir productos → precios → diseño → generar.
 // Requiere sesión de mayoreo (token en localStorage). Marca blanca: el link
 // final no muestra nada de PinkPower.
-import { fetchMayoreoProducts, fetchCollections, crearCatalogo, editarCatalogo, listarCatalogos, eliminarCatalogo } from './api.js';
+import { fetchMayoreoProducts, fetchCollections, crearCatalogo, editarCatalogo, listarCatalogos, eliminarCatalogo, guardarLogoMayorista } from './api.js';
 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const DRAFT_KEY = 'pinkpower_catalogo_draft';
@@ -38,6 +38,7 @@ const state = {
   paso: 'productos',
   diasConfig: null,       // días que configuró la admin
   telefonoCuenta: '',     // teléfono registrado de la mayorista (para precargar el WhatsApp)
+  logoCuenta: '',         // logo guardado de la mayorista (para precargar en cada catálogo)
   editando: null,         // token del catálogo en edición | null = creando nuevo
 };
 
@@ -153,6 +154,8 @@ export async function initBuilder() {
     // Teléfono registrado de la mayorista: se usa para precargar el WhatsApp del
     // catálogo (así el botón de "Hacer pedido" sale siempre con su número).
     state.telefonoCuenta = (lista.telefono || '').toString().trim();
+    // Logo guardado de la mayorista: se precarga en cada catálogo nuevo.
+    state.logoCuenta = lista.logo || '';
     // Solo colecciones que tienen al menos un producto de mayoreo.
     const conProd = new Set();
     prods.forEach(p => (p.collectionHandles || []).forEach(h => conProd.add(h)));
@@ -491,6 +494,7 @@ function renderDiseno() {
               ${d.logo ? `<button type="button" class="cb-link-btn" id="cb-logo-del">Quitar</button>` : ''}
             </div>
           </div>
+          <p class="cb-hint" style="margin:.1rem 0 .3rem">Tu logo se guarda y aparece solo en tus próximos catálogos.</p>
           <label class="cb-field"><span>Título del catálogo / negocio</span>
             <input class="cb-input" id="cb-titulo" type="text" maxlength="120" placeholder="Ej: Cosméticos Andrea" value="${esc(d.titulo)}"/></label>
           <label class="cb-field"><span>Subtítulo (opcional)</span>
@@ -576,10 +580,16 @@ function renderDiseno() {
       d.colorFondo = p.fondo; d.colorTexto = p.texto; d.colorAcento = p.acento;
       renderDiseno();
     }));
-  // Logo: subir (con reescalado) o quitar.
+  // Logo: subir (con reescalado) o quitar. Al subir, se guarda como el logo por
+  // defecto de la mayorista para que sus próximos catálogos lo traigan puesto.
   $('#cb-logo-input').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
-    if (f) procesarLogo(f, (dataUrl) => { d.logo = dataUrl; renderDiseno(); });
+    if (f) procesarLogo(f, (dataUrl) => {
+      d.logo = dataUrl;
+      state.logoCuenta = dataUrl;
+      guardarLogoMayorista(state.token, dataUrl).catch(() => {});
+      renderDiseno();
+    });
   });
   const del = $('#cb-logo-del');
   if (del) del.addEventListener('click', () => { d.logo = ''; renderDiseno(); });
@@ -855,8 +865,8 @@ function crearNuevo() {
   state.diseno = {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
-    // WhatsApp precargado con el teléfono registrado de la mayorista.
-    logo: '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
+    // Logo y WhatsApp precargados con lo que la mayorista tiene registrado.
+    logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
   };
   state.busqueda = ''; state.filtroColeccion = '';
   state.paso = 'productos';
@@ -882,7 +892,7 @@ function editarCat(cat) {
     colorFondo: cat.colorFondo || '#fff0f5',
     colorTexto: cat.colorTexto || '#3a0a1e',
     colorAcento: op.colorAcento || '#e8437a',
-    logo: op.logo || '',
+    logo: op.logo || state.logoCuenta || '',
     whatsapp: op.whatsapp || state.telefonoCuenta || '',
     columnas: [2, 3, 4].includes(op.columnas) ? op.columnas : 4,
     separarPorColeccion: op.separarPorColeccion !== false,

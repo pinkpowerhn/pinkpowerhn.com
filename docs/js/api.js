@@ -194,6 +194,20 @@ export async function listarCatalogos(token) {
   return res.json();
 }
 
+// Guarda el logo por defecto de la mayorista (data URL) para precargarlo en sus
+// próximos catálogos.
+export async function guardarLogoMayorista(token, logo) {
+  const res = await fetch(`${BASE}/mayoreo/logo`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ logo }),
+  });
+  if (!res.ok) {
+    const err = new Error('No se pudo guardar el logo'); err.status = res.status; throw err;
+  }
+  return res.json();
+}
+
 export async function eliminarCatalogo(token, catToken) {
   const res = await fetch(`${BASE}/mayoreo/catalogos/${encodeURIComponent(catToken)}`, {
     method: 'DELETE',

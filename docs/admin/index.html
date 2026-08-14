@@ -334,7 +334,7 @@
           <input type="text" id="mm-emp" />
         </div>
         <div class="field" style="margin-bottom:0">
-          <label>Teléfono</label>
+          <label>Teléfono (obligatorio)</label>
           <input type="tel" id="mm-tel" placeholder="+504 0000-0000" />
         </div>
         <div class="modal__acts">
@@ -557,6 +557,9 @@ $('mm-form').addEventListener('submit', async (e) => {
   const emprendimiento = $('mm-emp').value.trim();
   const telefono = $('mm-tel').value.trim();
   if (usuario.length < 3) { mmError('El usuario debe tener al menos 3 caracteres.'); return; }
+  // El teléfono es obligatorio: se usa para el WhatsApp de sus catálogos y para
+  // identificar sus pedidos.
+  if (telefono.replace(/\D/g, '').length < 8) { mmError('El teléfono es obligatorio (mínimo 8 dígitos).'); return; }
   const btn = $('mm-save'); btn.disabled = true;
   try {
     if (mmMode === 'create') {

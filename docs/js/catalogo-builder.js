@@ -37,6 +37,7 @@ const state = {
   },
   paso: 'productos',
   diasConfig: null,       // días que configuró la admin
+  telefonoCuenta: '',     // teléfono registrado de la mayorista (para precargar el WhatsApp)
   editando: null,         // token del catálogo en edición | null = creando nuevo
 };
 
@@ -149,6 +150,9 @@ export async function initBuilder() {
     // cualquiera de esos campos, no solo por el nombre.
     state.productos.forEach(p => { p._buscable = textoBuscable(p); });
     state.diasConfig = lista.dias;
+    // Teléfono registrado de la mayorista: se usa para precargar el WhatsApp del
+    // catálogo (así el botón de "Hacer pedido" sale siempre con su número).
+    state.telefonoCuenta = (lista.telefono || '').toString().trim();
     // Solo colecciones que tienen al menos un producto de mayoreo.
     const conProd = new Set();
     prods.forEach(p => (p.collectionHandles || []).forEach(h => conProd.add(h)));
@@ -198,8 +202,10 @@ function puedeAvanzarHasta(paso) {
   const i = PASOS.indexOf(paso);
   // Para pasar de "productos" hay que tener al menos 1 seleccionado.
   if (i >= 1 && state.sel.size === 0) return false;
-  // Para llegar a "generar" hace falta un título.
+  // Para llegar a "generar" hace falta un título y un WhatsApp (para que la
+  // clienta pueda hacerle el pedido a la mayorista).
   if (paso === 'generar' && !state.diseno.titulo.trim()) return false;
+  if (paso === 'generar' && !(state.diseno.whatsapp || '').trim()) return false;
   return true;
 }
 
@@ -521,9 +527,10 @@ function renderDiseno() {
 
         <div class="cb-group">
           <h3 class="cb-group__t">Contacto</h3>
-          <label class="cb-field"><span>WhatsApp para pedidos (opcional)</span>
+          <label class="cb-field"><span>WhatsApp para pedidos</span>
             <input class="cb-input" id="cb-whatsapp" type="tel" inputmode="numeric" placeholder="Ej: 9999-8888" value="${esc(d.whatsapp)}"/></label>
-          <p class="cb-hint">Si lo ponés, tus clientas verán un botón para escribirte y pedirte.</p>
+          <p class="cb-hint">Tus clientas verán un botón para escribirte y hacerte el pedido.</p>
+          <p class="cb-hint" id="cb-whatsapp-aviso" style="color:#c0392b;font-weight:600">Poné tu WhatsApp para poder generar el catálogo.</p>
         </div>
 
         <p class="cb-hint">Así se verá la página que abrirán tus clientas →</p>
@@ -550,6 +557,8 @@ function renderDiseno() {
     if (r) r.disabled = !puedeAvanzarHasta('generar');
     const aviso = $('#cb-titulo-aviso');
     if (aviso) aviso.style.display = state.diseno.titulo.trim() ? 'none' : '';
+    const avisoWa = $('#cb-whatsapp-aviso');
+    if (avisoWa) avisoWa.style.display = (state.diseno.whatsapp || '').trim() ? 'none' : '';
   };
 
   $('#cb-titulo').addEventListener('input', (e) => { d.titulo = e.target.value; upd(); });
@@ -580,6 +589,8 @@ function renderDiseno() {
           !puedeAvanzarHasta('generar'));
   const aviso = $('#cb-titulo-aviso');
   if (aviso) aviso.style.display = state.diseno.titulo.trim() ? 'none' : '';
+  const avisoWa = $('#cb-whatsapp-aviso');
+  if (avisoWa) avisoWa.style.display = (state.diseno.whatsapp || '').trim() ? 'none' : '';
 }
 
 // Reescala el logo en el navegador a un máximo de 360px y lo comprime, para que
@@ -844,7 +855,8 @@ function crearNuevo() {
   state.diseno = {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
-    logo: '', whatsapp: '', columnas: 4, separarPorColeccion: true,
+    // WhatsApp precargado con el teléfono registrado de la mayorista.
+    logo: '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
   };
   state.busqueda = ''; state.filtroColeccion = '';
   state.paso = 'productos';
@@ -871,7 +883,7 @@ function editarCat(cat) {
     colorTexto: cat.colorTexto || '#3a0a1e',
     colorAcento: op.colorAcento || '#e8437a',
     logo: op.logo || '',
-    whatsapp: op.whatsapp || '',
+    whatsapp: op.whatsapp || state.telefonoCuenta || '',
     columnas: [2, 3, 4].includes(op.columnas) ? op.columnas : 4,
     separarPorColeccion: op.separarPorColeccion !== false,
   };

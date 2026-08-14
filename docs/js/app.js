@@ -1228,6 +1228,9 @@ function showCheckoutModal() {
   // (sin flete ni comisiones) es igual o mayor a L. 3,000.
   const productsSubtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const esMayoreo = getState().mayoreo;
+  // Datos de la cuenta de la mayorista: en mayoreo no se piden, se toman de aquí.
+  const mayNombre = getState().mayoreoUser || '';
+  const mayTel = getState().mayoreoTelefono || '';
   // En mayoreo no se ofrece pago con tarjeta (solo transferencia o efectivo).
   const showExtrafin = productsSubtotal >= 3000 && !esMayoreo;
 
@@ -1323,6 +1326,16 @@ function showCheckoutModal() {
 
         <div class="co-totals" id="co-totals"></div>
 
+        ${esMayoreo ? `
+        <div class="co-field">
+          <label>Pedido a nombre de</label>
+          <div style="background:#faf3f6;border:1px solid rgba(42,15,28,.12);border-radius:10px;padding:.6rem .75rem">
+            <div style="font-weight:700">${escHtml(mayNombre || 'Tu cuenta')}</div>
+            <div style="color:#8a6c79;font-size:.9rem">Tel: ${escHtml(mayTel || '—')}</div>
+          </div>
+          <p class="co-optional" style="margin-top:.35rem">Son los datos de tu cuenta de mayorista.</p>
+        </div>
+        ` : `
         <div class="co-field">
           <label for="co-name">Nombre completo *</label>
           <input type="text" id="co-name" required placeholder="Nombre y Apellido" autocomplete="name" />
@@ -1335,6 +1348,7 @@ function showCheckoutModal() {
           <label for="co-email">Email <span class="co-optional">(opcional)</span></label>
           <input type="email" id="co-email" placeholder="tu@correo.com" autocomplete="email" />
         </div>
+        `}
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">
           Finalizar por WhatsApp
@@ -1345,13 +1359,8 @@ function showCheckoutModal() {
 
   document.body.appendChild(modal);
 
-  // En mayoreo, prellenar nombre y teléfono con los datos del perfil de la
-  // mayorista (los deja editar por si quiere otro contacto para este pedido).
-  const stCo = getState();
-  if (stCo.mayoreo) {
-    if (stCo.mayoreoUser) modal.querySelector('#co-name').value = stCo.mayoreoUser;
-    if (stCo.mayoreoTelefono) modal.querySelector('#co-phone').value = stCo.mayoreoTelefono;
-  }
+  // En mayoreo no se piden nombre/teléfono/correo: el pedido usa los datos de la
+  // cuenta de la mayorista (se muestran en solo lectura en el formulario).
 
   // Totales iniciales + recálculo al cambiar entrega/pago
   updateCoTotals(modal);
@@ -1377,27 +1386,39 @@ function showCheckoutModal() {
   // Wire submit
   modal.querySelector('#co-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const nameEl  = modal.querySelector('#co-name');
-    const phoneEl = modal.querySelector('#co-phone');
-    const name  = nameEl.value.trim();
-    const phone = phoneEl.value.trim();
-    const email = modal.querySelector('#co-email').value.trim();
+    let name, phone, email;
+    if (getState().mayoreo) {
+      // Mayoreo: los datos NO se piden; se toman de la cuenta de la mayorista.
+      name  = (getState().mayoreoUser || '').trim();
+      phone = (getState().mayoreoTelefono || '').trim();
+      email = '';
+      if (phone.replace(/\D/g, '').length < 8) {
+        showCoError('Tu cuenta no tiene teléfono registrado. Avisá al administrador.');
+        return;
+      }
+    } else {
+      const nameEl  = modal.querySelector('#co-name');
+      const phoneEl = modal.querySelector('#co-phone');
+      name  = nameEl.value.trim();
+      phone = phoneEl.value.trim();
+      email = modal.querySelector('#co-email').value.trim();
 
-    // Validar y marcar en rojo los campos que falten, apuntando a lo que hace
-    // falta. Antes el aviso era genérico y opaco y la clienta no lo notaba.
-    nameEl.classList.remove('is-invalid');
-    phoneEl.classList.remove('is-invalid');
-    const faltan = [];
-    if (!name) { nameEl.classList.add('is-invalid'); faltan.push('nombre'); }
-    // El teléfono arranca con "+504 "; exige que de verdad escriban el número
-    // (8 dígitos), si no dejar solo el prefijo pasaba como válido.
-    if (phone.replace(/\D/g, '').length < 8) { phoneEl.classList.add('is-invalid'); faltan.push('teléfono'); }
-    if (faltan.length) {
-      showCoError(`Falta tu ${faltan.join(' y ')}. Complétalo para finalizar tu pedido.`);
-      const primero = faltan[0] === 'nombre' ? nameEl : phoneEl;
-      primero.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      primero.focus();
-      return;
+      // Validar y marcar en rojo los campos que falten, apuntando a lo que hace
+      // falta. Antes el aviso era genérico y opaco y la clienta no lo notaba.
+      nameEl.classList.remove('is-invalid');
+      phoneEl.classList.remove('is-invalid');
+      const faltan = [];
+      if (!name) { nameEl.classList.add('is-invalid'); faltan.push('nombre'); }
+      // El teléfono arranca con "+504 "; exige que de verdad escriban el número
+      // (8 dígitos), si no dejar solo el prefijo pasaba como válido.
+      if (phone.replace(/\D/g, '').length < 8) { phoneEl.classList.add('is-invalid'); faltan.push('teléfono'); }
+      if (faltan.length) {
+        showCoError(`Falta tu ${faltan.join(' y ')}. Complétalo para finalizar tu pedido.`);
+        const primero = faltan[0] === 'nombre' ? nameEl : phoneEl;
+        primero.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        primero.focus();
+        return;
+      }
     }
 
     const { delivery, payment } = getCoSelection(modal);

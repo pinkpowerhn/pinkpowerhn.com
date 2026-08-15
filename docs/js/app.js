@@ -65,7 +65,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       collections,
       waNumber,
       hideSoldOut: !!config?.ocultar_agotados,   // ocultar agotados (toggle admin)
-      catalogoHabilitado: config?.catalogo_habilitado === true,  // módulo de catálogos activo
     });
     if (waNumber) {
       document.querySelectorAll('.wa-link').forEach(el => {
@@ -1544,23 +1543,15 @@ async function submitCheckout(name, phone, email, checkout = null) {
     const orderName = orderData?.order?.name || null; // e.g. "#1011"
     const url = buildWhatsAppUrl(waNumber, orderName, checkout);
 
-    // Productos del pedido, por si la mayorista quiere armar un catálogo con ellos.
-    const productosPedido = cart.map(i => ({
-      id: String(i.productId), nombre: i.productTitle, imagen: i.imageUrl || '', mayoreo: i.price,
-    }));
     clearCart();
     setState({ cartOpen: false });
     const drawer = document.getElementById('cart-drawer'); if (drawer) drawer.hidden = true;
 
-    // En mayoreo (y con el módulo de catálogos activo) ofrecemos armar un catálogo
-    // con los productos del pedido, en una pantalla previa a WhatsApp. En tienda
-    // normal se va directo a WhatsApp como siempre.
-    if (getState().mayoreo && getState().catalogoHabilitado) {
-      mostrarPostPedidoMayoreo(url, productosPedido);
-    } else {
-      closeCheckoutModal();
-      window.location.href = url;   // en iOS funciona sin gesto de usuario
-    }
+    // Al finalizar (tienda o mayoreo) se va directo a WhatsApp. El catálogo desde
+    // un pedido ya NO sale acá: ahora vive en "Mis pedidos", y solo se ofrece para
+    // pedidos ya pagados (ver mayoreo.js).
+    closeCheckoutModal();
+    window.location.href = url;   // en iOS funciona sin gesto de usuario
 
   } catch (err) {
     console.error('[PinkPower] Order error:', err);
@@ -1574,34 +1565,6 @@ async function submitCheckout(name, phone, email, checkout = null) {
     }
     if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
   }
-}
-
-// Pantalla posterior al pedido de mayoreo: "pedido listo" con dos opciones —
-// enviarlo por WhatsApp (lo normal) o armar un catálogo con esos productos.
-function mostrarPostPedidoMayoreo(waUrl, productos) {
-  const modal = document.getElementById('checkout-modal');
-  if (!modal) { window.location.href = waUrl; return; }
-  const panel = modal.querySelector('.co-panel');
-  panel.innerHTML = `
-    <button class="co-close" id="co-close" aria-label="Cerrar">&times;</button>
-    <div style="text-align:center; padding:.6rem 0 .3rem">
-      <div style="font-size:2.6rem; line-height:1">✅</div>
-      <p class="co-title" style="margin-top:.4rem">¡Pedido listo!</p>
-      <p class="co-subtitle">Envialo por WhatsApp para que lo confirmemos.</p>
-    </div>
-    <a class="btn btn-primary" id="co-done-wa" href="#" style="display:block; text-align:center; margin-bottom:.6rem">Enviar pedido por WhatsApp</a>
-    <button type="button" class="btn" id="co-done-cat"
-            style="display:block; width:100%; background:#fff; border:1.5px solid #e8437a; color:#e8437a; font-weight:700">
-      Crear catálogo con estos productos
-    </button>
-    <p class="co-optional" style="margin-top:.5rem; text-align:center">Armá un catálogo con lo que acabás de pedir y compartilo con tus clientas.</p>`;
-
-  panel.querySelector('#co-done-wa').href = waUrl;   // set por JS: evita problemas de escape
-  panel.querySelector('#co-close').addEventListener('click', closeCheckoutModal);
-  panel.querySelector('#co-done-cat').addEventListener('click', () => {
-    try { localStorage.setItem('pinkpower_catalogo_desde_pedido', JSON.stringify(productos)); } catch (_) {}
-    window.location.href = '/mi-catalogo/';
-  });
 }
 
 // Quita del carrito los productos que se agotaron y avisa a la clienta para que

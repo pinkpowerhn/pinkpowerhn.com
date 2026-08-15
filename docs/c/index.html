@@ -496,8 +496,22 @@ function render(cat) {
 }
 
 async function load() {
-  const token = getToken();
   const root = document.getElementById('root');
+  // Modo PDF local: los datos vienen por localStorage (no hay token ni link).
+  // Se usa desde "Mis pedidos" para descargar el catálogo del pedido en PDF.
+  if (new URLSearchParams(location.search).get('pdf') === 'local') {
+    try {
+      const data = JSON.parse(localStorage.getItem('pinkpower_pdf_catalogo') || 'null');
+      if (data && Array.isArray(data.items) && data.items.length) {
+        render(data);
+        descargarPDF();
+        return;
+      }
+    } catch (_) { /* dato inválido */ }
+    root.innerHTML = stateView('😕', 'No se pudo generar el PDF', 'Volvé a intentarlo desde tus pedidos.');
+    return;
+  }
+  const token = getToken();
   if (!token) {
     root.innerHTML = stateView('🔗', 'Enlace incompleto', 'El enlace del catálogo no es válido.');
     return;

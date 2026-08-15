@@ -152,6 +152,20 @@ export async function fetchMayoreoProducts(token) {
   return edges.map(({ node }) => normalizeProduct(node));
 }
 
+// Pedidos PAGADOS de la mayorista (para ofrecer catálogo PDF de cada uno).
+// Devuelve [{ name, fecha, items:[{product_id, titulo, cantidad}] }].
+export async function fetchMisPedidos(token) {
+  const res = await fetch(`${BASE}/mayoreo/pedidos`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = new Error(`Mis pedidos failed: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
 // ── Catálogos de revendedora (links temporales) ───────────
 // Crea un catálogo y devuelve { token, dias, expiraEn }.
 export async function crearCatalogo(token, data) {

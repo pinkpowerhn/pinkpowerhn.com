@@ -3,7 +3,7 @@
 // transiciones suaves (View Transitions API) y degradado elegante si el
 // navegador no la soporta.
 import { getState, setState } from './state.js';
-import { mayoreoLogin, fetchMayoreoProducts, fetchConfig } from './api.js';
+import { mayoreoLogin, fetchMayoreoProducts, fetchConfig, fetchMisPedidos } from './api.js';
 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const USER_KEY  = 'pinkpower_mayoreo_user';
@@ -194,6 +194,7 @@ function mountAccount(nombre) {
     menu.hidden = true;
     menu.innerHTML = `
       ${catalogoHabilitado ? '<a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>' : ''}
+      ${catalogoHabilitado ? '<button class="my-account__link" id="my-pedidos">📦 Mis pedidos</button>' : ''}
       <button class="my-account__logout" id="my-logout">Cerrar sesión</button>`;
     document.body.appendChild(menu);
 
@@ -218,6 +219,12 @@ function mountAccount(nombre) {
     });
     window.addEventListener('resize', () => { if (!menu.hidden) positionMenu(); });
     menu.querySelector('#my-logout').addEventListener('click', exitMayoreo);
+    const pedidosBtn = menu.querySelector('#my-pedidos');
+    if (pedidosBtn) pedidosBtn.addEventListener('click', () => {
+      menu.hidden = true;
+      document.getElementById('my-account-btn')?.setAttribute('aria-expanded', 'false');
+      openPedidosModal();
+    });
   }
   acc.querySelector('.my-account__name').textContent = nombre || 'Mayorista';
   acc.hidden = false;
@@ -240,11 +247,113 @@ function mountDrawerAccount(nombre) {
       <p class="my-drawer-account__hello">Sesión de mayoreo</p>
       <p class="my-drawer-account__name"></p>
       ${catalogoHabilitado ? '<a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>' : ''}
+      ${catalogoHabilitado ? '<button class="my-drawer-account__catalogo" id="my-drawer-pedidos">📦 Mis pedidos</button>' : ''}
       <button class="my-drawer-account__logout" id="my-drawer-logout">Cerrar sesión</button>`;
     panel.appendChild(block);
     block.querySelector('#my-drawer-logout').addEventListener('click', exitMayoreo);
+    const drawerPedidos = block.querySelector('#my-drawer-pedidos');
+    if (drawerPedidos) drawerPedidos.addEventListener('click', () => {
+      const drawer = document.getElementById('menu-drawer');
+      if (drawer) drawer.hidden = true;
+      document.body.classList.remove('menu-open');
+      openPedidosModal();
+    });
   }
   block.querySelector('.my-drawer-account__name').textContent = nombre || 'Mayorista';
+}
+
+// ── Mis pedidos (catálogo PDF de pedidos pagados) ─────────
+// Lista los pedidos que Shopify reporta como pagados y, de cada uno, deja crear
+// un catálogo en PDF (sin link). Reusa el armador: guarda los productos y el
+// flag "solo PDF" en localStorage y abre /mi-catalogo/.
+function fmtFecha(iso) {
+  if (!iso) return '';
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const [y, m, d] = String(iso).split('-');
+  return `${parseInt(d, 10)} ${meses[parseInt(m, 10) - 1] || ''} ${y}`;
+}
+
+function ensurePedidosMarkup() {
+  if (document.getElementById('my-pedidos-modal')) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div id="my-pedidos-modal" class="my-modal" hidden>
+      <div class="my-modal__backdrop" data-pcerrar></div>
+      <div class="my-modal__panel" role="dialog" aria-modal="true" aria-labelledby="my-pedidos-title">
+        <button class="my-modal__close" data-pcerrar aria-label="Cerrar">&times;</button>
+        <div class="my-modal__icon">📦</div>
+        <h2 id="my-pedidos-title" class="my-modal__title">Mis pedidos</h2>
+        <p class="my-modal__sub">De tus pedidos ya pagados podés crear un catálogo en PDF.</p>
+        <div id="my-pedidos-body" class="my-pedidos"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelectorAll('[data-pcerrar]').forEach(el => el.addEventListener('click', closePedidosModal));
+  document.addEventListener('keydown', e => {
+    const m = document.getElementById('my-pedidos-modal');
+    if (e.key === 'Escape' && m && !m.hidden) closePedidosModal();
+  });
+}
+
+function closePedidosModal() {
+  const m = document.getElementById('my-pedidos-modal');
+  if (!m || m.hidden) return;
+  m.classList.remove('is-open');
+  document.body.style.overflow = '';
+  setTimeout(() => { m.hidden = true; }, 260);
+}
+
+async function openPedidosModal() {
+  ensurePedidosMarkup();
+  const m = document.getElementById('my-pedidos-modal');
+  const body = document.getElementById('my-pedidos-body');
+  m.hidden = false;
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => m.classList.add('is-open'));
+  body.innerHTML = '<p class="my-pedidos__msg">Cargando tus pedidos…</p>';
+  const token = localStorage.getItem(TOKEN_KEY);
+  try {
+    const pedidos = await fetchMisPedidos(token);
+    if (!Array.isArray(pedidos) || !pedidos.length) {
+      body.innerHTML = '<p class="my-pedidos__msg">Todavía no tenés pedidos pagados.</p>'
+        + '<p class="my-pedidos__hint">Cuando un pedido esté pagado, acá vas a poder crear su catálogo en PDF.</p>';
+      return;
+    }
+    body.innerHTML = pedidos.map((p, i) => {
+      const n = (p.items || []).length;
+      return `
+        <div class="my-pedido">
+          <div class="my-pedido__info">
+            <b>${p.name || 'Pedido'}</b>
+            <span>${fmtFecha(p.fecha)} · ${n} producto${n === 1 ? '' : 's'}</span>
+          </div>
+          <button class="btn btn-primary my-pedido__btn" data-i="${i}">Crear catálogo (PDF)</button>
+        </div>`;
+    }).join('');
+    body.querySelectorAll('.my-pedido__btn').forEach(btn => {
+      btn.addEventListener('click', () => crearCatalogoDesdePedido(pedidos[+btn.dataset.i]));
+    });
+  } catch (_) {
+    body.innerHTML = '<p class="my-pedidos__msg">No se pudieron cargar tus pedidos. Probá de nuevo.</p>';
+  }
+}
+
+function crearCatalogoDesdePedido(pedido) {
+  const productosStore = getState().products || [];
+  const prods = (pedido.items || []).map(it => {
+    const full = productosStore.find(p => String(p.id) === String(it.product_id));
+    return {
+      id: it.product_id || '',
+      nombre: it.titulo || (full && full.title) || 'Producto',
+      imagen: full && full.images && full.images[0] ? full.images[0].url : '',
+      mayoreo: full ? full.price : null,
+    };
+  }).filter(p => p.id || p.nombre);
+  try {
+    localStorage.setItem('pinkpower_catalogo_desde_pedido', JSON.stringify(prods));
+    localStorage.setItem('pinkpower_catalogo_solo_pdf', '1');
+  } catch (_) {}
+  window.location.href = '/mi-catalogo/';
 }
 
 function unmountAccount() {

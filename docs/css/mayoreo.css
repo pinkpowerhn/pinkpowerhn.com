@@ -271,3 +271,50 @@ body.is-mayoreo .mayoreo-access-item { display: none; }
   .my-account__name { max-width: 90px; }
   .my-account__btn { font-size: 0.66rem; }
 }
+
+/* ── Mis pedidos (catálogo PDF de pedidos pagados) ───────── */
+.my-pedidos {
+  text-align: left;
+  max-height: 52vh;
+  overflow-y: auto;
+  margin: 0 -0.3rem;
+  padding: 0 0.3rem;
+}
+.my-pedidos__msg {
+  text-align: center;
+  color: #7a5766;
+  font-size: 0.9rem;
+  padding: 1.2rem 0.4rem 0.4rem;
+  margin: 0;
+}
+.my-pedidos__hint {
+  text-align: center;
+  color: #9a7385;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem 0.6rem;
+  margin: 0;
+}
+.my-pedido {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  padding: 0.85rem 0.2rem;
+  border-bottom: 1px solid rgba(26, 10, 18, 0.08);
+}
+.my-pedido:last-child { border-bottom: none; }
+.my-pedido__info {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.my-pedido__info b { font-size: 0.95rem; color: #3a1424; flex: none; }
+.my-pedido__info span { font-size: 0.76rem; color: #9a7385; }
+.my-pedido__btn {
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 0.55rem 0.8rem;
+  white-space: nowrap;
+}

@@ -165,9 +165,11 @@ export async function initBuilder() {
     const desdePedido = localStorage.getItem('pinkpower_catalogo_desde_pedido');
     if (desdePedido) {
       localStorage.removeItem('pinkpower_catalogo_desde_pedido');
+      const soloPdf = localStorage.getItem('pinkpower_catalogo_solo_pdf') === '1';
+      localStorage.removeItem('pinkpower_catalogo_solo_pdf');
       try {
         const prods = JSON.parse(desdePedido);
-        if (Array.isArray(prods) && prods.length) { iniciarCatalogoDesdePedido(prods); return; }
+        if (Array.isArray(prods) && prods.length) { iniciarCatalogoDesdePedido(prods, soloPdf); return; }
       } catch (_) { /* dato inválido: seguimos al flujo normal */ }
     }
     // "Mis catálogos" (la lista) es SIEMPRE la pantalla de entrada. El asistente
@@ -829,6 +831,18 @@ function actualizarPreview() {
 function renderGenerar() {
   const dias = state.diasConfig;
   const editando = !!state.editando;
+  const soloPdf = !!state.soloPdf;
+  const resumenExtra = soloPdf
+    ? '<li>Se descarga en <b>PDF</b> (sin link para compartir)</li>'
+    : `<li>Duración del link: <b>${editando ? 'se conserva la del catálogo' : (dias ? dias + ' días' : 'ilimitado (no vence)')}</b></li>`;
+  const hint = soloPdf
+    ? 'Se abrirá el catálogo para descargarlo en PDF. Elegí "Guardar como PDF" en el cuadro de impresión.'
+    : (editando
+        ? 'Vas a guardar los cambios en el mismo link.'
+        : (dias
+            ? 'Cuando se cumpla el plazo, el link deja de funcionar.'
+            : 'El link no vence: lo podés compartir siempre.'));
+  const btnLabel = soloPdf ? 'Descargar PDF' : (editando ? 'Guardar cambios' : 'Generar link');
   $('#cb-body').innerHTML = `
     <div class="cb-generar">
       <div class="cb-resumen">
@@ -836,15 +850,11 @@ function renderGenerar() {
         <ul>
           <li><b>${state.sel.size}</b> producto${state.sel.size === 1 ? '' : 's'}</li>
           <li>Título: <b>${esc(state.diseno.titulo || '(sin título)')}</b></li>
-          <li>Duración del link: <b>${editando ? 'se conserva la del catálogo' : (dias ? dias + ' días' : 'ilimitado (no vence)')}</b></li>
+          ${resumenExtra}
         </ul>
-        <p class="cb-hint">${editando
-          ? 'Vas a guardar los cambios en el mismo link.'
-          : (dias
-              ? 'Cuando se cumpla el plazo, el link deja de funcionar.'
-              : 'El link no vence: lo podés compartir siempre.')}</p>
+        <p class="cb-hint">${hint}</p>
       </div>
-      <button class="cb-btn cb-btn--primary cb-btn--big" id="cb-generar-btn">${editando ? 'Guardar cambios' : 'Generar link'}</button>
+      <button class="cb-btn cb-btn--primary cb-btn--big" id="cb-generar-btn">${btnLabel}</button>
       <div id="cb-resultado"></div>
     </div>`;
   $('#cb-generar-btn').addEventListener('click', generar);
@@ -869,6 +879,25 @@ async function generar() {
       columnas: d.columnas, separarPorColeccion: d.separarPorColeccion,
     },
   };
+  // Modo solo-PDF (viene de "Mis pedidos"): NO se crea ningún catálogo ni link.
+  // Se pasan los datos por localStorage a la página del catálogo, en la MISMA
+  // web (URL relativa /c/), que los pinta y lanza la impresión "Guardar como PDF".
+  if (state.soloPdf) {
+    try { localStorage.setItem('pinkpower_pdf_catalogo', JSON.stringify(payload)); } catch (_) {}
+    limpiarBorrador();
+    window.open('/c/?pdf=local', '_blank');
+    $('#cb-resultado').innerHTML = `
+      <div class="cb-ok">
+        <div class="cb-ok__icon">✅</div>
+        <h3>¡Tu catálogo está listo!</h3>
+        <p class="cb-hint">Se abrió en otra pestaña para descargarlo. En el cuadro de impresión elegí <b>"Guardar como PDF"</b>. Si no se abrió, tocá el botón:</p>
+        <a class="cb-btn cb-btn--primary" href="/c/?pdf=local" target="_blank" rel="noopener">Abrir PDF</a>
+        <a class="cb-btn cb-btn--ghost" href="#" id="cb-ver-mis2">Volver a mis catálogos</a>
+      </div>`;
+    $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); mostrarLista(); });
+    btn.style.display = 'none';
+    return;
+  }
   try {
     let catToken, dias;
     if (editando) {
@@ -1008,6 +1037,7 @@ function confirmar({ titulo, mensaje, ok = 'Aceptar', cancel = 'Cancelar' }) {
 // Empezar un catálogo nuevo en blanco (descarta el borrador anterior).
 function crearNuevo() {
   state.editando = null;
+  state.soloPdf = false;
   state.sel = new Map();
   state.diseno = {
     titulo: '', subtitulo: '',
@@ -1022,10 +1052,12 @@ function crearNuevo() {
   render();
 }
 
-// Arrancar un catálogo nuevo con los productos de un pedido recién hecho (viene
-// del checkout de mayoreo: "crear catálogo con estos productos").
-function iniciarCatalogoDesdePedido(prods) {
+// Arrancar un catálogo nuevo con los productos de un pedido. Viene de "Mis
+// pedidos": la mayorista genera un catálogo (solo PDF, sin link) de un pedido
+// ya pagado. `soloPdf` hace que el paso final descargue el PDF sin crear link.
+function iniciarCatalogoDesdePedido(prods, soloPdf = false) {
   state.editando = null;
+  state.soloPdf = !!soloPdf;
   state.sel = new Map();
   for (const p of prods) {
     const id = String(p.id);
@@ -1050,6 +1082,7 @@ function iniciarCatalogoDesdePedido(prods) {
 // Cargar un catálogo existente en el asistente para editarlo.
 function editarCat(cat) {
   state.editando = cat.token;
+  state.soloPdf = false;
   state.sel = new Map();
   (cat.items || []).forEach((it, i) => {
     const key = it.id || ('x' + i);   // id real si lo hay; si no, clave temporal

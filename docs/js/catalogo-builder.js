@@ -160,6 +160,16 @@ export async function initBuilder() {
     const conProd = new Set();
     prods.forEach(p => (p.collectionHandles || []).forEach(h => conProd.add(h)));
     state.colecciones = cols.filter(c => conProd.has(c.handle));
+    // Si venimos de un pedido ("crear catálogo con estos productos"), arrancamos
+    // directo un catálogo nuevo con esos productos ya seleccionados.
+    const desdePedido = localStorage.getItem('pinkpower_catalogo_desde_pedido');
+    if (desdePedido) {
+      localStorage.removeItem('pinkpower_catalogo_desde_pedido');
+      try {
+        const prods = JSON.parse(desdePedido);
+        if (Array.isArray(prods) && prods.length) { iniciarCatalogoDesdePedido(prods); return; }
+      } catch (_) { /* dato inválido: seguimos al flujo normal */ }
+    }
     // "Mis catálogos" (la lista) es SIEMPRE la pantalla de entrada. El asistente
     // de creación se abre solo al tocar "Crear catálogo nuevo".
     mostrarLista();
@@ -422,7 +432,10 @@ function montarSelectColeccion() {
 
 function addProducto(p) {
   if (state.sel.has(p.id)) return;
-  state.sel.set(p.id, { id: p.id, nombre: p.title, imagen: imgDe(p), precio: '', coleccion: colDeProducto(p) });
+  // Guardamos también el precio de mayoreo (lo que paga la mayorista) y el de
+  // detalle (referencia de tienda) para mostrarlos y calcular la ganancia.
+  state.sel.set(p.id, { id: p.id, nombre: p.title, imagen: imgDe(p), precio: '',
+    coleccion: colDeProducto(p), mayoreo: p.price, detalle: p.retailPrice });
 }
 function toggleProducto(id) {
   if (state.sel.has(id)) { state.sel.delete(id); return; }
@@ -431,34 +444,168 @@ function toggleProducto(id) {
 }
 
 // ── Paso 2: Precios ───────────────────────────────────────
-function renderPrecios() {
-  const items = [...state.sel.values()];
-  $('#cb-body').innerHTML = `
-    <p class="cb-hint">Poné el precio que vas a mostrarle a tus clientas. Dejalo en blanco si no querés mostrar precio en ese producto.</p>
-    <div class="cb-plist">
-      ${items.map(it => `
-        <div class="cb-prow" data-id="${esc(it.id)}">
-          <div class="cb-prow__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : NOIMG}</div>
-          <div class="cb-prow__name">${esc(it.nombre)}</div>
-          <input class="cb-input cb-prow__price" type="text" inputmode="decimal"
-                 placeholder="sin precio" value="${esc(it.precio)}" data-id="${esc(it.id)}" />
-          <button class="cb-prow__del" data-id="${esc(it.id)}" title="Quitar">✕</button>
-        </div>`).join('')}
-    </div>`;
+// Precio de mayoreo / detalle del item (lo guardado al agregar; si se editó un
+// catálogo viejo, se busca en la lista actual de productos).
+function mayoreoDeItem(it) {
+  if (it.mayoreo != null) return it.mayoreo;
+  const p = state.productos.find(x => x.id === it.id);
+  return p ? p.price : null;
+}
+function detalleDeItem(it) {
+  if (it.detalle != null) return it.detalle;
+  const p = state.productos.find(x => x.id === it.id);
+  return p ? p.retailPrice : null;
+}
+function parsePrecio(v) {
+  const n = parseFloat(String(v == null ? '' : v).replace(/[^\d.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+const moneyC = n => 'L.' + Math.round(Number(n));   // compacto, sin decimales
 
-  $('#cb-body').querySelectorAll('.cb-prow__price').forEach(inp =>
+// Texto y estilo de la ganancia según el precio de venta que puso la mayorista.
+function gananciaInfo(mayoreo, ventaStr) {
+  const may = parsePrecio(mayoreo);
+  const venta = parsePrecio(ventaStr);
+  if (may == null || venta == null) return { txt: '', cls: '' };
+  const g = venta - may;
+  const pct = may > 0 ? Math.round(g / may * 100) : 0;
+  if (g < 0) return { txt: `Pierde ${moneyC(-g)}`, cls: 'is-loss' };
+  return { txt: `Ganás ${moneyC(g)} · +${pct}%`, cls: '' };
+}
+
+// Agrupa los seleccionados por colección + precio de mayoreo (los que comparten
+// ambos van juntos, para ponerles el precio de una sola vez).
+function gruposDePrecios() {
+  const map = new Map();  // gkey -> {gkey, col, mayoreo, items}
+  for (const it of state.sel.values()) {
+    const col = it.coleccion || 'Otros productos';
+    const may = mayoreoDeItem(it);
+    const gkey = col + '' + (may != null ? String(may) : 'sinprecio');
+    if (!map.has(gkey)) map.set(gkey, { gkey, col, mayoreo: may, items: [] });
+    map.get(gkey).items.push(it);
+  }
+  return [...map.values()].sort((a, b) =>
+    a.col.localeCompare(b.col) || ((a.mayoreo || 0) - (b.mayoreo || 0)));
+}
+// Precio común del grupo: el precio si TODOS comparten el mismo; si no, "".
+function precioComunDe(items) {
+  const first = items[0] ? (items[0].precio || '') : '';
+  return items.every(it => (it.precio || '') === first) ? first : '';
+}
+
+let _precioVista = 'grupo';   // 'grupo' | 'individual'
+
+function renderPrecios() {
+  $('#cb-body').innerHTML = `
+    <div class="cb-ptoggle">
+      <button type="button" class="cb-ptab ${_precioVista === 'grupo' ? 'is-on' : ''}" data-vista="grupo">Por grupo</button>
+      <button type="button" class="cb-ptab ${_precioVista === 'individual' ? 'is-on' : ''}" data-vista="individual">Uno por uno</button>
+    </div>
+    <p class="cb-hint">${_precioVista === 'grupo'
+      ? 'Ponele el precio a todo un grupo (misma colección y mismo precio de mayoreo) de una sola vez. Debajo ves tu ganancia.'
+      : 'Ponele el precio a cada producto. Debajo ves tu ganancia. Dejalo en blanco si no querés mostrar precio.'}</p>
+    <div id="cb-precios-cuerpo"></div>`;
+
+  $('#cb-body').querySelectorAll('.cb-ptab').forEach(b =>
+    b.addEventListener('click', () => { _precioVista = b.dataset.vista; renderPrecios(); }));
+
+  if (_precioVista === 'grupo') pintarPreciosGrupo();
+  else pintarPreciosIndividual();
+
+  setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
+}
+
+// Vista "Por grupo": una fila por (colección + precio de mayoreo). Ponerle el
+// precio al grupo lo aplica a TODOS sus productos.
+function pintarPreciosGrupo() {
+  const cont = $('#cb-precios-cuerpo');
+  const grupos = gruposDePrecios();
+  let html = '', colActual = null;
+  for (const g of grupos) {
+    if (g.col !== colActual) {
+      if (colActual !== null) html += `</div>`;
+      html += `<div class="cb-pgcol"><h3 class="cb-pgcol__t">${esc(g.col)}</h3>`;
+      colActual = g.col;
+    }
+    const comun = precioComunDe(g.items);
+    const gan = gananciaInfo(g.mayoreo, comun);
+    html += `
+      <div class="cb-pgrow" data-gkey="${esc(g.gkey)}">
+        <div class="cb-pgrow__info">
+          <div>${g.mayoreo != null ? `Mayoreo <b>${moneyC(g.mayoreo)}</b>` : 'Sin precio de mayoreo'}</div>
+          <div class="cb-pgrow__n">${g.items.length} producto${g.items.length === 1 ? '' : 's'}</div>
+        </div>
+        <div class="cb-prow__pcol">
+          <input class="cb-input cb-pgrow__price" type="text" inputmode="decimal" placeholder="tu precio"
+                 value="${esc(comun)}" data-mayoreo="${g.mayoreo != null ? esc(g.mayoreo) : ''}" />
+          <div class="cb-prow__gan ${gan.cls}">${gan.txt}</div>
+        </div>
+      </div>`;
+  }
+  if (colActual !== null) html += `</div>`;
+  cont.innerHTML = html || '<p class="cb-hint">No hay productos.</p>';
+
+  const porKey = new Map(grupos.map(g => [g.gkey, g.items]));
+  cont.querySelectorAll('.cb-pgrow').forEach(row => {
+    const inp = row.querySelector('.cb-pgrow__price');
+    inp.addEventListener('input', (e) => {
+      (porKey.get(row.dataset.gkey) || []).forEach(it => { it.precio = e.target.value; });
+      const gan = row.querySelector('.cb-prow__gan');
+      const info = gananciaInfo(e.target.dataset.mayoreo, e.target.value);
+      gan.textContent = info.txt;
+      gan.classList.toggle('is-loss', info.cls === 'is-loss');
+      guardarBorrador();
+    });
+  });
+}
+
+// Vista "Uno por uno": lista completa, un producto por fila (con su ganancia).
+function pintarPreciosIndividual() {
+  const cont = $('#cb-precios-cuerpo');
+  const items = [...state.sel.values()];
+  cont.innerHTML = `<div class="cb-plist">
+    ${items.map(it => {
+      const may = mayoreoDeItem(it), det = detalleDeItem(it);
+      const g = gananciaInfo(may, it.precio);
+      const costos = [
+        may != null ? `Mayoreo: <b>${moneyC(may)}</b>` : '',
+        det != null ? `Detalle: ${moneyC(det)}` : '',
+      ].filter(Boolean).join(' · ');
+      return `
+      <div class="cb-prow" data-id="${esc(it.id)}">
+        <div class="cb-prow__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : NOIMG}</div>
+        <div class="cb-prow__main">
+          <div class="cb-prow__name">${esc(it.nombre)}</div>
+          ${costos ? `<div class="cb-prow__costos">${costos}</div>` : ''}
+        </div>
+        <div class="cb-prow__pcol">
+          <input class="cb-input cb-prow__price" type="text" inputmode="decimal"
+                 placeholder="tu precio" value="${esc(it.precio)}" data-id="${esc(it.id)}"
+                 data-mayoreo="${may != null ? esc(may) : ''}" />
+          <div class="cb-prow__gan ${g.cls}">${g.txt}</div>
+        </div>
+        <button class="cb-prow__del" data-id="${esc(it.id)}" title="Quitar">✕</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  cont.querySelectorAll('.cb-prow__price').forEach(inp =>
     inp.addEventListener('input', (e) => {
       const it = state.sel.get(e.target.dataset.id); if (it) it.precio = e.target.value;
+      const gan = e.target.closest('.cb-prow__pcol').querySelector('.cb-prow__gan');
+      if (gan) {
+        const info = gananciaInfo(e.target.dataset.mayoreo, e.target.value);
+        gan.textContent = info.txt;
+        gan.classList.toggle('is-loss', info.cls === 'is-loss');
+      }
       guardarBorrador();
     }));
-  $('#cb-body').querySelectorAll('.cb-prow__del').forEach(b =>
+  cont.querySelectorAll('.cb-prow__del').forEach(b =>
     b.addEventListener('click', () => {
       state.sel.delete(b.dataset.id); guardarBorrador();
       if (state.sel.size) { renderPrecios(); renderSteps(); }
       else irA('productos');   // sin productos: volvemos al paso 1
     }));
-
-  setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
 }
 
 // Da formato amable al precio: si es solo número, le antepone "L. ".
@@ -866,6 +1013,31 @@ function crearNuevo() {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
     // Logo y WhatsApp precargados con lo que la mayorista tiene registrado.
+    logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
+  };
+  state.busqueda = ''; state.filtroColeccion = '';
+  state.paso = 'productos';
+  limpiarBorrador();
+  renderShell();
+  render();
+}
+
+// Arrancar un catálogo nuevo con los productos de un pedido recién hecho (viene
+// del checkout de mayoreo: "crear catálogo con estos productos").
+function iniciarCatalogoDesdePedido(prods) {
+  state.editando = null;
+  state.sel = new Map();
+  for (const p of prods) {
+    const id = String(p.id);
+    const full = state.productos.find(x => x.id === id);
+    if (full) addProducto(full);   // producto en la lista actual: datos completos
+    else state.sel.set(id, {       // ya no está (agotado): usamos lo que trae el pedido
+      id, nombre: p.nombre || 'Producto', imagen: p.imagen || '', precio: '',
+      coleccion: '', mayoreo: p.mayoreo != null ? p.mayoreo : null, detalle: null });
+  }
+  state.diseno = {
+    titulo: '', subtitulo: '',
+    colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
     logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
   };
   state.busqueda = ''; state.filtroColeccion = '';

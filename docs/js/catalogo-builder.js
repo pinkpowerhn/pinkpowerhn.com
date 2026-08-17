@@ -193,7 +193,16 @@ function renderShell() {
     </header>
     <main class="cb-body" id="cb-body"></main>
     <footer class="cb-foot" id="cb-foot"></footer>`;
-  $('#cb-back').addEventListener('click', () => mostrarLista());
+  // La flecha "atrás" retrocede UN paso (no borra el avance). Solo desde el primer
+  // paso sale: en el flujo desde un pedido vuelve a la tienda (a Mis pedidos); en
+  // el normal, a Mis catálogos.
+  $('#cb-back').addEventListener('click', () => {
+    const pasos = pasosActivos();
+    const i = pasos.indexOf(state.paso);
+    if (i > 0) { irA(pasos[i - 1]); return; }
+    if (state.soloPdf) window.location.href = '/';
+    else mostrarLista();
+  });
 }
 
 function actualizarTituloHead() {
@@ -201,10 +210,18 @@ function actualizarTituloHead() {
   if (h) h.textContent = state.editando ? 'Editar catálogo' : 'Crear catálogo';
 }
 
+// Pasos visibles según el flujo. En modo solo-PDF (viene de "Mis pedidos") los
+// productos ya vienen elegidos, así que se salta el paso "Productos" y se arranca
+// directo en "Precios".
+function pasosActivos() {
+  return state.soloPdf ? ['precios', 'diseno', 'generar'] : PASOS;
+}
+
 function renderSteps() {
   const labels = { productos: 'Productos', precios: 'Precios', diseno: 'Diseño', generar: 'Generar' };
-  const idx = PASOS.indexOf(state.paso);
-  $('#cb-steps').innerHTML = PASOS.map((p, i) => `
+  const pasos = pasosActivos();
+  const idx = pasos.indexOf(state.paso);
+  $('#cb-steps').innerHTML = pasos.map((p, i) => `
     <button class="cb-step ${i === idx ? 'is-active' : ''} ${i < idx ? 'is-done' : ''}"
             data-paso="${p}" ${i > idx && !puedeAvanzarHasta(p) ? 'disabled' : ''}>
       <span class="cb-step__n">${i < idx ? '✓' : i + 1}</span>${labels[p]}
@@ -214,6 +231,9 @@ function renderSteps() {
 }
 
 function puedeAvanzarHasta(paso) {
+  // En solo-PDF los productos ya vienen del pedido y el título/WhatsApp no son
+  // obligatorios (es un PDF, no un link para compartir): no bloqueamos nada.
+  if (state.soloPdf) return true;
   const i = PASOS.indexOf(paso);
   // Para pasar de "productos" hay que tener al menos 1 seleccionado.
   if (i >= 1 && state.sel.size === 0) return false;
@@ -237,6 +257,12 @@ function render() {
   else if (state.paso === 'precios') renderPrecios();
   else if (state.paso === 'diseno') renderDiseno();
   else if (state.paso === 'generar') renderGenerar();
+  // Cada cambio de paso arranca desde arriba (antes el paso de diseño quedaba
+  // scrolleado a la mitad del formulario).
+  requestAnimationFrame(() => {
+    const b = $('#cb-body'); if (b) b.scrollTop = 0;
+    window.scrollTo(0, 0);
+  });
 }
 
 // ── Paso 1: Productos ─────────────────────────────────────
@@ -437,7 +463,8 @@ function addProducto(p) {
   // Guardamos también el precio de mayoreo (lo que paga la mayorista) y el de
   // detalle (referencia de tienda) para mostrarlos y calcular la ganancia.
   state.sel.set(p.id, { id: p.id, nombre: p.title, imagen: imgDe(p), precio: '',
-    coleccion: colDeProducto(p), mayoreo: p.price, detalle: p.retailPrice });
+    coleccion: colDeProducto(p), mayoreo: p.price, detalle: p.retailPrice,
+    marca: p.productType || '' });
 }
 function toggleProducto(id) {
   if (state.sel.has(id)) { state.sel.delete(id); return; }
@@ -475,19 +502,21 @@ function gananciaInfo(mayoreo, ventaStr) {
   return { txt: `Ganás ${moneyC(g)} · +${pct}%`, cls: '' };
 }
 
-// Agrupa los seleccionados por colección + precio de mayoreo (los que comparten
-// ambos van juntos, para ponerles el precio de una sola vez).
+// Agrupa los seleccionados por colección + precio de mayoreo + precio de detalle
+// (los que comparten los tres van juntos, para ponerles el precio de una vez). Si
+// dentro de una colección hay distinto precio de detalle, quedan en grupos aparte.
 function gruposDePrecios() {
-  const map = new Map();  // gkey -> {gkey, col, mayoreo, items}
+  const map = new Map();  // gkey -> {gkey, col, mayoreo, detalle, items}
   for (const it of state.sel.values()) {
-    const col = it.coleccion || 'Otros productos';
+    const col = it.coleccion || "Otros productos";
     const may = mayoreoDeItem(it);
-    const gkey = col + '' + (may != null ? String(may) : 'sinprecio');
-    if (!map.has(gkey)) map.set(gkey, { gkey, col, mayoreo: may, items: [] });
+    const det = detalleDeItem(it);
+    const gkey = [col, may != null ? may : "sm", det != null ? det : "sd"].join("|");
+    if (!map.has(gkey)) map.set(gkey, { gkey, col, mayoreo: may, detalle: det, items: [] });
     map.get(gkey).items.push(it);
   }
   return [...map.values()].sort((a, b) =>
-    a.col.localeCompare(b.col) || ((a.mayoreo || 0) - (b.mayoreo || 0)));
+    a.col.localeCompare(b.col) || ((a.mayoreo || 0) - (b.mayoreo || 0)) || ((a.detalle || 0) - (b.detalle || 0)));
 }
 // Precio común del grupo: el precio si TODOS comparten el mismo; si no, "".
 function precioComunDe(items) {
@@ -514,11 +543,45 @@ function renderPrecios() {
   if (_precioVista === 'grupo') pintarPreciosGrupo();
   else pintarPreciosIndividual();
 
-  setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
+  if (state.soloPdf) {
+    // Solo-PDF (desde un pedido): si no puso ningún precio, el botón "Crear sin
+    // precios" genera el PDF de una vez (sin pasar por diseño). Apenas pone un
+    // precio, el botón cambia a "Siguiente" y pasa a diseño. La flecha de arriba
+    // maneja el "atrás".
+    setFoot('', hayAlgunPrecio() ? 'Siguiente →' : 'Crear sin precios', onRightPrecios, null);
+  } else {
+    setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
+  }
 }
 
-// Vista "Por grupo": una fila por (colección + precio de mayoreo). Ponerle el
-// precio al grupo lo aplica a TODOS sus productos.
+// ¿Hay al menos un producto con precio puesto?
+function hayAlgunPrecio() {
+  return [...state.sel.values()].some(it => (it.precio || '').trim());
+}
+
+// Botón derecho del paso de precios en modo solo-PDF.
+function onRightPrecios() {
+  if (hayAlgunPrecio()) irA('diseno');
+  else generarPdf();   // "Crear sin precios": salta diseño y descarga el PDF
+}
+
+// Refresca el texto del botón derecho al escribir/borrar precios (solo-PDF).
+function actualizarFootPrecios() {
+  if (!state.soloPdf) return;
+  const btn = $('#cb-foot-right');
+  if (btn) btn.textContent = hayAlgunPrecio() ? 'Siguiente →' : 'Crear sin precios';
+}
+
+// Nombres de los productos de un grupo (los primeros + "y N más").
+function nombresDeGrupo(items) {
+  const nombres = items.map(it => it.nombre).filter(Boolean);
+  const vis = nombres.slice(0, 3).map(esc).join(', ');
+  return nombres.length > 3 ? `${vis} y ${nombres.length - 3} más` : (vis || 'Productos');
+}
+
+// Vista "Por grupo": una fila por (colección + mayoreo + detalle). Muestra los
+// productos del grupo (mini fotos + nombres) y el precio de mayoreo y detalle.
+// Ponerle el precio al grupo lo aplica a TODOS sus productos.
 function pintarPreciosGrupo() {
   const cont = $('#cb-precios-cuerpo');
   const grupos = gruposDePrecios();
@@ -531,11 +594,21 @@ function pintarPreciosGrupo() {
     }
     const comun = precioComunDe(g.items);
     const gan = gananciaInfo(g.mayoreo, comun);
+    const thumbs = g.items.slice(0, 4).map(it =>
+      `<span class="cb-pgthumb">${it.imagen ? `<img src="${esc(it.imagen)}" alt="" loading="lazy"/>` : ''}</span>`).join('');
+    const extra = g.items.length > 4 ? `<span class="cb-pgthumb cb-pgthumb--more">+${g.items.length - 4}</span>` : '';
+    const precios = [
+      g.mayoreo != null ? `Mayoreo <b>${moneyC(g.mayoreo)}</b>` : 'Sin precio de mayoreo',
+      g.detalle != null ? `Detalle ${moneyC(g.detalle)}` : '',
+    ].filter(Boolean).join(' · ');
     html += `
       <div class="cb-pgrow" data-gkey="${esc(g.gkey)}">
-        <div class="cb-pgrow__info">
-          <div>${g.mayoreo != null ? `Mayoreo <b>${moneyC(g.mayoreo)}</b>` : 'Sin precio de mayoreo'}</div>
-          <div class="cb-pgrow__n">${g.items.length} producto${g.items.length === 1 ? '' : 's'}</div>
+        <div class="cb-pgrow__head">
+          <div class="cb-pgthumbs">${thumbs}${extra}</div>
+          <div class="cb-pgrow__txt">
+            <div class="cb-pgrow__names">${nombresDeGrupo(g.items)}</div>
+            <div class="cb-pgrow__meta">${precios} · ${g.items.length} producto${g.items.length === 1 ? '' : 's'}</div>
+          </div>
         </div>
         <div class="cb-prow__pcol">
           <input class="cb-input cb-pgrow__price" type="text" inputmode="decimal" placeholder="tu precio"
@@ -557,6 +630,7 @@ function pintarPreciosGrupo() {
       gan.textContent = info.txt;
       gan.classList.toggle('is-loss', info.cls === 'is-loss');
       guardarBorrador();
+      actualizarFootPrecios();
     });
   });
 }
@@ -569,10 +643,11 @@ function pintarPreciosIndividual() {
     ${items.map(it => {
       const may = mayoreoDeItem(it), det = detalleDeItem(it);
       const g = gananciaInfo(may, it.precio);
+      // "Detalle" va en su propia línea, debajo del precio de mayoreo.
       const costos = [
-        may != null ? `Mayoreo: <b>${moneyC(may)}</b>` : '',
-        det != null ? `Detalle: ${moneyC(det)}` : '',
-      ].filter(Boolean).join(' · ');
+        may != null ? `<span class="cb-prow__mayoreo">Mayoreo: <b>${moneyC(may)}</b></span>` : '',
+        det != null ? `<span class="cb-prow__detalle">Detalle: ${moneyC(det)}</span>` : '',
+      ].filter(Boolean).join('');
       return `
       <div class="cb-prow" data-id="${esc(it.id)}">
         <div class="cb-prow__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : NOIMG}</div>
@@ -601,11 +676,13 @@ function pintarPreciosIndividual() {
         gan.classList.toggle('is-loss', info.cls === 'is-loss');
       }
       guardarBorrador();
+      actualizarFootPrecios();
     }));
   cont.querySelectorAll('.cb-prow__del').forEach(b =>
     b.addEventListener('click', () => {
       state.sel.delete(b.dataset.id); guardarBorrador();
       if (state.sel.size) { renderPrecios(); renderSteps(); }
+      else if (state.soloPdf) window.location.href = '/';   // pedido sin productos: a la tienda
       else irA('productos');   // sin productos: volvemos al paso 1
     }));
 }
@@ -648,7 +725,7 @@ function renderDiseno() {
             <input class="cb-input" id="cb-titulo" type="text" maxlength="120" placeholder="Ej: Cosméticos Andrea" value="${esc(d.titulo)}"/></label>
           <label class="cb-field"><span>Subtítulo (opcional)</span>
             <input class="cb-input" id="cb-subtitulo" type="text" maxlength="160" placeholder="Ej: Perfumes y cremas — hacé tu pedido" value="${esc(d.subtitulo)}"/></label>
-          <p class="cb-hint" id="cb-titulo-aviso">Poné un título para poder generar el link.</p>
+          ${state.soloPdf ? '' : '<p class="cb-hint" id="cb-titulo-aviso">Poné un título para poder generar el link.</p>'}
         </div>
 
         <div class="cb-group">
@@ -666,9 +743,9 @@ function renderDiseno() {
 
         <div class="cb-group">
           <h3 class="cb-group__t">Presentación</h3>
-          <div class="cb-field"><span>Columnas (en compu/tablet)</span>
+          <div class="cb-field"><span>Columnas (en el celular)</span>
             <div class="cb-seg" id="cb-cols">
-              ${[2, 3, 4].map(n => `<button type="button" class="cb-seg__b ${d.columnas === n ? 'is-on' : ''}" data-cols="${n}">${n}</button>`).join('')}
+              ${[2, 3].map(n => `<button type="button" class="cb-seg__b ${d.columnas === n ? 'is-on' : ''}" data-cols="${n}">${n}</button>`).join('')}
             </div>
           </div>
           <label class="cb-switch">
@@ -681,21 +758,18 @@ function renderDiseno() {
         <div class="cb-group">
           <h3 class="cb-group__t">Contacto</h3>
           <label class="cb-field"><span>WhatsApp para pedidos</span>
-            <input class="cb-input" id="cb-whatsapp" type="tel" inputmode="numeric" placeholder="Ej: 9999-8888" value="${esc(d.whatsapp)}"/></label>
-          <p class="cb-hint">Tus clientas verán un botón para escribirte y hacerte el pedido.</p>
-          <p class="cb-hint" id="cb-whatsapp-aviso" style="color:#c0392b;font-weight:600">Poné tu WhatsApp para poder generar el catálogo.</p>
+            <div class="cb-wa-field">
+              <span class="cb-wa-prefix">+504</span>
+              <input class="cb-input" id="cb-whatsapp" type="tel" inputmode="numeric" placeholder="9999-8888" value="${esc(d.whatsapp)}"/>
+            </div>
+          </label>
+          <p class="cb-hint">No hace falta poner el +504: se agrega solo. Tus clientas verán un botón para escribirte y hacerte el pedido.</p>
+          ${state.soloPdf ? '' : '<p class="cb-hint" id="cb-whatsapp-aviso" style="color:#c0392b;font-weight:600">Poné tu WhatsApp para poder generar el catálogo.</p>'}
         </div>
 
-        <p class="cb-hint">Así se verá la página que abrirán tus clientas →</p>
+        <p class="cb-hint">Así se verá la página que abrirán tus clientas ↓</p>
       </div>
       <div class="cb-preview-wrap">
-        <div class="cb-prev">
-          <div class="cb-prev__label">🖥️ En computadora</div>
-          <div class="cb-browser">
-            <div class="cb-browser__bar"><i></i><i></i><i></i></div>
-            <div class="cb-browser__screen" id="cb-preview-desk"></div>
-          </div>
-        </div>
         <div class="cb-prev">
           <div class="cb-prev__label">📱 En celular</div>
           <div class="cb-phone"><div class="cb-phone__screen" id="cb-preview-mobile"></div></div>
@@ -821,10 +895,9 @@ function previewInner(cols) {
 }
 
 function actualizarPreview() {
-  const desk = $('#cb-preview-desk');
   const mob = $('#cb-preview-mobile');
-  if (desk) desk.innerHTML = previewInner(state.diseno.columnas);  // compu: columnas elegidas
-  if (mob) mob.innerHTML = previewInner(2);                        // celular: siempre 2
+  // Ya no hay vista de computadora: el celular usa las columnas elegidas (2 o 3).
+  if (mob) mob.innerHTML = previewInner(state.diseno.columnas);
 }
 
 // ── Paso 4: Generar ───────────────────────────────────────
@@ -861,16 +934,15 @@ function renderGenerar() {
   setFoot('← Diseño', '', null, () => irA('diseno'));
 }
 
-async function generar() {
-  const btn = $('#cb-generar-btn');
-  const editando = !!state.editando;
-  btn.disabled = true; btn.textContent = editando ? 'Guardando…' : 'Generando…';
+// Arma el payload del catálogo a partir del estado actual (items con colección y
+// marca, precios formateados y opciones de diseño). Sirve para el link y el PDF.
+function construirPayload() {
   const d = state.diseno;
   const items = [...state.sel.values()].map(it => ({
     id: it.id, nombre: it.nombre, imagen: it.imagen, precio: precioMostrar(it.precio),
-    coleccion: it.coleccion || '',
+    coleccion: it.coleccion || '', marca: it.marca || '',
   }));
-  const payload = {
+  return {
     titulo: d.titulo, subtitulo: d.subtitulo,
     colorFondo: d.colorFondo, colorTexto: d.colorTexto,
     items,
@@ -879,25 +951,39 @@ async function generar() {
       columnas: d.columnas, separarPorColeccion: d.separarPorColeccion,
     },
   };
-  // Modo solo-PDF (viene de "Mis pedidos"): NO se crea ningún catálogo ni link.
-  // Se pasan los datos por localStorage a la página del catálogo, en la MISMA
-  // web (URL relativa /c/), que los pinta y lanza la impresión "Guardar como PDF".
-  if (state.soloPdf) {
-    try { localStorage.setItem('pinkpower_pdf_catalogo', JSON.stringify(payload)); } catch (_) {}
-    limpiarBorrador();
-    window.open('/c/?pdf=local', '_blank');
-    $('#cb-resultado').innerHTML = `
+}
+
+// Modo solo-PDF (viene de "Mis pedidos"): NO se crea ningún catálogo ni link. Se
+// pasan los datos por localStorage a la página del catálogo, en la MISMA web (URL
+// relativa /c/), que los pinta y descarga el PDF. Se llama desde el paso de
+// precios ("Crear sin precios") o desde el paso final ("Descargar PDF").
+function generarPdf() {
+  const payload = construirPayload();
+  try { localStorage.setItem('pinkpower_pdf_catalogo', JSON.stringify(payload)); } catch (_) {}
+  limpiarBorrador();
+  window.open('/c/?pdf=local', '_blank');
+  renderSteps();
+  $('#cb-body').innerHTML = `
+    <div class="cb-generar">
       <div class="cb-ok">
         <div class="cb-ok__icon">✅</div>
         <h3>¡Tu catálogo está listo!</h3>
-        <p class="cb-hint">Se abrió en otra pestaña para descargarlo. En el cuadro de impresión elegí <b>"Guardar como PDF"</b>. Si no se abrió, tocá el botón:</p>
+        <p class="cb-hint">Se abrió en otra pestaña para descargarlo. Ahí aparece un cuadro: elegí <b>"Guardar como PDF"</b> y listo. Si no se abrió, tocá el botón:</p>
         <a class="cb-btn cb-btn--primary" href="/c/?pdf=local" target="_blank" rel="noopener">Abrir PDF</a>
         <a class="cb-btn cb-btn--ghost" href="#" id="cb-ver-mis2">Volver a mis catálogos</a>
-      </div>`;
-    $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); mostrarLista(); });
-    btn.style.display = 'none';
-    return;
-  }
+      </div>
+    </div>`;
+  $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); mostrarLista(); });
+  $('#cb-foot').innerHTML = '<span></span><span></span>';
+}
+
+async function generar() {
+  // Solo-PDF: sin llamadas al backend; genera y descarga el PDF.
+  if (state.soloPdf) { generarPdf(); return; }
+  const btn = $('#cb-generar-btn');
+  const editando = !!state.editando;
+  btn.disabled = true; btn.textContent = editando ? 'Guardando…' : 'Generando…';
+  const payload = construirPayload();
   try {
     let catToken, dias;
     if (editando) {
@@ -1043,7 +1129,7 @@ function crearNuevo() {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
     // Logo y WhatsApp precargados con lo que la mayorista tiene registrado.
-    logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
+    logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 2, separarPorColeccion: true,
   };
   state.busqueda = ''; state.filtroColeccion = '';
   state.paso = 'productos';
@@ -1053,27 +1139,28 @@ function crearNuevo() {
 }
 
 // Arrancar un catálogo nuevo con los productos de un pedido. Viene de "Mis
-// pedidos": la mayorista genera un catálogo (solo PDF, sin link) de un pedido
-// ya pagado. `soloPdf` hace que el paso final descargue el PDF sin crear link.
+// pedidos": los productos ya vienen resueltos (con colección, marca y precios) y,
+// en modo solo-PDF, se arranca directo en el paso de precios (sin "Productos").
 function iniciarCatalogoDesdePedido(prods, soloPdf = false) {
   state.editando = null;
   state.soloPdf = !!soloPdf;
   state.sel = new Map();
   for (const p of prods) {
-    const id = String(p.id);
-    const full = state.productos.find(x => x.id === id);
-    if (full) addProducto(full);   // producto en la lista actual: datos completos
-    else state.sel.set(id, {       // ya no está (agotado): usamos lo que trae el pedido
+    const id = String(p.id || p.nombre || Math.random());
+    state.sel.set(id, {
       id, nombre: p.nombre || 'Producto', imagen: p.imagen || '', precio: '',
-      coleccion: '', mayoreo: p.mayoreo != null ? p.mayoreo : null, detalle: null });
+      coleccion: p.coleccion || '', marca: p.marca || '',
+      mayoreo: p.mayoreo != null ? p.mayoreo : null,
+      detalle: p.detalle != null ? p.detalle : null,
+    });
   }
   state.diseno = {
     titulo: '', subtitulo: '',
     colorFondo: '#fff0f5', colorTexto: '#3a0a1e', colorAcento: '#e8437a',
-    logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 4, separarPorColeccion: true,
+    logo: state.logoCuenta || '', whatsapp: state.telefonoCuenta || '', columnas: 2, separarPorColeccion: true,
   };
   state.busqueda = ''; state.filtroColeccion = '';
-  state.paso = 'productos';
+  state.paso = state.soloPdf ? 'precios' : 'productos';
   limpiarBorrador();
   renderShell();
   render();
@@ -1088,7 +1175,7 @@ function editarCat(cat) {
     const key = it.id || ('x' + i);   // id real si lo hay; si no, clave temporal
     // El precio guardado puede venir como "L. 150"; lo dejamos tal cual para editar.
     state.sel.set(key, { id: it.id || key, nombre: it.nombre, imagen: it.imagen || '',
-      precio: it.precio || '', coleccion: it.coleccion || '' });
+      precio: it.precio || '', coleccion: it.coleccion || '', marca: it.marca || '' });
   });
   const op = cat.opciones || {};
   state.diseno = {
@@ -1099,7 +1186,7 @@ function editarCat(cat) {
     colorAcento: op.colorAcento || '#e8437a',
     logo: op.logo || state.logoCuenta || '',
     whatsapp: op.whatsapp || state.telefonoCuenta || '',
-    columnas: [2, 3, 4].includes(op.columnas) ? op.columnas : 4,
+    columnas: [2, 3].includes(op.columnas) ? op.columnas : 2,
     separarPorColeccion: op.separarPorColeccion !== false,
   };
   state.busqueda = ''; state.filtroColeccion = '';

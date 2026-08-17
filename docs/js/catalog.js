@@ -699,7 +699,7 @@ export function filterProducts(products, collections, activeCollection, searchQu
     // Solo productos donde ESA talla está realmente disponible (con stock),
     // no basta con que la variante exista.
     result = result.filter(p =>
-      p.variants.some(v =>
+      (p.variants || []).some(v =>
         v.title === activeSize &&
         v.availableForSale &&
         (v.inventoryQuantity === null || v.inventoryQuantity > 0)

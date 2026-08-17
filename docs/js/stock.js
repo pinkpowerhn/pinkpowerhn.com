@@ -6,6 +6,10 @@
 // Devuelve null si alguna talla disponible no lleva control de inventario
 // (ilimitada) → el producto no se considera "de pocas unidades".
 export function productStockTotal(p) {
+  // Ítem ligero del índice de búsqueda (sin variantes): nos guiamos por su
+  // disponibilidad general. null = disponible/ilimitado (se muestra); 0 = agotado
+  // (se oculta), igual que un producto completo sin variantes disponibles.
+  if (p._light || !p.variants) return p.availableForSale ? null : 0;
   const avail = (p.variants || []).filter(v => v.availableForSale);
   if (!avail.length) return 0;
   if (avail.some(v => v.inventoryQuantity === null)) return null;

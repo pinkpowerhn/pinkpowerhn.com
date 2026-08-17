@@ -176,7 +176,8 @@ function loadSearchIndex() {
 let _prevRender = {};
 on('statechange', state => {
   const { products, collections, activeCollection, activeTag, activeSize,
-          priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded } = state;
+          priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded,
+          searchIndex, mayoreo } = state;
 
   const gridChanged =
     products       !== _prevRender.products ||
@@ -189,10 +190,23 @@ on('statechange', state => {
     sortBy         !== _prevRender.sortBy ||
     searchQuery    !== _prevRender.searchQuery ||
     currentPage    !== _prevRender.currentPage ||
-    productsLoaded !== _prevRender.productsLoaded;
+    productsLoaded !== _prevRender.productsLoaded ||
+    searchIndex    !== _prevRender.searchIndex;
 
-  if (gridChanged && products.length) {
-    renderProductGrid(products, collections, activeCollection, searchQuery);
+  // Al BUSCAR, la grilla se arma con el índice completo (una sola llamada con TODO
+  // el catálogo) en vez de `products`, que carga por lotes. Así los resultados
+  // salen todos juntos y no van apareciendo de a poco. Para los productos que ya
+  // cargaron por completo usamos su versión completa (mantiene "últimas N", etc.);
+  // los que aún no, se muestran con el dato ligero del índice (al tocarlos se traen
+  // completos por id). En mayoreo se busca sobre los productos de mayoreo.
+  let gridProducts = products;
+  if (searchQuery && !mayoreo && searchIndex && searchIndex.length) {
+    const fullById = new Map(products.map(p => [p.id, p]));
+    gridProducts = searchIndex.map(li => fullById.get(li.id) || li);
+  }
+
+  if (gridChanged && gridProducts.length) {
+    renderProductGrid(gridProducts, collections, activeCollection, searchQuery);
     renderCollectionSidebar(collections);
     renderMegaMenu(collections);
     renderSizeBar(collections);
@@ -207,7 +221,7 @@ on('statechange', state => {
   }
 
   _prevRender = { products, collections, activeCollection, activeTag, activeSize,
-                  priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded };
+                  priceMin, priceMax, sortBy, searchQuery, currentPage, productsLoaded, searchIndex };
 
   renderCartDrawer();
   updateCartBadge();
@@ -741,9 +755,11 @@ document.addEventListener('click', e => {
   const card = e.target.closest('.product-card');
   if (card && !e.target.closest('[data-action]')) {
     const id = card.dataset.id;
-    const { products } = getState();
-    const product = products.find(p => p.id === id);
+    const product = getState().products.find(p => p.id === id);
+    // Si es un resultado de búsqueda que aún no cargó completo (viene del índice),
+    // lo traemos por id para abrir su ficha.
     if (product) goToProduct(product);
+    else fetchProductById(id).then(p => { if (p) goToProduct(p); }).catch(() => {});
     return;
   }
 
@@ -751,9 +767,13 @@ document.addEventListener('click', e => {
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn) {
     const id = actionBtn.dataset.id;
-    const { products } = getState();
-    const product = products.find(p => p.id === id);
-    if (!product) return;
+    const product = getState().products.find(p => p.id === id);
+    // Resultado del índice todavía sin datos completos: abrimos la ficha (trae los
+    // datos por id), sin intentar agregarlo al carrito sin variante.
+    if (!product) {
+      fetchProductById(id).then(p => { if (p) goToProduct(p); }).catch(() => {});
+      return;
+    }
 
     if (actionBtn.dataset.action === 'quick-view') {
       goToProduct(product);

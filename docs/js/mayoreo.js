@@ -13,6 +13,9 @@ const TEL_KEY   = 'pinkpower_mayoreo_tel';
 // carga de sesión (enterMayoreo). Por defecto true: un fallo de red no oculta nada.
 let catalogoHabilitado = true;
 
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
 // Envuelve un cambio de DOM en una transición de vista (si está disponible).
 function withViewTransition(fn) {
   if (document.startViewTransition) document.startViewTransition(fn);
@@ -118,8 +121,16 @@ async function onSubmit(e) {
 
 // ── Entrar / salir del modo mayoreo ───────────────────────
 async function enterMayoreo(token, nombre, telefono = '') {
-  // El flag de catálogos se pide en paralelo; no es crítico para entrar.
-  const cfgPromise = fetchConfig().catch(() => null);
+  // Config primero: es un endpoint chico y rápido. Con eso ya sabemos si los
+  // catálogos están habilitados y montamos el menú de cuenta de una vez, sin
+  // esperar a que cargue todo el catálogo de mayoreo (así el menú no tarda unos
+  // segundos en aparecer completo).
+  const cfg = await fetchConfig().catch(() => null);
+  catalogoHabilitado = !cfg || cfg.catalogo_habilitado !== false;
+  // Actualización directa (sin view-transition: chocaba con el cierre del modal
+  // y dejaba la pantalla en el estado viejo hasta refrescar).
+  document.body.classList.add('is-mayoreo');
+  mountAccount(nombre);
   let productos;
   try {
     productos = await fetchMayoreoProducts(token);
@@ -129,15 +140,11 @@ async function enterMayoreo(token, nombre, telefono = '') {
     if (e && e.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
+      unmountAccount();
+      document.body.classList.remove('is-mayoreo');
     }
     return;
   }
-  const cfg = await cfgPromise;
-  catalogoHabilitado = !cfg || cfg.catalogo_habilitado !== false;
-  // Actualización directa (sin view-transition: chocaba con el cierre del modal
-  // y dejaba la pantalla en el estado viejo hasta refrescar).
-  document.body.classList.add('is-mayoreo');
-  mountAccount(nombre);
   // En mayoreo solo deben existir las colecciones que tienen al menos un
   // producto con precio de mayoreo. Filtramos `collections` en el estado (no
   // solo el carrusel) para que la lista de categorías, la barra de tallas y la
@@ -263,14 +270,42 @@ function mountDrawerAccount(nombre) {
 }
 
 // ── Mis pedidos (catálogo PDF de pedidos pagados) ─────────
-// Lista los pedidos que Shopify reporta como pagados y, de cada uno, deja crear
-// un catálogo en PDF (sin link). Reusa el armador: guarda los productos y el
-// flag "solo PDF" en localStorage y abre /mi-catalogo/.
+// Dos pantallas: (1) lista de pedidos pagados (solo verlos); (2) detalle de un
+// pedido con sus productos (se pueden desmarcar) y dos acciones: crear catálogo
+// PDF o descargar las fotos. El PDF reusa el armador (arranca en el paso de
+// precios, en modo solo-PDF).
+let _pedidosCache = null;
+
 function fmtFecha(iso) {
   if (!iso) return '';
   const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   const [y, m, d] = String(iso).split('-');
   return `${parseInt(d, 10)} ${meses[parseInt(m, 10) - 1] || ''} ${y}`;
+}
+
+// Arma los productos de un pedido. El backend ya manda foto, colección (categoría),
+// marca y precios de CADA producto —incluidos los agotados, que no salen en el
+// catálogo de mayoreo—, así que usamos eso primero y, si faltara algo, caemos al
+// catálogo ya cargado (getState) emparejando por product_id.
+function resolverItemsPedido(pedido) {
+  const productos = getState().products || [];
+  const cols = getState().collections || [];
+  const colTitulo = (handles) => {
+    for (const c of cols) if ((handles || []).includes(c.handle)) return c.title;
+    return '';
+  };
+  return (pedido.items || []).map(it => {
+    const full = productos.find(p => String(p.id) === String(it.product_id));
+    return {
+      id: String(it.product_id || ''),
+      nombre: it.titulo || (full && full.title) || 'Producto',
+      imagen: it.imagen || (full && full.images && full.images[0] ? full.images[0].url : ''),
+      coleccion: it.coleccion || (full ? colTitulo(full.collectionHandles) : ''),
+      marca: it.marca || (full ? (full.productType || '') : ''),
+      mayoreo: it.mayoreo != null ? it.mayoreo : (full ? full.price : null),
+      detalle: it.detalle != null ? it.detalle : (full && full.retailPrice != null ? full.retailPrice : null),
+    };
+  }).filter(p => p.id || p.nombre);
 }
 
 function ensurePedidosMarkup() {
@@ -279,12 +314,9 @@ function ensurePedidosMarkup() {
   wrap.innerHTML = `
     <div id="my-pedidos-modal" class="my-modal" hidden>
       <div class="my-modal__backdrop" data-pcerrar></div>
-      <div class="my-modal__panel" role="dialog" aria-modal="true" aria-labelledby="my-pedidos-title">
+      <div class="my-modal__panel my-modal__panel--pedidos" role="dialog" aria-modal="true">
         <button class="my-modal__close" data-pcerrar aria-label="Cerrar">&times;</button>
-        <div class="my-modal__icon">📦</div>
-        <h2 id="my-pedidos-title" class="my-modal__title">Mis pedidos</h2>
-        <p class="my-modal__sub">De tus pedidos ya pagados podés crear un catálogo en PDF.</p>
-        <div id="my-pedidos-body" class="my-pedidos"></div>
+        <div id="my-pedidos-view"></div>
       </div>
     </div>`;
   document.body.appendChild(wrap);
@@ -306,54 +338,175 @@ function closePedidosModal() {
 async function openPedidosModal() {
   ensurePedidosMarkup();
   const m = document.getElementById('my-pedidos-modal');
-  const body = document.getElementById('my-pedidos-body');
+  const view = document.getElementById('my-pedidos-view');
   m.hidden = false;
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => m.classList.add('is-open'));
-  body.innerHTML = '<p class="my-pedidos__msg">Cargando tus pedidos…</p>';
+  // Encabezado + esqueleto (evita el parpadeo de "no tenés pedidos" mientras carga).
+  view.innerHTML = `
+    <div class="my-modal__icon">📦</div>
+    <h2 class="my-modal__title">Mis pedidos</h2>
+    <p class="my-modal__sub">Elegí un pedido pagado para ver sus productos.</p>
+    <div class="my-pedidos">
+      <div class="my-ped-sk"></div><div class="my-ped-sk"></div><div class="my-ped-sk"></div>
+    </div>`;
   const token = localStorage.getItem(TOKEN_KEY);
   try {
     const pedidos = await fetchMisPedidos(token);
-    if (!Array.isArray(pedidos) || !pedidos.length) {
-      body.innerHTML = '<p class="my-pedidos__msg">Todavía no tenés pedidos pagados.</p>'
-        + '<p class="my-pedidos__hint">Cuando un pedido esté pagado, acá vas a poder crear su catálogo en PDF.</p>';
-      return;
-    }
-    body.innerHTML = pedidos.map((p, i) => {
-      const n = (p.items || []).length;
-      return `
-        <div class="my-pedido">
-          <div class="my-pedido__info">
-            <b>${p.name || 'Pedido'}</b>
-            <span>${fmtFecha(p.fecha)} · ${n} producto${n === 1 ? '' : 's'}</span>
-          </div>
-          <button class="btn btn-primary my-pedido__btn" data-i="${i}">Crear catálogo (PDF)</button>
-        </div>`;
-    }).join('');
-    body.querySelectorAll('.my-pedido__btn').forEach(btn => {
-      btn.addEventListener('click', () => crearCatalogoDesdePedido(pedidos[+btn.dataset.i]));
-    });
+    _pedidosCache = Array.isArray(pedidos) ? pedidos : [];
+    renderListaPedidos(_pedidosCache);
   } catch (_) {
-    body.innerHTML = '<p class="my-pedidos__msg">No se pudieron cargar tus pedidos. Probá de nuevo.</p>';
+    const cont = view.querySelector('.my-pedidos');
+    if (cont) cont.innerHTML = '<p class="my-pedidos__msg">No se pudieron cargar tus pedidos. Probá de nuevo.</p>';
   }
 }
 
-function crearCatalogoDesdePedido(pedido) {
-  const productosStore = getState().products || [];
-  const prods = (pedido.items || []).map(it => {
-    const full = productosStore.find(p => String(p.id) === String(it.product_id));
-    return {
-      id: it.product_id || '',
-      nombre: it.titulo || (full && full.title) || 'Producto',
-      imagen: full && full.images && full.images[0] ? full.images[0].url : '',
-      mayoreo: full ? full.price : null,
-    };
-  }).filter(p => p.id || p.nombre);
+// Pantalla 1: solo la lista de pedidos. Cada pedido se toca para ver su detalle.
+function renderListaPedidos(pedidos) {
+  const view = document.getElementById('my-pedidos-view');
+  if (!view) return;
+  if (!Array.isArray(pedidos) || !pedidos.length) {
+    view.innerHTML = `
+      <div class="my-modal__icon">📦</div>
+      <h2 class="my-modal__title">Mis pedidos</h2>
+      <p class="my-pedidos__msg">Todavía no tenés pedidos pagados.</p>
+      <p class="my-pedidos__hint">Cuando un pedido esté pagado, acá vas a poder crear su catálogo en PDF o descargar sus fotos.</p>`;
+    return;
+  }
+  const filas = pedidos.map((p, i) => {
+    const items = resolverItemsPedido(p);
+    const n = items.length;
+    const thumbs = items.slice(0, 4).map(it =>
+      `<span class="my-ped-thumb">${it.imagen ? `<img src="${esc(it.imagen)}" alt="" loading="lazy"/>` : ''}</span>`).join('');
+    const extra = n > 4 ? `<span class="my-ped-thumb my-ped-thumb--more">+${n - 4}</span>` : '';
+    return `
+      <button class="my-pedido my-pedido--sel" data-i="${i}">
+        <div class="my-pedido__info">
+          <b>${esc(p.name || 'Pedido')}</b>
+          <span>${fmtFecha(p.fecha)} · ${n} producto${n === 1 ? '' : 's'}</span>
+        </div>
+        <div class="my-ped-thumbs">${thumbs}${extra}</div>
+        <span class="my-pedido__chev" aria-hidden="true">›</span>
+      </button>`;
+  }).join('');
+  view.innerHTML = `
+    <div class="my-modal__icon">📦</div>
+    <h2 class="my-modal__title">Mis pedidos</h2>
+    <p class="my-modal__sub">Elegí un pedido pagado para ver sus productos.</p>
+    <div class="my-pedidos">${filas}</div>`;
+  view.querySelectorAll('.my-pedido--sel').forEach(btn =>
+    btn.addEventListener('click', () => mostrarDetallePedido(pedidos[+btn.dataset.i])));
+}
+
+// Pantalla 2: SOLO los productos del pedido, con casilla para desmarcar los que
+// no quiera incluir, y dos acciones (crear catálogo PDF / descargar imágenes).
+function mostrarDetallePedido(pedido) {
+  const view = document.getElementById('my-pedidos-view');
+  if (!view) return;
+  const items = resolverItemsPedido(pedido);
+  const sel = new Set(items.map((_, i) => i));   // todos marcados por defecto
+
+  const filas = items.map((it, i) => `
+    <label class="my-ped-item">
+      <input type="checkbox" class="my-ped-item__chk" data-i="${i}" checked />
+      <span class="my-ped-item__box" aria-hidden="true"></span>
+      <span class="my-ped-item__img">${it.imagen ? `<img src="${esc(it.imagen)}" alt=""/>` : ''}</span>
+      <span class="my-ped-item__txt">
+        ${it.marca ? `<span class="my-ped-item__marca">${esc(it.marca)}</span>` : ''}
+        <span class="my-ped-item__name">${esc(it.nombre)}</span>
+      </span>
+    </label>`).join('');
+
+  view.innerHTML = `
+    <div class="my-ped-dethead">
+      <button class="my-ped-back" data-back aria-label="Volver a mis pedidos">‹</button>
+      <div class="my-ped-dethead__txt">
+        <h2 class="my-modal__title my-modal__title--sm">${esc(pedido.name || 'Pedido')}</h2>
+        <p class="my-modal__sub">Desmarcá los que no quieras incluir.</p>
+      </div>
+    </div>
+    <div class="my-pedidos my-pedidos--items">${filas}</div>
+    <div class="my-ped-acts">
+      <button class="btn btn-primary my-ped-act" data-act="pdf">Crear catálogo PDF</button>
+      <button class="my-ped-act my-ped-act--ghost" data-act="fotos">Descargar imágenes</button>
+    </div>`;
+
+  const acts = view.querySelectorAll('.my-ped-act');
+  const refrescarActs = () => acts.forEach(b => { b.disabled = sel.size === 0; });
+
+  view.querySelector('[data-back]').addEventListener('click', () => renderListaPedidos(_pedidosCache || []));
+  view.querySelectorAll('.my-ped-item__chk').forEach(chk =>
+    chk.addEventListener('change', () => {
+      const i = +chk.dataset.i;
+      if (chk.checked) sel.add(i); else sel.delete(i);
+      chk.closest('.my-ped-item').classList.toggle('is-off', !chk.checked);
+      refrescarActs();
+    }));
+  view.querySelector('[data-act="pdf"]').addEventListener('click', () =>
+    crearCatalogoDesdePedido(items.filter((_, i) => sel.has(i))));
+  view.querySelector('[data-act="fotos"]').addEventListener('click', (e) =>
+    descargarImagenesPedido(items.filter((_, i) => sel.has(i)), e.currentTarget));
+  refrescarActs();
+}
+
+// "Crear catálogo PDF": manda los productos ya resueltos (con colección, marca y
+// precios) al armador, que arranca en el paso de precios en modo solo-PDF.
+function crearCatalogoDesdePedido(items) {
+  if (!items.length) return;
+  const prods = items.map(it => ({
+    id: it.id || '', nombre: it.nombre || 'Producto', imagen: it.imagen || '',
+    coleccion: it.coleccion || '', marca: it.marca || '',
+    mayoreo: it.mayoreo != null ? it.mayoreo : null,
+    detalle: it.detalle != null ? it.detalle : null,
+  }));
   try {
     localStorage.setItem('pinkpower_catalogo_desde_pedido', JSON.stringify(prods));
     localStorage.setItem('pinkpower_catalogo_solo_pdf', '1');
   } catch (_) {}
   window.location.href = '/mi-catalogo/';
+}
+
+// "Descargar imágenes": abre la hoja de compartir del celular con TODAS las fotos
+// (desde ahí la mayorista elige "Guardar en Fotos"). Si el navegador no soporta
+// compartir archivos (compu), las descarga una por una.
+async function descargarImagenesPedido(items, btn) {
+  const conFoto = items.filter(it => it.imagen);
+  const original = btn ? btn.textContent : '';
+  const restaurar = (txt, ms) => { if (btn) { btn.textContent = txt; setTimeout(() => { btn.textContent = original; }, ms); } };
+  if (!conFoto.length) { restaurar('Estos productos no tienen foto', 2000); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparando fotos…'; }
+  try {
+    const files = [];
+    for (const it of conFoto) {
+      try {
+        const resp = await fetch(it.imagen, { mode: 'cors' });
+        const blob = await resp.blob();
+        const ext = ((blob.type || '').split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        const base = (it.nombre || 'producto').toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'producto';
+        files.push(new File([blob], `${base}.${ext}`, { type: blob.type || 'image/jpeg' }));
+      } catch (_) { /* una foto que falle no frena las demás */ }
+    }
+    if (!files.length) throw new Error('sin-fotos');
+    if (navigator.canShare && navigator.canShare({ files })) {
+      await navigator.share({ files });
+    } else {
+      for (const f of files) {
+        const url = URL.createObjectURL(f);
+        const a = document.createElement('a');
+        a.href = url; a.download = f.name;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        await new Promise(r => setTimeout(r, 350));
+      }
+    }
+  } catch (err) {
+    // El usuario canceló (AbortError): sin ruido. Otro error: aviso corto.
+    if (btn && !(err && err.name === 'AbortError')) restaurar('No se pudo, probá de nuevo', 2000);
+  } finally {
+    if (btn) { btn.disabled = false; if (btn.textContent === 'Preparando fotos…') btn.textContent = original; }
+  }
 }
 
 function unmountAccount() {

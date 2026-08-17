@@ -188,8 +188,36 @@
     display: grid; grid-template-columns: 1fr 128px; align-items: center; gap: .55rem;
     background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .55rem .7rem; margin-bottom: .45rem;
   }
-  .cb-pgrow__info { font-size: .92rem; min-width: 0; }
-  .cb-pgrow__n { font-size: .74rem; color: var(--muted); margin-top: .1rem; }
+  .cb-pgrow__head { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+  .cb-pgthumbs { display: flex; align-items: center; flex: none; }
+  .cb-pgthumb {
+    width: 34px; height: 34px; border-radius: 8px; overflow: hidden; flex: none;
+    background: #f3eef1; border: 2px solid #fff; margin-left: -10px;
+    display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  }
+  .cb-pgthumb:first-child { margin-left: 0; }
+  .cb-pgthumb img { width: 100%; height: 100%; object-fit: cover; }
+  .cb-pgthumb--more { font-size: .64rem; font-weight: 800; color: var(--pp); background: #ffe3ef; }
+  .cb-pgrow__txt { min-width: 0; }
+  .cb-pgrow__names {
+    font-size: .9rem; font-weight: 600; color: var(--ink); line-height: 1.25;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .cb-pgrow__meta { font-size: .74rem; color: var(--muted); margin-top: .12rem; }
+
+  /* "Detalle" en su propia línea, debajo del mayoreo (paso precios uno por uno) */
+  .cb-prow__mayoreo, .cb-prow__detalle { display: block; }
+  .cb-prow__detalle { margin-top: .05rem; }
+
+  /* Campo de WhatsApp con prefijo +504 fijo */
+  .cb-wa-field { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .cb-wa-field:focus-within { outline: 2px solid rgba(232,67,122,.35); border-color: var(--pp); }
+  .cb-wa-prefix {
+    display: flex; align-items: center; padding: 0 .7rem; background: var(--soft);
+    color: var(--muted); font-weight: 700; font-size: .92rem; border-right: 1px solid var(--line); flex: none;
+  }
+  .cb-wa-field .cb-input { border: none; border-radius: 0; }
+  .cb-wa-field .cb-input:focus { outline: none; }
 
   /* Paso 3: diseño + preview */
   .cb-design { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }

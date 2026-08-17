@@ -257,15 +257,30 @@
   @media print {
     body::before, .deco, .wa-fab, .cat__actions, footer.cat { display: none !important; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    @page { margin: 12mm; }
+    @page { margin: 10mm; }
     body { background: var(--bg) !important; }
     .card { animation: none !important; box-shadow: none !important;
             border: 1px solid rgba(0,0,0,.14); break-inside: avoid; }
     .section, .grid--solo { max-width: none !important; }
     .section__title { break-after: avoid; }
     /* Layout de PDF consistente en cualquier navegador: 3 por fila. */
-    .grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8mm !important; }
-    header.cat { padding: .4rem 1rem 1rem; }
+    .grid { grid-template-columns: repeat(3, 1fr) !important; gap: 5mm !important; padding: 0 !important; }
+    /* Portada compacta: si no, empuja la 2ª fila a la página siguiente y deja
+       un hueco grande (solo cabía 1 fila). Compactándola caben ~2 filas en la
+       primera página y ~3 en las siguientes. */
+    header.cat { padding: 0 1rem .45rem !important; }
+    .cat__logo { width: 44px !important; height: 44px !important; margin: 0 auto .35rem !important;
+                 box-shadow: 0 0 0 2px var(--accent) !important; padding: 2px !important; }
+    .cat__title { font-size: 17pt !important; line-height: 1.05 !important; }
+    .cat__subtitle { font-size: 9pt !important; margin-top: .15rem !important; }
+    .cat__rule { margin-top: .4rem !important; }
+    .section__title { font-size: 11.5pt !important; padding: .45rem .2rem .4rem !important; }
+    .section:first-of-type .section__title { padding-top: .15rem !important; }
+    /* Tarjetas más compactas para que entren más filas por página. */
+    .card__body { padding: .3rem .5rem .4rem !important; gap: .15rem !important; }
+    .card__brand { font-size: 7pt !important; }
+    .card__name { font-size: 8pt !important; line-height: 1.18 !important; }
+    .card__price { font-size: 8pt !important; padding: .08rem .4rem !important; }
   }
 </style>
 </head>

@@ -473,40 +473,55 @@ async function descargarImagenesPedido(items, btn) {
   const conFoto = items.filter(it => it.imagen);
   const original = btn ? btn.textContent : '';
   const restaurar = (txt, ms) => { if (btn) { btn.textContent = txt; setTimeout(() => { btn.textContent = original; }, ms); } };
+  const nombreArchivo = (it, i) => {
+    const base = (it.nombre || 'producto').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'producto';
+    return `${i + 1}-${base}`;
+  };
+  const descargar = (files) => {   // descarga directa (blob del mismo origen: siempre funciona)
+    files.forEach((f, i) => setTimeout(() => {
+      const url = URL.createObjectURL(f);
+      const a = document.createElement('a');
+      a.href = url; a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }, i * 250));
+  };
+
   if (!conFoto.length) { restaurar('Estos productos no tienen foto', 2000); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Preparando fotos…'; }
+
+  // Descargamos las fotos EN PARALELO (rápido, para no perder el "gesto" que exige
+  // navigator.share en el celular) y quedan como File del mismo origen.
+  let files = [];
   try {
-    const files = [];
-    for (const it of conFoto) {
+    files = (await Promise.all(conFoto.map(async (it, i) => {
       try {
         const resp = await fetch(it.imagen, { mode: 'cors' });
         const blob = await resp.blob();
         const ext = ((blob.type || '').split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-        const base = (it.nombre || 'producto').toLowerCase()
-          .normalize('NFD').replace(/[̀-ͯ]/g, '')
-          .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'producto';
-        files.push(new File([blob], `${base}.${ext}`, { type: blob.type || 'image/jpeg' }));
-      } catch (_) { /* una foto que falle no frena las demás */ }
-    }
-    if (!files.length) throw new Error('sin-fotos');
-    if (navigator.canShare && navigator.canShare({ files })) {
+        return new File([blob], `${nombreArchivo(it, i)}.${ext}`, { type: blob.type || 'image/jpeg' });
+      } catch (_) { return null; }
+    }))).filter(Boolean);
+  } catch (_) { files = []; }
+
+  if (btn) { btn.disabled = false; btn.textContent = original; }
+  if (!files.length) { restaurar('No se pudieron descargar, probá de nuevo', 2200); return; }
+
+  // 1) Hoja de compartir del celular (guarda en Fotos). Si NO se puede compartir
+  //    archivos, o si share() falla (p. ej. se perdió el gesto), NO mostramos error:
+  //    caemos a la descarga directa. Si la mayorista cancela (AbortError), no hacemos nada.
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try {
       await navigator.share({ files });
-    } else {
-      for (const f of files) {
-        const url = URL.createObjectURL(f);
-        const a = document.createElement('a');
-        a.href = url; a.download = f.name;
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-        await new Promise(r => setTimeout(r, 350));
-      }
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;   // canceló: sin ruido ni descarga
+      // otro error: seguimos a la descarga directa
     }
-  } catch (err) {
-    // El usuario canceló (AbortError): sin ruido. Otro error: aviso corto.
-    if (btn && !(err && err.name === 'AbortError')) restaurar('No se pudo, probá de nuevo', 2000);
-  } finally {
-    if (btn) { btn.disabled = false; if (btn.textContent === 'Preparando fotos…') btn.textContent = original; }
   }
+  descargar(files);
 }
 
 function unmountAccount() {

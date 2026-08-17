@@ -590,24 +590,27 @@ function hexRgb(hex) {
   return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
 }
 
-// Baja una imagen y la devuelve como dataURL JPEG recortada (cover) al tamaño
-// pedido. Usa un blob del mismo origen para que el canvas no quede "tainted".
-async function imagenDataURL(url, w, h) {
+function _cargarImg(src) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+}
+
+// Baja una imagen y la devuelve como { data (JPEG dataURL), w, h } con la imagen
+// COMPLETA, sin recortar (solo reescalada para que no pese de más). Se conserva
+// su relación ancho/alto; el recuadro del PDF la ubica "contain" (entera, centrada).
+async function imagenData(url, maxPx) {
   const resp = await fetch(url, { mode: 'cors' });
   const blob = await resp.blob();
   const obj = URL.createObjectURL(blob);
   try {
-    const img = await new Promise((res, rej) => {
-      const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = obj;
-    });
-    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const img = await _cargarImg(obj);
+    const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+    const scale = Math.min(1, maxPx / Math.max(iw, ih));
+    const cw = Math.max(1, Math.round(iw * scale)), ch = Math.max(1, Math.round(ih * scale));
+    const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
     const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
-    const iw = img.naturalWidth, ih = img.naturalHeight;
-    const scale = Math.max(w / iw, h / ih);   // cover
-    const dw = iw * scale, dh = ih * scale;
-    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    return cv.toDataURL('image/jpeg', 0.82);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(img, 0, 0, cw, ch);
+    return { data: cv.toDataURL('image/jpeg', 0.85), w: cw, h: ch };
   } finally { URL.revokeObjectURL(obj); }
 }
 
@@ -634,12 +637,15 @@ async function construirPdf(cat) {
 
   const cols = 3, gap = 5;
   const cardW = (contentW - gap * (cols - 1)) / cols;
-  const imgH = cardW * 0.82, bodyH = 15, cardH = imgH + bodyH, rowGap = gap;
+  // Recuadro de imagen (más chico para que la foto entera se vea sin recortar y
+  // entren más por página). La foto va "contain" dentro; si no es cuadrada quedan
+  // márgenes blancos a los lados o arriba/abajo.
+  const imgH = cardW * 0.78, bodyH = 14, cardH = imgH + bodyH, rowGap = gap;
 
-  // Precargar (recortar) las imágenes en paralelo.
-  const imgPx = 520, imgCache = {};
+  // Precargar las imágenes (completas, sin recortar) en paralelo.
+  const imgPx = 640, imgCache = {};
   await Promise.all([...new Set(items.map(i => i.imagen).filter(Boolean))].map(async u => {
-    try { imgCache[u] = await imagenDataURL(u, imgPx, Math.round(imgPx * 0.82)); } catch (_) {}
+    try { imgCache[u] = await imagenData(u, imgPx); } catch (_) {}
   }));
 
   const pintarFondo = () => { doc.setFillColor(fr, fg, fb); doc.rect(0, 0, PW, PH, 'F'); };
@@ -648,11 +654,17 @@ async function construirPdf(cat) {
   pintarFondo();
   let y = M;
 
-  // Portada compacta.
+  // Portada compacta. El logo se rasteriza (funciona con cualquier formato) y se
+  // dibuja respetando su proporción (contain en un cuadro de 16mm), sin estirarlo.
   if (op.logo) {
-    const s = 15, fmt = /^data:image\/png/i.test(op.logo) ? 'PNG' : 'JPEG';
-    try { doc.addImage(op.logo, fmt, (PW - s) / 2, y, s, s); } catch (_) {}
-    y += s + 3;
+    let L = null;
+    try { L = await imagenData(op.logo, 400); } catch (_) {}
+    if (L) {
+      const box = 16, s = Math.min(box / L.w, box / L.h);
+      const lw = L.w * s, lh = L.h * s;
+      try { doc.addImage(L.data, 'JPEG', (PW - lw) / 2, y, lw, lh); } catch (_) {}
+      y += lh + 3;
+    }
   }
   doc.setTextColor(tr, tg, tb); doc.setFont('helvetica', 'bold'); doc.setFontSize(19);
   const tLines = doc.splitTextToSize(cat.titulo || 'Catálogo', contentW);
@@ -675,9 +687,16 @@ async function construirPdf(cat) {
   const dibujarCard = (it, x, cy) => {
     doc.setFillColor(255, 255, 255); doc.setDrawColor(225, 225, 225); doc.setLineWidth(0.2);
     doc.roundedRect(x, cy, cardW, cardH, 1.6, 1.6, 'FD');
-    const d = it.imagen && imgCache[it.imagen];
-    if (d) { try { doc.addImage(d, 'JPEG', x, cy, cardW, imgH); } catch (_) {} }
-    else { doc.setFillColor(243, 240, 241); doc.rect(x, cy, cardW, imgH, 'F'); }
+    const im = it.imagen && imgCache[it.imagen];
+    if (im) {
+      // "contain": la foto entra entera, centrada y sin deformar (respeta ancho/alto).
+      const p = 1.5, bw = cardW - p * 2, bh = imgH - p;
+      const s = Math.min(bw / im.w, bh / im.h);
+      const dw = im.w * s, dh = im.h * s;
+      try { doc.addImage(im.data, 'JPEG', x + p + (bw - dw) / 2, cy + p + (bh - dh) / 2, dw, dh); } catch (_) {}
+    } else {
+      doc.setFillColor(243, 240, 241); doc.rect(x + 1.5, cy + 1.5, cardW - 3, imgH - 1.5, 'F');
+    }
     const pad = 2.5;
     let ty = cy + imgH + 4;
     if (it.marca) {

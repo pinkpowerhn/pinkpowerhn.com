@@ -166,6 +166,18 @@ async function enterMayoreo(token, nombre, telefono = '') {
     activeCollection: null, activeTag: null, activeSize: null,
     searchQuery: '', priceMin: null, priceMax: null, currentPage: 1,
   });
+
+  // Si volvió de generar un PDF ("Volver a mis pedidos"), reabrimos Mis pedidos
+  // y limpiamos el parámetro de la URL para que un refresh no lo vuelva a abrir.
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get('abrir') === 'pedidos' && catalogoHabilitado) {
+      params.delete('abrir');
+      const q = params.toString();
+      history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+      setTimeout(() => openPedidosModal(), 500);
+    }
+  } catch (_) {}
 }
 
 function exitMayoreo() {

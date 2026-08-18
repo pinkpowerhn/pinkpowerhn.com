@@ -634,17 +634,19 @@ function pintarPreciosGrupo() {
     const thumbs = g.items.slice(0, 4).map(it =>
       `<span class="cb-pgthumb">${it.imagen ? `<img src="${esc(it.imagen)}" alt="" loading="lazy"/>` : ''}</span>`).join('');
     const extra = g.items.length > 4 ? `<span class="cb-pgthumb cb-pgthumb--more">+${g.items.length - 4}</span>` : '';
-    const precios = [
+    // Mayoreo, Detalle y cantidad, cada uno en su propia línea (más claro).
+    const meta = [
+      `${g.items.length} producto${g.items.length === 1 ? '' : 's'}`,
       g.mayoreo != null ? `Mayoreo <b>${moneyC(g.mayoreo)}</b>` : 'Sin precio de mayoreo',
       g.detalle != null ? `Detalle ${moneyC(g.detalle)}` : '',
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).map(l => `<span>${l}</span>`).join('');
     html += `
       <div class="cb-pgrow" data-gkey="${esc(g.gkey)}">
         <div class="cb-pgrow__head">
           <div class="cb-pgthumbs">${thumbs}${extra}</div>
           <div class="cb-pgrow__txt">
             <div class="cb-pgrow__names">${nombresDeGrupo(g.items)}</div>
-            <div class="cb-pgrow__meta">${precios} · ${g.items.length} producto${g.items.length === 1 ? '' : 's'}</div>
+            <div class="cb-pgrow__meta">${meta}</div>
           </div>
         </div>
         <div class="cb-prow__pcol">
@@ -995,27 +997,47 @@ function construirPayload() {
   };
 }
 
-// Modo solo-PDF (viene de "Mis pedidos"): NO se crea ningún catálogo ni link. Se
-// pasan los datos por localStorage a la página del catálogo, en la MISMA web (URL
-// relativa /c/), que los pinta y descarga el PDF. Se llama desde el paso de
-// precios ("Crear sin precios") o desde el paso final ("Descargar PDF").
-function generarPdf() {
-  const payload = construirPayload();
-  try { localStorage.setItem('pinkpower_pdf_catalogo', JSON.stringify(payload)); } catch (_) {}
-  limpiarBorrador();
-  window.open('/c/?pdf=local', '_blank');
+// Modo solo-PDF (viene de "Mis pedidos"): NO se crea ningún catálogo ni link.
+// Genera el PDF acá mismo (con el generador compartido window.PPCatalogoPDF) y lo
+// descarga como archivo, SIN abrir otra pestaña. Se llama desde el paso de precios
+// ("Crear sin precios") o desde el paso final ("Descargar PDF").
+async function generarPdf() {
+  const desdePedido = !!state.soloPdf;
   renderSteps();
+  // Estado "generando" (armar el PDF baja las fotos y tarda unos segundos).
+  $('#cb-body').innerHTML = `
+    <div class="cb-generar">
+      <div class="cb-ok">
+        <div class="cb-spinner"></div>
+        <h3>Generando tu catálogo…</h3>
+        <p class="cb-hint">Esto tarda unos segundos.</p>
+      </div>
+    </div>`;
+  $('#cb-foot').innerHTML = '<span></span><span></span>';
+  const payload = construirPayload();
+  try {
+    if (window.PPCatalogoPDF) await window.PPCatalogoPDF(payload);
+    else throw new Error('sin-generador');
+  } catch (_) {
+    // Respaldo (si el generador no cargó): abrir la página del catálogo, que también
+    // descarga el archivo.
+    try { localStorage.setItem('pinkpower_pdf_catalogo', JSON.stringify(payload)); } catch (_) {}
+    window.open('/c/?pdf=local', '_blank');
+  }
+  limpiarBorrador();
   $('#cb-body').innerHTML = `
     <div class="cb-generar">
       <div class="cb-ok">
         <div class="cb-ok__icon">✅</div>
-        <h3>¡Listo! Se descargó tu catálogo</h3>
-        <p class="cb-hint">Tu catálogo en PDF se está descargando en tu teléfono (buscalo en Archivos o Descargas). Si no se descargó, tocá el botón:</p>
-        <a class="cb-btn cb-btn--primary" href="/c/?pdf=local" target="_blank" rel="noopener">Descargar de nuevo</a>
-        <a class="cb-btn cb-btn--ghost" href="#" id="cb-ver-mis2">Volver a mis catálogos</a>
+        <h3>¡Catálogo descargado!</h3>
+        <p class="cb-hint">Tu catálogo en PDF se guardó en tu teléfono. Buscalo en <b>Archivos</b> o <b>Descargas</b>.</p>
+        ${desdePedido
+          ? '<a class="cb-btn cb-btn--primary" href="/?abrir=pedidos">Volver a mis pedidos</a>'
+          : '<a class="cb-btn cb-btn--primary" href="#" id="cb-ver-mis2">Volver a mis catálogos</a>'}
       </div>
     </div>`;
-  $('#cb-ver-mis2').addEventListener('click', (e) => { e.preventDefault(); mostrarLista(); });
+  const ver = $('#cb-ver-mis2');
+  if (ver) ver.addEventListener('click', (e) => { e.preventDefault(); mostrarLista(); });
   $('#cb-foot').innerHTML = '<span></span><span></span>';
 }
 

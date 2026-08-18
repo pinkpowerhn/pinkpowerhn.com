@@ -102,9 +102,9 @@
 
     const cols = 3, gap = 5;
     const cardW = (contentW - gap * (cols - 1)) / cols;
-    // La foto es el HEADER de la tarjeta: ocupa todo el ancho (cuadrado), como en
-    // la web. Debajo va el texto con más aire.
-    const imgH = cardW, bodyH = 19, cardH = imgH + bodyH, rowGap = gap, radio = 2.4;
+    // La foto es el HEADER de la tarjeta: ocupa todo el ancho y va un poco más ALTA
+    // que ancha (se ve más amplia y aprovecha el espacio vertical de la página).
+    const imgH = cardW * 1.25, bodyH = 19, cardH = imgH + bodyH, rowGap = gap, radio = 2.4;
 
     // Precargar las fotos recortadas (cover) en paralelo.
     const imgPx = 560, imgCache = {};
@@ -170,7 +170,7 @@
         doc.text(doc.splitTextToSize(String(it.marca).toUpperCase(), cardW - pad * 2)[0], x + pad, ty);
         ty += 3.6;
       }
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(40, 40, 40);
       const nLines = doc.splitTextToSize(String(it.nombre || ''), cardW - pad * 2).slice(0, 2);
       doc.text(nLines, x + pad, ty); ty += nLines.length * 4;
       if (it.precio) {

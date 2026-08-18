@@ -327,9 +327,12 @@ function productosFiltrados() {
   // Cada palabra escrita debe aparecer en el texto buscable (en cualquier orden),
   // así "bbw gel" o "vanilla jabon" encuentran el producto por marca/tipo/nombre.
   const terminos = normalizarBusqueda(state.busqueda).trim().split(/\s+/).filter(Boolean);
+  const buscando = terminos.length > 0;
   return state.productos.filter(p => {
-    if (state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
-    if (terminos.length) {
+    // Al BUSCAR, la búsqueda es GLOBAL: no se limita a la colección seleccionada
+    // (antes, con una colección activa, solo buscaba dentro de esa colección).
+    if (!buscando && state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
+    if (buscando) {
       const txt = p._buscable != null ? p._buscable : textoBuscable(p);
       if (!terminos.every(t => txt.includes(t))) return false;
     }
@@ -375,26 +378,28 @@ let _busqTimer = null;
 
 function renderProductos() {
   const lista = productosFiltrados();
-  const chips = state.colecciones.map(c => {
+  // Chips de colección: solo FILTRAN (muestran los productos de esa colección);
+  // la que está activa se resalta. La primera, "Todas", quita el filtro.
+  const chipTodas = `<button class="cb-chip ${!state.filtroColeccion ? 'is-on' : ''}" data-col="">Todas <span class="cb-chip__n">${state.productos.length}</span></button>`;
+  const chips = chipTodas + state.colecciones.map(c => {
     const total = productosDeColeccion(c.handle).length;
-    const todos = total > 0 && productosDeColeccion(c.handle).every(p => state.sel.has(p.id));
-    return `<button class="cb-chip ${todos ? 'is-on' : ''}" data-col="${esc(c.handle)}">
+    const activa = state.filtroColeccion === c.handle;
+    return `<button class="cb-chip ${activa ? 'is-on' : ''}" data-col="${esc(c.handle)}">
       ${esc(c.title)} <span class="cb-chip__n">${total}</span></button>`;
   }).join('');
 
   $('#cb-body').innerHTML = `
     ${state.colecciones.length ? `
     <div class="cb-cols">
-      <p class="cb-cols__label">Tocá una colección para verla y agregarla completa:</p>
+      <p class="cb-cols__label">Tocá una colección para ver sus productos y elegir los que querés:</p>
       <div class="cb-chips">${chips}</div>
-      <p class="cb-hint" style="margin:.5rem 0 0">Un mismo producto puede estar en varias colecciones, por eso los números de las colecciones pueden sumar más que el total.</p>
+      <p class="cb-hint" style="margin:.5rem 0 0">Un mismo producto puede estar en varias colecciones, por eso los números pueden sumar más que el total.</p>
     </div>` : ''}
     <div class="cb-tools">
       <div class="cb-search">
         <input id="cb-buscar" class="cb-input" type="search" autocomplete="off" placeholder="Buscar por nombre, marca o tipo…" value="${esc(state.busqueda)}" />
         <button type="button" class="cb-search__x" id="cb-buscar-x" aria-label="Limpiar búsqueda"${state.busqueda ? '' : ' hidden'}>✕</button>
       </div>
-      <div class="cb-select" id="cb-coleccion"></div>
       <button class="cb-btn cb-btn--ghost" id="cb-add-todos">Agregar los ${lista.length} visibles</button>
     </div>
     <p class="cb-hint">
@@ -424,20 +429,19 @@ function renderProductos() {
     buscarInp.focus();
     actualizarGrilla();
   });
-  montarSelectColeccion();
   $('#cb-add-todos').addEventListener('click', () => {
     productosFiltrados().forEach(p => addProducto(p));
     guardarBorrador(); renderProductos();
   });
   const quitar = $('#cb-quitar-todos');
   if (quitar) quitar.addEventListener('click', () => { state.sel.clear(); guardarBorrador(); renderProductos(); });
-  // Chips de colección: filtran la grilla a esa colección Y marcan/desmarcan
-  // todos sus productos. Así al tocar una colección SOLO quedan visibles (y con
-  // el check) los que son de ella, sin mezclarse con los de otras colecciones.
+  // Chips de colección: SOLO filtran (muestran los productos de esa colección);
+  // NO los seleccionan. La mayorista elige a mano, o usa "Agregar los N visibles".
+  // Tocar la colección activa (o "Todas") quita el filtro.
   $('#cb-body').querySelectorAll('.cb-chip').forEach(b =>
     b.addEventListener('click', () => {
-      state.filtroColeccion = b.dataset.col;
-      toggleColeccion(b.dataset.col);
+      state.filtroColeccion = (state.filtroColeccion === b.dataset.col) ? '' : b.dataset.col;
+      state.busqueda = '';   // al cambiar de colección, arrancamos la búsqueda limpia
       guardarBorrador(); renderProductos();
     }));
   wireGridCards();

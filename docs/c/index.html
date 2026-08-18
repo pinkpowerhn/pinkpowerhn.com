@@ -535,11 +535,14 @@ async function load() {
       if (data && Array.isArray(data.items) && data.items.length) {
         PDF_LOCAL = true;
         render(data);
-        // Descarga directa del archivo PDF. Al terminar, pantalla limpia. (Si por
-        // algún motivo cae al respaldo de impresión, el evento afterprint también
-        // la muestra.)
+        // Descarga directa del archivo PDF. Si se generó bien, cerramos esta
+        // pestaña (así no queda una pantalla extra dando vueltas). Si el navegador
+        // no deja cerrarla, dejamos un mensaje limpio. Si cayó al respaldo de
+        // impresión, afterprint muestra el mensaje.
         window.addEventListener('afterprint', mostrarPdfListo, { once: true });
-        descargarPDF(data).then(ok => { if (ok) mostrarPdfListo(); });
+        descargarPDF(data).then(ok => {
+          if (ok) setTimeout(() => { try { window.close(); } catch (_) {} mostrarPdfListo(); }, 900);
+        });
         return;
       }
     } catch (_) { /* dato inválido */ }
@@ -614,6 +617,25 @@ async function imagenData(url, maxPx) {
   } finally { URL.revokeObjectURL(obj); }
 }
 
+// Foto de producto recortada tipo "cover" (llena el recuadro cuadrado, como el
+// header de la tarjeta en la web). Devuelve un dataURL JPEG cuadrado.
+async function imagenCover(url, size) {
+  const resp = await fetch(url, { mode: 'cors' });
+  const blob = await resp.blob();
+  const obj = URL.createObjectURL(blob);
+  try {
+    const img = await _cargarImg(obj);
+    const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, size, size);
+    const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+    const scale = Math.max(size / iw, size / ih);   // cover
+    const dw = iw * scale, dh = ih * scale;
+    ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+    return cv.toDataURL('image/jpeg', 0.85);
+  } finally { URL.revokeObjectURL(obj); }
+}
+
 function nombrePdf(titulo) {
   const base = String(titulo || 'catalogo').toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -637,15 +659,14 @@ async function construirPdf(cat) {
 
   const cols = 3, gap = 5;
   const cardW = (contentW - gap * (cols - 1)) / cols;
-  // Recuadro de imagen (más chico para que la foto entera se vea sin recortar y
-  // entren más por página). La foto va "contain" dentro; si no es cuadrada quedan
-  // márgenes blancos a los lados o arriba/abajo.
-  const imgH = cardW * 0.78, bodyH = 14, cardH = imgH + bodyH, rowGap = gap;
+  // La foto es el HEADER de la tarjeta: ocupa todo el ancho (cuadrado), como en la
+  // web. Debajo va el texto con más aire.
+  const imgH = cardW, bodyH = 19, cardH = imgH + bodyH, rowGap = gap, radio = 2.4;
 
-  // Precargar las imágenes (completas, sin recortar) en paralelo.
-  const imgPx = 640, imgCache = {};
+  // Precargar las fotos recortadas (cover) en paralelo.
+  const imgPx = 560, imgCache = {};
   await Promise.all([...new Set(items.map(i => i.imagen).filter(Boolean))].map(async u => {
-    try { imgCache[u] = await imagenData(u, imgPx); } catch (_) {}
+    try { imgCache[u] = await imagenCover(u, imgPx); } catch (_) {}
   }));
 
   const pintarFondo = () => { doc.setFillColor(fr, fg, fb); doc.rect(0, 0, PW, PH, 'F'); };
@@ -685,31 +706,40 @@ async function construirPdf(cat) {
     : [{ titulo: '', items: items.slice().sort(porNombre) }];
 
   const dibujarCard = (it, x, cy) => {
-    doc.setFillColor(255, 255, 255); doc.setDrawColor(225, 225, 225); doc.setLineWidth(0.2);
-    doc.roundedRect(x, cy, cardW, cardH, 1.6, 1.6, 'FD');
-    const im = it.imagen && imgCache[it.imagen];
-    if (im) {
-      // "contain": la foto entra entera, centrada y sin deformar (respeta ancho/alto).
-      const p = 1.5, bw = cardW - p * 2, bh = imgH - p;
-      const s = Math.min(bw / im.w, bh / im.h);
-      const dw = im.w * s, dh = im.h * s;
-      try { doc.addImage(im.data, 'JPEG', x + p + (bw - dw) / 2, cy + p + (bh - dh) / 2, dw, dh); } catch (_) {}
+    // Tarjeta blanca con esquinas redondeadas.
+    doc.setFillColor(255, 255, 255); doc.setDrawColor(232, 232, 232); doc.setLineWidth(0.2);
+    doc.roundedRect(x, cy, cardW, cardH, radio, radio, 'FD');
+    // Foto = header a todo el ancho, con las esquinas superiores redondeadas
+    // (se recorta a la tarjeta con un clip; si el navegador no soporta clip, la
+    // foto se dibuja igual, solo con las esquinas rectas).
+    const data = it.imagen && imgCache[it.imagen];
+    if (data) {
+      let clipped = false;
+      try {
+        doc.saveGraphicsState();
+        doc.roundedRect(x, cy, cardW, imgH + radio, radio, radio, null);   // null = solo define el path (no pinta)
+        doc.clip(); doc.discardPath();
+        clipped = true;
+      } catch (_) { clipped = false; }
+      try { doc.addImage(data, 'JPEG', x, cy, cardW, imgH); } catch (_) {}
+      if (clipped) { try { doc.restoreGraphicsState(); } catch (_) {} }
     } else {
-      doc.setFillColor(243, 240, 241); doc.rect(x + 1.5, cy + 1.5, cardW - 3, imgH - 1.5, 'F');
+      doc.setFillColor(243, 240, 241); doc.roundedRect(x, cy, cardW, imgH, radio, radio, 'F');
     }
-    const pad = 2.5;
-    let ty = cy + imgH + 4;
+    // Texto con más aire y sin pegarse al borde.
+    const pad = 3;
+    let ty = cy + imgH + 5;
     if (it.marca) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(6); doc.setTextColor(ar, ag, ab);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(ar, ag, ab);
       doc.text(doc.splitTextToSize(String(it.marca).toUpperCase(), cardW - pad * 2)[0], x + pad, ty);
-      ty += 3;
+      ty += 3.6;
     }
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(40, 40, 40);
     const nLines = doc.splitTextToSize(String(it.nombre || ''), cardW - pad * 2).slice(0, 2);
-    doc.text(nLines, x + pad, ty + 2.6); ty += nLines.length * 3;
+    doc.text(nLines, x + pad, ty); ty += nLines.length * 4;
     if (it.precio) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(ar, ag, ab);
-      doc.text(String(it.precio), x + pad, ty + 4.4);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(ar, ag, ab);
+      doc.text(String(it.precio), x + pad, ty + 1.5);
     }
   };
 

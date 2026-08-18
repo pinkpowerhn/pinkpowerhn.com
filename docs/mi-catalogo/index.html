@@ -205,6 +205,27 @@
   }
   .cb-pgrow__meta { font-size: .74rem; color: var(--muted); margin-top: .12rem; }
 
+  /* ── Precios en el teléfono: el input de precio pasa DEBAJO, así el nombre y
+     los precios (mayoreo/detalle) tienen ancho y no se ven apretados/pegados ── */
+  @media (max-width: 560px) {
+    .cb-prow {
+      grid-template-columns: 48px 1fr auto;
+      grid-template-areas: "img main del" "price price price";
+      row-gap: .5rem; align-items: start;
+    }
+    .cb-prow__img { grid-area: img; width: 48px; height: 48px; }
+    .cb-prow__main { grid-area: main; }
+    .cb-prow__del { grid-area: del; align-self: start; }
+    .cb-prow__pcol { grid-area: price; flex-direction: row; align-items: center; gap: .8rem; }
+    .cb-prow__price { width: 130px; flex: none; }
+
+    .cb-pgrow { display: flex; flex-direction: column; align-items: stretch; gap: .55rem; }
+    .cb-pgrow__head { width: 100%; }
+    .cb-pgrow__txt { flex: 1 1 auto; min-width: 0; }
+    .cb-pgrow .cb-prow__pcol { flex-direction: row; align-items: center; gap: .8rem; }
+    .cb-pgrow__price { width: 130px; }
+  }
+
   /* "Detalle" en su propia línea, debajo del mayoreo (paso precios uno por uno) */
   .cb-prow__mayoreo, .cb-prow__detalle { display: block; }
   .cb-prow__detalle { margin-top: .05rem; }
@@ -223,6 +244,9 @@
   .cb-design { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }
   @media (min-width: 920px) { .cb-design { grid-template-columns: minmax(0, 1fr) 460px; align-items: start; } }
   .cb-form { display: flex; flex-direction: column; gap: .9rem; }
+  /* Solo-PDF: no hay vista previa de celular, el formulario ocupa el ancho. */
+  .cb-design--solo { grid-template-columns: 1fr !important; }
+  .cb-design--solo .cb-form { max-width: 620px; margin: 0 auto; width: 100%; }
   .cb-field { display: flex; flex-direction: column; gap: .35rem; font-size: .86rem; font-weight: 600; }
   .cb-field span { color: var(--muted); }
   .cb-colors { display: flex; gap: 1rem; }

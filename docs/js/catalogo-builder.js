@@ -42,14 +42,19 @@ const state = {
   editando: null,         // token del catálogo en edición | null = creando nuevo
 };
 
-// ── Borrador (no perder el trabajo si recarga) ────────────
+// ── Borrador (no perder el avance si sale/recarga) ────────
+// Se guarda TODO el estado del asistente (productos, precios, diseño, paso y si es
+// modo solo-PDF) en cada cambio, y se retoma al volver (initBuilder), así el botón
+// "atrás" del teléfono no pierde el trabajo.
 function guardarBorrador() {
-  if (state.editando) return;   // al editar no pisamos el borrador de "crear"
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       items: [...state.sel.values()],
       diseno: state.diseno,
       paso: state.paso,
+      soloPdf: state.soloPdf,
+      editando: state.editando,
+      ts: Date.now(),
     }));
   } catch (_) { /* almacenamiento lleno o privado: seguimos sin guardar */ }
 }
@@ -60,15 +65,42 @@ function cargarBorrador() {
     if (!raw) return false;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.items) || !d.items.length) return false;
+    // No resucitar algo viejo (más de 6 horas).
+    if (d.ts && (Date.now() - d.ts) > 6 * 3600 * 1000) { limpiarBorrador(); return false; }
     state.sel = new Map(d.items.map(it => [it.id, it]));
     if (d.diseno) state.diseno = { ...state.diseno, ...d.diseno };
-    state.paso = PASOS.includes(d.paso) ? d.paso : 'productos';
+    state.soloPdf = !!d.soloPdf;
+    state.editando = d.editando || null;
+    const pasos = pasosActivos();
+    state.paso = pasos.includes(d.paso) ? d.paso : pasos[0];
     return true;
   } catch (_) { return false; }
 }
 
 function limpiarBorrador() {
   try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+}
+
+// "Trampa" del botón atrás del navegador/teléfono: mientras se está en el
+// asistente, retrocede de PASO en paso (no sale de la página perdiendo el avance).
+// En el primer paso vuelve a "Mis catálogos" (el avance queda guardado igual).
+let _trampaAtrasLista = false;
+function armarTrampaAtras() {
+  try { history.pushState({ cb: 1 }, ''); } catch (_) {}
+  if (_trampaAtrasLista) return;
+  _trampaAtrasLista = true;
+  window.addEventListener('popstate', () => {
+    if (!document.getElementById('cb-body')) return;   // no estamos en el asistente
+    const pasos = pasosActivos();
+    const i = pasos.indexOf(state.paso);
+    if (i > 0) {
+      state.paso = pasos[i - 1];
+      render();
+      try { history.pushState({ cb: 1 }, ''); } catch (_) {}   // re-armar
+    } else {
+      mostrarLista();
+    }
+  });
 }
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -172,8 +204,11 @@ export async function initBuilder() {
         if (Array.isArray(prods) && prods.length) { iniciarCatalogoDesdePedido(prods, soloPdf); return; }
       } catch (_) { /* dato inválido: seguimos al flujo normal */ }
     }
-    // "Mis catálogos" (la lista) es SIEMPRE la pantalla de entrada. El asistente
-    // de creación se abre solo al tocar "Crear catálogo nuevo".
+    // Si quedó un catálogo a medio armar (por ejemplo salió y volvió, o recargó),
+    // lo retomamos en el mismo paso en vez de perder el avance.
+    if (cargarBorrador()) { renderShell(); render(); return; }
+    // "Mis catálogos" (la lista) es la pantalla de entrada. El asistente de
+    // creación se abre al tocar "Crear catálogo nuevo".
     mostrarLista();
   } catch (e) {
     root.innerHTML = `<div class="cb-empty"><div class="cb-empty__icon">😕</div>
@@ -203,6 +238,7 @@ function renderShell() {
     if (state.soloPdf) window.location.href = '/';
     else mostrarLista();
   });
+  armarTrampaAtras();
 }
 
 function actualizarTituloHead() {
@@ -257,6 +293,7 @@ function render() {
   else if (state.paso === 'precios') renderPrecios();
   else if (state.paso === 'diseno') renderDiseno();
   else if (state.paso === 'generar') renderGenerar();
+  guardarBorrador();   // persistir el paso actual (para retomar si sale/recarga)
   // Cada cambio de paso arranca desde arriba (antes el paso de diseño quedaba
   // scrolleado a la mitad del formulario).
   requestAnimationFrame(() => {
@@ -707,7 +744,7 @@ function renderDiseno() {
     </button>`).join('');
 
   $('#cb-body').innerHTML = `
-    <div class="cb-design">
+    <div class="cb-design ${state.soloPdf ? 'cb-design--solo' : ''}">
       <div class="cb-form">
 
         <div class="cb-group">
@@ -743,11 +780,11 @@ function renderDiseno() {
 
         <div class="cb-group">
           <h3 class="cb-group__t">Presentación</h3>
-          <div class="cb-field"><span>Columnas (en el celular)</span>
+          ${state.soloPdf ? '' : `<div class="cb-field"><span>Columnas (en el celular)</span>
             <div class="cb-seg" id="cb-cols">
               ${[2, 3].map(n => `<button type="button" class="cb-seg__b ${d.columnas === n ? 'is-on' : ''}" data-cols="${n}">${n}</button>`).join('')}
             </div>
-          </div>
+          </div>`}
           <label class="cb-switch">
             <input type="checkbox" id="cb-separar" ${d.separarPorColeccion ? 'checked' : ''}/>
             <span class="cb-switch__track"></span>
@@ -755,7 +792,7 @@ function renderDiseno() {
           </label>
         </div>
 
-        <div class="cb-group">
+        ${state.soloPdf ? '' : `<div class="cb-group">
           <h3 class="cb-group__t">Contacto</h3>
           <label class="cb-field"><span>WhatsApp para pedidos</span>
             <div class="cb-wa-field">
@@ -764,17 +801,20 @@ function renderDiseno() {
             </div>
           </label>
           <p class="cb-hint">No hace falta poner el +504: se agrega solo. Tus clientas verán un botón para escribirte y hacerte el pedido.</p>
-          ${state.soloPdf ? '' : '<p class="cb-hint" id="cb-whatsapp-aviso" style="color:#c0392b;font-weight:600">Poné tu WhatsApp para poder generar el catálogo.</p>'}
-        </div>
+          <p class="cb-hint" id="cb-whatsapp-aviso" style="color:#c0392b;font-weight:600">Poné tu WhatsApp para poder generar el catálogo.</p>
+        </div>`}
 
-        <p class="cb-hint">Así se verá la página que abrirán tus clientas ↓</p>
+        ${state.soloPdf
+          ? '<p class="cb-hint">Elegí el logo, el título y los colores. Tu catálogo se descargará como archivo PDF.</p>'
+          : '<p class="cb-hint">Así se verá la página que abrirán tus clientas ↓</p>'}
       </div>
+      ${state.soloPdf ? '' : `
       <div class="cb-preview-wrap">
         <div class="cb-prev">
           <div class="cb-prev__label">📱 En celular</div>
           <div class="cb-phone"><div class="cb-phone__screen" id="cb-preview-mobile"></div></div>
         </div>
-      </div>
+      </div>`}
     </div>`;
 
   const upd = () => {
@@ -793,9 +833,11 @@ function renderDiseno() {
   $('#cb-fondo').addEventListener('input', (e) => { d.colorFondo = e.target.value; upd(); });
   $('#cb-texto').addEventListener('input', (e) => { d.colorTexto = e.target.value; upd(); });
   $('#cb-acento').addEventListener('input', (e) => { d.colorAcento = e.target.value; upd(); });
-  $('#cb-whatsapp').addEventListener('input', (e) => { d.whatsapp = e.target.value; upd(); });
+  const wa = $('#cb-whatsapp');
+  if (wa) wa.addEventListener('input', (e) => { d.whatsapp = e.target.value; upd(); });
   $('#cb-separar').addEventListener('change', (e) => { d.separarPorColeccion = e.target.checked; upd(); });
-  $('#cb-cols').querySelectorAll('.cb-seg__b').forEach(b =>
+  const cols = $('#cb-cols');
+  if (cols) cols.querySelectorAll('.cb-seg__b').forEach(b =>
     b.addEventListener('click', () => { d.columnas = +b.dataset.cols; renderDiseno(); }));
   $('#cb-body').querySelectorAll('.cb-pal').forEach(b =>
     b.addEventListener('click', () => {
@@ -967,9 +1009,9 @@ function generarPdf() {
     <div class="cb-generar">
       <div class="cb-ok">
         <div class="cb-ok__icon">✅</div>
-        <h3>¡Tu catálogo está listo!</h3>
-        <p class="cb-hint">Se abrió en otra pestaña para descargarlo. Ahí aparece un cuadro: elegí <b>"Guardar como PDF"</b> y listo. Si no se abrió, tocá el botón:</p>
-        <a class="cb-btn cb-btn--primary" href="/c/?pdf=local" target="_blank" rel="noopener">Abrir PDF</a>
+        <h3>¡Listo! Se descargó tu catálogo</h3>
+        <p class="cb-hint">Tu catálogo en PDF se está descargando en tu teléfono (buscalo en Archivos o Descargas). Si no se descargó, tocá el botón:</p>
+        <a class="cb-btn cb-btn--primary" href="/c/?pdf=local" target="_blank" rel="noopener">Descargar de nuevo</a>
         <a class="cb-btn cb-btn--ghost" href="#" id="cb-ver-mis2">Volver a mis catálogos</a>
       </div>
     </div>`;

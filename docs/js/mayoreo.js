@@ -212,7 +212,7 @@ function mountAccount(nombre) {
     menu.className = 'my-account__menu';
     menu.hidden = true;
     menu.innerHTML = `
-      ${catalogoHabilitado ? '<a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>' : ''}
+      ${catalogoHabilitado ? '<a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mi catálogo en línea</a>' : ''}
       ${catalogoHabilitado ? '<button class="my-account__link" id="my-pedidos">📦 Mis pedidos</button>' : ''}
       <button class="my-account__logout" id="my-logout">Cerrar sesión</button>`;
     document.body.appendChild(menu);
@@ -265,7 +265,7 @@ function mountDrawerAccount(nombre) {
     block.innerHTML = `
       <p class="my-drawer-account__hello">Sesión de mayoreo</p>
       <p class="my-drawer-account__name"></p>
-      ${catalogoHabilitado ? '<a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mis catálogos</a>' : ''}
+      ${catalogoHabilitado ? '<a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mi catálogo en línea</a>' : ''}
       ${catalogoHabilitado ? '<button class="my-drawer-account__catalogo" id="my-drawer-pedidos">📦 Mis pedidos</button>' : ''}
       <button class="my-drawer-account__logout" id="my-drawer-logout">Cerrar sesión</button>`;
     panel.appendChild(block);

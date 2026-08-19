@@ -47,20 +47,23 @@
     } finally { URL.revokeObjectURL(obj); }
   }
 
-  // Foto recortada tipo "cover" (llena un cuadrado, como el header de la tarjeta).
-  async function imagenCover(url, size) {
+  // Foto recortada tipo "cover" en la PROPORCIÓN del recuadro (w×h). El canvas
+  // tiene la misma proporción con que se dibuja en el PDF, así la foto NO se
+  // estira; y como el recuadro es más alto que ancho, se muestra más del alto
+  // (las orillas de arriba/abajo que antes quedaban tapadas).
+  async function imagenCover(url, w, h) {
     const resp = await fetch(url, { mode: 'cors' });
     const blob = await resp.blob();
     const obj = URL.createObjectURL(blob);
     try {
       const img = await cargarImg(obj);
-      const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
       const ctx = cv.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
       const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
-      const scale = Math.max(size / iw, size / ih);   // cover
+      const scale = Math.max(w / iw, h / ih);   // cover a la proporción del recuadro
       const dw = iw * scale, dh = ih * scale;
-      ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
       return cv.toDataURL('image/jpeg', 0.85);
     } finally { URL.revokeObjectURL(obj); }
   }
@@ -106,10 +109,11 @@
     // que ancha (se ve más amplia y aprovecha el espacio vertical de la página).
     const imgH = cardW * 1.25, bodyH = 19, cardH = imgH + bodyH, rowGap = gap, radio = 2.4;
 
-    // Precargar las fotos recortadas (cover) en paralelo.
-    const imgPx = 560, imgCache = {};
+    // Precargar las fotos recortadas (cover) en paralelo. El canvas mantiene la
+    // misma proporción del recuadro (imgH / cardW) para que la foto no se estire.
+    const imgW = 520, imgPxH = Math.round(imgW * (imgH / cardW)), imgCache = {};
     await Promise.all([...new Set(items.map(i => i.imagen).filter(Boolean))].map(async u => {
-      try { imgCache[u] = await imagenCover(u, imgPx); } catch (_) {}
+      try { imgCache[u] = await imagenCover(u, imgW, imgPxH); } catch (_) {}
     }));
 
     const pintarFondo = () => { doc.setFillColor(fr, fg, fb); doc.rect(0, 0, PW, PH, 'F'); };

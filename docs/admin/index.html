@@ -242,7 +242,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th>Catálogos en línea</th><th></th></tr></thead>
             <tbody id="cuentas-body"></tbody>
           </table>
         </div>
@@ -474,13 +474,13 @@ function renderPager(total, pages) {
 function renderCuentas() {
   const body = $('cuentas-body');
   if (!cuentasAll.length) {
-    body.innerHTML = '<tr><td colspan="5" class="muted">Sin mayoristas todavía.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="muted">Sin mayoristas todavía.</td></tr>';
     $('pager').innerHTML = '';
     return;
   }
   const filtered = filtrarCuentas();
   if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="5" class="muted">Sin resultados para “${esc(cuentasQuery.trim())}”.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="muted">Sin resultados para “${esc(cuentasQuery.trim())}”.</td></tr>`;
     $('pager').innerHTML = '';
     return;
   }
@@ -494,10 +494,14 @@ function renderCuentas() {
       <td data-label="Nombre">${esc(r.nombre || '')}</td>
       <td data-label="Emprendimiento">${esc(r.emprendimiento || '')}</td>
       <td data-label="Estado"><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
+      <td data-label="Catálogos en línea"><span class="pill ${r.catalogo_online ? 'pill--on' : 'pill--off'}">${r.catalogo_online ? 'Habilitados' : 'No'}</span></td>
       <td class="td-acts">
         <div class="acts">
           <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}" data-emp="${esc(r.emprendimiento || '')}" data-tel="${esc(r.telefono || '')}">Editar</button>
           <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>
+          <button class="btn btn--ghost btn--sm act-catalogo" data-user="${esc(r.usuario)}" data-on="${r.catalogo_online ? 1 : 0}">
+            ${r.catalogo_online ? 'Quitar catálogos' : 'Dar catálogos'}
+          </button>
           <button class="btn btn--ghost btn--sm act-estado" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
             ${r.activo ? 'Desactivar' : 'Activar'}
           </button>
@@ -508,6 +512,7 @@ function renderCuentas() {
       </td>
     </tr>`).join('');
   body.querySelectorAll('.act-estado').forEach(b => b.addEventListener('click', toggleEstado));
+  body.querySelectorAll('.act-catalogo').forEach(b => b.addEventListener('click', toggleCatalogo));
   body.querySelectorAll('.act-pass').forEach(b => b.addEventListener('click', cambiarPassword));
   body.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', (e) => {
     const d = e.currentTarget.dataset;
@@ -626,6 +631,18 @@ async function toggleEstado(e) {
   try {
     await api('/admin/cuentas/estado', { method: 'POST', body: JSON.stringify({ usuario, activo: nuevo }) });
     panelMsg(`Cuenta "${usuario}" ${nuevo ? 'activada' : 'desactivada'}.`);
+    await reloadCuentas();
+  } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
+}
+
+// ── Habilitar / deshabilitar el módulo de catálogos en línea a una mayorista ──
+async function toggleCatalogo(e) {
+  const b = e.currentTarget;
+  const usuario = b.dataset.user, nuevo = b.dataset.on !== '1';
+  b.disabled = true;
+  try {
+    await api('/admin/cuentas/catalogo', { method: 'POST', body: JSON.stringify({ usuario, catalogo_online: nuevo }) });
+    panelMsg(`Catálogos en línea ${nuevo ? 'habilitados' : 'deshabilitados'} para "${usuario}".`);
     await reloadCuentas();
   } catch (ex) { panelMsg(ex.message, false); b.disabled = false; }
 }

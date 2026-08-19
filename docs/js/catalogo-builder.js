@@ -164,8 +164,13 @@ export async function initBuilder() {
       fetchCollections(),
       listarCatalogos(state.token).catch(() => ({ dias: null, catalogos: [] })),
     ]);
-    // La admin puede tener los catálogos deshabilitados: no mostramos el módulo.
-    if (lista.habilitado === false) {
+    // El módulo de catálogos en línea puede no estar habilitado para esta
+    // mayorista (lo controla la admin por cuenta). En ese caso no mostramos el
+    // armador. EXCEPCIÓN: si viene desde un pedido, solo va a generar un PDF de
+    // su propia orden (parte de "Mis pedidos", disponible para todas), así que
+    // no se bloquea.
+    const vieneDePedido = !!localStorage.getItem('pinkpower_catalogo_desde_pedido');
+    if (lista.habilitado === false && !vieneDePedido) {
       root.innerHTML = `<div class="cb-empty">
         <div class="cb-empty__icon">🔒</div>
         <h2>Catálogos no disponibles</h2>

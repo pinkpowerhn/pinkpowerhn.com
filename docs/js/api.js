@@ -136,6 +136,21 @@ export async function mayoreoLogin(usuario, password) {
   return res.json();
 }
 
+// Datos de la cuenta según el token (nombre, teléfono y si tiene habilitado el
+// módulo de catálogos en línea). Sirve para refrescar el permiso al recargar,
+// sin tener que cerrar sesión.
+export async function fetchMayoreoMe(token) {
+  const res = await fetch(`${BASE}/mayoreo/me`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = new Error(`Mayoreo me failed: ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
 // Catálogo de mayoreo (solo productos con precio de mayoreo, ya aplicado).
 // Requiere el token de sesión. Devuelve productos normalizados como /products.
 export async function fetchMayoreoProducts(token) {

@@ -3,7 +3,7 @@
 // transiciones suaves (View Transitions API) y degradado elegante si el
 // navegador no la soporta.
 import { getState, setState } from './state.js';
-import { mayoreoLogin, fetchMayoreoProducts, fetchConfig, fetchMisPedidos } from './api.js';
+import { mayoreoLogin, fetchMayoreoProducts, fetchConfig, fetchMisPedidos, fetchMayoreoMe } from './api.js';
 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const USER_KEY  = 'pinkpower_mayoreo_user';
@@ -12,6 +12,9 @@ const TEL_KEY   = 'pinkpower_mayoreo_tel';
 // ¿La admin tiene habilitados los catálogos para mayoristas? Se refresca en cada
 // carga de sesión (enterMayoreo). Por defecto true: un fallo de red no oculta nada.
 let catalogoHabilitado = true;
+// Permiso del módulo "catálogos en línea" para ESTA mayorista (lo enciende la
+// admin por cuenta). "Mis pedidos" no depende de esto: está para todas.
+let catalogoOnline = false;
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -125,8 +128,15 @@ async function enterMayoreo(token, nombre, telefono = '') {
   // catálogos están habilitados y montamos el menú de cuenta de una vez, sin
   // esperar a que cargue todo el catálogo de mayoreo (así el menú no tarda unos
   // segundos en aparecer completo).
-  const cfg = await fetchConfig().catch(() => null);
+  // Config global (interruptor maestro) y permiso por usuaria, en paralelo. Con
+  // eso sabemos si mostrar el enlace de "Mi catálogo en línea" (que depende de
+  // ambos). "Mis pedidos" se muestra siempre.
+  const [cfg, me] = await Promise.all([
+    fetchConfig().catch(() => null),
+    fetchMayoreoMe(token).catch(() => null),
+  ]);
   catalogoHabilitado = !cfg || cfg.catalogo_habilitado !== false;
+  catalogoOnline = !!(me && me.catalogo_online);
   // Actualización directa (sin view-transition: chocaba con el cierre del modal
   // y dejaba la pantalla en el estado viejo hasta refrescar).
   document.body.classList.add('is-mayoreo');
@@ -171,7 +181,7 @@ async function enterMayoreo(token, nombre, telefono = '') {
   // y limpiamos el parámetro de la URL para que un refresh no lo vuelva a abrir.
   try {
     const params = new URLSearchParams(location.search);
-    if (params.get('abrir') === 'pedidos' && catalogoHabilitado) {
+    if (params.get('abrir') === 'pedidos') {
       params.delete('abrir');
       const q = params.toString();
       history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
@@ -212,8 +222,8 @@ function mountAccount(nombre) {
     menu.className = 'my-account__menu';
     menu.hidden = true;
     menu.innerHTML = `
-      ${catalogoHabilitado ? '<a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mi catálogo en línea</a>' : ''}
-      ${catalogoHabilitado ? '<button class="my-account__link" id="my-pedidos">📦 Mis pedidos</button>' : ''}
+      ${(catalogoHabilitado && catalogoOnline) ? '<a class="my-account__link" id="my-catalogo" href="/mi-catalogo/">🛍️ Mi catálogo en línea</a>' : ''}
+      <button class="my-account__link" id="my-pedidos">📦 Mis pedidos</button>
       <button class="my-account__logout" id="my-logout">Cerrar sesión</button>`;
     document.body.appendChild(menu);
 
@@ -265,8 +275,8 @@ function mountDrawerAccount(nombre) {
     block.innerHTML = `
       <p class="my-drawer-account__hello">Sesión de mayoreo</p>
       <p class="my-drawer-account__name"></p>
-      ${catalogoHabilitado ? '<a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mi catálogo en línea</a>' : ''}
-      ${catalogoHabilitado ? '<button class="my-drawer-account__catalogo" id="my-drawer-pedidos">📦 Mis pedidos</button>' : ''}
+      ${(catalogoHabilitado && catalogoOnline) ? '<a class="my-drawer-account__catalogo" href="/mi-catalogo/">🛍️ Mi catálogo en línea</a>' : ''}
+      <button class="my-drawer-account__catalogo" id="my-drawer-pedidos">📦 Mis pedidos</button>
       <button class="my-drawer-account__logout" id="my-drawer-logout">Cerrar sesión</button>`;
     panel.appendChild(block);
     block.querySelector('#my-drawer-logout').addEventListener('click', exitMayoreo);

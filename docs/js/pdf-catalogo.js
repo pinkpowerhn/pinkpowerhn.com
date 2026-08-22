@@ -68,11 +68,28 @@
     } finally { URL.revokeObjectURL(obj); }
   }
 
-  function nombrePdf(titulo) {
+  // Fecha y hora en que se generó, para que la mayorista sepa a qué momento
+  // corresponde el catálogo (los precios y el stock cambian). Formato local:
+  // "22/08/2026, 3:45 p. m.".
+  function selloFecha(d) {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = d.getFullYear();
+    let h = d.getHours();
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const ampm = h < 12 ? 'a. m.' : 'p. m.';
+    h = h % 12 || 12;
+    return `${dd}/${mm}/${yy}, ${h}:${min} ${ampm}`;
+  }
+
+  // El nombre del archivo también lleva la fecha: así no se le encima uno con
+  // otro en Descargas y quedan ordenados por día.
+  function nombrePdf(titulo, d) {
     const base = String(titulo || 'catalogo').toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'catalogo';
-    return base + '.pdf';
+    const f = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `${base}-${f}.pdf`;
   }
 
   // Agrupa por colección preservando orden; los sin colección van al final.
@@ -94,6 +111,7 @@
     await cargarJsPDF();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'letter', compress: true });
+    const generadoEn = new Date();
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const M = 10, contentW = PW - 2 * M;
@@ -143,6 +161,13 @@
     }
     doc.setDrawColor(ar, ag, ab); doc.setLineWidth(0.8);
     doc.line(PW / 2 - 12, y + 2, PW / 2 + 12, y + 2); y += 7;
+
+    // Sello de fecha/hora. Usa el color de texto del catálogo (no un gris fijo)
+    // para que también se lea en las paletas de fondo oscuro.
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    doc.setTextColor(tr, tg, tb);
+    doc.text(`Generado el ${selloFecha(generadoEn)}`, PW / 2, y, { align: 'center' });
+    y += 5;
 
     const separar = op.separarPorColeccion !== false && items.some(i => i.coleccion);
     const porNombre = (a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' });
@@ -196,7 +221,7 @@
       }
     }
 
-    doc.save(nombrePdf(cat.titulo));
+    doc.save(nombrePdf(cat.titulo, generadoEn));
   }
 
   window.PPCatalogoPDF = construirPdf;

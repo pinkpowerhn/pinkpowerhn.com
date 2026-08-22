@@ -137,6 +137,23 @@ async function enterMayoreo(token, nombre, telefono = '') {
   ]);
   catalogoHabilitado = !cfg || cfg.catalogo_habilitado !== false;
   catalogoOnline = !!(me && me.catalogo_online);
+  // El teléfono y el nombre se toman SIEMPRE de la cuenta al momento (no del
+  // localStorage, que quedó congelado en el login). Si la admin le corrige el
+  // teléfono a una mayorista, al recargar ya lo agarra: antes seguía con el dato
+  // viejo hasta cerrar sesión, y el checkout le decía "tu cuenta no tiene
+  // teléfono registrado" aunque ya se lo hubieran puesto.
+  if (me) {
+    // Ojo: el teléfono puede venir vacío/null (cuenta sin teléfono). Eso TAMBIÉN
+    // hay que reflejarlo, así que se compara la propiedad, no el valor.
+    if ('telefono' in me) {
+      telefono = String(me.telefono || '');
+      localStorage.setItem(TEL_KEY, telefono);
+    }
+    if (me.nombre) {
+      nombre = me.nombre;
+      localStorage.setItem(USER_KEY, nombre);
+    }
+  }
   // Actualización directa (sin view-transition: chocaba con el cierre del modal
   // y dejaba la pantalla en el estado viejo hasta refrescar).
   document.body.classList.add('is-mayoreo');

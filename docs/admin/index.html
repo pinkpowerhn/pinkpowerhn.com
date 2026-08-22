@@ -471,6 +471,12 @@ function renderPager(total, pages) {
   if (next) next.addEventListener('click', () => { if (cuentasPage < pages) { cuentasPage++; renderCuentas(); } });
 }
 
+// Sin teléfono la mayorista NO puede finalizar un pedido (el checkout lo toma de
+// su cuenta). Se marca en la lista para que sea fácil de detectar y corregir.
+function sinTelefono(r) {
+  return String(r.telefono || '').replace(/\D/g, '').length < 8;
+}
+
 function renderCuentas() {
   const body = $('cuentas-body');
   if (!cuentasAll.length) {
@@ -493,7 +499,10 @@ function renderCuentas() {
       <td data-label="Usuario"><b>${esc(r.usuario)}</b></td>
       <td data-label="Nombre">${esc(r.nombre || '')}</td>
       <td data-label="Emprendimiento">${esc(r.emprendimiento || '')}</td>
-      <td data-label="Estado"><span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span></td>
+      <td data-label="Estado">
+        <span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span>
+        ${sinTelefono(r) ? '<span class="pill pill--off" title="Sin teléfono no puede hacer pedidos: editala y agregáselo">Sin teléfono</span>' : ''}
+      </td>
       <td data-label="Catálogos en línea"><span class="pill ${r.catalogo_online ? 'pill--on' : 'pill--off'}">${r.catalogo_online ? 'Habilitados' : 'No'}</span></td>
       <td class="td-acts">
         <div class="acts">

@@ -309,15 +309,25 @@ body.is-mayoreo .mayoreo-access-item { display: none; }
 }
 @keyframes myPedSk { 100% { transform: translateX(100%); } }
 
-/* Pantalla 1: fila de pedido (botón que abre el detalle) */
+/* Pantalla 1: fila de pedido (casilla para juntar + botón que abre el detalle) */
 .my-pedido {
-  display: flex; align-items: center; gap: 0.6rem; width: 100%;
-  text-align: left; font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; gap: 0.5rem; width: 100%;
   background: #fff; border: 1px solid rgba(26, 10, 18, 0.10); border-radius: 12px;
   padding: 0.7rem 0.8rem; margin-bottom: 0.5rem;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .my-pedido:hover { border-color: #e8b8cf; background: #fff8fb; }
+.my-pedido.is-on { border-color: #e8437a; background: #fff5f9; }
+/* La casilla ocupa un área cómoda para el dedo, sin abrir el detalle. */
+.my-pedido__pick {
+  flex: none; display: grid; place-items: center; cursor: pointer;
+  padding: 0.25rem; margin: -0.25rem;
+}
+.my-pedido__open {
+  display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0;
+  background: none; border: 0; padding: 0; text-align: left;
+  font-family: inherit; cursor: pointer; color: inherit;
+}
 .my-pedido__info { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; flex: 1; }
 .my-pedido__info b { font-size: 0.95rem; color: #3a1424; }
 .my-pedido__info span { font-size: 0.76rem; color: #9a7385; }
@@ -378,3 +388,15 @@ body.is-mayoreo .mayoreo-access-item { display: none; }
 }
 .my-ped-act--ghost:hover { background: #ffe3ef; }
 .my-ped-act:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Pantalla 1: barra que aparece al marcar varios pedidos. Queda pegada abajo
+   para que en el celular esté siempre a mano sin tener que bajar la lista. */
+.my-ped-acts--multi {
+  position: sticky; bottom: 0; z-index: 2;
+  background: linear-gradient(to bottom, rgba(255, 245, 249, 0) 0, #fff5f9 22%);
+  padding: 0.7rem 0 0.2rem; margin-top: 0.5rem;
+}
+.my-ped-multi__cta {
+  margin: 0 0 0.15rem; text-align: center;
+  font-size: 0.78rem; font-weight: 700; color: #c01f6b;
+}

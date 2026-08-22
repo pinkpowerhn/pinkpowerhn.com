@@ -419,22 +419,76 @@ function renderListaPedidos(pedidos) {
       `<span class="my-ped-thumb">${it.imagen ? `<img src="${esc(it.imagen)}" alt="" loading="lazy"/>` : ''}</span>`).join('');
     const extra = n > 4 ? `<span class="my-ped-thumb my-ped-thumb--more">+${n - 4}</span>` : '';
     return `
-      <button class="my-pedido my-pedido--sel" data-i="${i}">
-        <div class="my-pedido__info">
-          <b>${esc(p.name || 'Pedido')}</b>
-          <span>${fmtFecha(p.fecha)} · ${n} producto${n === 1 ? '' : 's'}</span>
-        </div>
-        <div class="my-ped-thumbs">${thumbs}${extra}</div>
-        <span class="my-pedido__chev" aria-hidden="true">›</span>
-      </button>`;
+      <div class="my-pedido">
+        <label class="my-pedido__pick" title="Marcalo para juntarlo con otros pedidos">
+          <input type="checkbox" class="my-ped-item__chk my-ped-pedchk" data-i="${i}" />
+          <span class="my-ped-item__box" aria-hidden="true"></span>
+        </label>
+        <button class="my-pedido__open" data-i="${i}">
+          <span class="my-pedido__info">
+            <b>${esc(p.name || 'Pedido')}</b>
+            <span>${fmtFecha(p.fecha)} · ${n} producto${n === 1 ? '' : 's'}</span>
+          </span>
+          <span class="my-ped-thumbs">${thumbs}${extra}</span>
+          <span class="my-pedido__chev" aria-hidden="true">›</span>
+        </button>
+      </div>`;
   }).join('');
   view.innerHTML = `
     <div class="my-modal__icon">📦</div>
     <h2 class="my-modal__title">Mis pedidos</h2>
-    <p class="my-modal__sub">Elegí un pedido pagado para ver sus productos.</p>
-    <div class="my-pedidos">${filas}</div>`;
-  view.querySelectorAll('.my-pedido--sel').forEach(btn =>
+    <p class="my-modal__sub">Abrí un pedido para ver sus productos, o marcá varios para juntarlos en un solo catálogo.</p>
+    <div class="my-pedidos">${filas}</div>
+    <div class="my-ped-acts my-ped-acts--multi" id="my-ped-multi" hidden>
+      <p class="my-ped-multi__cta" id="my-ped-multi-txt"></p>
+      <button class="btn btn-primary my-ped-act" data-act="pdf">Crear catálogo PDF</button>
+      <button class="my-ped-act my-ped-act--ghost" data-act="fotos">Descargar imágenes</button>
+    </div>`;
+
+  // Abrir el detalle (como siempre). La casilla es aparte y no lo abre.
+  view.querySelectorAll('.my-pedido__open').forEach(btn =>
     btn.addEventListener('click', () => mostrarDetallePedido(pedidos[+btn.dataset.i])));
+
+  // Selección de VARIOS pedidos: se juntan sus productos en un solo catálogo /
+  // una sola descarga de fotos. Es el caso de la clienta que hace un pedido y
+  // después uno complementario el mismo día.
+  const sel = new Set();
+  const barra = view.querySelector('#my-ped-multi');
+  const txt = view.querySelector('#my-ped-multi-txt');
+  const juntar = () => juntarItems([...sel].sort((a, b) => a - b).map(i => pedidos[i]));
+
+  const refrescar = () => {
+    barra.hidden = sel.size === 0;
+    if (!sel.size) return;
+    const nItems = juntar().length;
+    txt.textContent = `${sel.size} pedido${sel.size === 1 ? '' : 's'} · ${nItems} producto${nItems === 1 ? '' : 's'}`;
+  };
+
+  view.querySelectorAll('.my-ped-pedchk').forEach(chk =>
+    chk.addEventListener('change', () => {
+      const i = +chk.dataset.i;
+      if (chk.checked) sel.add(i); else sel.delete(i);
+      chk.closest('.my-pedido').classList.toggle('is-on', chk.checked);
+      refrescar();
+    }));
+  view.querySelector('[data-act="pdf"]').addEventListener('click', () =>
+    crearCatalogoDesdePedido(juntar()));
+  view.querySelector('[data-act="fotos"]').addEventListener('click', (e) =>
+    descargarImagenesPedido(juntar(), e.currentTarget));
+}
+
+// Junta los productos de varios pedidos en una sola lista, SIN repetir: si compró
+// el mismo producto en dos pedidos, en el catálogo sale una vez.
+function juntarItems(pedidos) {
+  const vistos = new Set();
+  const juntos = [];
+  (pedidos || []).forEach(p => resolverItemsPedido(p).forEach(it => {
+    const clave = it.id || `n:${(it.nombre || '').toLowerCase()}`;
+    if (vistos.has(clave)) return;
+    vistos.add(clave);
+    juntos.push(it);
+  }));
+  return juntos;
 }
 
 // Pantalla 2: SOLO los productos del pedido, con casilla para desmarcar los que

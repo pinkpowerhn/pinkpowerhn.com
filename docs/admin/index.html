@@ -303,6 +303,14 @@
           <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
           <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
         </div>
+
+        <!-- Sincronizar mayoristas con Shopify -->
+        <div class="card">
+          <h2>🔄 Mayoristas en Shopify</h2>
+          <p class="muted" style="margin-top:-0.6rem">Deja a cada mayorista con su ficha de clienta en Shopify: enlaza las que ya existen y crea las que falten (con la etiqueta <b>Mayorista</b>). Podés usarlo las veces que quieras, no duplica clientas. Las que no tengan teléfono quedan por fuera.</p>
+          <button class="btn" id="sync-shopify">Sincronizar con Shopify</button>
+          <p class="muted" id="sync-estado" style="margin:0; font-size:0.8rem"></p>
+        </div>
       </div>
     </section>
   </div>
@@ -736,6 +744,35 @@ $('ocultar-agotados').addEventListener('change', async (e) => {
     setOcultarUI(!!cfg.ocultar_agotados);
     panelMsg(on ? 'Agotados ocultados.' : 'Agotados visibles de nuevo.');
   } catch (ex) { panelMsg(ex.message, false); e.target.checked = !on; }
+});
+
+// ── Sincronizar mayoristas con Shopify (enlaza las que existen, crea las que faltan) ──
+$('sync-shopify').addEventListener('click', async () => {
+  const r = await Swal.fire({
+    title: '¿Sincronizar con Shopify?',
+    html: 'Se va a enlazar a cada mayorista con su ficha de clienta en Shopify y se crearán las que falten.<br><br>No se duplican clientas: si ya existe una con ese teléfono, se reutiliza.',
+    icon: 'question', showCancelButton: true,
+    confirmButtonText: 'Sí, sincronizar', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  const btn = $('sync-shopify');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Sincronizando…';
+  $('sync-estado').textContent = 'Esto puede tardar un poco…';
+  try {
+    const res = await api('/admin/cuentas/sincronizar-shopify', { method: 'POST' });
+    const partes = [`${res.nuevas} creada(s) o enlazada(s) por primera vez`,
+                    `${res.vinculadas} ya estaban al día`];
+    if ((res.sin_telefono || []).length) partes.push(`${res.sin_telefono.length} sin teléfono (quedaron fuera)`);
+    if ((res.fallaron || []).length) partes.push(`${res.fallaron.length} con error`);
+    $('sync-estado').textContent = partes.join(' · ');
+    panelMsg('Mayoristas sincronizadas con Shopify.');
+    await reloadCuentas();
+  } catch (ex) {
+    $('sync-estado').textContent = '';
+    panelMsg(ex.message, false);
+  } finally { btn.disabled = false; btn.textContent = original; }
 });
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }

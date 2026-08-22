@@ -1,7 +1,7 @@
 import { initState, getState, setState, on } from './state.js';
 import { showToast } from './toast.js';
 import { fetchProductsPage, fetchCollections, fetchConfig, checkHealth, postOrder, fetchProductById, fetchProductsIndex } from './api.js';
-import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash, pauseInfinite, resumeInfinite } from './catalog.js';
+import { renderSkeletons, renderCollectionSidebar, renderMegaMenu, renderProductGrid, renderSizeBar, tieneVariantesReales, syncCatalogHash, buildCatalogHash, pauseInfinite, resumeInfinite } from './catalog.js';
 import { openProductPage, closeProductPage, isProductPageOpen } from './product-page.js';
 import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
@@ -230,9 +230,7 @@ on('statechange', state => {
 // Hash del catálogo según los filtros activos (para restaurar la URL)
 function catalogHash() {
   const { activeCollection, activeTag } = getState();
-  if (activeTag) return `#shop/tag/${encodeURIComponent(activeTag)}`;
-  if (activeCollection) return `#shop/collection/${activeCollection}`;
-  return '#shop';
+  return buildCatalogHash({ activeCollection, activeTag });
 }
 
 // ── Navegación a la ficha de producto (página dedicada) ───
@@ -636,9 +634,7 @@ document.addEventListener('click', e => {
     clearSearchInput();
     const fromProduct = closeProductIfOpen();
     setState({ activeCollection: handle, activeTag: tag, activeSize: null, searchQuery: '', currentPage: 1 });
-    history.replaceState(null, '', tag
-      ? `#shop/tag/${encodeURIComponent(tag)}`
-      : `#shop/collection/${handle}`);
+    history.replaceState(null, '', buildCatalogHash({ activeCollection: handle, activeTag: tag }));
     closeMegaMenu();
     scrollToProducts(fromProduct ? 'auto' : 'smooth');
     return;
@@ -689,11 +685,9 @@ document.addEventListener('click', e => {
     clearSearchInput();
     const fromProduct = closeProductIfOpen();  // si venía del detalle, cierra la ficha
     setState({ activeTag: tag, activeSize: null, searchQuery: '', currentPage: 1 });
-    // URL compartible: etiqueta sola, o la colección si eligió "Todas"
+    // URL compartible: categoría + subcategoría (o solo la categoría si eligió "Todas")
     const { activeCollection } = getState();
-    history.replaceState(null, '', tag
-      ? `#shop/tag/${encodeURIComponent(tag)}`
-      : (activeCollection ? `#shop/collection/${activeCollection}` : '#shop'));
+    history.replaceState(null, '', buildCatalogHash({ activeCollection, activeTag: tag }));
     closeMenuDrawer();
     if (fromProduct) scrollToProducts('auto'); else scrollToProductsMobile();
     return;
@@ -1627,11 +1621,12 @@ function renderFeaturedBanner(collections) {
 // Título descriptivo para compartir la vista actual del catálogo
 function shareViewTitle() {
   const { activeCollection, activeTag, collections } = getState();
+  const col = activeCollection ? collections.find(c => c.handle === activeCollection) : null;
+  const nombreCol = col ? col.title : '';
+  // Con categoría Y subcategoría se nombran las dos (p. ej. "Hombres · Perfumes").
+  if (nombreCol && activeTag) return `Catálogo: ${nombreCol} · ${activeTag} · PinkPower HN`;
   if (activeTag) return `Catálogo: ${activeTag} · PinkPower HN`;
-  if (activeCollection) {
-    const c = collections.find(c => c.handle === activeCollection);
-    return `Catálogo: ${c ? c.title : ''} · PinkPower HN`;
-  }
+  if (activeCollection) return `Catálogo: ${nombreCol} · PinkPower HN`;
   return 'Catálogo PinkPower HN';
 }
 
@@ -1639,6 +1634,7 @@ function shareViewTitle() {
 // Esquema de URLs compartibles:
 //   #shop                       → catálogo completo
 //   #shop/collection/<handle>   → una colección
+//   #shop/collection/<h>/tag/<t> → colección + subcategoría (p. ej. Hombres → Perfumes)
 //   #shop/tag/<etiqueta>        → todos los productos con esa etiqueta
 //   #shop/product/<id>          → ficha de un producto (página dedicada)
 function handleHashRoute() {
@@ -1680,7 +1676,9 @@ function handleHashRoute() {
     target = { activeCollection: null, activeTag: null, searchQuery: q };
     isFilterView = true;
   } else if (parts[0] === 'collection' && parts[1]) {
-    target = { activeCollection: decodeURIComponent(parts[1]), activeTag: null, searchQuery: '' };
+    // Puede venir con subcategoría: collection/<handle>/tag/<etiqueta>
+    const tag = (parts[2] === 'tag' && parts[3]) ? decodeURIComponent(parts[3]) : null;
+    target = { activeCollection: decodeURIComponent(parts[1]), activeTag: tag, searchQuery: '' };
     isFilterView = true;
   } else if (parts[0] === 'tag' && parts[1]) {
     target = { activeCollection: null, activeTag: decodeURIComponent(parts[1]), searchQuery: '' };

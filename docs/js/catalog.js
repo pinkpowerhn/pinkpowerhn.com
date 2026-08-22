@@ -418,14 +418,23 @@ export function clearFilter(key) {
   syncCatalogHash();   // que la URL refleje los filtros que quedaron (no re-aplicar al refrescar)
 }
 
+// Arma el hash compartible de una vista del catálogo. Cuando hay categoría Y
+// subcategoría (p. ej. Hombres → Perfumes) las lleva a LAS DOS: si solo fuera la
+// etiqueta, el link abriría los perfumes de todo el sitio y no los de Hombres.
+export function buildCatalogHash({ activeCollection, activeTag, searchQuery } = {}) {
+  if (searchQuery) return `#shop/search/${encodeURIComponent(searchQuery)}`;
+  if (activeCollection && activeTag) {
+    return `#shop/collection/${encodeURIComponent(activeCollection)}/tag/${encodeURIComponent(activeTag)}`;
+  }
+  if (activeTag) return `#shop/tag/${encodeURIComponent(activeTag)}`;
+  if (activeCollection) return `#shop/collection/${encodeURIComponent(activeCollection)}`;
+  return '#shop';
+}
+
 // Pone la URL acorde a la colección/etiqueta activas. Se llama tras acciones del
 // usuario que cambian filtros (no en la carga inicial, para no pisar la ruta).
 export function syncCatalogHash() {
-  const { activeCollection, activeTag, searchQuery } = getState();
-  const h = searchQuery ? `#shop/search/${encodeURIComponent(searchQuery)}`
-          : activeTag ? `#shop/tag/${encodeURIComponent(activeTag)}`
-          : activeCollection ? `#shop/collection/${activeCollection}`
-          : '#shop';
+  const h = buildCatalogHash(getState());
   if (location.hash.startsWith('#shop') && !location.hash.includes('/product/') && location.hash !== h) {
     history.replaceState(null, '', h);
   }

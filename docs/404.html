@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PinkPower HN</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/svg+xml" href="/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #fff7fb 0%, #fdeef6 100%);
+      color: #2a0f1c; font-family: 'Montserrat', sans-serif; font-weight: 300;
+      padding: 1.5rem; text-align: center;
+    }
+    .box { max-width: 420px; }
+    .logo { height: 38px; width: auto; margin-bottom: 1.6rem; }
+    h1 {
+      font-family: 'Cormorant Garamond', serif; font-weight: 600;
+      font-size: 1.9rem; line-height: 1.15; margin-bottom: 0.6rem;
+    }
+    h1 em { font-style: italic; color: #e84b9a; }
+    p { color: #7a5766; font-size: 0.95rem; line-height: 1.55; margin-bottom: 1.6rem; }
+    .spin {
+      width: 34px; height: 34px; margin: 0 auto 1.4rem;
+      border: 3px solid #f7d4e5; border-top-color: #e84b9a; border-radius: 50%;
+      animation: giro 0.8s linear infinite;
+    }
+    @keyframes giro { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.5s; } }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #e84b9a; color: #fff; border-radius: 12px; padding: 0.85rem 1.9rem;
+      text-decoration: none; font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      box-shadow: 0 12px 26px -14px rgba(232, 75, 154, 0.85);
+    }
+    .btn:hover { background: #c23a7e; }
+    .oculto { display: none; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <img class="logo" src="/img/logo.png" alt="PinkPower HN" />
+
+    <!-- Estado 1: buscando el producto (lo normal al venir de Instagram/Facebook) -->
+    <div id="buscando">
+      <div class="spin" role="status" aria-label="Cargando"></div>
+      <h1>Un momento…</h1>
+      <p>Te estamos llevando al producto.</p>
+    </div>
+
+    <!-- Estado 2: no se pudo resolver -->
+    <div id="perdido" class="oculto">
+      <h1>No encontramos <em>esa página</em></h1>
+      <p>Puede que el producto ya no esté disponible o que el enlace esté incompleto.</p>
+      <a class="btn" href="/">Ir a la tienda</a>
+    </div>
+  </div>
+
+  <script>
+  /* ─────────────────────────────────────────────────────────────────────────
+     Rescate de enlaces que no existen en este sitio.
+
+     La publicidad de Meta (Instagram/Facebook) arma sus enlaces con el catálogo
+     de Shopify, así que manda a direcciones tipo /products/<handle>. Este sitio
+     es estático y no tiene esas rutas: GitHub Pages respondía con su 404 y la
+     clienta se topaba con "File not found" en plena compra.
+
+     GitHub Pages sirve ESTE archivo ante cualquier ruta desconocida, así que
+     acá traducimos la dirección de Shopify a la del sitio y redirigimos.
+     ───────────────────────────────────────────────────────────────────────── */
+  (function () {
+    var API = 'https://api.pinkpowerhn.com';
+    var partes = location.pathname.split('/').filter(Boolean);
+
+    function irA(destino) { location.replace(destino); }
+    function rendirse() {
+      document.getElementById('buscando').className = 'oculto';
+      document.getElementById('perdido').className = '';
+    }
+
+    // "llavero-con-holder-para-lipgloss" -> "llavero con holder para lipgloss"
+    function comoBusqueda(handle) {
+      return handle.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // Mismo criterio con el que Shopify arma el handle a partir del título.
+    // Sirve de respaldo por si un producto no trae handle en el índice.
+    function handleDeTitulo(titulo) {
+      return String(titulo || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    // ── Colección: /collections/<handle> ────────────────────────────────────
+    // (pero /collections/<x>/products/<y> es una FICHA, no una colección)
+    var iProd = partes.indexOf('products');
+    if (partes[0] === 'collections' && partes[1] && iProd === -1) {
+      irA('/#shop/collection/' + encodeURIComponent(partes[1]));
+      return;
+    }
+
+    // ── Producto: /products/<handle> o /collections/<x>/products/<handle> ───
+    if (iProd !== -1 && partes[iProd + 1]) {
+      var handle = decodeURIComponent(partes[iProd + 1]).toLowerCase();
+
+      fetch(API + '/search-index')
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (d) {
+          var lista = Array.isArray(d) ? d : (d.products || []);
+          var exacto = null, sinSufijo = null;
+          // Shopify le agrega "-1", "-2"… a los handles repetidos; si el exacto
+          // no aparece, sirve el del mismo nombre sin ese sufijo.
+          var base = handle.replace(/-\d+$/, '');
+
+          for (var i = 0; i < lista.length; i++) {
+            var p = lista[i];
+            var h = (p.handle || handleDeTitulo(p.title) || '').toLowerCase();
+            if (h === handle) { exacto = p; break; }
+            if (!sinSufijo && h.replace(/-\d+$/, '') === base) sinSufijo = p;
+          }
+
+          var encontrado = exacto || sinSufijo;
+          if (encontrado && encontrado.id) {
+            irA('/#shop/product/' + encodeURIComponent(encontrado.id));
+          } else {
+            // No está (se borró o cambió de nombre): al menos la dejamos en los
+            // resultados de búsqueda con ese nombre, no en un error.
+            irA('/#shop/search/' + encodeURIComponent(comoBusqueda(handle)));
+          }
+        })
+        .catch(function () {
+          // Sin conexión al API: que igual llegue a la tienda buscando el nombre.
+          irA('/#shop/search/' + encodeURIComponent(comoBusqueda(handle)));
+        });
+      return;
+    }
+
+    // ── Otras rutas de Shopify que no existen acá ──────────────────────────
+    if (partes[0] === 'cart' || partes[0] === 'checkout') { irA('/'); return; }
+    if (partes[0] === 'pages' || partes[0] === 'blogs')   { irA('/'); return; }
+
+    // Ruta desconocida de verdad: se avisa (no se redirige a ciegas).
+    rendirse();
+  })();
+  </script>
+</body>
+</html>

@@ -1245,7 +1245,7 @@ function showCheckoutModal() {
   // Datos de la cuenta de la mayorista: en mayoreo no se piden, se toman de aquí.
   const mayNombre = getState().mayoreoUser || '';
   const mayTel = getState().mayoreoTelefono || '';
-  // En mayoreo no se ofrece pago con tarjeta (solo transferencia o efectivo).
+  // El extrafinanciamiento BAC es solo para la tienda normal, no para mayoreo.
   const showExtrafin = productsSubtotal >= 3000 && !esMayoreo;
 
   const summaryLines = cart.map(i => {
@@ -1315,11 +1315,10 @@ function showCheckoutModal() {
                 <span class="co-radio__sub">(BAC / Atlántida / Banpaís / Ficohsa / Occidente)</span>
               </span>
             </label>
-            ${!esMayoreo ? `
             <label class="co-radio">
               <input type="radio" name="co-payment" value="card" />
               <span class="co-radio__text"><span class="co-radio__title"><span class="co-radio__emoji">💳</span> Tarjeta / Link de Pago</span></span>
-            </label>` : ''}
+            </label>
             <label class="co-radio">
               <input type="radio" name="co-payment" value="cash" />
               <span class="co-radio__text">

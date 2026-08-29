@@ -67,6 +67,11 @@ function cargarBorrador() {
     if (!d || !Array.isArray(d.items) || !d.items.length) return false;
     // No resucitar algo viejo (más de 6 horas).
     if (d.ts && (Date.now() - d.ts) > 6 * 3600 * 1000) { limpiarBorrador(); return false; }
+    // Un borrador en modo solo-PDF (venía de "Mis pedidos") no se retoma: al
+    // entrar directo a "Mi catálogo en línea" caía en el paso de precios, sin
+    // paso "Productos" ni forma de volver a Mis catálogos (Aylin quedó atrapada
+    // ahí). Ese flujo siempre arranca de nuevo desde el pedido.
+    if (d.soloPdf) { limpiarBorrador(); return false; }
     state.sel = new Map(d.items.map(it => [it.id, it]));
     if (d.diseno) state.diseno = { ...state.diseno, ...d.diseno };
     state.soloPdf = !!d.soloPdf;

@@ -356,6 +356,23 @@
 }
 
 /* ── Collection sidebar ───────────────────────────────── */
+/* Esqueleto del sidebar de colecciones (mientras carga el catálogo) */
+.collection-sk { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.3rem 0.2rem; }
+.collection-sk__row {
+  display: block; height: 1.15rem; border-radius: 6px;
+  background: linear-gradient(90deg, #f6e4ec 25%, #fdf3f7 50%, #f6e4ec 75%);
+  background-size: 200% 100%;
+  animation: collection-sk-shimmer 1.3s ease-in-out infinite;
+}
+.collection-sk__row:nth-child(1) { width: 78%; }
+.collection-sk__row:nth-child(2) { width: 52%; }
+.collection-sk__row:nth-child(3) { width: 64%; }
+.collection-sk__row:nth-child(4) { width: 46%; }
+.collection-sk__row:nth-child(5) { width: 70%; }
+.collection-sk__row:nth-child(6) { width: 58%; }
+.collection-sk__row:nth-child(7) { width: 40%; }
+@keyframes collection-sk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
 .collection-sidebar {
   position: sticky;
   top: 6rem;

@@ -290,6 +290,23 @@ body.is-mayoreo .mayoreo-access-item { display: none; }
   text-transform: uppercase; color: #b32c5b; background: #fde7ef; border-radius: 999px;
   padding: 0.1rem 0.45rem; margin-left: 0.35rem; vertical-align: middle;
 }
+/* Móvil: el panel de pedidos no puede pegarse al alto del teléfono. El panel se
+   vuelve columna flexible con tope de alto, y la lista es la que hace scroll. */
+@media (max-width: 600px) {
+  .my-modal:has(.my-modal__panel--pedidos) { padding: 0.9rem; }
+  .my-modal__panel--pedidos {
+    display: flex; flex-direction: column;
+    max-height: 84vh; max-height: 84dvh;
+    padding: 1.9rem 1.15rem 1.1rem;
+  }
+  .my-modal__panel--pedidos .my-modal__icon { margin-bottom: 0.2rem; }
+  .my-modal__panel--pedidos .my-modal__title { font-size: 1.2rem; }
+  .my-modal__panel--pedidos .my-modal__sub { font-size: 0.8rem; margin-bottom: 0.4rem; }
+  /* La lista vive dentro de #my-pedidos-view: ese es el hijo flex del panel, así
+     que también tiene que ser columna flexible para que la lista haga scroll. */
+  .my-modal__panel--pedidos #my-pedidos-view { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .my-modal__panel--pedidos .my-pedidos { flex: 1 1 auto; min-height: 0; max-height: none; }
+}
 .my-modal__title--sm { font-size: 1.15rem; }
 .my-pedidos {
   text-align: left;

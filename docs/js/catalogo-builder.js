@@ -958,9 +958,15 @@ function renderGenerar() {
         <p class="cb-hint">${hint}</p>
       </div>
       <button class="cb-btn cb-btn--primary cb-btn--big" id="cb-generar-btn">${btnLabel}</button>
+      ${soloPdf ? '' : `<button class="cb-btn cb-btn--ghost cb-btn--big" id="cb-pdf-btn" style="margin-top:.6rem">Solo descargar en PDF</button>
+      <p class="cb-hint" style="text-align:center">El PDF se descarga con este mismo diseño, sin crear ni cambiar ningún link.</p>`}
       <div id="cb-resultado"></div>
     </div>`;
   $('#cb-generar-btn').addEventListener('click', generar);
+  // "Solo descargar en PDF": el mismo catálogo (productos, precios y diseño) como
+  // archivo, sin crear un link ni tocar el que se está editando.
+  const pdfBtn = $('#cb-pdf-btn');
+  if (pdfBtn) pdfBtn.addEventListener('click', () => generarPdf());
   setFoot('← Diseño', '', null, () => irA('diseno'));
 }
 

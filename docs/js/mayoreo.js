@@ -15,6 +15,10 @@ let catalogoHabilitado = true;
 // Permiso del módulo "catálogos en línea" para ESTA mayorista (lo enciende la
 // admin por cuenta). "Mis pedidos" no depende de esto: está para todas.
 let catalogoOnline = false;
+// Supercuenta (la dueña): en "Mis pedidos" ve los pedidos pagados de TODAS las
+// clientas (con el nombre de cada una y un buscador), para armar catálogos y
+// bajar fotos desde el mismo flujo que usan las mayoristas.
+let superCuenta = false;
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -137,6 +141,7 @@ async function enterMayoreo(token, nombre, telefono = '') {
   ]);
   catalogoHabilitado = !cfg || cfg.catalogo_habilitado !== false;
   catalogoOnline = !!(me && me.catalogo_online);
+  superCuenta = !!(me && me.super_cuenta);
   // El teléfono y el nombre se toman SIEMPRE de la cuenta al momento (no del
   // localStorage, que quedó congelado en el login). Si la admin le corrige el
   // teléfono a una mayorista, al recargar ya lo agarra: antes seguía con el dato
@@ -382,10 +387,11 @@ async function openPedidosModal() {
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => m.classList.add('is-open'));
   // Encabezado + esqueleto (evita el parpadeo de "no tenés pedidos" mientras carga).
+  m.querySelector('.my-modal__panel').classList.toggle('my-modal__panel--wide', superCuenta);
   view.innerHTML = `
     <div class="my-modal__icon">📦</div>
-    <h2 class="my-modal__title">Mis pedidos</h2>
-    <p class="my-modal__sub">Elegí un pedido pagado para ver sus productos.</p>
+    <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
+    <p class="my-modal__sub">${superCuenta ? 'Cargando los pedidos pagados de todas las clientas…' : 'Elegí un pedido pagado para ver sus productos.'}</p>
     <div class="my-pedidos">
       <div class="my-ped-sk"></div><div class="my-ped-sk"></div><div class="my-ped-sk"></div>
     </div>`;
@@ -407,8 +413,8 @@ function renderListaPedidos(pedidos) {
   if (!Array.isArray(pedidos) || !pedidos.length) {
     view.innerHTML = `
       <div class="my-modal__icon">📦</div>
-      <h2 class="my-modal__title">Mis pedidos</h2>
-      <p class="my-pedidos__msg">Todavía no tenés pedidos pagados.</p>
+      <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
+      <p class="my-pedidos__msg">${superCuenta ? 'Todavía no hay pedidos pagados.' : 'Todavía no tenés pedidos pagados.'}</p>
       <p class="my-pedidos__hint">Cuando un pedido esté pagado, acá vas a poder crear su catálogo en PDF o descargar sus fotos.</p>`;
     return;
   }
@@ -426,7 +432,8 @@ function renderListaPedidos(pedidos) {
         </label>
         <button class="my-pedido__open" data-i="${i}">
           <span class="my-pedido__info">
-            <b>${esc(p.name || 'Pedido')}</b>
+            <b>${esc(p.name || 'Pedido')}${superCuenta && p.mayoreo ? ' <em class="my-pedido__tag">mayoreo</em>' : ''}</b>
+            ${superCuenta ? `<span class="my-pedido__cli">${esc(p.cliente || 'Sin nombre')}</span>` : ''}
             <span>${fmtFecha(p.fecha)} · ${n} producto${n === 1 ? '' : 's'}</span>
           </span>
           <span class="my-ped-thumbs">${thumbs}${extra}</span>
@@ -436,14 +443,34 @@ function renderListaPedidos(pedidos) {
   }).join('');
   view.innerHTML = `
     <div class="my-modal__icon">📦</div>
-    <h2 class="my-modal__title">Mis pedidos</h2>
+    <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
     <p class="my-modal__sub">Abrí un pedido para ver sus productos, o marcá varios para juntarlos en un solo catálogo.</p>
+    ${superCuenta ? `<input class="my-ped-search" id="my-ped-search" type="search" placeholder="Buscar por clienta o número de pedido" autocomplete="off" />
+    <p class="my-ped-count" id="my-ped-count"></p>` : ''}
     <div class="my-pedidos">${filas}</div>
     <div class="my-ped-acts my-ped-acts--multi" id="my-ped-multi" hidden>
       <p class="my-ped-multi__cta" id="my-ped-multi-txt"></p>
       <button class="btn btn-primary my-ped-act" data-act="pdf">Crear catálogo PDF</button>
       <button class="my-ped-act my-ped-act--ghost" data-act="fotos">Descargar imágenes</button>
     </div>`;
+
+  // Supercuenta: buscador por clienta / número de pedido. Solo oculta filas (los
+  // índices se conservan, así la selección múltiple sigue funcionando).
+  const buscador = view.querySelector('#my-ped-search');
+  if (buscador) {
+    const filasEl = [...view.querySelectorAll('.my-pedido')];
+    const cnt = view.querySelector('#my-ped-count');
+    const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const claves = pedidos.map(p => norm(`${p.name || ''} ${p.cliente || ''}`));
+    const filtrar = () => {
+      const q = norm(buscador.value).trim();
+      let vis = 0;
+      filasEl.forEach((el, i) => { const ok = !q || claves[i].includes(q); el.hidden = !ok; if (ok) vis++; });
+      cnt.textContent = `${vis} pedido${vis === 1 ? '' : 's'}`;
+    };
+    buscador.addEventListener('input', filtrar);
+    filtrar();
+  }
 
   // Abrir el detalle (como siempre). La casilla es aparte y no lo abre.
   view.querySelectorAll('.my-pedido__open').forEach(btn =>
@@ -514,7 +541,7 @@ function mostrarDetallePedido(pedido) {
     <div class="my-ped-dethead">
       <button class="my-ped-back" data-back aria-label="Volver a mis pedidos">‹</button>
       <div class="my-ped-dethead__txt">
-        <h2 class="my-modal__title my-modal__title--sm">${esc(pedido.name || 'Pedido')}</h2>
+        <h2 class="my-modal__title my-modal__title--sm">${esc(pedido.name || 'Pedido')}${superCuenta && pedido.cliente ? ` · ${esc(pedido.cliente)}` : ''}</h2>
         <p class="my-modal__sub">Desmarcá los que no quieras incluir.</p>
       </div>
     </div>

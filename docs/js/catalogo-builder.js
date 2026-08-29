@@ -589,33 +589,12 @@ function renderPrecios() {
   if (_precioVista === 'grupo') pintarPreciosGrupo();
   else pintarPreciosIndividual();
 
-  if (state.soloPdf) {
-    // Solo-PDF (desde un pedido): si no puso ningún precio, el botón "Crear sin
-    // precios" genera el PDF de una vez (sin pasar por diseño). Apenas pone un
-    // precio, el botón cambia a "Siguiente" y pasa a diseño. La flecha de arriba
-    // maneja el "atrás".
-    setFoot('', hayAlgunPrecio() ? 'Siguiente →' : 'Crear sin precios', onRightPrecios, null);
-  } else {
-    setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
-  }
-}
-
-// ¿Hay al menos un producto con precio puesto?
-function hayAlgunPrecio() {
-  return [...state.sel.values()].some(it => (it.precio || '').trim());
-}
-
-// Botón derecho del paso de precios en modo solo-PDF.
-function onRightPrecios() {
-  if (hayAlgunPrecio()) irA('diseno');
-  else generarPdf();   // "Crear sin precios": salta diseño y descarga el PDF
-}
-
-// Refresca el texto del botón derecho al escribir/borrar precios (solo-PDF).
-function actualizarFootPrecios() {
-  if (!state.soloPdf) return;
-  const btn = $('#cb-foot-right');
-  if (btn) btn.textContent = hayAlgunPrecio() ? 'Siguiente →' : 'Crear sin precios';
+  // Siempre se pasa por diseño (con o sin precios). Antes, en solo-PDF sin
+  // precios, el botón "Crear sin precios" generaba el PDF de una vez y Aylin lo
+  // reportó como error: no dejaba elegir colores ni logo. En solo-PDF la flecha
+  // de arriba maneja el "atrás" (no hay paso "Productos").
+  if (state.soloPdf) setFoot('', 'Siguiente →', () => irA('diseno'), null);
+  else setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
 }
 
 // Nombres de los productos de un grupo (los primeros + "y N más").
@@ -678,7 +657,6 @@ function pintarPreciosGrupo() {
       gan.textContent = info.txt;
       gan.classList.toggle('is-loss', info.cls === 'is-loss');
       guardarBorrador();
-      actualizarFootPrecios();
     });
   });
 }
@@ -724,7 +702,6 @@ function pintarPreciosIndividual() {
         gan.classList.toggle('is-loss', info.cls === 'is-loss');
       }
       guardarBorrador();
-      actualizarFootPrecios();
     }));
   cont.querySelectorAll('.cb-prow__del').forEach(b =>
     b.addEventListener('click', () => {
@@ -1008,8 +985,8 @@ function construirPayload() {
 
 // Modo solo-PDF (viene de "Mis pedidos"): NO se crea ningún catálogo ni link.
 // Genera el PDF acá mismo (con el generador compartido window.PPCatalogoPDF) y lo
-// descarga como archivo, SIN abrir otra pestaña. Se llama desde el paso de precios
-// ("Crear sin precios") o desde el paso final ("Descargar PDF").
+// descarga como archivo, SIN abrir otra pestaña. Se llama desde el paso final
+// ("Descargar PDF").
 async function generarPdf() {
   const desdePedido = !!state.soloPdf;
   renderSteps();

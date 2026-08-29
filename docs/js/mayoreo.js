@@ -391,7 +391,7 @@ async function openPedidosModal() {
   view.innerHTML = `
     <div class="my-modal__icon">📦</div>
     <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
-    <p class="my-modal__sub">${superCuenta ? 'Cargando los pedidos pagados de todas las clientas…' : 'Elegí un pedido pagado para ver sus productos.'}</p>
+    <p class="my-modal__sub">${superCuenta ? 'Cargando los pedidos pagados de las últimas 2 semanas…' : 'Elegí un pedido pagado para ver sus productos.'}</p>
     <div class="my-pedidos">
       <div class="my-ped-sk"></div><div class="my-ped-sk"></div><div class="my-ped-sk"></div>
     </div>`;
@@ -414,7 +414,7 @@ function renderListaPedidos(pedidos) {
     view.innerHTML = `
       <div class="my-modal__icon">📦</div>
       <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
-      <p class="my-pedidos__msg">${superCuenta ? 'Todavía no hay pedidos pagados.' : 'Todavía no tenés pedidos pagados.'}</p>
+      <p class="my-pedidos__msg">${superCuenta ? 'No hay pedidos pagados en las últimas 2 semanas.' : 'Todavía no tenés pedidos pagados.'}</p>
       <p class="my-pedidos__hint">Cuando un pedido esté pagado, acá vas a poder crear su catálogo en PDF o descargar sus fotos.</p>`;
     return;
   }
@@ -444,7 +444,7 @@ function renderListaPedidos(pedidos) {
   view.innerHTML = `
     <div class="my-modal__icon">📦</div>
     <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
-    <p class="my-modal__sub">Abrí un pedido para ver sus productos, o marcá varios para juntarlos en un solo catálogo.</p>
+    <p class="my-modal__sub">${superCuenta ? 'Pedidos pagados de las últimas 2 semanas. ' : ''}Abrí un pedido para ver sus productos, o marcá varios para juntarlos en un solo catálogo.</p>
     ${superCuenta ? `<input class="my-ped-search" id="my-ped-search" type="search" placeholder="Buscar por clienta o número de pedido" autocomplete="off" />
     <p class="my-ped-count" id="my-ped-count"></p>` : ''}
     <div class="my-pedidos">${filas}</div>

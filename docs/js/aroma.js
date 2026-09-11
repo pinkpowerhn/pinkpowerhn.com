@@ -1,7 +1,8 @@
 // ── Sugerencias "del mismo aroma" ─────────────────────────
-// Al agregar un producto al carrito (en la tienda normal, NO en mayoreo), se
-// ofrece una hoja con otros productos del mismo aroma (la crema, loción, gel…
-// de esa misma fragancia). El aroma no es un campo aparte: se deriva del nombre
+// Al agregar un producto al carrito (tienda normal Y mayoreo), se ofrece una
+// hoja con otros productos del mismo aroma (la crema, loción, gel… de esa misma
+// fragancia). En mayoreo los productos en memoria ya traen el precio de
+// mayoreo, así que la hoja sale con esos precios sin ningún cambio extra. El aroma no es un campo aparte: se deriva del nombre
 // quitándole el formato ("A Thousand Wishes Splash" → aroma "a thousand wishes").
 import { getState } from './state.js';
 import { addToCart, canAddNow } from './cart.js';
@@ -64,8 +65,6 @@ export function sugerencias(producto) {
 // Punto de entrada: se llama justo después de addToCart.
 export function onAdded(producto, status) {
   if (status !== 'added') { showToast(status, producto.title); return; }
-  // En mayoreo no aplica (es solo para la tienda normal).
-  if (getState().mayoreo) { showToast('added', producto.title); return; }
   const sug = sugerencias(producto);
   if (!sug.length) { showToast('added', producto.title); return; }
   abrirHoja(producto);

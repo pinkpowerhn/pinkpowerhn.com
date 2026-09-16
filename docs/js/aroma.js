@@ -2,8 +2,9 @@
 // Al agregar un producto al carrito (tienda normal Y mayoreo), se ofrece una
 // hoja con otros productos del mismo aroma (la crema, loción, gel… de esa misma
 // fragancia). En mayoreo los productos en memoria ya traen el precio de
-// mayoreo, así que la hoja sale con esos precios sin ningún cambio extra. El aroma no es un campo aparte: se deriva del nombre
-// quitándole el formato ("A Thousand Wishes Splash" → aroma "a thousand wishes").
+// mayoreo, así que la hoja sale con esos precios sin ningún cambio extra.
+// El aroma no es un campo aparte: se deriva del nombre quitándole el formato
+// ("A Thousand Wishes Splash" → aroma "a thousand wishes").
 import { getState } from './state.js';
 import { addToCart, canAddNow } from './cart.js';
 import { fetchProductById } from './api.js';
@@ -25,10 +26,15 @@ function sinMarca(title) {
 // Productos que no son una fragancia (accesorios, lencería, peluches…): no tienen
 // aroma, así que ni reciben ni dan sugerencias. Sin esto, al quitarles palabras
 // quedaban claves como "negro" que podían coincidir entre sí por casualidad.
-const SIN_AROMA = /\b(difusor\w*|holder\w*|candelabro\w*|llavero\w*|monedero\w*|bolso\w*|cartera\w*|peluche\w*|tanga\w*|panty|panties|brassiere\w*|bralette\w*|lenceria|cosmetiquera\w*|neceser\w*)\b/;
+const SIN_AROMA = /\b(difusor\w*|holder\w*|candelabro\w*|llavero\w*|monedero\w*|bolso\w*|cartera\w*|peluche\w*|tanga\w*|panty|panties|brassiere\w*|bralette\w*|bikini\w*|lenceria|cosmetiquera\w*|neceser\w*|rasuradora\w*|repuesto\w*)\b/;
+
+// Marcas de perfumería que a veces van en medio o al final del nombre ("Very Good
+// Girl Carolina Herrera Dama"). Solo las que NO forman parte del nombre del
+// perfume: Dior o Coach no están porque "Miss Dior" o "Coach Love" sí lo son.
+const MARCA_DISENADOR = /\b(carolina herrera|jimmy choo|marc jacobs|calvin klein|dolce (& )?gabbana|yves saint laurent|ysl|ariana grande|versace|gucci|calra|paco rabanne|lancome|valentino|prada|moschino)\b/g;
 
 // Tamaños ("50ml", "100 ml", "8 oz"): la misma fragancia viene en varias medidas.
-const TAMANO = /\b\d+([.,]\d+)?\s*(fl\s*oz|ml|oz|gr|gramos|g)\b/g;
+const TAMANO = /\b\d+([.,]\d+)?\s*(fl\s*oz|ml|oz|gr|gramos|g|piezas|pzs)\b/g;
 
 // Palabras de enlace que quedan sueltas en los bordes al quitar el formato.
 const CONECTORES = new Set(['de', 'del', 'para', 'con', 'en', 'y']);
@@ -45,7 +51,8 @@ const FORMATOS = [
   'mini crema', 'bruma', 'mist', 'splash', 'locion', 'crema', 'jelly', 'exfoliante',
   'aceite', 'jabones', 'jabon', 'gel', 'mini', 'spray', 'gloss', 'set', 'vaporizador', 'loty',
   // Perfumería: concentración y presentación.
-  'splash de perfume', 'eau de parfum', 'eau de toilette', 'de perfume', 'perfume', 'parfum',
+  // "Set de Perfumes" trae varios aromas: sin clave, no sugiere nada.
+  'splash de perfume', 'eau de parfum', 'eau de toilette', 'de perfume', 'perfumes', 'perfume', 'parfum',
   'edp', 'edt', 'decant', 'shimmer', 'set dama', 'set caballero', 'dama', 'caballero',
   // Labios, manos, cuerpo.
   'mantequilla corporal hidratante', 'brillo labial hidratante', 'brillo labial',
@@ -56,13 +63,23 @@ const FORMATOS = [
   // Hogar y carro.
   'refill de fragancia para carro', 'fragancia para carro', 'refill de fragancia', 'fragancia',
   'vela grande', 'vela mediana', 'vela pequena', 'vela mini', 'vela aromatica', 'vela',
+  // Afeitado.
+  'aceite para afeitado', 'mantequilla para afeitado', 'crema de afeitar', 'crema para afeitar',
+  'gel de afeitar', 'espuma de afeitar', 'after shave serum', 'after shave', 'para afeitado',
+  'de afeitar', 'afeitado', 'afeitar', 'serum', 'mantequilla',
+  // Otras presentaciones.
+  'set de cuidado corporal', 'shampoo y acondicionador', 'shampoo', 'acondicionador',
+  'spray ambiental', 'ambiental', 'lip oil saborizado', 'lip oil', 'saborizado',
+  'perfume balm', 'balm', 'con brillo', 'cremoso', 'espumoso', 'multiuso', 'blanqueador',
+  '3 en 1', 'duo', 'trio', 'unisex', 'tester', 'tamano jumbo', 'jumbo', 'en tubo',
+  'y carterita', 'carterita',
 ].sort((a, b) => b.length - a.length);
 
 // Clave de aroma de un producto (string normalizado). '' si no se pudo derivar.
 export function aromaKey(title) {
   const base = norm(sinMarca(title));
   if (SIN_AROMA.test(base)) return '';
-  let s = ' ' + base.replace(TAMANO, ' ').replace(/\s+/g, ' ') + ' ';
+  let s = ' ' + base.replace(TAMANO, ' ').replace(MARCA_DISENADOR, ' ').replace(/\s+/g, ' ') + ' ';
   for (const f of FORMATOS) {
     const needle = ' ' + f + ' ';
     while (s.indexOf(needle) !== -1) s = s.replace(needle, ' ');

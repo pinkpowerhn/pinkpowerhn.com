@@ -6,13 +6,32 @@
 // quitándole el formato ("A Thousand Wishes Splash" → aroma "a thousand wishes").
 import { getState } from './state.js';
 import { addToCart, canAddNow } from './cart.js';
+import { fetchProductById } from './api.js';
 import { showToast } from './toast.js';
 
-// Quita acentos y normaliza espacios/mayúsculas.
+// Quita acentos y apóstrofos, y normaliza espacios/mayúsculas.
 function norm(s) {
-  return String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '')
+  return String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/['\u2019\u00b4`]/g, '')
     .toLowerCase().replace(/\s+/g, ' ').trim();
 }
+
+// Marca al inicio del nombre ("Victoria's Secret Bombshell…"): no es parte del aroma.
+const MARCA_INICIAL = /^\s*(victoria['\u2019\u00b4`]?s?\s+secret|bath\s*(&|and)\s*body\s*works)\s+/i;
+function sinMarca(title) {
+  return String(title || '').replace(MARCA_INICIAL, '');
+}
+
+// Productos que no son una fragancia (accesorios, lencería, peluches…): no tienen
+// aroma, así que ni reciben ni dan sugerencias. Sin esto, al quitarles palabras
+// quedaban claves como "negro" que podían coincidir entre sí por casualidad.
+const SIN_AROMA = /\b(difusor\w*|holder\w*|candelabro\w*|llavero\w*|monedero\w*|bolso\w*|cartera\w*|peluche\w*|tanga\w*|panty|panties|brassiere\w*|bralette\w*|lenceria|cosmetiquera\w*|neceser\w*)\b/;
+
+// Tamaños ("50ml", "100 ml", "8 oz"): la misma fragancia viene en varias medidas.
+const TAMANO = /\b\d+([.,]\d+)?\s*(fl\s*oz|ml|oz|gr|gramos|g)\b/g;
+
+// Palabras de enlace que quedan sueltas en los bordes al quitar el formato.
+const CONECTORES = new Set(['de', 'del', 'para', 'con', 'en', 'y']);
 
 // Formatos/presentaciones que se le quitan al nombre para quedarnos con el aroma.
 const FORMATOS = [
@@ -25,22 +44,39 @@ const FORMATOS = [
   'fragrance mist', 'body spray', 'lip gloss', 'gel de bano', 'mini splash', 'splash mini',
   'mini crema', 'bruma', 'mist', 'splash', 'locion', 'crema', 'jelly', 'exfoliante',
   'aceite', 'jabones', 'jabon', 'gel', 'mini', 'spray', 'gloss', 'set', 'vaporizador', 'loty',
+  // Perfumería: concentración y presentación.
+  'splash de perfume', 'eau de parfum', 'eau de toilette', 'de perfume', 'perfume', 'parfum',
+  'edp', 'edt', 'decant', 'shimmer', 'set dama', 'set caballero', 'dama', 'caballero',
+  // Labios, manos, cuerpo.
+  'mantequilla corporal hidratante', 'brillo labial hidratante', 'brillo labial',
+  'balsamo labial', 'aceite labial', 'jabon espumoso para manos', 'jabon para manos',
+  'jabon de manos', 'crema de manos', 'crema para manos', 'gel para manos', 'para manos',
+  'de manos', 'spray antibacterial', 'antibacterial', 'gel de bano en espuma', 'en espuma',
+  'espuma', 'bruma corporal', 'fine fragrance mist', 'desodorante', 'hidratante', 'corporal',
+  // Hogar y carro.
+  'refill de fragancia para carro', 'fragancia para carro', 'refill de fragancia', 'fragancia',
+  'vela grande', 'vela mediana', 'vela pequena', 'vela mini', 'vela aromatica', 'vela',
 ].sort((a, b) => b.length - a.length);
 
 // Clave de aroma de un producto (string normalizado). '' si no se pudo derivar.
 export function aromaKey(title) {
-  let s = ' ' + norm(title) + ' ';
+  const base = norm(sinMarca(title));
+  if (SIN_AROMA.test(base)) return '';
+  let s = ' ' + base.replace(TAMANO, ' ').replace(/\s+/g, ' ') + ' ';
   for (const f of FORMATOS) {
     const needle = ' ' + f + ' ';
     while (s.indexOf(needle) !== -1) s = s.replace(needle, ' ');
   }
-  return s.replace(/\s+/g, ' ').trim();
+  const palabras = s.trim().split(/\s+/).filter(Boolean);
+  while (palabras.length && CONECTORES.has(palabras[0])) palabras.shift();
+  while (palabras.length && CONECTORES.has(palabras[palabras.length - 1])) palabras.pop();
+  return palabras.join(' ');
 }
 
 // Etiqueta del formato (lo que NO es aroma), conservando acentos/mayúsculas.
 function formatoLabel(title) {
   const keyWords = new Set(aromaKey(title).split(' ').filter(Boolean));
-  const out = String(title).split(/\s+/).filter(w => w && !keyWords.has(norm(w)));
+  const out = sinMarca(title).split(/\s+/).filter(w => w && !keyWords.has(norm(w)));
   return out.join(' ').trim() || title;
 }
 
@@ -48,13 +84,26 @@ function defaultVariant(p) {
   return (p.variants || []).find(v => v.availableForSale) || (p.variants || [])[0] || null;
 }
 
+// Dónde buscar productos del mismo aroma. En la tienda normal el catálogo
+// completo llega por partes y tarda varios segundos: quien agregaba rápido (p. ej.
+// entrando por el enlace directo de un producto) no veía sugerencias porque los
+// del mismo aroma aún no habían cargado. Por eso se completa con el índice ligero,
+// que llega entero de una vez. En mayoreo NO: el índice trae precios de tienda.
+function productosParaSugerir() {
+  const { products, searchIndex, mayoreo } = getState();
+  const base = products || [];
+  if (mayoreo || !searchIndex || !searchIndex.length) return base;
+  const cargados = new Set(base.map(p => p.id));
+  return base.concat(searchIndex.filter(p => !cargados.has(p.id)));
+}
+
 // Otros productos del mismo aroma, disponibles y que no estén ya en el carrito.
 export function sugerencias(producto) {
-  const { products, cart } = getState();
+  const { cart } = getState();
   const key = aromaKey(producto.title);
   if (!key || key.length < 3) return [];
   const enCarrito = new Set(cart.map(i => i.productId));
-  return (products || []).filter(p =>
+  return productosParaSugerir().filter(p =>
     p.id !== producto.id &&
     p.availableForSale && p.price > 0 &&
     !enCarrito.has(p.id) &&
@@ -65,9 +114,31 @@ export function sugerencias(producto) {
 // Punto de entrada: se llama justo después de addToCart.
 export function onAdded(producto, status) {
   if (status !== 'added') { showToast(status, producto.title); return; }
-  const sug = sugerencias(producto);
-  if (!sug.length) { showToast('added', producto.title); return; }
-  abrirHoja(producto);
+  if (sugerencias(producto).length) { abrirHoja(producto); return; }
+  showToast('added', producto.title);
+  // Si agregan apenas abren la página, el catálogo todavía no llegó completo: se
+  // espera un momento al índice y, si con él aparecen productos del mismo aroma,
+  // se abre la hoja.
+  if (catalogoIncompleto()) esperarCatalogo(producto);
+}
+
+function catalogoIncompleto() {
+  const { mayoreo, searchIndex, productsLoaded } = getState();
+  return !mayoreo && !(searchIndex && searchIndex.length) && !productsLoaded;
+}
+
+let _esperaId = 0;
+async function esperarCatalogo(producto) {
+  const mia = ++_esperaId;
+  const limite = Date.now() + 8000;
+  while (catalogoIncompleto() && Date.now() < limite) {
+    await new Promise(r => setTimeout(r, 200));
+    if (mia !== _esperaId) return;   // agregaron otro producto: manda el último
+  }
+  const { cart, cartOpen } = getState();
+  if (cartOpen || document.body.classList.contains('co-open')) return;
+  if (!cart.some(i => i.productId === producto.id)) return;
+  if (sugerencias(producto).length) abrirHoja(producto);
 }
 
 // ── Hoja ──────────────────────────────────────────────────
@@ -94,21 +165,35 @@ function abrirHoja(producto) {
     document.body.appendChild(ov);
     ov.addEventListener('click', e => {
       if (e.target === ov || e.target.closest('[data-aroma-close]')) cerrarHoja();
-      const addId = e.target.closest('[data-add]');
-      if (addId) {
-        const p = (getState().products || []).find(x => x.id === addId.dataset.add);
-        const v = p && defaultVariant(p);
-        if (p && v && canAddNow(v.id)) {
-          addToCart(p, v);                 // statechange refresca badge y carrito
-          pintar(ov._anchor);              // re-pinta sin el que ya se agregó
-        }
-      }
+      const addBtn = e.target.closest('[data-add]');
+      if (addBtn) agregarSugerencia(ov, addBtn);
     });
   }
   ov._anchor = producto;
   pintar(producto);
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => ov.classList.add('is-open'));
+}
+
+// "+ Agregar" de una sugerencia. Si el producto vino del índice ligero (todavía
+// no cargó completo), se trae con sus variantes antes de agregarlo.
+async function agregarSugerencia(ov, btn) {
+  if (btn.disabled) return;
+  const id = btn.dataset.add;
+  let p = (getState().products || []).find(x => x.id === id);
+  if (!p) {
+    btn.disabled = true;
+    btn.textContent = 'Agregando…';
+    p = await fetchProductById(id).catch(() => null);
+  }
+  const v = p && defaultVariant(p);
+  if (p && v && v.availableForSale && canAddNow(v.id)) {
+    const estado = addToCart(p, v);      // statechange refresca badge y carrito
+    if (estado !== 'added') showToast(estado, p.title);
+    pintar(ov._anchor);                  // re-pinta sin el que ya se agregó
+    return;
+  }
+  if (btn.isConnected) { btn.disabled = false; btn.textContent = '+ Agregar'; }
 }
 
 function pintar(producto) {

@@ -28,10 +28,16 @@ function sinMarca(title) {
 // quedaban claves como "negro" que podían coincidir entre sí por casualidad.
 const SIN_AROMA = /\b(difusor\w*|holder\w*|candelabro\w*|llavero\w*|monedero\w*|bolso\w*|cartera\w*|peluche\w*|tanga\w*|panty|panties|brassiere\w*|bralette\w*|bikini\w*|lenceria|cosmetiquera\w*|neceser\w*|rasuradora\w*|repuesto\w*)\b/;
 
-// Marcas de perfumería que a veces van en medio o al final del nombre ("Very Good
-// Girl Carolina Herrera Dama"). Solo las que NO forman parte del nombre del
-// perfume: Dior o Coach no están porque "Miss Dior" o "Coach Love" sí lo son.
-const MARCA_DISENADOR = /\b(carolina herrera|jimmy choo|marc jacobs|calvin klein|dolce (& )?gabbana|yves saint laurent|ysl|ariana grande|versace|gucci|calra|paco rabanne|lancome|valentino|prada|moschino)\b/g;
+// Marcas (y colaboraciones como "Dove X Crumbl") que a veces van en medio o al
+// final del nombre ("Very Good Girl Carolina Herrera Dama"). Solo las que NO forman
+// parte del nombre del perfume: Dior o Coach no están porque "Miss Dior" o
+// "Coach Love" sí lo son.
+const MARCA_DISENADOR = /\b(dove x crumbl|carolina herrera|jimmy choo|marc jacobs|calvin klein|dolce (& )?gabbana|yves saint laurent|ysl|ariana grande|versace|gucci|calra|paco rabanne|lancome|valentino|prada|moschino)\b/g;
+
+// Nombre de colección que algunos productos de una línea llevan al final y otros
+// no ("Coconut Vanilla Gelato Splash" / "Coconut Vanilla Desodorante"). Solo se
+// quita al final: al inicio sí es parte del aroma ("Gelato Oasis").
+const SUFIJOS_LINEA = new Set(['gelato']);
 
 // Tamaños ("50ml", "100 ml", "8 oz"): la misma fragancia viene en varias medidas.
 const TAMANO = /\b\d+([.,]\d+)?\s*(fl\s*oz|ml|oz|gr|gramos|g|piezas|pzs)\b/g;
@@ -72,7 +78,7 @@ const FORMATOS = [
   'spray ambiental', 'ambiental', 'lip oil saborizado', 'lip oil', 'saborizado',
   'perfume balm', 'balm', 'con brillo', 'cremoso', 'espumoso', 'multiuso', 'blanqueador',
   '3 en 1', 'duo', 'trio', 'unisex', 'tester', 'tamano jumbo', 'jumbo', 'en tubo',
-  'y carterita', 'carterita',
+  'y carterita', 'carterita', 'roll-on', 'roll on',
 ].sort((a, b) => b.length - a.length);
 
 // Clave de aroma de un producto (string normalizado). '' si no se pudo derivar.
@@ -87,6 +93,7 @@ export function aromaKey(title) {
   const palabras = s.trim().split(/\s+/).filter(Boolean);
   while (palabras.length && CONECTORES.has(palabras[0])) palabras.shift();
   while (palabras.length && CONECTORES.has(palabras[palabras.length - 1])) palabras.pop();
+  if (palabras.length > 1 && SUFIJOS_LINEA.has(palabras[palabras.length - 1])) palabras.pop();
   return palabras.join(' ');
 }
 

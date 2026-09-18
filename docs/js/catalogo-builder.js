@@ -2,7 +2,7 @@
 // Página aparte (paso a paso): elegir productos → precios → diseño → generar.
 // Requiere sesión de mayoreo (token en localStorage). Marca blanca: el link
 // final no muestra nada de PinkPower.
-import { fetchMayoreoProducts, fetchCollections, crearCatalogo, editarCatalogo, listarCatalogos, eliminarCatalogo, guardarLogoMayorista } from './api.js';
+import { fetchMayoreoProducts, fetchCollections, crearCatalogo, editarCatalogo, listarCatalogos, eliminarCatalogo, guardarLogoMayorista, fetchMayoreoMe } from './api.js';
 
 const TOKEN_KEY = 'pinkpower_mayoreo_token';
 const DRAFT_KEY = 'pinkpower_catalogo_draft';
@@ -40,6 +40,7 @@ const state = {
   telefonoCuenta: '',     // teléfono registrado de la mayorista (para precargar el WhatsApp)
   logoCuenta: '',         // logo guardado de la mayorista (para precargar en cada catálogo)
   editando: null,         // token del catálogo en edición | null = creando nuevo
+  superCuenta: false,     // la dueña (arma catálogos para mandar a sus mayoristas)
 };
 
 // ── Borrador (no perder el avance si sale/recarga) ────────
@@ -164,11 +165,13 @@ export async function initBuilder() {
     </header>
     <div class="cb-body">${skProductos()}</div>`;
   try {
-    const [prods, cols, lista] = await Promise.all([
+    const [prods, cols, lista, me] = await Promise.all([
       fetchMayoreoProducts(state.token),
       fetchCollections(),
       listarCatalogos(state.token).catch(() => ({ dias: null, catalogos: [] })),
+      fetchMayoreoMe(state.token).catch(() => null),
     ]);
+    state.superCuenta = !!(me && me.super_cuenta);
     // El módulo de catálogos en línea puede no estar habilitado para esta
     // mayorista (lo controla la admin por cuenta). En ese caso no mostramos el
     // armador. EXCEPCIÓN: si viene desde un pedido, solo va a generar un PDF de
@@ -544,6 +547,8 @@ const moneyC = n => 'L.' + Math.round(Number(n));   // compacto, sin decimales
 
 // Texto y estilo de la ganancia según el precio de venta que puso la mayorista.
 function gananciaInfo(mayoreo, ventaStr) {
+  // La supercuenta vende AL precio de mayoreo: "Ganás L.0" solo la confundía.
+  if (state.superCuenta) return { txt: '', cls: '' };
   const may = parsePrecio(mayoreo);
   const venta = parsePrecio(ventaStr);
   if (may == null || venta == null) return { txt: '', cls: '' };
@@ -577,19 +582,31 @@ function precioComunDe(items) {
 
 let _precioVista = 'grupo';   // 'grupo' | 'individual'
 
-function renderPrecios() {
+function renderPrecios(aviso = '') {
+  // "Poner precio de mayoreo a todos": solo la supercuenta (la dueña arma catálogos
+  // para mandar a sus mayoristas). A una mayorista NO se le ofrece: publicaría su
+  // costo en el catálogo que ve su clienta.
+  const btnMayoreo = state.superCuenta
+    ? '<button type="button" class="cb-btn cb-btn--sm cb-btn--ghost" id="cb-precio-mayoreo">Poner precio de mayoreo a todos</button>'
+    : '';
   $('#cb-body').innerHTML = `
-    <div class="cb-ptoggle">
-      <button type="button" class="cb-ptab ${_precioVista === 'grupo' ? 'is-on' : ''}" data-vista="grupo">Por grupo</button>
-      <button type="button" class="cb-ptab ${_precioVista === 'individual' ? 'is-on' : ''}" data-vista="individual">Uno por uno</button>
+    <div class="cb-pacciones">
+      <div class="cb-ptoggle">
+        <button type="button" class="cb-ptab ${_precioVista === 'grupo' ? 'is-on' : ''}" data-vista="grupo">Por grupo</button>
+        <button type="button" class="cb-ptab ${_precioVista === 'individual' ? 'is-on' : ''}" data-vista="individual">Uno por uno</button>
+      </div>
+      ${btnMayoreo}
     </div>
+    ${aviso ? `<p class="cb-hint cb-hint--ok">${esc(aviso)}</p>` : ''}
     <p class="cb-hint">${_precioVista === 'grupo'
-      ? 'Ponele el precio a todo un grupo (misma colección y mismo precio de mayoreo) de una sola vez. Debajo ves tu ganancia.'
-      : 'Ponele el precio a cada producto. Debajo ves tu ganancia. Dejalo en blanco si no querés mostrar precio.'}</p>
+      ? `Ponele el precio a todo un grupo (misma colección y mismo precio de mayoreo) de una sola vez.${state.superCuenta ? '' : ' Debajo ves tu ganancia.'}`
+      : `Ponele el precio a cada producto.${state.superCuenta ? '' : ' Debajo ves tu ganancia.'} Dejalo en blanco si no querés mostrar precio.`}</p>
     <div id="cb-precios-cuerpo"></div>`;
 
   $('#cb-body').querySelectorAll('.cb-ptab').forEach(b =>
     b.addEventListener('click', () => { _precioVista = b.dataset.vista; renderPrecios(); }));
+  const btnMay = $('#cb-precio-mayoreo');
+  if (btnMay) btnMay.addEventListener('click', ponerPreciosMayoreo);
 
   if (_precioVista === 'grupo') pintarPreciosGrupo();
   else pintarPreciosIndividual();
@@ -600,6 +617,22 @@ function renderPrecios() {
   // de arriba maneja el "atrás" (no hay paso "Productos").
   if (state.soloPdf) setFoot('', 'Siguiente →', () => irA('diseno'), null);
   else setFoot('← Productos', 'Siguiente →', () => irA('diseno'), () => irA('productos'));
+}
+
+// Llena el precio de TODOS los productos elegidos con su precio de mayoreo (pisa
+// lo que hubiera). Después se puede cambiar cualquiera a mano.
+function ponerPreciosMayoreo() {
+  let puestos = 0, sinPrecio = 0;
+  for (const it of state.sel.values()) {
+    const may = parsePrecio(mayoreoDeItem(it));
+    if (may == null) { sinPrecio++; continue; }
+    it.precio = Number.isInteger(may) ? String(may) : may.toFixed(2);
+    puestos++;
+  }
+  guardarBorrador();
+  const aviso = `Listo: ${puestos} producto${puestos === 1 ? '' : 's'} con su precio de mayoreo. Podés cambiar cualquiera.`
+    + (sinPrecio ? ` ${sinPrecio} sin precio de mayoreo quedaron en blanco.` : '');
+  renderPrecios(aviso);
 }
 
 // Nombres de los productos de un grupo (los primeros + "y N más").

@@ -336,21 +336,33 @@ function textoBuscable(p) {
   ].filter(Boolean).join(' '));
 }
 
-function productosFiltrados() {
+// Colección activa Y búsqueda se combinan ("Body Care" + "victoria's secret" =
+// solo el body care de VS). Con `enTodas`, se ignora la colección: sirve para
+// avisar cuántos resultados hay fuera de ella (ver avisoOtrasColecciones).
+function productosFiltrados({ enTodas = false } = {}) {
   // Cada palabra escrita debe aparecer en el texto buscable (en cualquier orden),
   // así "bbw gel" o "vanilla jabon" encuentran el producto por marca/tipo/nombre.
   const terminos = normalizarBusqueda(state.busqueda).trim().split(/\s+/).filter(Boolean);
-  const buscando = terminos.length > 0;
   return state.productos.filter(p => {
-    // Al BUSCAR, la búsqueda es GLOBAL: no se limita a la colección seleccionada
-    // (antes, con una colección activa, solo buscaba dentro de esa colección).
-    if (!buscando && state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
-    if (buscando) {
+    if (!enTodas && state.filtroColeccion && !(p.collectionHandles || []).includes(state.filtroColeccion)) return false;
+    if (terminos.length) {
       const txt = p._buscable != null ? p._buscable : textoBuscable(p);
       if (!terminos.every(t => txt.includes(t))) return false;
     }
     return true;
   });
+}
+
+// Buscando dentro de una colección: si la búsqueda también encuentra productos en
+// OTRAS colecciones, se avisa con un botón para verlos (p. ej. "tanga" con
+// "Hombres" activo: las tangas están en Ropa Interior).
+function avisoOtrasColecciones(visibles) {
+  if (!state.filtroColeccion || !state.busqueda.trim()) return '';
+  const fuera = productosFiltrados({ enTodas: true }).length - visibles;
+  if (fuera <= 0) return '';
+  const col = state.colecciones.find(c => c.handle === state.filtroColeccion);
+  return `Buscando solo en <b>${esc(col ? col.title : 'esta colección')}</b>. Hay ${fuera} más en otras colecciones.
+    <button type="button" class="cb-link-btn" id="cb-ver-todas">Ver en todas</button>`;
 }
 
 function productosDeColeccion(handle) {
@@ -385,6 +397,20 @@ function actualizarGrilla() {
   wireGridCards();
   const addBtn = $('#cb-add-todos');
   if (addBtn) addBtn.textContent = `Agregar los ${lista.length} visibles`;
+  pintarAvisoOtras(lista.length);
+}
+
+function pintarAvisoOtras(visibles) {
+  const el = $('#cb-otras');
+  if (!el) return;
+  const html = avisoOtrasColecciones(visibles);
+  el.innerHTML = html;
+  el.hidden = !html;
+  const ver = $('#cb-ver-todas');
+  if (ver) ver.addEventListener('click', () => {
+    state.filtroColeccion = '';   // se conserva lo escrito en el buscador
+    guardarBorrador(); renderProductos();
+  });
 }
 
 let _busqTimer = null;
@@ -415,6 +441,7 @@ function renderProductos() {
       </div>
       <button class="cb-btn cb-btn--ghost" id="cb-add-todos">Agregar los ${lista.length} visibles</button>
     </div>
+    <p class="cb-hint cb-otras" id="cb-otras" hidden></p>
     <p class="cb-hint">
       ${state.sel.size} seleccionado${state.sel.size === 1 ? '' : 's'}. Tocá un producto para agregarlo o quitarlo.
       ${state.sel.size ? '<button class="cb-link-btn" id="cb-quitar-todos">Quitar todos</button>' : ''}
@@ -454,10 +481,12 @@ function renderProductos() {
   $('#cb-body').querySelectorAll('.cb-chip').forEach(b =>
     b.addEventListener('click', () => {
       state.filtroColeccion = (state.filtroColeccion === b.dataset.col) ? '' : b.dataset.col;
-      state.busqueda = '';   // al cambiar de colección, arrancamos la búsqueda limpia
+      // Se conserva lo escrito: colección y búsqueda se combinan, así se puede
+      // buscar una marca y recorrer sus colecciones tocando los chips.
       guardarBorrador(); renderProductos();
     }));
   wireGridCards();
+  pintarAvisoOtras(lista.length);
 
   setFoot(`${state.sel.size} producto${state.sel.size === 1 ? '' : 's'}`,
           state.sel.size ? 'Siguiente →' : '', () => irA('precios'));

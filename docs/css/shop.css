@@ -860,6 +860,9 @@
   color: rgba(26, 10, 18, 0.4);
   white-space: nowrap;
 }
+/* Mientras el catálogo sigue llegando, el conteo dice "cargando más…" y se
+   resalta en rosa para que se note que todavía faltan productos. */
+.result-count--cargando { color: var(--pink); }
 
 /* ── Product grid ─────────────────────────────────────── */
 .product-grid {

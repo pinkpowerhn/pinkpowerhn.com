@@ -16,11 +16,10 @@ let _infiniteSuspended = false;  // true al ir a "Ubicación": el centinela no c
 let _lastViewKey = null;         // vista actual (para saber cuándo se navegó de verdad)
 
 // ── Skeletons ─────────────────────────────────────────────
-export function renderSkeletons(n = 8) {
-  const grid = document.getElementById('product-grid');
-  if (!grid) return;
-
-  grid.innerHTML = Array.from({ length: n }, () => `
+// Tarjetas "fantasma" de carga. Se usan para la parrilla vacía inicial y también
+// al final de una parrilla ya pintada, mientras siguen llegando lotes.
+function skeletonCardsHTML(n = 8) {
+  return Array.from({ length: n }, () => `
     <div class="product-card product-card--skeleton">
       <div class="product-card__image skeleton"></div>
       <div class="product-card__info">
@@ -29,6 +28,13 @@ export function renderSkeletons(n = 8) {
       </div>
     </div>
   `).join('');
+}
+
+export function renderSkeletons(n = 8) {
+  const grid = document.getElementById('product-grid');
+  if (!grid) return;
+
+  grid.innerHTML = skeletonCardsHTML(n);
 }
 
 // ── Íconos de categoría ───────────────────────────────────
@@ -509,6 +515,10 @@ export function renderProductGrid(products, collections, activeCollection, searc
   _gridFiltered = filtered;
   _gridShown = Math.min(INITIAL, filtered.length);
   grid.innerHTML = filtered.slice(0, _gridShown).map(p => productCardHTML(p)).join('');
+  // Si el catálogo todavía está llegando, unas tarjetas de carga al final avisan
+  // que faltan productos por aparecer (sobre todo en vistas filtradas con pocos
+  // resultados, donde si no parecería que eso es todo lo que hay).
+  if (!productsLoaded) grid.insertAdjacentHTML('beforeend', skeletonCardsHTML(4));
   _setupInfinite();
 }
 
@@ -719,9 +729,15 @@ export function filterProducts(products, collections, activeCollection, searchQu
   return result;
 }
 
+// Mientras el catálogo sigue llegando por lotes, el conteo lo dice: si no, una
+// clienta que abre un link filtrado ve "1 producto" y cree que no hay existencias
+// (pasó el 2026-09-24 con las velas aromáticas: había 15, se veía 1).
 function updateResultCount(n) {
   const el = document.getElementById('result-count');
-  if (el) el.textContent = `${n} producto${n !== 1 ? 's' : ''}`;
+  if (!el) return;
+  const cargando = !getState().productsLoaded;
+  el.textContent = `${n} producto${n !== 1 ? 's' : ''}${cargando ? ' · cargando más…' : ''}`;
+  el.classList.toggle('result-count--cargando', cargando);
 }
 
 // ── Collection showcase ("Diseñado para ti") ──────────────

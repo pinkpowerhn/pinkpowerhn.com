@@ -201,7 +201,13 @@
   /* Líneas de la venta */
   .li { padding:0.85rem 1.1rem; border-bottom:1px solid rgba(26,10,18,0.06); }
   .li:last-child { border-bottom:none; }
-  .li__top { display:flex; gap:0.6rem; align-items:flex-start; }
+  .li__top { display:flex; gap:0.7rem; align-items:flex-start; }
+  /* Foto del producto: al escanear, es la confirmacion mas rapida de que entro
+     lo correcto (leer el nombre toma mas tiempo que reconocer el envase). */
+  .li__img { width:46px; height:46px; border-radius:12px; object-fit:cover; flex:0 0 auto;
+             background:#fdf0f5; }
+  .li__img--vacia { display:flex; align-items:center; justify-content:center;
+                    color:#e3c3d3; font-size:1.2rem; }
   .li__nom { flex:1; font-weight:600; font-size:0.93rem; line-height:1.35; }
   .li__meta { font-size:0.73rem; color:var(--muted); font-weight:500; }
   .li__x { border:none; background:none; color:var(--muted); font-size:1.4rem;
@@ -214,14 +220,22 @@
                  cursor:pointer; color:var(--pink-dk); font-family:inherit; }
   .cant button:hover { background:var(--pink-lt); }
   .cant span { min-width:38px; text-align:center; font-weight:700; }
+  /* El precio se puede corregir, pero no se ve como un formulario: parece texto
+     y solo al tocarlo aparece el marco. */
   .li__precio { width:100px; flex:0 0 auto; }
-  .li__precio input { padding:0.6rem 0.7rem; text-align:right; border-radius:12px; }
+  .li__precio input {
+    padding:0.6rem 0.5rem; text-align:right; border-radius:12px; font-size:15px;
+    font-weight:600; border-color:transparent; background:#fbf4f7; color:var(--ink-2);
+  }
+  .li__precio input:hover { border-color:var(--linea); background:#fff; }
+  .li__precio input:focus { background:#fff; }
   /* nowrap: en teléfono el subtotal se partía en dos líneas ("L." / "390.00"). */
   .li__sub { flex:1; text-align:right; font-weight:700; font-size:1.02rem; color:var(--ink);
              white-space:nowrap; }
   @media (max-width:420px) {
-    .li__precio { width:88px; }
-    .li__precio input { padding:0.6rem 0.5rem; font-size:15px; }
+    .li__precio { width:84px; }
+    .li__precio input { padding:0.6rem 0.4rem; font-size:14px; }
+    .li__img { width:40px; height:40px; }
     .cant button { width:40px; height:42px; }
     .cant span { min-width:30px; }
     .li__sub { font-size:0.95rem; }
@@ -291,7 +305,7 @@
                   border-top:1px dashed rgba(26,10,18,0.14); }
   .total-grande span { font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase;
                        color:var(--muted); font-weight:700; }
-  .total-grande b { font-family:var(--serif); font-size:2.3rem; font-weight:600;
+  .total-grande b { font-size:1.85rem; font-weight:700; letter-spacing:-0.01em;
                     color:var(--pink-dk); line-height:1; }
   .pagos { display:grid; grid-template-columns:1fr 1fr; gap:0.55rem; margin:0.9rem 0 0.2rem; }
   .pago-btn {
@@ -311,8 +325,7 @@
             display:flex; justify-content:space-between; align-items:center; }
   .cambio span { font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase;
                  color:var(--ok); font-weight:700; }
-  .cambio b { font-family:var(--serif); font-size:1.9rem; font-weight:600; color:var(--ok);
-              line-height:1; }
+  .cambio b { font-size:1.55rem; font-weight:700; color:var(--ok); line-height:1; }
   .aviso-caja { border-radius:14px; padding:0.8rem 1rem; margin-top:0.8rem;
                 font-size:0.85rem; font-weight:600; line-height:1.5; }
   .aviso-caja--amarilla { background:#fff8e6; color:var(--aviso); }
@@ -330,8 +343,8 @@
                 margin-bottom:0.6rem; }
   .barra__tot span { font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase;
                      color:var(--muted); font-weight:700; }
-  .barra__tot b { font-family:var(--serif); font-size:1.9rem; font-weight:600;
-                  color:var(--pink-dk); line-height:1; }
+  .barra__tot b { font-size:1.6rem; font-weight:700; color:var(--pink-dk); line-height:1;
+                  letter-spacing:-0.01em; }
   @media (min-width:900px) { .barra { display:none; } }
   @media (max-width:899px) { .solo-escritorio { display:none; } }
 
@@ -379,8 +392,8 @@
               color:var(--ink); }
   .exito .pedido { color:var(--muted); margin:0 0 1.2rem; font-size:0.75rem;
                    letter-spacing:0.14em; text-transform:uppercase; }
-  .exito .monto { font-family:var(--serif); font-size:3rem; font-weight:600;
-                  color:var(--pink-dk); margin:0.2rem 0 0.6rem; line-height:1; }
+  .exito .monto { font-size:2.5rem; font-weight:700; color:var(--pink-dk);
+                  margin:0.2rem 0 0.6rem; line-height:1; letter-spacing:-0.01em; }
   .cargando { padding:2.5rem 1rem; text-align:center; color:var(--muted); font-size:0.9rem; }
   .puntos::after { content:'…'; animation:puntos 1.2s steps(4) infinite; }
   @keyframes puntos { 0% { content:'.'; } 33% { content:'..'; } 66% { content:'…'; } }

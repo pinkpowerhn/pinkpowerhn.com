@@ -18,6 +18,12 @@ let token = localStorage.getItem(TOKEN_KEY);
 const $ = (id) => document.getElementById(id);
 const L = (n) => 'L. ' + (Number(n) || 0).toLocaleString('es-HN',
   { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Lee un numero escrito a mano: "390,50", "390.50" o "L. 390" dan 390.5.
+const num = (v) => {
+  const limpio = String(v == null ? '' : v).replace(',', '.').replace(/[^\d.]/g, '');
+  const n = parseFloat(limpio);
+  return isNaN(n) ? 0 : n;
+};
 const norm = (s) => (s || '').toString().toLowerCase()
   .normalize('NFD').replace(/[̀-ͯ]/g, '');
 const esc = (s) => (s || '').toString()
@@ -228,7 +234,7 @@ function subtotal() {
 
 function montoDescuento() {
   const { tipo, valor } = estado.descuento;
-  const v = Number(valor) || 0;
+  const v = num(valor);
   if (!tipo || v <= 0) return 0;
   if (tipo === 'porcentaje') return Math.min(subtotal(), subtotal() * Math.min(v, 100) / 100);
   return Math.min(subtotal(), v);
@@ -236,8 +242,18 @@ function montoDescuento() {
 
 function total() { return Math.max(0, subtotal() - montoDescuento()); }
 
+function actualizarTotales() {
+  const fijar = (sel, valor) => { const el = document.querySelector(sel); if (el) el.textContent = valor; };
+  fijar('.total-grande b', L(total()));
+  fijar('.barra__tot b', L(total()));
+  const filas = document.querySelectorAll('.total-fila span:last-child');
+  if (filas[0]) filas[0].textContent = L(subtotal());
+  const btn = document.querySelector('.btn--cobrar.solo-escritorio');
+  if (btn && !estado.cobrando) btn.textContent = 'Cobrar ' + L(total());
+}
+
 function cambio() {
-  const rec = Number(estado.recibido) || 0;
+  const rec = num(estado.recibido);
   return Math.max(0, rec - total());
 }
 
@@ -276,8 +292,8 @@ async function cobrar() {
     pago: estado.pago,
     nota: estado.nota || '',
   };
-  if (estado.descuento.tipo && Number(estado.descuento.valor) > 0) {
-    cuerpo.descuento = { tipo: estado.descuento.tipo, valor: Number(estado.descuento.valor) };
+  if (estado.descuento.tipo && num(estado.descuento.valor) > 0) {
+    cuerpo.descuento = { tipo: estado.descuento.tipo, valor: num(estado.descuento.valor) };
   }
   try {
     const r = await api('/admin/caja/venta', { method: 'POST', body: JSON.stringify(cuerpo) });
@@ -449,6 +465,9 @@ function bloqueLineas() {
     ${estado.venta.map((l, i) => `
       <div class="li ${l.especial ? 'li--especial' : ''}">
         <div class="li__top">
+          ${l.imagen
+            ? `<img class="li__img" src="${esc(l.imagen)}" alt="" loading="lazy" />`
+            : '<div class="li__img li__img--vacia">✦</div>'}
           <div class="li__nom">${esc(l.nombre)}${l.variante ? ` <span class="li__meta">· ${esc(l.variante)}</span>` : ''}
             ${l.manual ? ' <span class="chip">manual</span>' : ''}
             ${l.especial ? ' <span class="chip">precio especial</span>' : ''}
@@ -462,9 +481,11 @@ function bloqueLineas() {
             <button data-mas="${i}" type="button" aria-label="Más">+</button>
           </div>
           <div class="li__precio">
-            <input type="number" inputmode="decimal" step="0.01" min="0"
-                   value="${Number(l.precio).toFixed(2)}" data-precio="${i}"
-                   aria-label="Precio unitario" />
+            <!-- type="text": con type="number" el teléfono en español pinta el
+                 separador decimal como coma (390,00). Acá el precio siempre se
+                 escribe con punto. -->
+            <input type="text" inputmode="decimal" data-precio="${i}"
+                   value="${Number(l.precio).toFixed(2)}" aria-label="Precio unitario" />
           </div>
           <div class="li__sub">${L(l.precio * l.cantidad)}</div>
         </div>
@@ -558,7 +579,7 @@ function bloqueResumen() {
               type="button" role="option" data-desc-tipo="${o.v}">${o.t}</button>`).join('')}
           </div>
         </div>
-        <input type="number" inputmode="decimal" min="0" step="0.01" style="flex:1; min-height:50px"
+        <input type="text" inputmode="decimal" style="flex:1; min-height:50px"
                value="${estado.descuento.valor || ''}" data-desc-valor placeholder="0"
                aria-label="Valor del descuento" ${estado.descuento.tipo ? '' : 'disabled'} />
       </div>
@@ -571,10 +592,10 @@ function bloqueResumen() {
       ${estado.pago === 'efectivo' ? `
         <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
           <label for="recibido">Recibí</label>
-          <input id="recibido" type="number" inputmode="decimal" min="0" step="0.01"
+          <input id="recibido" type="text" inputmode="decimal"
                  value="${estado.recibido}" data-recibido placeholder="0.00" />
         </div>
-        ${Number(estado.recibido) > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(cambio())}</b></div>` : ''}
+        ${num(estado.recibido) > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(cambio())}</b></div>` : ''}
       ` : ''}
       ${estado.pago === 'credito' ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago.</div>' : ''}
       ${estado.error ? `<div class="aviso-caja aviso-caja--roja">${esc(estado.error)}</div>` : ''}
@@ -632,16 +653,16 @@ $('caja-main').addEventListener('input', (e) => {
   if (t.id === 'q-cliente') { buscarClientas(t.value); return; }
   if (t.dataset.precio !== undefined) {
     const l = estado.venta[Number(t.dataset.precio)];
-    const v = Number(t.value);
+    const v = num(t.value);
     if (l && v >= 0) {
       l.precio = v;
       l.especial = !l.manual && Math.abs(v - l.precioTienda) > 0.001
         && !(l.precioMayoreo != null && Math.abs(v - l.precioMayoreo) < 0.001);
-      // Repintar en cada tecla sacaría el foco del campo: solo se actualiza el total.
-      const barra = document.querySelector('.barra__tot b');
-      if (barra) barra.textContent = L(total());
+      // Repintar en cada tecla sacaría el foco del campo: se actualizan a mano
+      // el subtotal de la línea y los dos totales (resumen y barra del teléfono).
       const sub = t.closest('.li').querySelector('.li__sub');
       if (sub) sub.textContent = L(l.precio * l.cantidad);
+      actualizarTotales();
     }
     return;
   }
@@ -654,10 +675,15 @@ $('caja-main').addEventListener('input', (e) => {
   }
   if (t.dataset.descValor !== undefined) {
     estado.descuento.valor = t.value;
-    const tot = document.querySelector('.total-grande b');
-    const barra = document.querySelector('.barra__tot b');
-    if (tot) tot.textContent = L(total());
-    if (barra) barra.textContent = L(total());
+    actualizarTotales();
+  }
+});
+
+$('caja-main').addEventListener('focusout', (e) => {
+  const t = e.target;
+  if (t.dataset && t.dataset.precio !== undefined) {
+    const l = estado.venta[Number(t.dataset.precio)];
+    if (l) t.value = Number(l.precio).toFixed(2);
   }
 });
 

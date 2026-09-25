@@ -262,24 +262,31 @@
            line-height:1.6; }
 
   /* Líneas de la venta */
-  .li { padding:0.85rem 1.1rem; border-bottom:1px solid rgba(26,10,18,0.06); }
+  /* Cada producto de la venta: la foto a la izquierda ocupando el alto de las
+     dos filas, y a la derecha el nombre arriba con la cantidad y el precio
+     abajo. Antes la foto era chica y el renglon quedaba alto y con un hueco
+     debajo de ella. */
+  .li { display:flex; gap:0.85rem; align-items:stretch;
+        padding:0.6rem 1rem; border-bottom:1px solid rgba(26,10,18,0.06); }
   .li:last-child { border-bottom:none; }
-  .li__top { display:flex; gap:0.7rem; align-items:flex-start; }
+  .li__cont { flex:1; min-width:0; display:flex; flex-direction:column;
+              justify-content:space-between; gap:0.3rem; }
+  .li__top { display:flex; gap:0.6rem; align-items:flex-start; }
   /* Foto del producto: al escanear, es la confirmacion mas rapida de que entro
      lo correcto (leer el nombre toma mas tiempo que reconocer el envase). */
-  .li__img { width:46px; height:46px; border-radius:12px; object-fit:cover; flex:0 0 auto;
-             background:#fdf0f5; }
+  .li__img { width:76px; align-self:stretch; min-height:76px; border-radius:14px;
+             object-fit:cover; flex:0 0 auto; background:#fdf0f5; }
   .li__img--vacia { display:flex; align-items:center; justify-content:center;
-                    color:#e3c3d3; font-size:1.2rem; }
+                    color:#e3c3d3; font-size:1.5rem; }
   .li__nom { flex:1; font-weight:600; font-size:0.93rem; line-height:1.35; }
   .li__meta { font-size:0.73rem; color:var(--muted); font-weight:500; }
   .li__x { border:none; background:none; color:var(--muted); font-size:1.4rem;
            cursor:pointer; line-height:1; min-width:38px; min-height:38px; border-radius:10px; }
   .li__x:hover { background:#ffeef4; color:var(--rojo); }
-  .li__bot { display:flex; align-items:center; gap:0.55rem; margin-top:0.6rem; }
+  .li__bot { display:flex; align-items:center; gap:0.5rem; }
   .cant { display:flex; align-items:center; border:1.5px solid var(--linea);
           border-radius:14px; overflow:hidden; background:#fff; }
-  .cant button { width:44px; height:44px; border:none; background:#fff; font-size:1.25rem;
+  .cant button { width:40px; height:40px; border:none; background:#fff; font-size:1.2rem;
                  cursor:pointer; color:var(--pink-dk); font-family:inherit; }
   .cant button:hover { background:var(--pink-lt); }
   .cant span { min-width:38px; text-align:center; font-weight:700; }
@@ -287,7 +294,7 @@
      y solo al tocarlo aparece el marco. */
   .li__precio { width:100px; flex:0 0 auto; }
   .li__precio input {
-    padding:0.6rem 0.5rem; text-align:right; border-radius:12px; font-size:15px;
+    padding:0.5rem 0.5rem; text-align:right; border-radius:11px; font-size:15px;
     font-weight:600; border-color:transparent; background:#fbf4f7; color:var(--ink-2);
   }
   .li__precio input:hover { border-color:var(--linea); background:#fff; }
@@ -296,9 +303,10 @@
   .li__sub { flex:1; text-align:right; font-weight:700; font-size:1.02rem; color:var(--ink);
              white-space:nowrap; }
   @media (max-width:420px) {
-    .li__precio { width:84px; }
-    .li__precio input { padding:0.6rem 0.4rem; font-size:14px; }
-    .li__img { width:40px; height:40px; }
+    .li { gap:0.7rem; padding:0.65rem 0.8rem; }
+    .li__precio { width:82px; }
+    .li__precio input { padding:0.5rem 0.4rem; font-size:14px; }
+    .li__img { width:62px; min-height:62px; }
     .cant button { width:40px; height:42px; }
     .cant span { min-width:30px; }
     .li__sub { font-size:0.95rem; }

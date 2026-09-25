@@ -494,31 +494,36 @@ function bloqueLineas() {
       ${hayMayoreo() ? '<span class="chip chip--may">Precios de mayoreo</span>' : ''}
     </div>
     ${estado.venta.map((l, i) => `
+      <!-- La foto ocupa el alto de las dos filas (nombre arriba, cantidad y
+           precio abajo): así el renglón queda compacto y no sobra aire debajo
+           de la imagen. -->
       <div class="li ${l.especial ? 'li--especial' : ''}">
-        <div class="li__top">
-          ${l.imagen
-            ? `<img class="li__img" src="${esc(l.imagen)}" alt="" loading="lazy" />`
-            : '<div class="li__img li__img--vacia">✦</div>'}
-          <div class="li__nom">${esc(l.nombre)}${l.variante ? ` <span class="li__meta">· ${esc(l.variante)}</span>` : ''}
-            ${l.manual ? ' <span class="chip">manual</span>' : ''}
-            ${l.especial ? ' <span class="chip">precio especial</span>' : ''}
+        ${l.imagen
+          ? `<img class="li__img" src="${esc(l.imagen)}" alt="" loading="lazy" />`
+          : '<div class="li__img li__img--vacia">✦</div>'}
+        <div class="li__cont">
+          <div class="li__top">
+            <div class="li__nom">${esc(l.nombre)}${l.variante ? ` <span class="li__meta">· ${esc(l.variante)}</span>` : ''}
+              ${l.manual ? ' <span class="chip">manual</span>' : ''}
+              ${l.especial ? ' <span class="chip">precio especial</span>' : ''}
+            </div>
+            <button class="li__x" data-quitar="${i}" type="button" aria-label="Quitar">&times;</button>
           </div>
-          <button class="li__x" data-quitar="${i}" type="button" aria-label="Quitar">&times;</button>
-        </div>
-        <div class="li__bot">
-          <div class="cant">
-            <button data-menos="${i}" type="button" aria-label="Menos">−</button>
-            <span>${l.cantidad}</span>
-            <button data-mas="${i}" type="button" aria-label="Más">+</button>
+          <div class="li__bot">
+            <div class="cant">
+              <button data-menos="${i}" type="button" aria-label="Menos">−</button>
+              <span>${l.cantidad}</span>
+              <button data-mas="${i}" type="button" aria-label="Más">+</button>
+            </div>
+            <div class="li__precio">
+              <!-- type="text": con type="number" el teléfono en español pinta el
+                   separador decimal como coma (390,00). Acá el precio siempre se
+                   escribe con punto. -->
+              <input type="text" inputmode="decimal" data-precio="${i}"
+                     value="${Number(l.precio).toFixed(2)}" aria-label="Precio unitario" />
+            </div>
+            <div class="li__sub">${L(l.precio * l.cantidad)}</div>
           </div>
-          <div class="li__precio">
-            <!-- type="text": con type="number" el teléfono en español pinta el
-                 separador decimal como coma (390,00). Acá el precio siempre se
-                 escribe con punto. -->
-            <input type="text" inputmode="decimal" data-precio="${i}"
-                   value="${Number(l.precio).toFixed(2)}" aria-label="Precio unitario" />
-          </div>
-          <div class="li__sub">${L(l.precio * l.cantidad)}</div>
         </div>
       </div>`).join('')}
   </div>`;

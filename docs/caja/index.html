@@ -17,6 +17,8 @@
     --ink:#1a0a12; --ink-2:#3a1424; --muted:#9a7385;
     --linea:rgba(26,10,18,0.12); --fondo:#fdf7fa;
     --ok:#1c8a4a; --aviso:#b8860b; --rojo:#b3261e;
+    /* Barra de desplazamiento: casi invisible en reposo, rosa al acercar el mouse. */
+    --barra:rgba(232,67,122,0.26); --barra-on:rgba(232,67,122,0.62);
     --sombra:0 18px 44px -20px rgba(150,30,80,0.38);
     --sombra-sm:0 6px 20px -8px rgba(150,30,80,0.28);
     --serif:'Cormorant Garamond', Georgia, serif;
@@ -172,6 +174,40 @@
     .caja .cambio { position:sticky; bottom:3.6rem; z-index:2; flex:0 0 auto; }
   }
   :root { --alto-top: 60px; }   /* alto real de la barra superior */
+
+  /* ── Barra de desplazamiento propia ──────────────────────────────────────
+     Va con CSS y no con una librería (SimpleBar, OverlayScrollbars,
+     PerfectScrollbar) a propósito, por dos razones de esta pantalla:
+     · Todas envuelven el contenido en divs nuevos, y el botón de cobrar depende
+       de ser hijo flex DIRECTO de .tarjeta__cuerpo (margin-top:auto) y de que ese
+       mismo nodo sea su bloque contenedor para el position:sticky. Con wrapper de
+       por medio el botón y el cambio se despegan del fondo.
+     · pintar() rehace todo el DOM en cada acción, así que habría que reinicializar
+       la librería constantemente, con su parpadeo y sus nodos huérfanos.
+     El CSS no tiene ninguno de los dos problemas y sobrevive al repintado.
+     La clase se pone donde hay scroll real; en teléfono esas zonas no desbordan,
+     así que estas reglas no pintan nada. */
+  .scroll-lindo::-webkit-scrollbar { width:12px; height:12px; }
+  .scroll-lindo::-webkit-scrollbar-track { background:transparent; }
+  /* El borde transparente recorta el pulgar a ~6px: el resto del ancho queda como
+     aire a los lados, que es lo que le da el aspecto de pastilla despegada. */
+  .scroll-lindo::-webkit-scrollbar-thumb {
+    background:var(--barra); border-radius:999px;
+    border:3px solid transparent; background-clip:padding-box;
+  }
+  .scroll-lindo:hover::-webkit-scrollbar-thumb { background:var(--barra-on); }
+  .scroll-lindo::-webkit-scrollbar-thumb:hover { background:var(--pink); }
+  .scroll-lindo::-webkit-scrollbar-thumb:active { background:var(--pink-dk); }
+  .scroll-lindo::-webkit-scrollbar-corner { background:transparent; }
+  /* Firefox no tiene los pseudoelementos de arriba. Se aísla con @supports porque
+     Chrome 121+ descarta ::-webkit-scrollbar si el elemento declara scrollbar-color. */
+  @supports not selector(::-webkit-scrollbar) {
+    .scroll-lindo { scrollbar-width:thin; scrollbar-color:var(--barra) transparent; }
+  }
+  @media (min-width:900px) {
+    /* El pulgar no llega a las esquinas redondeadas de la tarjeta. */
+    .col-izq > .tarjeta.scroll-lindo::-webkit-scrollbar-track { margin:0.7rem 0; }
+  }
 
   .tarjeta {
     background:#fff; border:1px solid rgba(232,67,122,0.09); border-radius:20px;

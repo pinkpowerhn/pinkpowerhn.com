@@ -360,6 +360,33 @@ function enfocarBuscador() {
   if (i && !estado.resultado) setTimeout(() => i.focus({ preventScroll: true }), 30);
 }
 
+// Cada zona con scroll vuelve al principio cuando pintar() rehace el DOM: con
+// quince productos en la venta, cambiar una cantidad te dejaba mirando la primera
+// línea en vez de la que estabas tocando. Se guarda la posición y se devuelve.
+const ZONA_VENTA = '.col-izq > .tarjeta.scroll-lindo';
+const ZONAS_SCROLL = ['#resultados', ZONA_VENTA, '.col-der .tarjeta__cuerpo.scroll-lindo'];
+let lineasPintadas = 0;
+
+function leerScroll(main) {
+  return ZONAS_SCROLL.map((sel) => {
+    const el = main.querySelector(sel);
+    return el ? el.scrollTop : 0;
+  });
+}
+
+function devolverScroll(main, tops) {
+  // Si la venta creció, la línea nueva quedó al final: ahí tiene que mirar la
+  // cajera para confirmar que entró lo que escaneó.
+  const crecio = estado.venta.length > lineasPintadas;
+  lineasPintadas = estado.venta.length;
+  ZONAS_SCROLL.forEach((sel, i) => {
+    const alFinal = crecio && sel === ZONA_VENTA;
+    if (!tops[i] && !alFinal) return;
+    const el = main.querySelector(sel);
+    if (el) el.scrollTop = alFinal ? el.scrollHeight : tops[i];
+  });
+}
+
 function pintar() {
   const main = $('caja-main');
   if (!main) return;
@@ -370,11 +397,12 @@ function pintar() {
   const valorQ = $('q') ? $('q').value : '';
   const valorCli = $('q-cliente') ? $('q-cliente').value : '';
   const activo = document.activeElement ? document.activeElement.id : '';
+  const tops = leerScroll(main);
 
   main.innerHTML = `
     <section class="col-izq">
       ${bloqueBuscador(valorQ)}
-      <div id="resultados">${bloqueResultados()}</div>
+      <div id="resultados" class="scroll-lindo">${bloqueResultados()}</div>
       ${bloqueLineas()}
     </section>
     <aside class="col-der">
@@ -392,6 +420,9 @@ function pintar() {
     const i = $('q');
     if (i && !estado.cargandoCatalogo) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
+
+  // Después de devolver el foco: enfocar un campo puede arrastrar su contenedor.
+  devolverScroll(main, tops);
 }
 
 // Esqueletos mientras llega el catálogo: la pantalla se arma igual que cuando
@@ -457,7 +488,7 @@ function bloqueLineas() {
       Todavía no hay productos en esta venta.<br />
       Escaneá el código de barras o escribí el nombre.</div></div>`;
   }
-  return `<div class="tarjeta">
+  return `<div class="tarjeta scroll-lindo">
     <div class="tarjeta__cab">
       <span>${estado.venta.length} producto${estado.venta.length !== 1 ? 's' : ''}</span>
       ${hayMayoreo() ? '<span class="chip chip--may">Precios de mayoreo</span>' : ''}
@@ -560,7 +591,7 @@ function bloqueResumen() {
   const opcActual = OPCIONES_DESC.find((o) => o.v === estado.descuento.tipo) || OPCIONES_DESC[0];
   return `<div class="tarjeta">
     <div class="tarjeta__cab">Cobro</div>
-    <div class="tarjeta__cuerpo">
+    <div class="tarjeta__cuerpo scroll-lindo">
       <div class="total-fila"><span>Subtotal</span><span>${L(subtotal())}</span></div>
       ${desc > 0 ? `<div class="total-fila"><span>Descuento</span><span>− ${L(desc)}</span></div>` : ''}
       <div class="total-grande"><span>Total</span><b>${L(total())}</b></div>
@@ -781,7 +812,7 @@ function modal({ titulo, sub = '', cuerpo, ok = 'Guardar' }) {
   const el = document.createElement('div');
   el.className = 'modal-fondo';
   el.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
+    <div class="modal scroll-lindo" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
       <div class="modal__agarre"></div>
       <div class="modal__cab">
         <div style="flex:1">

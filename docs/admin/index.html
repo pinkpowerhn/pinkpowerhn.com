@@ -33,14 +33,15 @@
        100vw (que incluye la barra de desplazamiento y desbordaba 8 px). */
     padding: 0.7rem 1.6rem;
   }
-  .top__marca { display: flex; align-items: center; text-decoration: none; }
+  /* Reparto en tres: la caja a un lado, el logo al centro y la cuenta al otro.
+     display:contents disuelve el grupo de la derecha para que sus dos botones
+     entren como celdas propias del grid y se puedan repartir. */
+  .top__marca { display: flex; align-items: center; text-decoration: none;
+                order: 2; justify-self: center; }
   .top__marca img { height: 30px; width: auto; display: block; }
-  /* El titulo va al centro de la barra y las acciones juntas a la derecha. */
-  .top__tit {
-    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.45rem; font-weight: 600;
-    color: var(--ink); line-height: 1; white-space: nowrap;
-  }
-  .top__der { display: flex; justify-content: flex-end; align-items: center; gap: 0.6rem; }
+  .top__der { display: contents; }
+  .top #ir-caja { order: 1; justify-self: start; }
+  .top .cuenta { order: 3; justify-self: end; }
 
   /* Menú de la cuenta */
   .cuenta { position: relative; }
@@ -92,10 +93,11 @@
   /* La caja destaca sin gritar: rosa claro con el texto oscuro, y la misma
      pastilla que el menu de la cuenta para que la pareja se vea de una pieza. */
   a.btn--caja {
-    background: #ffe9f2; color: var(--pink-dk); border: 1.5px solid #fbd3e4;
-    border-radius: 999px; box-shadow: none;
+    background: var(--ink); color: #fff; border: 1.5px solid var(--ink);
+    border-radius: 999px; box-shadow: 0 6px 16px -10px rgba(58,20,36,0.9);
   }
-  a.btn--caja:hover { background: #ffd9ea; color: var(--pink-dk); border-color: var(--pink); }
+  a.btn--caja svg { color: #ff9ec4; }
+  a.btn--caja:hover { background: #29101c; color: #fff; border-color: #29101c; }
   .card {
     background: #fff; border-radius: 14px; padding: 1.3rem 1.3rem;
     box-shadow: 0 8px 28px rgba(150,30,80,0.10);
@@ -239,13 +241,8 @@
        al centro, con la caja de un lado y la cuenta del otro.
        display:contents disuelve el grupo de la derecha para que sus dos botones
        entren como celdas propias del grid y se puedan repartir. */
-    .top { gap: 0.5rem; grid-template-columns: 1fr auto 1fr; padding: 0.6rem 0.9rem; }
-    .top__tit { display: none; }
-    .top__der { display: contents; }
-    .top #ir-caja { order: 1; justify-self: start; }
-    .top__marca { order: 2; justify-self: center; }
+    .top { gap: 0.5rem; padding: 0.6rem 0.9rem; }
     .top__marca img { height: 25px; }
-    .top .cuenta { order: 3; justify-self: end; }
     .top .btn span { display: none; }
     .top .btn { padding: 0.5rem 0.65rem; }
     .cuenta__nom { display: none; }
@@ -289,8 +286,6 @@
     <a class="top__marca" href="/" title="Ir a la tienda">
       <img src="/img/logo.png" alt="PinkPower HN" />
     </a>
-
-    <span class="top__tit">Panel de administración</span>
 
     <div class="top__der">
       <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">

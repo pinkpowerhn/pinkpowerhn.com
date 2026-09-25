@@ -461,9 +461,12 @@
   .cliente-fila .btn svg { width:19px; height:19px; }
   /* Flota sobre lo de abajo en vez de empujarlo: si empujara, el bloque de cobro
      se correría y quedaría cortado justo cuando se busca a la clienta. */
+  /* Pegada al campo y por encima de todo: antes quedaba el interruptor de
+     mayoreo asomando entre el campo y la lista, y confundía. */
   .resultados--cli {
-    position:absolute; left:0; right:0; top:calc(100% + 7px); z-index:55;
+    position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:60; margin:0;
     max-height:min(300px, 52dvh); overflow-y:auto; box-shadow:var(--sombra);
+    border:1px solid rgba(232,67,122,0.14);
   }
   .resultados__cab { padding:0.55rem 0.9rem 0.35rem; font-size:0.6rem; font-weight:700;
                      letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }

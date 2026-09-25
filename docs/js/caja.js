@@ -79,6 +79,41 @@ const estado = {
   verRecientes: false,  // se muestran al tocar el campo, antes de escribir
 };
 
+// ── La venta a medio armar no se pierde ──────────────────────────────────────
+// En el teléfono, cambiar de aplicación o bloquear la pantalla descarta la
+// página: la cajera volvía y no tenía nada. Se guarda lo armado y se recupera.
+const GUARDADO = 'pinkpower_caja_venta';
+const GUARDADO_TTL = 6 * 60 * 60 * 1000;   // seis horas: más viejo que eso, no sirve
+
+function guardarVenta() {
+  try {
+    if (!estado.venta.length) { localStorage.removeItem(GUARDADO); return; }
+    localStorage.setItem(GUARDADO, JSON.stringify({
+      ts: Date.now(), venta: estado.venta, cliente: estado.cliente,
+      mayoreo: estado.mayoreo, descuento: estado.descuento,
+      pago: estado.pago, recibido: estado.recibido, nota: estado.nota,
+    }));
+  } catch (_) { /* sin espacio o en privado: la caja sigue funcionando igual */ }
+}
+
+function recuperarVenta() {
+  try {
+    const crudo = localStorage.getItem(GUARDADO);
+    if (!crudo) return false;
+    const d = JSON.parse(crudo);
+    if (!d || !Array.isArray(d.venta) || !d.venta.length) return false;
+    if (Date.now() - (d.ts || 0) > GUARDADO_TTL) { localStorage.removeItem(GUARDADO); return false; }
+    estado.venta = d.venta;
+    estado.cliente = d.cliente || null;
+    estado.mayoreo = !!d.mayoreo;
+    estado.descuento = d.descuento || { tipo: '', valor: 0 };
+    estado.pago = d.pago || '';
+    estado.recibido = d.recibido || '';
+    estado.nota = d.nota || '';
+    return true;
+  } catch (_) { return false; }
+}
+
 // ── API ──────────────────────────────────────────────────────────────────────
 async function api(path, opts = {}) {
   const res = await fetch(API + path, {
@@ -291,6 +326,7 @@ function cambio() {
 }
 
 function nuevaVenta() {
+  try { localStorage.removeItem(GUARDADO); } catch (_) {}
   estado.venta = [];
   estado.cliente = null;
   estado.mayoreo = false;
@@ -332,6 +368,7 @@ async function cobrar() {
   try {
     const r = await api('/admin/caja/venta', { method: 'POST', body: JSON.stringify(cuerpo) });
     estado.resultado = { ...r, cambio: estado.pago === 'efectivo' ? cambio() : 0 };
+    try { localStorage.removeItem(GUARDADO); } catch (_) {}   // ya está cobrada
   } catch (err) {
     if (err.status === 409 && err.detalle && err.detalle.agotados) {
       const lista = err.detalle.agotados
@@ -452,6 +489,7 @@ function devolverScroll(main, tops) {
 function pintar() {
   const main = $('caja-main');
   if (!main) return;
+  guardarVenta();
 
   if (estado.resultado) { main.innerHTML = vistaExito(); main.classList.add('caja--exito'); return; }
   main.classList.remove('caja--exito');
@@ -606,7 +644,7 @@ function bloqueLineas() {
         <p>Tocá el código de barras para abrir la cámara,<br />
            pasá el lector, o escribí el nombre en el buscador.</p>
         <button class="btn btn--pink vacio-caja__accion solo-escritorio" data-accion="camara"
-          type="button">${svg(IC.camara, 1.8)} Escanear con la cámara</button>
+          type="button">${svg(IC.codigo, 1.8)} Escanear con la cámara</button>
       ` : `
         <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
         <h3>Todavía no hay productos</h3>
@@ -708,8 +746,11 @@ function bloqueCliente(valorCli) {
                 title="Registrar una clienta nueva" aria-label="Registrar clienta nueva">
           ${svg(IC.mas)}
         </button>
+        <!-- La lista va DENTRO de la fila: es su ancla. Estando fuera se colgaba
+             del alto de toda la tarjeta y aparecía muy abajo, dejando asomar el
+             interruptor de mayoreo entre el campo y los resultados. -->
+        ${lista}
       </div>
-      ${lista}
       ${interruptorMayoreo()}
     </div>
   </div>`;
@@ -788,7 +829,7 @@ function bloqueResumen() {
 function barraMovil() {
   return `<div class="barra">
     ${estado.hayCamara ? `<button class="btn btn--ancho barra__escanear" data-accion="camara"
-      type="button">${svg(IC.camara, 1.8)} Escanear con la cámara</button>` : ''}
+      type="button">${svg(IC.codigo, 1.8)} Escanear con la cámara</button>` : ''}
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
@@ -1323,8 +1364,18 @@ async function abrirCamara() {
   video.srcObject = stream;
   await video.play().catch(() => {});
 
-  // Linterna: en la tienda el producto suele quedar a contraluz o en sombra.
   const pista = stream.getVideoTracks()[0];
+  // Zoom: acerca la imagen y hace que un código chico ocupe más píxeles. Se pone
+  // un acercamiento suave (el que más se parezca a 2x sin pasarse).
+  try {
+    const cap = pista.getCapabilities && pista.getCapabilities();
+    if (cap && cap.zoom && cap.zoom.max > cap.zoom.min) {
+      const deseado = Math.min(cap.zoom.max, Math.max(cap.zoom.min, 2));
+      await pista.applyConstraints({ advanced: [{ zoom: deseado }] });
+    }
+  } catch (_) {}
+
+  // Linterna: en la tienda el producto suele quedar a contraluz o en sombra.
   try {
     const puede = pista.getCapabilities && pista.getCapabilities();
     if (puede && puede.torch) {
@@ -1375,11 +1426,24 @@ async function abrirCamara() {
   if ('BarcodeDetector' in window) {
     try {
       const detector = new window.BarcodeDetector({ formats: FORMATOS_CODIGO });
+      const lienzoNativo = document.createElement('canvas');
       camara.timer = setInterval(async () => {
         if (!camara) return;
         try {
           const encontrados = await detector.detect(video);
-          if (encontrados && encontrados.length) alLeer(encontrados[0].rawValue);
+          if (encontrados && encontrados.length) { alLeer(encontrados[0].rawValue); return; }
+          // Segundo intento sobre el centro ampliado, para los códigos chicos.
+          const w = Math.round(video.videoWidth * 0.55);
+          const h = Math.round(video.videoHeight * 0.45);
+          if (!w || !h) return;
+          lienzoNativo.width = w * 2; lienzoNativo.height = h * 2;
+          const c2 = lienzoNativo.getContext('2d');
+          c2.imageSmoothingEnabled = false;
+          c2.drawImage(video, Math.round((video.videoWidth - w) / 2),
+                       Math.round((video.videoHeight - h) / 2), w, h,
+                       0, 0, lienzoNativo.width, lienzoNativo.height);
+          const cerca = await detector.detect(lienzoNativo);
+          if (cerca && cerca.length) alLeer(cerca[0].rawValue);
         } catch (_) {}
       }, 250);
       return;
@@ -1395,19 +1459,44 @@ async function abrirCamara() {
     // stream ya puesto, nunca llamaba de vuelta.
     const lienzo = document.createElement('canvas');
     const ctx = lienzo.getContext('2d');
+    // Segundo lienzo con el CENTRO ampliado al doble: los códigos chicos (los de
+    // las etiquetas redondas en la base del envase) ocupan pocos píxeles en el
+    // fotograma entero y no se llegaban a leer.
+    const zoom = document.createElement('canvas');
+    const zctx = zoom.getContext('2d');
+    const leerDe = (cv) => {
+      const fuente = new window.ZXing.HTMLCanvasElementLuminanceSource(cv);
+      const mapa = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(fuente));
+      return lector.decodeBitmap(mapa);
+    };
+    let turno = 0;
     camara.timer = setInterval(() => {
       if (!camara || !video.videoWidth) return;
       lienzo.width = video.videoWidth;
       lienzo.height = video.videoHeight;
       ctx.drawImage(video, 0, 0);
+      // Se alternan los dos: entero y centro ampliado, para no gastar el doble
+      // de trabajo en cada vuelta.
+      turno = (turno + 1) % 2;
+      if (turno === 1) {
+        const w = Math.round(video.videoWidth * 0.55);
+        const h = Math.round(video.videoHeight * 0.45);
+        const x = Math.round((video.videoWidth - w) / 2);
+        const y = Math.round((video.videoHeight - h) / 2);
+        zoom.width = w * 2; zoom.height = h * 2;
+        zctx.imageSmoothingEnabled = false;
+        zctx.drawImage(video, x, y, w, h, 0, 0, zoom.width, zoom.height);
+        try {
+          const res = leerDe(zoom);
+          if (res) { alLeer(res.getText()); return; }
+        } catch (_) { /* sin código en el recorte */ }
+      }
       try {
         // Se arma el mapa de luminancia del fotograma completo. Los atajos de la
         // librería (decode / decodeFromVideoElement) miran el video tal como se
         // ve en pantalla, que está recortado por el encuadre, y ahí el código
         // queda fuera.
-        const fuente = new window.ZXing.HTMLCanvasElementLuminanceSource(lienzo);
-        const mapa = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(fuente));
-        const res = lector.decodeBitmap(mapa);
+        const res = leerDe(lienzo);
         if (res) alLeer(res.getText());
       } catch (_) { /* fotograma sin código: es lo normal */ }
     }, 300);
@@ -1418,13 +1507,21 @@ async function abrirCamara() {
 }
 
 // ── Arranque ─────────────────────────────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') guardarVenta();
+});
+
 function arrancar() {
   mostrarCaja();
+  const recuperada = recuperarVenta();
   if (MODO_PRUEBA) document.body.classList.add('es-prueba');
   pintar();
   cargarCatalogo();
   cargarRecientes();
   detectarCamara();
+  if (recuperada) {
+    setTimeout(() => flash('Retomamos la venta que tenías a medias', 'ok'), 800);
+  }
 }
 
 if (token) arrancar(); else mostrarLogin();

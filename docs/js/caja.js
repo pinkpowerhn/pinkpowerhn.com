@@ -1268,48 +1268,54 @@ function cargarZxing() {
 // Dentro de la cámara hay que ver que el producto entró: el aviso flotante solo
 // no alcanzaba (de hecho quedaba tapado), y la clienta escaneó cinco veces lo
 // mismo sin darse cuenta.
-function marcadorRepetido(codigo) {
-  const caja = document.getElementById('camara-marcador');
-  if (!caja || caja.dataset.repetido === codigo) return;
-  // El visto con el nombre del producto tiene que quedarse un momento: si no,
-  // al agregar uno nuevo el aviso saltaba enseguida a "ya está en la venta".
-  if (camara && Date.now() - camara.ultimoT < 2500) return;
-  caja.dataset.repetido = codigo;
-  const v = estado.porBarcode.get(codigo);
-  const linea = v ? estado.venta.find((l) => l.variant_id === v.variant_id) : null;
-  caja.innerHTML = `
-    <p class="camara__ayuda">Ya está en la venta${linea ? ': ' + esc(linea.nombre) : ''}</p>
-    <button class="camara__mas" type="button" data-sumar="${esc(codigo)}">
-      Sumar otro (llevás ${linea ? linea.cantidad : 1})</button>`;
-  const btn = caja.querySelector('[data-sumar]');
-  if (btn) btn.addEventListener('click', () => {
-    const p = estado.porBarcode.get(codigo);
-    if (!p) return;
-    agregar(p);
-    marcadorCamara(true);
-  });
-}
-
-function marcadorCamara(entro) {
+// Debajo del visor va la ficha del último producto escaneado, con sus botones de
+// cantidad: es lo que pidió la clienta para no tener que salir de la cámara para
+// corregir. También resuelve el caso de llevar dos iguales.
+function fichaCamara(codigo, aviso) {
   if (!camara) return;
   const caja = document.getElementById('camara-marcador');
   if (!caja) return;
-  caja.dataset.repetido = '';
-  const unidades = estado.venta.reduce((n, l) => n + l.cantidad, 0);
-  const ultima = estado.venta[estado.venta.length - 1];
-  if (!entro) {
-    caja.innerHTML = `<p class="camara__ayuda camara__ayuda--mal">Ese código no está en el catálogo</p>`;
-  } else {
-    caja.innerHTML = `
-      <div class="camara__ok">
-        <span class="camara__tic">✓</span>
-        <span class="camara__ult">${esc(ultima ? ultima.nombre : '')}</span>
-      </div>
-      <p class="camara__cuenta">${unidades} producto${unidades !== 1 ? 's' : ''} en la venta ·
-        ${L(total())}</p>`;
+
+  if (aviso) {
+    caja.innerHTML = `<p class="camara__ayuda camara__ayuda--mal">${esc(aviso)}</p>`;
+    caja.dataset.codigo = '';
+    return;
   }
+  const v = estado.porBarcode.get(codigo);
+  const i = v ? estado.venta.findIndex((l) => l.variant_id === v.variant_id) : -1;
+  if (i === -1) return;
+  const l = estado.venta[i];
+  const unidades = estado.venta.reduce((n, x) => n + x.cantidad, 0);
+  caja.dataset.codigo = codigo;
+  caja.innerHTML = `
+    <div class="camara__ficha">
+      ${l.imagen ? `<img src="${esc(l.imagen)}" alt="" />` : '<span class="camara__sinfoto">✦</span>'}
+      <div class="camara__datos">
+        <b>${esc(l.nombre)}</b>
+        <span>${L(l.precio)} c/u · ${unidades} en la venta · ${L(total())}</span>
+      </div>
+      <div class="cant">
+        <button data-cam-menos type="button" aria-label="Menos">−</button>
+        <span>${l.cantidad}</span>
+        <button data-cam-mas type="button" aria-label="Más">+</button>
+      </div>
+    </div>`;
+  const menos = caja.querySelector('[data-cam-menos]');
+  const mas = caja.querySelector('[data-cam-mas]');
+  if (mas) mas.addEventListener('click', () => { cambiarCantidad(i, 1); fichaCamara(codigo); });
+  if (menos) menos.addEventListener('click', () => {
+    cambiarCantidad(i, -1);
+    // Si se quitó la última unidad, la línea desaparece y se puede volver a escanear.
+    if (!estado.venta[i] || estado.venta[i].variant_id !== l.variant_id) {
+      if (camara) camara.leidos.delete(codigo);
+      caja.innerHTML = `<p class="camara__ayuda">Quitado de la venta</p>`;
+      caja.dataset.codigo = '';
+    } else {
+      fichaCamara(codigo);
+    }
+  });
   caja.classList.remove('camara__marcador--flash');
-  void caja.offsetWidth;   // reinicia la animación aunque sea el mismo mensaje
+  void caja.offsetWidth;
   caja.classList.add('camara__marcador--flash');
 }
 
@@ -1329,12 +1335,13 @@ async function abrirCamara() {
   const caja = document.createElement('div');
   caja.className = 'camara';
   caja.innerHTML = `
-    <video class="camara__video" playsinline muted></video>
-    <div class="camara__marco"><span></span><span></span><span></span><span></span></div>
-    <div class="camara__pie">
-      <div class="camara__marcador" id="camara-marcador">
-        <p class="camara__ayuda">Apuntá al código de barras del producto</p>
+    <div class="camara__hoja">
+      <div class="camara__visor">
+        <video class="camara__video" playsinline muted></video>
+        <div class="camara__marco"><span></span><span></span><span></span><span></span></div>
+        <p class="camara__ayuda">Apuntá al código de barras</p>
       </div>
+      <div class="camara__marcador" id="camara-marcador"></div>
       <button class="btn btn--ancho camara__cerrar" type="button">Listo</button>
     </div>`;
   document.body.appendChild(caja);
@@ -1412,7 +1419,13 @@ async function abrirCamara() {
     // pierde varios segundos y el mismo producto entraba tres o cuatro veces. Y
     // cobrar de más es peor que tocar un botón: si hacen falta dos, se suman a
     // mano desde el propio marcador.
-    if (camara.leidos.has(codigo)) { marcadorRepetido(codigo); return; }
+    // Ya escaneado: no suma solo, pero su ficha vuelve abajo para poder ajustar
+    // la cantidad con los botones.
+    if (camara.leidos.has(codigo)) {
+      const caja = document.getElementById('camara-marcador');
+      if (caja && caja.dataset.codigo !== codigo) fichaCamara(codigo);
+      return;
+    }
     if (ahora - camara.ultimoT < 600) return;   // dos fotogramas del mismo instante
     camara.leidos.add(codigo);
     camara.ultimo = codigo;
@@ -1420,7 +1433,9 @@ async function abrirCamara() {
     if (navigator.vibrate) navigator.vibrate(40);
     const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
     procesarEscaneo(codigo);
-    marcadorCamara(estado.venta.reduce((n, l) => n + l.cantidad, 0) > antes);
+    const entro = estado.venta.reduce((n, l) => n + l.cantidad, 0) > antes;
+    if (entro) fichaCamara(codigo);
+    else fichaCamara(codigo, 'Ese código no está en el catálogo');
   };
 
   if ('BarcodeDetector' in window) {

@@ -428,7 +428,7 @@ function pintar() {
     <section class="col-izq">
       <div class="buscador-zona">
         ${bloqueBuscador(valorQ)}
-        <div id="resultados" class="scroll-lindo">${bloqueResultados()}</div>
+        <div id="resultados">${bloqueResultados()}</div>
       </div>
       ${bloqueLineas()}
     </section>
@@ -499,7 +499,7 @@ function bloqueBuscador(valor) {
 
 function bloqueResultados() {
   if (!estado.resultados.length) return '';
-  return `<div class="resultados">${estado.resultados.map((v, i) => `
+  return `<div class="resultados scroll-lindo">${estado.resultados.map((v, i) => `
     <button class="res ${v.disponible ? '' : 'res--agotado'}" data-res="${i}" type="button">
       ${v.imagen ? `<img src="${esc(v.imagen)}" alt="" loading="lazy" />` : '<img alt="" />'}
       <span class="res__txt">
@@ -590,7 +590,7 @@ function bloqueCliente(valorCli) {
   if (estado.buscandoCliente) {
     lista = '<div class="vacio"><span class="puntos">Buscando</span></div>';
   } else if (estado.resClientes && estado.resClientes.length) {
-    lista = `<div class="resultados resultados--cli">
+    lista = `<div class="resultados resultados--cli scroll-lindo">
       ${estado.resClientes.map((c, i) => fila(c, i, 'busqueda')).join('')}</div>`;
   } else if (estado.resClientes) {
     lista = `<div class="vacio" style="padding:0.9rem 0 0.7rem">No encontramos esta clienta.</div>
@@ -598,7 +598,7 @@ function bloqueCliente(valorCli) {
   } else if (estado.verRecientes && estado.recientes.length) {
     // Antes de escribir nada: las últimas que compraron. En el mostrador casi
     // siempre es una de ellas.
-    lista = `<div class="resultados resultados--cli">
+    lista = `<div class="resultados resultados--cli scroll-lindo">
       <div class="resultados__cab">Últimas clientas</div>
       ${estado.recientes.map((c, i) => fila(c, i, 'recientes')).join('')}</div>`;
   }

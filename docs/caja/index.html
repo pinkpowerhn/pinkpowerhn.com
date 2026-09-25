@@ -549,6 +549,33 @@
   @media (min-width:900px) { .barra { display:none; } }
   @media (max-width:899px) { .solo-escritorio { display:none; } }
 
+  /* ── Escaneo con la cámara ───────────────────────────────────────────── */
+  .camara {
+    position:fixed; inset:0; z-index:85; background:#120710;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .camara__video { width:100%; height:100%; object-fit:cover; }
+  /* Marco de guía: cuatro esquinas, que ubican el código sin tapar la imagen. */
+  .camara__marco {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-55%);
+    width:min(78vw, 330px); height:min(46vw, 190px); pointer-events:none;
+  }
+  .camara__marco span {
+    position:absolute; width:34px; height:34px; border:3px solid #fff; border-radius:4px;
+  }
+  .camara__marco span:nth-child(1) { top:0; left:0; border-right:none; border-bottom:none; }
+  .camara__marco span:nth-child(2) { top:0; right:0; border-left:none; border-bottom:none; }
+  .camara__marco span:nth-child(3) { bottom:0; left:0; border-right:none; border-top:none; }
+  .camara__marco span:nth-child(4) { bottom:0; right:0; border-left:none; border-top:none; }
+  .camara__pie {
+    position:absolute; left:0; right:0; bottom:0; padding:1.2rem 1.2rem;
+    padding-bottom:max(1.2rem, env(safe-area-inset-bottom));
+    background:linear-gradient(to top, rgba(18,7,16,0.92), rgba(18,7,16,0));
+    display:flex; flex-direction:column; align-items:center; gap:0.9rem;
+  }
+  .camara__ayuda { margin:0; color:#fff; font-size:0.85rem; font-weight:600; text-align:center; }
+  .camara__cerrar { max-width:320px; background:#fff; border-color:#fff; }
+
   /* ── Modales ─────────────────────────────────────────────────────────── */
   .modal-fondo {
     position:fixed; inset:0; z-index:70; background:rgba(26,10,18,0.5);

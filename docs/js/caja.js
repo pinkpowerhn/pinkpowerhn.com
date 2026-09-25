@@ -39,6 +39,8 @@ const IC = {
   transferencia: '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>',
   credito: '<circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline>',
   check: '<polyline points="20 6 9 17 4 12"></polyline>',
+  camara: '<path d="M3 8a2 2 0 0 1 2-2h2.2l1.2-2h6.8l1.2 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>'
+        + '<circle cx="12" cy="12.5" r="3.6"></circle>',
   // Código de barras con el haz del lector cruzándolo.
   codigo: '<path d="M3 7V5a1 1 0 0 1 1-1h2"></path><path d="M18 4h2a1 1 0 0 1 1 1v2"></path>'
         + '<path d="M21 17v2a1 1 0 0 1-1 1h-2"></path><path d="M6 20H4a1 1 0 0 1-1-1v-2"></path>'
@@ -67,6 +69,7 @@ const estado = {
   error: '',
   buscandoCliente: false,
   resClientes: null,    // null = no se buscó; [] = sin resultados
+  hayCamara: false,     // se muestra el botón de escanear solo si el equipo tiene
   recientes: [],        // últimas clientas atendidas
   verRecientes: false,  // se muestran al tocar el campo, antes de escribir
 };
@@ -532,6 +535,9 @@ function bloqueBuscador(valor) {
                   ${valor ? '' : 'hidden'}>&times;</button>
         </span>
       </div>
+      ${estado.hayCamara ? `<button class="btn" data-accion="camara" type="button"
+              title="Escanear con la cámara" aria-label="Escanear con la cámara">
+              ${svg(IC.camara, 1.8)}</button>` : ''}
       <button class="btn" data-accion="manual" type="button" title="Producto manual"
               aria-label="Agregar producto manual">${svg(IC.mas)}</button>
     </div>`;
@@ -917,6 +923,7 @@ $('caja-main').addEventListener('click', (e) => {
     case 'cobrar': cobrar(); break;
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
+    case 'camara': abrirCamara(); break;
     case 'crear-cliente': pedirClienta(); break;
   }
 });
@@ -1039,7 +1046,9 @@ let bufer = '';
 let ultimaTecla = 0;
 let cierreBufer = null;
 
-function hayModalAbierto() { return !!document.querySelector('.modal-fondo'); }
+function hayModalAbierto() {
+  return !!document.querySelector('.modal-fondo') || !!document.querySelector('.camara');
+}
 
 function esCampoDeTexto(el) {
   if (!el) return false;
@@ -1138,12 +1147,153 @@ document.addEventListener('click', (e) => {
   enfocarBuscador();
 });
 
+// ── Escanear con la cámara ───────────────────────────────────────────────────
+// Es el respaldo del lector, sobre todo para cobrar desde el teléfono. Chrome de
+// Android trae un detector propio; donde no está (Safari), se carga ZXing.
+const FORMATOS_CODIGO = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'];
+const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+
+let camara = null;   // { stream, video, cerrar }
+
+async function detectarCamara() {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    const equipos = await navigator.mediaDevices.enumerateDevices();
+    estado.hayCamara = equipos.some((e) => e.kind === 'videoinput');
+    if (estado.hayCamara) pintar();
+  } catch (_) { /* sin permisos no se puede saber: se deja el botón oculto */ }
+}
+
+function cargarZxing() {
+  if (window.ZXing) return Promise.resolve();
+  return new Promise((ok, mal) => {
+    const sc = document.createElement('script');
+    sc.src = ZXING_URL;
+    sc.onload = ok;
+    sc.onerror = () => mal(new Error('No se pudo cargar el lector'));
+    document.head.appendChild(sc);
+  });
+}
+
+function cerrarCamara() {
+  if (!camara) return;
+  try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+  if (camara.lector) { try { camara.lector.reset(); } catch (_) {} }
+  clearInterval(camara.timer);
+  camara.caja.remove();
+  document.removeEventListener('keydown', camara.porTecla);
+  camara = null;
+  enfocarBuscador();
+}
+
+async function abrirCamara() {
+  if (camara) return;
+  const caja = document.createElement('div');
+  caja.className = 'camara';
+  caja.innerHTML = `
+    <video class="camara__video" playsinline muted></video>
+    <div class="camara__marco"><span></span><span></span><span></span><span></span></div>
+    <div class="camara__pie">
+      <p class="camara__ayuda">Apuntá al código de barras del producto</p>
+      <button class="btn btn--ancho camara__cerrar" type="button">Cerrar</button>
+    </div>`;
+  document.body.appendChild(caja);
+  const video = caja.querySelector('video');
+  const porTecla = (e) => { if (e.key === 'Escape') cerrarCamara(); };
+  document.addEventListener('keydown', porTecla);
+  caja.querySelector('.camara__cerrar').addEventListener('click', cerrarCamara);
+
+  let stream;
+  try {
+    // La cámara trasera es la que sirve para escanear; si no hay, se usa la que haya.
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }, audio: false,
+    });
+  } catch (err) {
+    caja.remove();
+    document.removeEventListener('keydown', porTecla);
+    flash('No se pudo abrir la cámara. Revisá el permiso.', 'mal');
+    return;
+  }
+  video.srcObject = stream;
+  await video.play().catch(() => {});
+  camara = { stream, video, caja, porTecla, timer: null, lector: null,
+             ultimo: '', ultimoT: 0, vioVacio: true };
+
+  const alLeer = (texto) => {
+    const codigo = String(texto || '').trim();
+    if (!codigo || !camara) return;
+    const ahora = Date.now();
+    // Un producto que se queda delante de la cámara se lee varias veces por
+    // segundo. Para NO cobrar de más, el mismo código solo vuelve a contar
+    // cuando el producto salió del encuadre (se vio un fotograma sin código).
+    // Uno distinto entra enseguida, que es lo que pasa al pasar productos.
+    if (codigo === camara.ultimo && !camara.vioVacio) return;
+    if (ahora - camara.ultimoT < 600) return;   // dos fotogramas del mismo instante
+    camara.ultimo = codigo;
+    camara.ultimoT = ahora;
+    camara.vioVacio = false;
+    if (navigator.vibrate) navigator.vibrate(40);
+    procesarEscaneo(codigo);
+  };
+
+  if ('BarcodeDetector' in window) {
+    try {
+      const detector = new window.BarcodeDetector({ formats: FORMATOS_CODIGO });
+      camara.timer = setInterval(async () => {
+        if (!camara) return;
+        try {
+          const encontrados = await detector.detect(video);
+          if (encontrados && encontrados.length) alLeer(encontrados[0].rawValue);
+          else if (camara) camara.vioVacio = true;
+        } catch (_) {}
+      }, 250);
+      return;
+    } catch (_) { /* si el navegador no soporta esos formatos, cae a ZXing */ }
+  }
+
+  try {
+    await cargarZxing();
+    const lector = new window.ZXing.BrowserMultiFormatReader();
+    camara.lector = lector;
+    // Bucle propio (tomar un fotograma y decodificarlo) en vez de la lectura
+    // continua de la librería: esa espera manejar ella misma el video y, con el
+    // stream ya puesto, nunca llamaba de vuelta.
+    const lienzo = document.createElement('canvas');
+    const ctx = lienzo.getContext('2d');
+    camara.timer = setInterval(() => {
+      if (!camara || !video.videoWidth) return;
+      lienzo.width = video.videoWidth;
+      lienzo.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      try {
+        // Se arma el mapa de luminancia del fotograma completo. Los atajos de la
+        // librería (decode / decodeFromVideoElement) miran el video tal como se
+        // ve en pantalla, que está recortado por el encuadre, y ahí el código
+        // queda fuera.
+        const fuente = new window.ZXing.HTMLCanvasElementLuminanceSource(lienzo);
+        const mapa = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(fuente));
+        const res = lector.decodeBitmap(mapa);
+        if (res) alLeer(res.getText());
+      } catch (_) {
+        // Fotograma sin código: es lo normal, y además avisa que el producto
+        // anterior ya salió del encuadre.
+        if (camara) camara.vioVacio = true;
+      }
+    }, 300);
+  } catch (err) {
+    flash('Este navegador no puede escanear con la cámara', 'mal');
+    cerrarCamara();
+  }
+}
+
 // ── Arranque ─────────────────────────────────────────────────────────────────
 function arrancar() {
   mostrarCaja();
   pintar();
   cargarCatalogo();
   cargarRecientes();
+  detectarCamara();
 }
 
 if (token) arrancar(); else mostrarLogin();

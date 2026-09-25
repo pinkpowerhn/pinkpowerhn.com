@@ -149,7 +149,7 @@ $('login-form').addEventListener('submit', async (e) => {
 });
 
 // ── Catálogo ─────────────────────────────────────────────────────────────────
-async function cargarCatalogo() {
+async function cargarCatalogo(intento = 1) {
   estado.cargandoCatalogo = true;
   estado.errorCatalogo = '';
   pintar();
@@ -166,7 +166,16 @@ async function cargarCatalogo() {
       if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
     }
   } catch (err) {
-    estado.errorCatalogo = err.message || 'No se pudo cargar el catálogo';
+    // La primera llamada al abrir falla a veces en el teléfono (la conexión
+    // todavía se está levantando). Antes había que refrescar a mano y salía un
+    // "Failed to fetch" en inglés; ahora se reintenta solo, dos veces.
+    if (intento < 3 && err.message !== 'Sesión expirada') {
+      await new Promise((r) => setTimeout(r, 900 * intento));
+      return cargarCatalogo(intento + 1);
+    }
+    estado.errorCatalogo = err.message === 'Failed to fetch'
+      ? 'No se pudo conectar. Revisá la señal y tocá Reintentar.'
+      : (err.message || 'No se pudo cargar el catálogo');
   } finally {
     estado.cargandoCatalogo = false;
     pintar();
@@ -370,6 +379,18 @@ function elegirCliente(c) {
 }
 
 async function crearClienta(datos, boton) {
+  // En modo prueba la clienta NO se crea de verdad: si no, cada prueba dejaría
+  // una ficha suelta en Shopify. Se arma una de mentira, solo para esta pantalla.
+  if (MODO_PRUEBA) {
+    const falsa = {
+      id: '', nombre: [datos.nombre, datos.apellido].filter(Boolean).join(' '),
+      telefono: datos.telefono || '', mayoreo: !!datos.mayoreo,
+    };
+    estado.recientes = [falsa, ...estado.recientes];
+    pintar();
+    flash('Prueba: la clienta no se guardó', 'ok');
+    return true;
+  }
   boton.disabled = true; boton.textContent = 'Creando…';
   try {
     const c = await api('/admin/caja/clientes', { method: 'POST', body: JSON.stringify(datos) });
@@ -390,6 +411,9 @@ async function crearClienta(datos, boton) {
 
 // ── Pintado ──────────────────────────────────────────────────────────────────
 function enfocarBuscador() {
+  // Con la cámara abierta, NO: enfocar el campo abre el teclado del teléfono
+  // encima de la cámara y tapa hasta el botón de cerrar.
+  if (camara) return;
   const i = $('q');
   if (i && !estado.resultado) setTimeout(() => i.focus({ preventScroll: true }), 30);
 }
@@ -460,7 +484,8 @@ function pintar() {
   // campo en el que estaba escribiendo.
   if (activo === 'q-cliente' && $('q-cliente')) {
     const i = $('q-cliente'); i.focus(); i.setSelectionRange(i.value.length, i.value.length);
-  } else if (activo === 'q' || !activo || activo === 'body') {
+  } else if (!camara && (activo === 'q' || !activo || activo === 'body')) {
+    // Con la cámara abierta no se devuelve el foco: abriría el teclado encima.
     const i = $('q');
     if (i && !estado.cargandoCatalogo) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
@@ -566,10 +591,22 @@ function bloqueResultados() {
 
 function bloqueLineas() {
   if (!estado.venta.length) {
+    // El código de barras grande es el botón de escanear: es donde la cajera
+    // toca por instinto, no en el icono chico del buscador.
     return `<div class="tarjeta vacio-caja">
-      <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
-      <h3>Todavía no hay productos</h3>
-      <p>Pasá el lector por el código de barras<br />o escribí el nombre en el buscador.</p>
+      ${estado.hayCamara ? `
+        <button class="vacio-caja__ic vacio-caja__ic--boton" data-accion="camara" type="button">
+          ${svg(IC.codigo, 1.6)}</button>
+        <h3>Escaneá el primer producto</h3>
+        <p>Tocá el código de barras para abrir la cámara,<br />
+           pasá el lector, o escribí el nombre en el buscador.</p>
+        <button class="btn btn--pink vacio-caja__accion" data-accion="camara" type="button">
+          ${svg(IC.camara, 1.8)} Escanear con la cámara</button>
+      ` : `
+        <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
+        <h3>Todavía no hay productos</h3>
+        <p>Pasá el lector por el código de barras<br />o escribí el nombre en el buscador.</p>
+      `}
     </div>`;
   }
   return `<div class="tarjeta scroll-lindo">
@@ -1063,6 +1100,9 @@ function esCampoDeTexto(el) {
 }
 
 function flash(texto, tipo = '') {
+  // Con la cámara abierta no hace falta: el marcador de abajo ya dice lo que
+  // entró, y el aviso flotante le tapaba el botón de Listo.
+  if (camara) return;
   let el = document.getElementById('flash-caja');
   if (!el) {
     el = document.createElement('div');
@@ -1181,6 +1221,31 @@ function cargarZxing() {
   });
 }
 
+// Dentro de la cámara hay que ver que el producto entró: el aviso flotante solo
+// no alcanzaba (de hecho quedaba tapado), y la clienta escaneó cinco veces lo
+// mismo sin darse cuenta.
+function marcadorCamara(entro) {
+  if (!camara) return;
+  const caja = document.getElementById('camara-marcador');
+  if (!caja) return;
+  const unidades = estado.venta.reduce((n, l) => n + l.cantidad, 0);
+  const ultima = estado.venta[estado.venta.length - 1];
+  if (!entro) {
+    caja.innerHTML = `<p class="camara__ayuda camara__ayuda--mal">Ese código no está en el catálogo</p>`;
+  } else {
+    caja.innerHTML = `
+      <div class="camara__ok">
+        <span class="camara__tic">✓</span>
+        <span class="camara__ult">${esc(ultima ? ultima.nombre : '')}</span>
+      </div>
+      <p class="camara__cuenta">${unidades} producto${unidades !== 1 ? 's' : ''} en la venta ·
+        ${L(total())}</p>`;
+  }
+  caja.classList.remove('camara__marcador--flash');
+  void caja.offsetWidth;   // reinicia la animación aunque sea el mismo mensaje
+  caja.classList.add('camara__marcador--flash');
+}
+
 function cerrarCamara() {
   if (!camara) return;
   try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
@@ -1200,8 +1265,10 @@ async function abrirCamara() {
     <video class="camara__video" playsinline muted></video>
     <div class="camara__marco"><span></span><span></span><span></span><span></span></div>
     <div class="camara__pie">
-      <p class="camara__ayuda">Apuntá al código de barras del producto</p>
-      <button class="btn btn--ancho camara__cerrar" type="button">Cerrar</button>
+      <div class="camara__marcador" id="camara-marcador">
+        <p class="camara__ayuda">Apuntá al código de barras del producto</p>
+      </div>
+      <button class="btn btn--ancho camara__cerrar" type="button">Listo</button>
     </div>`;
   document.body.appendChild(caja);
   const video = caja.querySelector('video');
@@ -1240,7 +1307,9 @@ async function abrirCamara() {
     camara.ultimoT = ahora;
     camara.vioVacio = false;
     if (navigator.vibrate) navigator.vibrate(40);
+    const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
     procesarEscaneo(codigo);
+    marcadorCamara(estado.venta.reduce((n, l) => n + l.cantidad, 0) > antes);
   };
 
   if ('BarcodeDetector' in window) {

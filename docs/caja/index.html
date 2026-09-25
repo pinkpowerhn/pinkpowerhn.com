@@ -266,27 +266,28 @@
      dos filas, y a la derecha el nombre arriba con la cantidad y el precio
      abajo. Antes la foto era chica y el renglon quedaba alto y con un hueco
      debajo de ella. */
-  .li { display:flex; gap:0.85rem; align-items:stretch;
-        padding:0.6rem 1rem; border-bottom:1px solid rgba(26,10,18,0.06); }
+  .li { display:flex; gap:0.8rem; align-items:center;
+        padding:0.55rem 1rem; border-bottom:1px solid rgba(26,10,18,0.06); }
   .li:last-child { border-bottom:none; }
   .li__cont { flex:1; min-width:0; display:flex; flex-direction:column;
               justify-content:space-between; gap:0.3rem; }
   .li__top { display:flex; gap:0.6rem; align-items:flex-start; }
   /* Foto del producto: al escanear, es la confirmacion mas rapida de que entro
      lo correcto (leer el nombre toma mas tiempo que reconocer el envase). */
-  .li__img { width:76px; align-self:stretch; min-height:76px; border-radius:14px;
+  .li__img { width:68px; height:68px; align-self:center; border-radius:14px;
              object-fit:cover; flex:0 0 auto; background:#fdf0f5; }
   .li__img--vacia { display:flex; align-items:center; justify-content:center;
                     color:#e3c3d3; font-size:1.5rem; }
-  .li__nom { flex:1; font-weight:600; font-size:0.93rem; line-height:1.35; }
+  .li__nom { flex:1; font-weight:600; font-size:0.88rem; line-height:1.3; }
   .li__meta { font-size:0.73rem; color:var(--muted); font-weight:500; }
-  .li__x { border:none; background:none; color:var(--muted); font-size:1.4rem;
-           cursor:pointer; line-height:1; min-width:38px; min-height:38px; border-radius:10px; }
+  .li__x { border:none; background:none; color:var(--muted); font-size:1.3rem;
+           cursor:pointer; line-height:1; min-width:32px; min-height:30px; border-radius:9px;
+           padding:0; flex:0 0 auto; }
   .li__x:hover { background:#ffeef4; color:var(--rojo); }
   .li__bot { display:flex; align-items:center; gap:0.5rem; }
   .cant { display:flex; align-items:center; border:1.5px solid var(--linea);
           border-radius:14px; overflow:hidden; background:#fff; }
-  .cant button { width:40px; height:40px; border:none; background:#fff; font-size:1.2rem;
+  .cant button { width:36px; height:34px; border:none; background:#fff; font-size:1.15rem;
                  cursor:pointer; color:var(--pink-dk); font-family:inherit; }
   .cant button:hover { background:var(--pink-lt); }
   .cant span { min-width:38px; text-align:center; font-weight:700; }
@@ -294,22 +295,28 @@
      y solo al tocarlo aparece el marco. */
   .li__precio { width:100px; flex:0 0 auto; }
   .li__precio input {
-    padding:0.5rem 0.5rem; text-align:right; border-radius:11px; font-size:15px;
+    padding:0.4rem 0.5rem; text-align:right; border-radius:10px; font-size:14px;
     font-weight:600; border-color:transparent; background:#fbf4f7; color:var(--ink-2);
   }
   .li__precio input:hover { border-color:var(--linea); background:#fff; }
   .li__precio input:focus { background:#fff; }
   /* nowrap: en teléfono el subtotal se partía en dos líneas ("L." / "390.00"). */
-  .li__sub { flex:1; text-align:right; font-weight:700; font-size:1.02rem; color:var(--ink);
+  .li__sub { flex:1; text-align:right; font-weight:700; font-size:0.97rem; color:var(--ink);
              white-space:nowrap; }
-  @media (max-width:420px) {
-    .li { gap:0.7rem; padding:0.65rem 0.8rem; }
-    .li__precio { width:82px; }
-    .li__precio input { padding:0.5rem 0.4rem; font-size:14px; }
-    .li__img { width:62px; min-height:62px; }
-    .cant button { width:40px; height:42px; }
-    .cant span { min-width:30px; }
-    .li__sub { font-size:0.95rem; }
+  @media (max-width:520px) {
+    .li { gap:0.6rem; padding:0.5rem 0.7rem; }
+    .li__img { width:52px; height:52px; border-radius:11px; }
+    .li__nom { font-size:0.82rem; line-height:1.25; }
+    .li__meta { font-size:0.68rem; }
+    .li__cont { gap:0.25rem; }
+    .cant { border-radius:11px; }
+    .cant button { width:32px; height:32px; font-size:1.05rem; }
+    .cant span { min-width:24px; font-size:0.85rem; }
+    .li__precio { width:70px; }
+    .li__precio input { padding:0.35rem 0.35rem; font-size:13px; border-radius:9px; }
+    .li__sub { font-size:0.88rem; }
+    .li__x { min-width:30px; min-height:30px; font-size:1.2rem; }
+    .chip { font-size:0.55rem; padding:0.15rem 0.45rem; }
   }
   .li--especial .li__precio input { border-color:var(--pink); background:var(--pink-lt); }
 

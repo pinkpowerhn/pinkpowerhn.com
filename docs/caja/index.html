@@ -121,6 +121,16 @@
   .login-pie { text-align:center; margin:1.1rem 0 0; font-size:0.7rem; color:var(--muted);
                letter-spacing:0.08em; text-transform:uppercase; }
 
+  /* Cinta del modo prueba (/caja/?prueba=1): tiene que verse todo el tiempo,
+     para que nadie cobre de verdad creyendo que esta probando, ni al reves. */
+  .cinta-prueba { display:none; }
+  body.es-prueba .cinta-prueba {
+    display:block; background:#b8860b; color:#fff; text-align:center;
+    font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+    padding:0.4rem 1rem; position:sticky; top:0; z-index:50;
+  }
+  body.es-prueba .top { top:26px; }
+
   /* ── Cabecera ────────────────────────────────────────────────────────── */
   .top {
     position:sticky; top:0; z-index:40;
@@ -729,6 +739,8 @@
 </div>
 
 <div id="caja-view" class="hidden">
+  <!-- Cinta del modo prueba: solo aparece con /caja/?prueba=1 -->
+  <div class="cinta-prueba">Modo prueba · las ventas no se registran</div>
   <header class="top">
     <a class="btn btn--icono" href="/admin/" title="Volver al panel" aria-label="Volver al panel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"

@@ -50,6 +50,11 @@ const IC = {
 const svg = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 
+// Modo prueba: se activa abriendo /caja/?prueba=1. La venta se arma igual en
+// Shopify (precios, descuentos, mayoreo) pero se borra en vez de cobrarse, asi
+// que no gasta numero de pedido ni toca el inventario.
+const MODO_PRUEBA = new URLSearchParams(location.search).has('prueba');
+
 const estado = {
   catalogo: [],
   porBarcode: new Map(),
@@ -310,6 +315,7 @@ async function cobrar() {
     mayoreo: hayMayoreo(),
     pago: estado.pago,
     nota: estado.nota || '',
+    ensayo: MODO_PRUEBA,
   };
   if (estado.descuento.tipo && num(estado.descuento.valor) > 0) {
     cuerpo.descuento = { tipo: estado.descuento.tipo, valor: num(estado.descuento.valor) };
@@ -751,8 +757,8 @@ function vistaExito() {
   const r = estado.resultado;
   return `<div class="tarjeta exito">
     <div class="exito__check">${svg(IC.check, 2.6)}</div>
-    <h2>${r.pagado ? 'Venta cobrada' : 'Venta registrada'}</h2>
-    <p class="pedido">Pedido ${esc(r.name || '')}</p>
+    <h2>${r.ensayo ? 'Prueba lista' : (r.pagado ? 'Venta cobrada' : 'Venta registrada')}</h2>
+    <p class="pedido">${r.ensayo ? 'No se cobró nada · no quedó registrada' : 'Pedido ' + esc(r.name || '')}</p>
     <p class="monto">${L(r.total)}</p>
     ${r.cambio > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
     ${!r.pagado ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago (crédito).</div>' : ''}
@@ -1290,6 +1296,7 @@ async function abrirCamara() {
 // ── Arranque ─────────────────────────────────────────────────────────────────
 function arrancar() {
   mostrarCaja();
+  if (MODO_PRUEBA) document.body.classList.add('es-prueba');
   pintar();
   cargarCatalogo();
   cargarRecientes();

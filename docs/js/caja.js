@@ -410,10 +410,14 @@ async function crearClienta(datos, boton) {
 }
 
 // ── Pintado ──────────────────────────────────────────────────────────────────
+// En computadora el foco vuelve solo al buscador después de cada acción, para que
+// el lector nunca quede "desconectado". En el teléfono NO: ahí cada acción abría
+// el teclado y había que cerrarlo a mano, que fue justo lo que molestó en el
+// mostrador. El escaneo no lo necesita: el detector escucha el teclado igual.
+const esTactil = window.matchMedia('(hover: none)').matches;
+
 function enfocarBuscador() {
-  // Con la cámara abierta, NO: enfocar el campo abre el teclado del teléfono
-  // encima de la cámara y tapa hasta el botón de cerrar.
-  if (camara) return;
+  if (camara || esTactil) return;
   const i = $('q');
   if (i && !estado.resultado) setTimeout(() => i.focus({ preventScroll: true }), 30);
 }
@@ -484,8 +488,9 @@ function pintar() {
   // campo en el que estaba escribiendo.
   if (activo === 'q-cliente' && $('q-cliente')) {
     const i = $('q-cliente'); i.focus(); i.setSelectionRange(i.value.length, i.value.length);
-  } else if (!camara && (activo === 'q' || !activo || activo === 'body')) {
-    // Con la cámara abierta no se devuelve el foco: abriría el teclado encima.
+  } else if (!camara && (activo === 'q' || (!esTactil && (!activo || activo === 'body')))) {
+    // Con la cámara abierta no se devuelve el foco (abriría el teclado encima), y
+    // en el teléfono solo se devuelve si la cajera estaba escribiendo de verdad.
     const i = $('q');
     if (i && !estado.cargandoCatalogo) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
@@ -1183,10 +1188,6 @@ document.addEventListener('keydown', (e) => {
   }, 140);
 }, true);
 
-// En computadora, el foco vuelve solo al buscador cuando se toca una zona vacía:
-// así el lector nunca queda "desconectado". En pantallas táctiles no se fuerza,
-// porque abriría el teclado virtual encima de la venta.
-const esTactil = window.matchMedia('(hover: none)').matches;
 document.addEventListener('click', (e) => {
   if (esTactil || estado.resultado || hayModalAbierto()) return;
   if (esCampoDeTexto(e.target) || e.target.closest('button, a, label')) return;
@@ -1278,9 +1279,15 @@ async function abrirCamara() {
 
   let stream;
   try {
-    // La cámara trasera es la que sirve para escanear; si no hay, se usa la que haya.
+    // Cámara trasera, la mayor resolución que dé y enfoque continuo: con los
+    // ajustes por omisión la imagen salía borrosa y costaba leer el código.
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } }, audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 }, height: { ideal: 1080 },
+        advanced: [{ focusMode: 'continuous' }],
+      },
+      audio: false,
     });
   } catch (err) {
     caja.remove();
@@ -1290,6 +1297,29 @@ async function abrirCamara() {
   }
   video.srcObject = stream;
   await video.play().catch(() => {});
+
+  // Linterna: en la tienda el producto suele quedar a contraluz o en sombra.
+  const pista = stream.getVideoTracks()[0];
+  try {
+    const puede = pista.getCapabilities && pista.getCapabilities();
+    if (puede && puede.torch) {
+      const btn = document.createElement('button');
+      btn.className = 'camara__luz';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Encender la luz');
+      btn.innerHTML = svg('<path d="M9 18h6"></path><path d="M10 22h4"></path>'
+        + '<path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2z"></path>', 1.8);
+      let encendida = false;
+      btn.addEventListener('click', async () => {
+        encendida = !encendida;
+        try {
+          await pista.applyConstraints({ advanced: [{ torch: encendida }] });
+          btn.classList.toggle('is-on', encendida);
+        } catch (_) {}
+      });
+      caja.appendChild(btn);
+    }
+  } catch (_) {}
   camara = { stream, video, caja, porTecla, timer: null, lector: null,
              ultimo: '', ultimoT: 0, vioVacio: true };
 

@@ -606,6 +606,14 @@
   .camara__ult { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .camara__cuenta { margin:0.35rem 0 0; color:#ffd9ea; font-size:0.78rem; font-weight:600; }
   .camara__cerrar { max-width:320px; background:#fff; border-color:#fff; }
+  .camara__luz {
+    position:absolute; top:max(1rem, env(safe-area-inset-top)); right:1rem;
+    width:46px; height:46px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(255,255,255,0.22); color:#fff; display:flex; align-items:center;
+    justify-content:center; backdrop-filter:blur(6px);
+  }
+  .camara__luz svg { width:21px; height:21px; }
+  .camara__luz.is-on { background:#ffd966; color:#4a3000; }
 
   /* ── Modales ─────────────────────────────────────────────────────────── */
   .modal-fondo {

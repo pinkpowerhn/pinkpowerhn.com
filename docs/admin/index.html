@@ -330,7 +330,10 @@
     </a>
 
     <div class="top__der">
-      <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">
+      <!-- ETAPA DE PRUEBAS: el boton lleva al modo prueba, donde las ventas se
+         arman de verdad en Shopify pero se borran (no gastan numero de pedido ni
+         mueven inventario). Para empezar a vender de verdad, dejar href="/caja/". -->
+    <a class="btn btn--sm btn--caja" href="/caja/?prueba=1" id="ir-caja">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>

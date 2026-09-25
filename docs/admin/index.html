@@ -160,10 +160,53 @@
   /* ── Layout del panel: en desktop la configuración va en una grilla que ocupa
      el ancho, y la lista de mayoristas a lo ancho debajo. En móvil todo se
      apila en una sola columna. ── */
+  /* align-items: stretch (el valor por omision) deja todas las tarjetas de la
+     fila del mismo alto aunque una explique mas que otra. */
   .settings-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.2rem; margin-bottom: 1.2rem; align-items: start;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.2rem; margin-bottom: 1.2rem;
   }
+
+  /* ── Tarjeta de ajuste ──
+     Arriba el icono con el titulo y la explicacion; abajo, pegado al pie, el
+     control. Asi la fila queda pareja y el control siempre cae a la misma
+     altura, sin importar cuanto texto lleve cada una. */
+  .ajuste { display: flex; flex-direction: column; }
+  .ajuste__cab { display: flex; gap: 0.85rem; align-items: flex-start; }
+  .ajuste__ic {
+    width: 42px; height: 42px; border-radius: 14px; flex: 0 0 auto;
+    background: linear-gradient(140deg, #ffe9f2, #fff6fa); color: var(--pink-dk);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(232,67,122,0.12);
+  }
+  .ajuste__ic svg { width: 21px; height: 21px; }
+  .ajuste__txt h2 { margin: 0 0 0.3rem; font-size: 0.95rem; }
+  .ajuste__txt p { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.6; }
+  .ajuste__pie {
+    margin-top: auto; padding-top: 1.1rem; display: flex; flex-direction: column;
+    gap: 0.6rem;
+  }
+  .ajuste__pie .row { margin: 0; }
+  .ajuste__estado { margin: 0; font-size: 0.78rem; color: var(--muted); }
+
+  /* Interruptor (el mismo de la caja): se entiende mejor que una casilla. */
+  /* El panel pone todas las etiquetas en mayusculas; acá no corresponde, que es
+     una frase. */
+  .sw { display: flex; align-items: center; gap: 0.7rem; cursor: pointer;
+        font-size: 0.87rem; font-weight: 600; color: var(--ink);
+        text-transform: none; letter-spacing: 0; margin: 0; }
+  .sw input {
+    appearance: none; -webkit-appearance: none; width: 44px; height: 26px; margin: 0;
+    border-radius: 999px; background: #e6d3dc; position: relative; cursor: pointer;
+    flex: 0 0 auto; transition: background .2s ease;
+  }
+  .sw input::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+    border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: transform .2s ease;
+  }
+  .sw input:checked { background: var(--pink); }
+  .sw input:checked::after { transform: translateX(18px); }
   .list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
   .list-head h2 { margin: 0; }
 
@@ -371,25 +414,39 @@
     <!-- TAB: Catálogos -->
     <section class="tab-panel" data-tab="catalogos">
       <div class="settings-grid">
-        <!-- Habilitar catálogos para mayoristas -->
-        <div class="card">
-          <h2>🛍️ Catálogos de mayoristas</h2>
-          <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links de catálogos ya compartidos siguen funcionando.</p>
-          <label class="chk"><input type="checkbox" id="catalogo-habilitado" /> Permitir catálogos a las mayoristas</label>
-          <p class="muted" id="catalogo-hab-estado" style="margin:0; font-size:0.8rem"></p>
+        <div class="card ajuste">
+          <div class="ajuste__cab">
+            <span class="ajuste__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1 11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"></path><path d="M8 9V6a4 4 0 0 1 8 0v3"></path></svg></span>
+            <div class="ajuste__txt">
+              <h2>Catálogos de mayoristas</h2>
+              <p>Mientras esté activado, las mayoristas pueden ver y crear sus catálogos. Al desactivarlo, la opción desaparece para ellas. Los links ya compartidos siguen funcionando.</p>
+            </div>
+          </div>
+          <div class="ajuste__pie">
+            <label class="sw"><input type="checkbox" id="catalogo-habilitado" />
+              <span>Permitir catálogos a las mayoristas</span></label>
+            <p class="ajuste__estado" id="catalogo-hab-estado"></p>
+          </div>
         </div>
 
-        <!-- Duración de catálogos -->
-        <div class="card">
-          <h2>🔗 Duración de los catálogos</h2>
-          <p class="muted" style="margin-top:-0.6rem">Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
-          <label class="chk"><input type="checkbox" id="dias-ilimitado" /> Sin vencimiento (ilimitado)</label>
-          <div class="row" id="dias-row">
-            <div>
-              <label>Días</label>
-              <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
+        <div class="card ajuste">
+          <div class="ajuste__cab">
+            <span class="ajuste__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"></path><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"></path></svg></span>
+            <div class="ajuste__txt">
+              <h2>Duración de los catálogos</h2>
+              <p>Por defecto los links son <b>ilimitados</b> (no vencen). Si querés, podés ponerles un vencimiento en días.</p>
             </div>
-            <button class="btn" id="dias-save">Guardar</button>
+          </div>
+          <div class="ajuste__pie">
+            <label class="sw"><input type="checkbox" id="dias-ilimitado" />
+              <span>Sin vencimiento (ilimitado)</span></label>
+            <div class="row" id="dias-row">
+              <div>
+                <label>Días</label>
+                <input type="number" id="dias-input" min="1" max="365" step="1" placeholder="Ej: 30" />
+              </div>
+              <button class="btn" id="dias-save">Guardar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -398,36 +455,55 @@
     <!-- TAB: General -->
     <section class="tab-panel" data-tab="general">
       <div class="settings-grid">
-        <!-- Mínimo mensual -->
-        <div class="card">
-          <h2>📅 Mínimo de compra mensual</h2>
-          <p class="muted" style="margin-top:-0.6rem">Monto que cada mayorista debe alcanzar al mes (en Lempiras).</p>
-          <div class="row">
-            <div>
-              <label>Mínimo mensual</label>
-              <div class="money">
-                <span>L.</span>
-                <input type="number" id="min-input" min="0" step="100" placeholder="0" />
-              </div>
+        <div class="card ajuste">
+          <div class="ajuste__cab">
+            <span class="ajuste__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M14.5 9h-4a1.8 1.8 0 0 0 0 3.6h3a1.8 1.8 0 0 1 0 3.6h-4"></path><line x1="12" y1="7" x2="12" y2="9"></line><line x1="12" y1="16" x2="12" y2="18"></line></svg></span>
+            <div class="ajuste__txt">
+              <h2>Mínimo de compra mensual</h2>
+              <p>Monto que cada mayorista debe alcanzar al mes, en Lempiras.</p>
             </div>
-            <button class="btn" id="min-save">Guardar</button>
+          </div>
+          <div class="ajuste__pie">
+            <div class="row">
+              <div>
+                <label>Mínimo mensual</label>
+                <div class="money">
+                  <span>L.</span>
+                  <input type="number" id="min-input" min="0" step="100" placeholder="0" />
+                </div>
+              </div>
+              <button class="btn" id="min-save">Guardar</button>
+            </div>
           </div>
         </div>
 
-        <!-- Ocultar agotados -->
-        <div class="card">
-          <h2>🛑 Productos agotados</h2>
-          <p class="muted" style="margin-top:-0.6rem">Mientras esté activado, los productos agotados no aparecen en la tienda. Desactívalo cuando quieras que vuelvan a salir.</p>
-          <label class="chk"><input type="checkbox" id="ocultar-agotados" /> Ocultar productos agotados de la tienda</label>
-          <p class="muted" id="ocultar-estado" style="margin:0; font-size:0.8rem"></p>
+        <div class="card ajuste">
+          <div class="ajuste__cab">
+            <span class="ajuste__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle><line x1="4" y1="20" x2="20" y2="4"></line></svg></span>
+            <div class="ajuste__txt">
+              <h2>Productos agotados</h2>
+              <p>Mientras esté activado, los productos agotados no aparecen en la tienda. Desactivalo cuando quieras que vuelvan a salir.</p>
+            </div>
+          </div>
+          <div class="ajuste__pie">
+            <label class="sw"><input type="checkbox" id="ocultar-agotados" />
+              <span>Ocultar agotados de la tienda</span></label>
+            <p class="ajuste__estado" id="ocultar-estado"></p>
+          </div>
         </div>
 
-        <!-- Sincronizar mayoristas con Shopify -->
-        <div class="card">
-          <h2>🔄 Mayoristas en Shopify</h2>
-          <p class="muted" style="margin-top:-0.6rem">Deja a cada mayorista con su ficha de clienta en Shopify: enlaza las que ya existen y crea las que falten (con la etiqueta <b>Mayorista</b>). Podés usarlo las veces que quieras, no duplica clientas. Las que no tengan teléfono quedan por fuera.</p>
-          <button class="btn" id="sync-shopify">Sincronizar con Shopify</button>
-          <p class="muted" id="sync-estado" style="margin:0; font-size:0.8rem"></p>
+        <div class="card ajuste">
+          <div class="ajuste__cab">
+            <span class="ajuste__ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path><path d="M3 21v-5h5"></path></svg></span>
+            <div class="ajuste__txt">
+              <h2>Mayoristas en Shopify</h2>
+              <p>Deja a cada mayorista con su ficha de clienta en Shopify: enlaza las que ya existen y crea las que falten, con la etiqueta <b>Mayorista</b>. Se puede usar las veces que haga falta, no duplica clientas. Las que no tengan teléfono quedan por fuera.</p>
+            </div>
+          </div>
+          <div class="ajuste__pie">
+            <button class="btn btn--ghost" id="sync-shopify">Sincronizar con Shopify</button>
+            <p class="ajuste__estado" id="sync-estado"></p>
+          </div>
         </div>
       </div>
     </section>

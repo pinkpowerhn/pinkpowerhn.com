@@ -39,6 +39,11 @@ const IC = {
   transferencia: '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>',
   credito: '<circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline>',
   check: '<polyline points="20 6 9 17 4 12"></polyline>',
+  // Código de barras con el haz del lector cruzándolo.
+  codigo: '<path d="M3 7V5a1 1 0 0 1 1-1h2"></path><path d="M18 4h2a1 1 0 0 1 1 1v2"></path>'
+        + '<path d="M21 17v2a1 1 0 0 1-1 1h-2"></path><path d="M6 20H4a1 1 0 0 1-1-1v-2"></path>'
+        + '<line x1="7" y1="8" x2="7" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line>'
+        + '<line x1="14" y1="8" x2="14" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line>',
 };
 const svg = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -484,9 +489,15 @@ function bloqueResultados() {
 function bloqueLineas() {
   if (estado.cargandoCatalogo) return '';   // los esqueletos ya ocupan ese lugar
   if (!estado.venta.length) {
-    return `<div class="tarjeta"><div class="vacio">
-      Todavía no hay productos en esta venta.<br />
-      Escaneá el código de barras o escribí el nombre.</div></div>`;
+    return `<div class="tarjeta vacio-caja">
+      <div class="vacio-caja__ic">${svg(IC.codigo, 1.7)}</div>
+      <h3>Todavía no hay productos</h3>
+      <p>Pasá el lector por el código de barras<br />o escribí el nombre en el buscador.</p>
+      <div class="vacio-caja__tip">
+        <span>${svg(IC.mas, 2.2)}</span>
+        También podés agregar algo que no esté en el catálogo
+      </div>
+    </div>`;
   }
   return `<div class="tarjeta scroll-lindo">
     <div class="tarjeta__cab">

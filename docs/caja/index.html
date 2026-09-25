@@ -261,6 +261,28 @@
   .vacio { padding:1.6rem 1.1rem; text-align:center; color:var(--muted); font-size:0.88rem;
            line-height:1.6; }
 
+  /* Pantalla vacia de la venta: es lo primero que ve la cajera al abrir la caja,
+     asi que dice que hacer en vez de limitarse a avisar que no hay nada. */
+  .vacio-caja { text-align:center; padding:2.2rem 1.4rem 1.8rem; }
+  .vacio-caja__ic {
+    width:74px; height:74px; margin:0 auto 1.1rem; border-radius:24px;
+    background:linear-gradient(140deg, #ffe6f0, #fff6fa);
+    display:flex; align-items:center; justify-content:center; color:var(--pink);
+    box-shadow:inset 0 0 0 1px rgba(232,67,122,0.12);
+  }
+  .vacio-caja__ic svg { width:34px; height:34px; }
+  .vacio-caja h3 { margin:0 0 0.35rem; font-size:1.02rem; font-weight:700; color:var(--ink); }
+  .vacio-caja p { margin:0; color:var(--muted); font-size:0.85rem; line-height:1.6; }
+  .vacio-caja__tip {
+    display:inline-flex; align-items:center; gap:0.5rem; margin-top:1.3rem;
+    padding:0.5rem 0.9rem 0.5rem 0.55rem; border-radius:999px; background:#fbf2f6;
+    color:var(--muted); font-size:0.73rem; font-weight:600; text-align:left;
+  }
+  .vacio-caja__tip span { display:flex; width:22px; height:22px; border-radius:50%;
+                          background:#fff; color:var(--pink-dk); align-items:center;
+                          justify-content:center; flex:0 0 auto; }
+  .vacio-caja__tip svg { width:13px; height:13px; }
+
   /* Líneas de la venta */
   /* Cada producto de la venta: la foto a la izquierda ocupando el alto de las
      dos filas, y a la derecha el nombre arriba con la cantidad y el precio
@@ -304,6 +326,34 @@
   .li__sub { flex:1; text-align:right; font-weight:700; font-size:0.97rem; color:var(--ink);
              white-space:nowrap; }
   @media (max-width:520px) {
+    /* El placeholder se achica solo: bajar la letra del INPUT haria que el
+       telefono ampliara la pantalla al tocarlo (iOS amplia por debajo de 16px). */
+    .buscador input { min-height:48px; padding-left:2.6rem; border-radius:14px; }
+    .buscador input::placeholder { font-size:13px; }
+    .buscador .btn { min-height:48px; width:48px; }
+    .buscador .campo-ic svg { left:0.85rem; width:16px; height:16px; }
+    .listo-escaner { font-size:0.56rem; margin-top:-0.1rem; }
+
+    /* El modal ocupaba casi toda la pantalla por los espacios de escritorio. */
+    .modal { padding:1.1rem 1rem max(1rem, env(safe-area-inset-bottom));
+             border-radius:22px 22px 0 0; max-height:88dvh; }
+    .modal__cab { margin-bottom:0.9rem; gap:0.6rem; }
+    .modal__cab h2 { font-size:1.25rem; }
+    .modal__cab p { font-size:0.75rem; }
+    .modal__x { width:32px; height:32px; font-size:1.15rem; }
+    .modal .campo { margin-bottom:0.7rem; }
+    .modal input { padding:0.7rem 0.85rem; border-radius:12px; }
+    .modal__pie { margin-top:1rem; gap:0.5rem; }
+    .modal .btn { min-height:46px; font-size:0.82rem; }
+    .modal .switch { font-size:0.82rem; }
+
+    .vacio-caja { padding:1.7rem 1rem 1.4rem; }
+    .vacio-caja__ic { width:62px; height:62px; border-radius:20px; margin-bottom:0.9rem; }
+    .vacio-caja__ic svg { width:28px; height:28px; }
+    .vacio-caja h3 { font-size:0.95rem; }
+    .vacio-caja p { font-size:0.8rem; }
+    .vacio-caja__tip { font-size:0.68rem; margin-top:1rem; }
+
     .li { gap:0.6rem; padding:0.5rem 0.7rem; }
     .li__img { width:52px; height:52px; border-radius:11px; }
     .li__nom { font-size:0.82rem; line-height:1.25; }

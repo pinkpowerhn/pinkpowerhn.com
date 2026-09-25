@@ -358,7 +358,7 @@ function pintar() {
   main.innerHTML = `
     <section class="col-izq">
       ${bloqueBuscador(valorQ)}
-      ${bloqueResultados()}
+      <div id="resultados">${bloqueResultados()}</div>
       ${bloqueLineas()}
     </section>
     <aside class="col-der">
@@ -378,10 +378,26 @@ function pintar() {
   }
 }
 
+// Esqueletos mientras llega el catálogo: la pantalla se arma igual que cuando
+// hay datos, así no da el salto de "cargando" a la parrilla llena.
+function esqueletos(n = 6) {
+  return `
+    <div class="buscador">
+      <div class="sk sk-buscador"></div>
+      <div class="sk sk-boton"></div>
+    </div>
+    <div class="tarjeta">
+      ${Array.from({ length: n }, () => `
+        <div class="sk-fila">
+          <div class="sk sk-img"></div>
+          <div class="sk-txt"><div class="sk sk-l1"></div><div class="sk sk-l2"></div></div>
+          <div class="sk sk-pre"></div>
+        </div>`).join('')}
+    </div>`;
+}
+
 function bloqueBuscador(valor) {
-  if (estado.cargandoCatalogo) {
-    return `<div class="tarjeta"><div class="cargando"><span class="puntos">Cargando el catálogo</span></div></div>`;
-  }
+  if (estado.cargandoCatalogo) return esqueletos();
   if (estado.errorCatalogo) {
     return `<div class="tarjeta"><div class="tarjeta__cuerpo">
       <div class="aviso-caja aviso-caja--roja">${esc(estado.errorCatalogo)}</div>
@@ -394,11 +410,13 @@ function bloqueBuscador(valor) {
         ${svg(IC.lupa, 1.9)}
         <input id="q" value="${esc(valor)}" placeholder="Escaneá o buscá el producto…"
                autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
-        ${valor ? '<button class="limpiar" data-accion="limpiar-q" type="button" aria-label="Limpiar">&times;</button>' : ''}
+        <button class="limpiar" data-accion="limpiar-q" type="button" aria-label="Limpiar"
+                ${valor ? '' : 'hidden'}>&times;</button>
       </div>
       <button class="btn" data-accion="manual" type="button" title="Producto manual"
               aria-label="Agregar producto manual">${svg(IC.mas)}</button>
-    </div>`;
+    </div>
+    <div class="listo-escaner" id="listo-escaner"><i></i> Listo para escanear</div>`;
 }
 
 function bloqueResultados() {
@@ -417,6 +435,7 @@ function bloqueResultados() {
 }
 
 function bloqueLineas() {
+  if (estado.cargandoCatalogo) return '';   // los esqueletos ya ocupan ese lugar
   if (!estado.venta.length) {
     return `<div class="tarjeta"><div class="vacio">
       Todavía no hay productos en esta venta.<br />
@@ -597,18 +616,17 @@ function vistaExito() {
 $('caja-main').addEventListener('input', (e) => {
   const t = e.target;
   if (t.id === 'q') {
-    const texto = t.value.trim();
-    // Código de barras: calza exacto -> se agrega sin esperar Enter. Es lo que
-    // hace que escanear se sienta instantáneo.
-    const porCodigo = estado.porBarcode.get(texto);
-    if (porCodigo && texto.length >= 6) {
-      t.value = '';
-      estado.resultados = [];
-      agregar(porCodigo);
-      return;
-    }
-    estado.resultados = buscarProductos(texto);
-    pintar();
+    // El escaneo NO se maneja acá: lo atiende el detector de teclado de abajo,
+    // que funciona igual con o sin foco. Acá solo se busca por texto.
+    //
+    // Se repinta SOLO la lista de resultados. Repintar toda la pantalla en cada
+    // tecla destruía y recreaba el propio campo, que es justo donde el lector
+    // está escribiendo: se perdían caracteres de la lectura.
+    estado.resultados = buscarProductos(t.value.trim());
+    const cont = $('resultados');
+    if (cont) cont.innerHTML = bloqueResultados();
+    const limpiar = document.querySelector('[data-accion="limpiar-q"]');
+    if (limpiar) limpiar.hidden = !t.value;
     return;
   }
   if (t.id === 'q-cliente') { buscarClientas(t.value); return; }
@@ -653,6 +671,7 @@ $('caja-main').addEventListener('change', (e) => {
 });
 
 $('caja-main').addEventListener('keydown', (e) => {
+  // Enter escrito a mano (el del lector ya lo consumió el detector de abajo).
   if (e.target.id === 'q' && e.key === 'Enter') {
     e.preventDefault();
     const texto = e.target.value.trim();
@@ -823,6 +842,124 @@ function pedirClienta() {
   });
   setTimeout(() => el.querySelector(soloDigitos ? '#c-tel' : '#c-nom').focus(), 80);
 }
+
+// ── Escáner ──────────────────────────────────────────────────────────────────
+// Un lector de código de barras (USB o Bluetooth) escribe como si fuera un
+// teclado: manda los dígitos y casi siempre un Enter al final. El problema de
+// mostrador es que el foco se pierde en cuanto se toca cualquier otra cosa, y
+// entonces el escaneo se va a la nada.
+//
+// Por eso NO dependemos del foco: se escucha el teclado en toda la página y se
+// distingue al lector por el RITMO — un lector manda las teclas cada pocos
+// milisegundos, una persona no baja de ~80 ms. Si el ritmo es de lector, el
+// código se procesa aunque el buscador no tenga el foco.
+//
+// En teléfono esto es además lo cómodo: sin foco no sale el teclado virtual
+// tapando media pantalla, y el lector Bluetooth funciona igual.
+const RITMO_LECTOR = 45;    // ms máximos entre teclas para considerarlo lector
+const LARGO_MINIMO = 5;     // menos de esto no es un código de barras
+let bufer = '';
+let ultimaTecla = 0;
+let cierreBufer = null;
+
+function hayModalAbierto() { return !!document.querySelector('.modal-fondo'); }
+
+function esCampoDeTexto(el) {
+  if (!el) return false;
+  const t = (el.tagName || '').toLowerCase();
+  return t === 'input' || t === 'textarea' || el.isContentEditable;
+}
+
+function flash(texto, tipo = '') {
+  let el = document.getElementById('flash-caja');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'flash-caja';
+    document.body.appendChild(el);
+  }
+  el.className = 'flash' + (tipo ? ' flash--' + tipo : '');
+  el.textContent = texto;
+  requestAnimationFrame(() => el.classList.add('is-show'));
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('is-show'), 2200);
+}
+
+function procesarEscaneo(codigo) {
+  const limpio = (codigo || '').trim();
+  if (!limpio) return;
+  // El código pudo escribirse dentro del buscador (si tenía el foco): se limpia
+  // para que la próxima lectura empiece en blanco.
+  const q = $('q');
+  if (q) q.value = '';
+  estado.resultados = [];
+
+  const v = estado.porBarcode.get(limpio);
+  if (v) {
+    agregar(v);
+    flash(v.producto, 'ok');
+    return;
+  }
+  // No todas las presentaciones tienen el código cargado todavía: en vez de no
+  // hacer nada, se deja el código en el buscador y se avisa.
+  if (q) { q.value = limpio; estado.resultados = buscarProductos(limpio); }
+  pintar();
+  flash('Ese código no está en el catálogo', 'mal');
+}
+
+// Se escucha en fase de CAPTURA para llegar antes que el manejador del buscador:
+// así una lectura no se procesa dos veces (una por el lector y otra por el Enter
+// del campo).
+document.addEventListener('keydown', (e) => {
+  if (estado.cargandoCatalogo || estado.resultado || hayModalAbierto()) return;
+
+  const activo = document.activeElement;
+  // Si la cajera está escribiendo a mano en OTRO campo (precio, recibí, clienta),
+  // no le robamos las teclas.
+  if (esCampoDeTexto(activo) && activo.id !== 'q') return;
+
+  const ahora = Date.now();
+
+  if (e.key === 'Enter') {
+    // Solo se toma como lectura si las teclas vinieron al ritmo del lector.
+    if (bufer.length >= LARGO_MINIMO) {
+      e.preventDefault();
+      e.stopPropagation();
+      const codigo = bufer;
+      bufer = '';
+      procesarEscaneo(codigo);
+      return;
+    }
+    bufer = '';
+    return;
+  }
+  if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+
+  // Pausa larga = tecleo humano: el búfer arranca de nuevo.
+  if (ahora - ultimaTecla > RITMO_LECTOR) bufer = '';
+  bufer += e.key;
+  ultimaTecla = ahora;
+
+  // Lectores que no mandan Enter: se cierra el código al quedarse quieto.
+  clearTimeout(cierreBufer);
+  cierreBufer = setTimeout(() => {
+    if (bufer.length >= LARGO_MINIMO) {
+      const codigo = bufer;
+      bufer = '';
+      procesarEscaneo(codigo);
+    }
+    bufer = '';
+  }, 140);
+}, true);
+
+// En computadora, el foco vuelve solo al buscador cuando se toca una zona vacía:
+// así el lector nunca queda "desconectado". En pantallas táctiles no se fuerza,
+// porque abriría el teclado virtual encima de la venta.
+const esTactil = window.matchMedia('(hover: none)').matches;
+document.addEventListener('click', (e) => {
+  if (esTactil || estado.resultado || hayModalAbierto()) return;
+  if (esCampoDeTexto(e.target) || e.target.closest('button, a, label')) return;
+  enfocarBuscador();
+});
 
 // ── Arranque ─────────────────────────────────────────────────────────────────
 function arrancar() {

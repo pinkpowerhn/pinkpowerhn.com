@@ -157,8 +157,7 @@
     /* El bloque de cobro tambien llega hasta abajo: asi las dos columnas se ven
        parejas y el boton de cobrar queda siempre al pie. */
     .col-der > .tarjeta:last-child { overflow-y:auto; flex:1 1 auto; }
-    #resultados { overflow-y:auto; flex:0 1 auto; }
-    #resultados .resultados { max-height:100%; }
+
     /* Compactado para que el bloque de cobro entre entero, incluso con el campo
        "Recibi" y el cambio a la vista. */
     .caja .tarjeta__cab { padding:0.6rem 1rem; }
@@ -237,21 +236,29 @@
   .buscador { position:relative; display:flex; gap:0.6rem; margin-bottom:0.9rem; }
   .buscador .campo-ic { flex:1; }
   .buscador input {
-    padding-left:2.9rem; padding-right:11.5rem; min-height:56px; border-radius:16px;
+    padding-left:2.9rem; padding-right:4.2rem; min-height:56px; border-radius:16px;
     background:#fff; box-shadow:var(--sombra-sm); border-color:transparent;
     font-size:16px; font-weight:500;
   }
   .buscador input:focus { border-color:var(--pink); }
   .buscador .limpiar {
-    position:absolute; right:0.7rem; top:50%; transform:translateY(-50%);
     border:none; background:none; color:var(--muted); font-size:1.5rem; cursor:pointer;
-    padding:0 0.3rem; line-height:1;
+    padding:0; line-height:1; display:flex; align-items:center;
   }
   .buscador .btn { flex:0 0 auto; min-height:56px; width:56px; padding:0; }
 
   /* Resultados */
-  .resultados { background:#fff; border-radius:18px; overflow:hidden; margin-bottom:0.9rem;
+  .resultados { background:#fff; border-radius:18px; overflow:hidden;
                 box-shadow:var(--sombra-sm); border:1px solid rgba(232,67,122,0.09); }
+  /* El buscador y su lista van juntos: la lista flota sobre la venta en vez de
+     empujarla. Al escribir, lo de abajo se queda quieto. */
+  .buscador-zona { position:relative; z-index:40; }
+  .buscador-zona #resultados { position:absolute; left:0; right:0; top:100%;
+                               margin-top:-0.2rem; z-index:45;
+                               max-height:min(62dvh, 560px); overflow-y:auto;
+                               border-radius:18px; }
+  .buscador-zona #resultados .resultados { box-shadow:var(--sombra); margin:0; }
+  .buscador-zona #resultados:empty { display:none; }
   .res {
     display:flex; align-items:center; gap:0.8rem; width:100%; text-align:left;
     padding:0.7rem 0.9rem; border:none; border-bottom:1px solid rgba(26,10,18,0.06);
@@ -566,14 +573,17 @@
 
   /* Aviso de escaneo DENTRO del campo, pegado a su esquina derecha: ocupa el
      hueco que de todos modos queda libre y no agrega una linea a la pantalla. */
-  .escaner-chip {
-    position:absolute; right:0.75rem; top:50%; transform:translateY(-50%);
-    display:inline-flex; align-items:center; gap:0.4rem; pointer-events:none;
-    background:#eaf7ef; border-radius:999px; padding:0.3rem 0.65rem;
-    font-size:0.58rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
-    color:var(--ok); white-space:nowrap;
+  /* Esquina derecha del campo: el punto verde del escaner y la X de limpiar,
+     en fila. Antes el aviso era un texto y la X se le montaba encima. */
+  .buscador__der {
+    position:absolute; right:0.8rem; top:50%; transform:translateY(-50%);
+    display:flex; align-items:center; gap:0.55rem;
   }
-  .escaner-chip i { width:6px; height:6px; border-radius:50%; background:var(--ok);
+  .escaner-chip {
+    display:inline-flex; align-items:center; justify-content:center; pointer-events:none;
+    width:20px; height:20px; border-radius:50%; background:#eaf7ef;
+  }
+  .escaner-chip i { width:7px; height:7px; border-radius:50%; background:var(--ok);
                     display:inline-block; animation:latir 1.8s ease-in-out infinite; }
   @keyframes latir { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
 

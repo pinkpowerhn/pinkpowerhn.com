@@ -426,8 +426,10 @@ function pintar() {
 
   main.innerHTML = `
     <section class="col-izq">
-      ${bloqueBuscador(valorQ)}
-      <div id="resultados" class="scroll-lindo">${bloqueResultados()}</div>
+      <div class="buscador-zona">
+        ${bloqueBuscador(valorQ)}
+        <div id="resultados" class="scroll-lindo">${bloqueResultados()}</div>
+      </div>
       ${bloqueLineas()}
     </section>
     <aside class="col-der">
@@ -482,11 +484,13 @@ function bloqueBuscador(valor) {
         ${svg(IC.lupa, 1.9)}
         <input id="q" value="${esc(valor)}" placeholder="Escaneá o buscá el producto…"
                autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
-        <!-- Aviso dentro del propio campo: mientras no se escribe, recuerda que
-             el lector puede disparar ahi. Al escribir cede el lugar a la X. -->
-        <span class="escaner-chip" ${valor ? 'hidden' : ''}><i></i><b>Listo para escanear</b></span>
-        <button class="limpiar" data-accion="limpiar-q" type="button" aria-label="Limpiar"
-                ${valor ? '' : 'hidden'}>&times;</button>
+        <!-- El punto verde avisa que el lector puede disparar acá. Comparte
+             esquina con la X, en una fila, para que nunca se pisen. -->
+        <span class="buscador__der">
+          <span class="escaner-chip" title="Listo para escanear"><i></i></span>
+          <button class="limpiar" data-accion="limpiar-q" type="button" aria-label="Limpiar"
+                  ${valor ? '' : 'hidden'}>&times;</button>
+        </span>
       </div>
       <button class="btn" data-accion="manual" type="button" title="Producto manual"
               aria-label="Agregar producto manual">${svg(IC.mas)}</button>
@@ -728,8 +732,7 @@ $('caja-main').addEventListener('input', (e) => {
     if (cont) cont.innerHTML = bloqueResultados();
     const limpiar = document.querySelector('[data-accion="limpiar-q"]');
     if (limpiar) limpiar.hidden = !t.value;
-    const chip = document.querySelector('.escaner-chip');
-    if (chip) chip.hidden = !!t.value;
+
     return;
   }
   if (t.id === 'q-cliente') {
@@ -824,6 +827,12 @@ $('caja-main').addEventListener('click', (e) => {
   }
   if (estado.verRecientes && !e.target.closest('.tarjeta--cliente')) {
     estado.verRecientes = false;
+    pintar();
+  }
+  // La lista de productos también se cierra al tocar fuera: si no, queda tapando
+  // la venta. El texto escrito se conserva, así que basta volver a escribir.
+  if (estado.resultados.length && !e.target.closest('.buscador-zona')) {
+    estado.resultados = [];
     pintar();
   }
   if (!btn) return;

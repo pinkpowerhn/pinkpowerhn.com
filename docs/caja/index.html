@@ -254,18 +254,22 @@
      empujarla. Al escribir, lo de abajo se queda quieto.
      El contenedor NO lleva borde ni recorte: el redondeado y el scroll viven en
      la lista de adentro, porque con los dos se veia un doble borde raro. */
-  .buscador-zona { position:relative; z-index:40; --boton-mas:56px; }
+  /* El espacio bajo el buscador lo pone la zona, no el buscador: si lo pusiera
+     el buscador, la lista (anclada al 100% de la zona) arrancaba mas abajo. */
+  .buscador-zona { position:relative; z-index:40; --boton-mas:56px; margin-bottom:0.9rem; }
+  .buscador-zona > .buscador { margin-bottom:0; }
   /* Termina donde termina el CAMPO, no donde termina la fila: el boton de
      producto manual no es parte de la busqueda. */
   .buscador-zona #resultados {
     position:absolute; left:0; right:calc(var(--boton-mas) + 0.6rem); top:100%;
-    margin-top:0.4rem; z-index:45;
+    /* Casi pegada al campo: la lista es la continuacion del buscador. */
+    margin-top:0.15rem; z-index:45;
   }
   .buscador-zona #resultados .resultados {
     margin:0; max-height:min(58dvh, 520px); overflow-y:auto;
-    /* Sin redondeo y con sombra marcada: se lee como una hoja que cuelga del
-       campo, no como otra tarjeta suelta. */
-    border-radius:0; border:none;
+    /* Redondeada solo abajo: arriba se corta recto porque cuelga del campo, y
+       abajo cierra con la misma curva del resto de la pantalla. */
+    border-radius:0 0 16px 16px; border:none;
     box-shadow:0 26px 54px -20px rgba(150,30,80,0.55), 0 0 0 1px rgba(232,67,122,0.13);
   }
   .buscador-zona #resultados:empty { display:none; }
@@ -366,7 +370,9 @@
     /* Con la pantalla chica, el desplegable no puede comerse la venta entera.
        Y como ahora es mas angosto (sin el boton +), el texto baja otro punto. */
     .buscador-zona { --boton-mas:48px; }
-    .buscador-zona #resultados .resultados { max-height:min(46dvh, 330px); }
+    .buscador-zona #resultados { margin-top:0.1rem; }
+    .buscador-zona #resultados .resultados { max-height:min(46dvh, 330px);
+                                             border-radius:0 0 14px 14px; }
     .res { min-height:50px; padding:0.4rem 0.6rem; gap:0.55rem; font-size:0.78rem; }
     .res img { width:34px; height:34px; border-radius:8px; }
     .res__meta { font-size:0.62rem; }

@@ -19,7 +19,7 @@
   /* Contenedor angosto solo para el login. */
   .wrap { max-width: 420px; margin: 0 auto; padding: 1.5rem 1.1rem 4rem; }
   /* Panel: aprovecha todo el ancho de la pantalla (con un tope razonable). */
-  .admin { max-width: 1440px; margin: 0 auto; padding: 1.3rem 1.6rem 4rem; }
+  .admin { max-width: 1440px; margin: 0 auto; padding: 1.5rem 1.6rem 4rem; }
   h1 { font-size: 1.35rem; margin: 0; }
   /* ── Cabecera: barra blanca a todo el ancho ── */
   .top {
@@ -27,18 +27,18 @@
     display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.7rem;
     background: #fff; border-bottom: 1px solid rgba(232,67,122,0.12);
     box-shadow: 0 2px 14px -8px rgba(150,30,80,0.35);
-    /* Sale del contenedor del panel para ocupar el ancho de la pantalla. */
-    margin: -1.3rem -1.6rem 1.5rem; padding: 0.7rem 1.6rem;
+    /* Es hermana del panel, no hija: ocupa el ancho de la pagina sin trucos de
+       100vw (que incluye la barra de desplazamiento y desbordaba 8 px). */
+    padding: 0.7rem 1.6rem;
   }
-  .top__izq { display: flex; justify-content: flex-start; }
-  .top__der { display: flex; justify-content: flex-end; }
-  .top__marca { display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
-                text-decoration: none; }
+  .top__marca { display: flex; align-items: center; text-decoration: none; }
   .top__marca img { height: 30px; width: auto; display: block; }
-  .top__marca span {
-    font-size: 0.56rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--muted);
+  /* El titulo va al centro de la barra y las acciones juntas a la derecha. */
+  .top__tit {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.45rem; font-weight: 600;
+    color: var(--ink); line-height: 1; white-space: nowrap;
   }
+  .top__der { display: flex; justify-content: flex-end; align-items: center; gap: 0.6rem; }
 
   /* Menú de la cuenta */
   .cuenta { position: relative; }
@@ -71,7 +71,9 @@
   .cuenta__cab { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.65rem 0.75rem;
                  border-bottom: 1px solid #f7e7ef; margin-bottom: 0.35rem; }
   .cuenta__cab b { display: block; font-size: 0.88rem; color: var(--ink); }
-  .cuenta__cab span { font-size: 0.68rem; color: var(--muted); }
+  /* Solo el texto del rol, no el circulo de la inicial (que es otro span y se
+     quedaba con el color gris en vez del blanco). */
+  .cuenta__cab div span { font-size: 0.68rem; color: var(--muted); }
   .cuenta__op {
     display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left;
     background: none; border: none; cursor: pointer; padding: 0.65rem; border-radius: 11px;
@@ -264,9 +266,10 @@
     .pager { justify-content: center; }
     .pager__nav { flex: 1 1 100%; justify-content: space-between; }
     /* Cabecera compacta: el logo manda y los botones se quedan en su icono. */
-    .top { gap: 0.5rem; margin: -1.1rem -1rem 1.1rem; padding: 0.6rem 1rem; }
+    /* En el telefono no hace falta el titulo: ya se sabe donde esta. */
+    .top { gap: 0.5rem; grid-template-columns: auto 1fr; padding: 0.6rem 1rem; }
     .top__marca img { height: 25px; }
-    .top__marca span { font-size: 0.5rem; letter-spacing: 0.16em; }
+    .top__tit { display: none; }
     .top .btn span { display: none; }
     .top .btn { padding: 0.5rem 0.65rem; }
     .cuenta__nom { display: none; }
@@ -307,58 +310,58 @@
   </div>
 
   <!-- PANEL -->
-  <div id="panel-view" class="admin hidden">
     <!-- Barra blanca a todo el ancho: el logo manda al centro, la caja queda a
-         mano a la izquierda y la sesion se administra desde el menu de la derecha. -->
-    <header class="top">
-      <div class="top__izq">
-        <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
-          <span>Caja</span>
-        </a>
-      </div>
+       mano a la izquierda y la sesion se administra desde el menu de la derecha. -->
+  <header class="top hidden" id="panel-top">
+    <a class="top__marca" href="/" title="Ir a la tienda">
+      <img src="/img/logo.png" alt="PinkPower HN" />
+    </a>
 
-      <a class="top__marca" href="/" title="Ir a la tienda">
-        <img src="/img/logo.png" alt="PinkPower HN" />
-        <span>Panel de administración</span>
+    <span class="top__tit">Panel de administración</span>
+
+    <div class="top__der">
+      <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span>Caja</span>
       </a>
-
-      <div class="top__der">
-        <div class="cuenta" id="cuenta">
-          <button class="cuenta__btn" id="cuenta-btn" type="button"
-                  aria-haspopup="menu" aria-expanded="false">
-            <span class="cuenta__ini" id="cuenta-ini">P</span>
-            <span class="cuenta__nom" id="cuenta-nom">Cuenta</span>
-            <svg class="cuenta__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
-          <div class="cuenta__menu" id="cuenta-menu" role="menu" hidden>
-            <div class="cuenta__cab">
-              <span class="cuenta__ini cuenta__ini--gr" id="cuenta-ini2">P</span>
-              <div>
-                <b id="cuenta-nom2">Cuenta</b>
-                <span>Administradora</span>
-              </div>
+      <div class="cuenta" id="cuenta">
+        <button class="cuenta__btn" id="cuenta-btn" type="button"
+                aria-haspopup="menu" aria-expanded="false">
+          <span class="cuenta__ini" id="cuenta-ini">P</span>
+          <span class="cuenta__nom" id="cuenta-nom">Cuenta</span>
+          <svg class="cuenta__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="cuenta__menu" id="cuenta-menu" role="menu" hidden>
+          <div class="cuenta__cab">
+            <span class="cuenta__ini cuenta__ini--gr" id="cuenta-ini2">P</span>
+            <div>
+              <b id="cuenta-nom2">Cuenta</b>
+              <span>Administradora</span>
             </div>
-            <button class="cuenta__op" id="logout" type="button" role="menuitem">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-              Cerrar sesión
-            </button>
           </div>
+          <button class="cuenta__op" id="logout" type="button" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Cerrar sesión
+          </button>
         </div>
       </div>
-    </header>
+    </div>
+  </header>
+
+  <div id="panel-view" class="admin hidden">
+
 
     <!-- Navegación del panel: pastillas, que en el teléfono se entienden mejor
          que un subrayado fino y se pueden tocar sin apuntar. -->
@@ -565,6 +568,7 @@ document.addEventListener('keydown', (e) => {
 function show(view) {
   $('login-view').classList.toggle('hidden', view !== 'login');
   $('panel-view').classList.toggle('hidden', view !== 'panel');
+  $('panel-top').classList.toggle('hidden', view !== 'panel');
 }
 
 const Toast = Swal.mixin({

@@ -1192,7 +1192,7 @@ function flash(texto, tipo = '') {
   el._t = setTimeout(() => el.classList.remove('is-show'), 2200);
 }
 
-function procesarEscaneo(codigo) {
+async function procesarEscaneo(codigo) {
   const limpio = (codigo || '').trim();
   if (!limpio) return;
   // El código pudo escribirse dentro del buscador (si tenía el foco): se limpia
@@ -1207,12 +1207,37 @@ function procesarEscaneo(codigo) {
     flash(v.producto, 'ok');
     return;
   }
-  // No todas las presentaciones tienen el código cargado todavía: en vez de no
-  // hacer nada, se deja el código en el buscador y se avisa.
+  // No está en el catálogo que tiene la caja. Antes de darlo por perdido se le
+  // pregunta a Shopify: cubre los códigos recién cargados y, sobre todo, los
+  // SECUNDARIOS (una variante puede tener varios códigos y la API solo devuelve
+  // el principal, pero el buscador de Shopify los conoce todos).
+  const enShopify = await preguntarAShopify(limpio);
+  if (enShopify) {
+    estado.catalogo.push({
+      ...enShopify,
+      busca: norm([enShopify.producto, enShopify.marca, enShopify.variante].filter(Boolean).join(' ')),
+    });
+    estado.porBarcode.set(limpio, enShopify);
+    agregar(enShopify);
+    if (camara) fichaCamara(limpio);
+    else flash(enShopify.producto, 'ok');
+    return;
+  }
+
   if (q) { q.value = limpio; estado.resultados = buscarProductos(limpio); }
   estado.codigoSinHallar = limpio;
   pintar();
-  if (!camara) flash('Ese código no está en el catálogo', 'mal');
+  if (camara) fichaCamara(limpio, 'Ese código no está en el catálogo');
+  else flash('Ese código no está en el catálogo', 'mal');
+}
+
+// Una sola consulta, rápida: no rearma el catálogo entero.
+async function preguntarAShopify(codigo) {
+  try {
+    return await api('/admin/caja/codigo?codigo=' + encodeURIComponent(codigo));
+  } catch (_) {
+    return null;   // 404 (no existe) o sin señal: sigue el camino de siempre
+  }
 }
 
 // Pide el catálogo del momento (sin esperar al refresco de fondo) y vuelve a
@@ -1221,20 +1246,29 @@ async function buscarDeNuevo(codigo) {
   const caja = document.getElementById('camara-marcador');
   if (caja) caja.innerHTML = '<p class="camara__ayuda"><span class="puntos">Buscando en Shopify</span></p>';
   else flash('Buscando en Shopify…');
-  try {
-    const data = await api('/admin/caja/catalogo?refrescar=1');
-    estado.catalogo = (data.variantes || []).map((v) => ({
+  let v = await preguntarAShopify(codigo);
+  if (v) {
+    estado.catalogo.push({
       ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
-    }));
-    estado.porBarcode = new Map();
-    for (const v of estado.catalogo) {
-      if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
+    });
+    estado.porBarcode.set(codigo, v);
+  } else {
+    // Último recurso: rearmar el catálogo completo contra Shopify.
+    try {
+      const data = await api('/admin/caja/catalogo?refrescar=1');
+      estado.catalogo = (data.variantes || []).map((x) => ({
+        ...x, busca: norm([x.producto, x.marca, x.variante].filter(Boolean).join(' ')),
+      }));
+      estado.porBarcode = new Map();
+      for (const x of estado.catalogo) {
+        if (x.barcode) estado.porBarcode.set(x.barcode.trim(), x);
+      }
+    } catch (_) {
+      if (caja) fichaCamara(codigo, 'No se pudo consultar. Revisá la señal.');
+      return;
     }
-  } catch (_) {
-    if (caja) fichaCamara(codigo, 'No se pudo consultar. Revisá la señal.');
-    return;
+    v = estado.porBarcode.get(codigo);
   }
-  const v = estado.porBarcode.get(codigo);
   if (!v) {
     if (caja) fichaCamara(codigo, 'Ese código sigue sin estar en Shopify');
     else flash('Ese código sigue sin estar en Shopify', 'mal');

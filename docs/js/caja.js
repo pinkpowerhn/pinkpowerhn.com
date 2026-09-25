@@ -67,6 +67,8 @@ const estado = {
   error: '',
   buscandoCliente: false,
   resClientes: null,    // null = no se buscó; [] = sin resultados
+  recientes: [],        // últimas clientas atendidas
+  verRecientes: false,  // se muestran al tocar el campo, antes de escribir
 };
 
 // ── API ──────────────────────────────────────────────────────────────────────
@@ -161,6 +163,15 @@ async function cargarCatalogo() {
     estado.cargandoCatalogo = false;
     pintar();
     enfocarBuscador();
+  }
+}
+
+async function cargarRecientes() {
+  try {
+    const r = await api('/admin/caja/clientes/recientes');
+    estado.recientes = r.clientes || [];
+  } catch (_) {
+    estado.recientes = [];   // sin recientes la caja funciona igual
   }
 }
 
@@ -343,6 +354,7 @@ function buscarClientas(texto) {
 function elegirCliente(c) {
   estado.cliente = c;
   estado.resClientes = null;
+  estado.verRecientes = false;
   recalcularPrecios();
   pintar();
   enfocarBuscador();
@@ -352,10 +364,18 @@ async function crearClienta(datos, boton) {
   boton.disabled = true; boton.textContent = 'Creando…';
   try {
     const c = await api('/admin/caja/clientes', { method: 'POST', body: JSON.stringify(datos) });
-    elegirCliente(c);
+    // No se agrega sola a la venta: la cajera la busca y la elige cuando quiera.
+    // Queda de primera en las recientes para que sea un toque, no una búsqueda.
+    estado.recientes = [c, ...estado.recientes.filter((x) => x.id !== c.id)];
+    pintar();
+    flash(`${c.nombre} quedó registrada`, 'ok');
+    return true;
   } catch (err) {
     estado.error = err.message || 'No se pudo crear la clienta';
     pintar();
+    return false;
+  } finally {
+    boton.disabled = false; boton.textContent = 'Crear';
   }
 }
 
@@ -462,13 +482,15 @@ function bloqueBuscador(valor) {
         ${svg(IC.lupa, 1.9)}
         <input id="q" value="${esc(valor)}" placeholder="Escaneá o buscá el producto…"
                autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
+        <!-- El código de barras dentro del campo dice, sin texto, que el lector
+             dispara acá. Reemplaza al cartel de "listo para escanear". -->
+        <span class="buscador__cod" aria-hidden="true" ${valor ? 'hidden' : ''}>${svg(IC.codigo, 1.8)}</span>
         <button class="limpiar" data-accion="limpiar-q" type="button" aria-label="Limpiar"
                 ${valor ? '' : 'hidden'}>&times;</button>
       </div>
       <button class="btn" data-accion="manual" type="button" title="Producto manual"
               aria-label="Agregar producto manual">${svg(IC.mas)}</button>
-    </div>
-    <div class="listo-escaner" id="listo-escaner"><i></i> Listo para escanear</div>`;
+    </div>`;
 }
 
 function bloqueResultados() {
@@ -490,13 +512,9 @@ function bloqueLineas() {
   if (estado.cargandoCatalogo) return '';   // los esqueletos ya ocupan ese lugar
   if (!estado.venta.length) {
     return `<div class="tarjeta vacio-caja">
-      <div class="vacio-caja__ic">${svg(IC.codigo, 1.7)}</div>
+      <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
       <h3>Todavía no hay productos</h3>
       <p>Pasá el lector por el código de barras<br />o escribí el nombre en el buscador.</p>
-      <div class="vacio-caja__tip">
-        <span>${svg(IC.mas, 2.2)}</span>
-        También podés agregar algo que no esté en el catálogo
-      </div>
     </div>`;
   }
   return `<div class="tarjeta scroll-lindo">
@@ -555,29 +573,44 @@ function bloqueCliente(valorCli) {
       </div>
     </div>`;
   }
-  let lista = '';
-  if (estado.buscandoCliente) {
-    lista = '<div class="vacio"><span class="puntos">Buscando</span></div>';
-  } else if (estado.resClientes && estado.resClientes.length) {
-    lista = `<div class="resultados" style="margin:0.8rem 0 0">${estado.resClientes.map((c, i) => `
-      <button class="res" data-cli="${i}" type="button">
+  const fila = (c, i, origen) => `
+      <button class="res res--cli" data-cli="${i}" data-origen="${origen}" type="button">
         <span class="res__txt">
           <span class="res__nom">${esc(c.nombre)}</span>
           <span class="res__meta">${esc(c.telefono || 'sin teléfono')}</span>
         </span>
         ${c.mayoreo ? '<span class="chip chip--may">Mayorista</span>' : ''}
-      </button>`).join('')}</div>`;
+      </button>`;
+
+  let lista = '';
+  if (estado.buscandoCliente) {
+    lista = '<div class="vacio"><span class="puntos">Buscando</span></div>';
+  } else if (estado.resClientes && estado.resClientes.length) {
+    lista = `<div class="resultados resultados--cli">
+      ${estado.resClientes.map((c, i) => fila(c, i, 'busqueda')).join('')}</div>`;
   } else if (estado.resClientes) {
-    lista = `<div class="vacio" style="padding:1rem 0 0.8rem">No encontramos esta clienta.</div>
+    lista = `<div class="vacio" style="padding:0.9rem 0 0.7rem">No encontramos esta clienta.</div>
       <button class="btn btn--ancho" data-accion="crear-cliente" type="button">Crear clienta</button>`;
+  } else if (estado.verRecientes && estado.recientes.length) {
+    // Antes de escribir nada: las últimas que compraron. En el mostrador casi
+    // siempre es una de ellas.
+    lista = `<div class="resultados resultados--cli">
+      <div class="resultados__cab">Últimas clientas</div>
+      ${estado.recientes.map((c, i) => fila(c, i, 'recientes')).join('')}</div>`;
   }
-  return `<div class="tarjeta">
+  return `<div class="tarjeta tarjeta--cliente">
     <div class="tarjeta__cab">Clienta <span style="text-transform:none; letter-spacing:0; font-weight:500">(opcional)</span></div>
     <div class="tarjeta__cuerpo">
-      <div class="campo-ic">
-        ${svg(IC.persona, 1.9)}
-        <input id="q-cliente" value="${esc(valorCli)}" placeholder="Nombre o teléfono"
-               autocomplete="off" />
+      <div class="cliente-fila">
+        <div class="campo-ic">
+          ${svg(IC.persona, 1.9)}
+          <input id="q-cliente" value="${esc(valorCli)}" placeholder="Nombre o teléfono"
+                 autocomplete="off" />
+        </div>
+        <button class="btn" data-accion="crear-cliente" type="button"
+                title="Registrar una clienta nueva" aria-label="Registrar clienta nueva">
+          ${svg(IC.mas)}
+        </button>
       </div>
       ${lista}
       ${interruptorMayoreo()}
@@ -695,9 +728,15 @@ $('caja-main').addEventListener('input', (e) => {
     if (cont) cont.innerHTML = bloqueResultados();
     const limpiar = document.querySelector('[data-accion="limpiar-q"]');
     if (limpiar) limpiar.hidden = !t.value;
+    const cod = document.querySelector('.buscador__cod');
+    if (cod) cod.hidden = !!t.value;
     return;
   }
-  if (t.id === 'q-cliente') { buscarClientas(t.value); return; }
+  if (t.id === 'q-cliente') {
+    estado.verRecientes = !t.value.trim() && estado.recientes.length > 0;
+    buscarClientas(t.value);
+    return;
+  }
   if (t.dataset.precio !== undefined) {
     const l = estado.venta[Number(t.dataset.precio)];
     const v = num(t.value);
@@ -734,6 +773,14 @@ $('caja-main').addEventListener('focusout', (e) => {
   }
 });
 
+$('caja-main').addEventListener('focusin', (e) => {
+  if (e.target.id === 'q-cliente' && !estado.verRecientes && !estado.cliente
+      && !e.target.value.trim() && estado.recientes.length) {
+    estado.verRecientes = true;
+    pintar();
+  }
+});
+
 $('caja-main').addEventListener('change', (e) => {
   if (e.target.dataset.accion === 'switch-mayoreo') {
     estado.mayoreo = e.target.checked;
@@ -760,6 +807,7 @@ $('caja-main').addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     estado.resultados = [];
     estado.resClientes = null;
+    estado.verRecientes = false;
     estado.descAbierto = false;
     pintar();
     enfocarBuscador();
@@ -769,9 +817,13 @@ $('caja-main').addEventListener('keydown', (e) => {
 $('caja-main').addEventListener('click', (e) => {
   const btn = e.target.closest('button');
 
-  // Desplegable propio: clic afuera lo cierra.
+  // Desplegables propios: un clic afuera los cierra.
   if (estado.descAbierto && !e.target.closest('.pp-select')) {
     estado.descAbierto = false;
+    pintar();
+  }
+  if (estado.verRecientes && !e.target.closest('.tarjeta--cliente')) {
+    estado.verRecientes = false;
     pintar();
   }
   if (!btn) return;
@@ -792,7 +844,11 @@ $('caja-main').addEventListener('click', (e) => {
     agregar(v);
     return;
   }
-  if (d.cli !== undefined) { elegirCliente(estado.resClientes[Number(d.cli)]); return; }
+  if (d.cli !== undefined) {
+    const origen = d.origen === 'recientes' ? estado.recientes : estado.resClientes;
+    elegirCliente(origen[Number(d.cli)]);
+    return;
+  }
   if (d.quitar !== undefined) { quitar(Number(d.quitar)); return; }
   if (d.mas !== undefined) { cambiarCantidad(Number(d.mas), 1); return; }
   if (d.menos !== undefined) { cambiarCantidad(Number(d.menos), -1); return; }
@@ -905,13 +961,13 @@ function pedirClienta() {
   el.querySelector('[data-ok]').addEventListener('click', async (ev) => {
     const nombre = el.querySelector('#c-nom').value.trim();
     if (!nombre) { el.querySelector('#c-nom').focus(); return; }
-    await crearClienta({
+    const hecho = await crearClienta({
       nombre,
       apellido: el.querySelector('#c-ape').value.trim(),
       telefono: el.querySelector('#c-tel').value.trim(),
       mayoreo: el.querySelector('#c-may').checked,
     }, ev.target);
-    cerrar();
+    if (hecho) cerrar();
   });
   setTimeout(() => el.querySelector(soloDigitos ? '#c-tel' : '#c-nom').focus(), 80);
 }
@@ -1039,6 +1095,7 @@ function arrancar() {
   mostrarCaja();
   pintar();
   cargarCatalogo();
+  cargarRecientes();
 }
 
 if (token) arrancar(); else mostrarLogin();

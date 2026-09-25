@@ -224,6 +224,8 @@
     background:#fff; border:1px solid rgba(232,67,122,0.09); border-radius:20px;
     box-shadow:var(--sombra-sm); overflow:hidden; margin-bottom:0.9rem;
   }
+  /* La de la clienta no recorta: su buscador abre un desplegable hacia afuera. */
+  .tarjeta--cliente { overflow:visible; position:relative; z-index:10; }
   .tarjeta__cab {
     padding:0.85rem 1.1rem; border-bottom:1px solid rgba(26,10,18,0.07);
     font-size:0.62rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;
@@ -276,23 +278,15 @@
      asi que dice que hacer en vez de limitarse a avisar que no hay nada. */
   .vacio-caja { text-align:center; padding:2.2rem 1.4rem 1.8rem; }
   .vacio-caja__ic {
-    width:74px; height:74px; margin:0 auto 1.1rem; border-radius:24px;
-    background:linear-gradient(140deg, #ffe6f0, #fff6fa);
-    display:flex; align-items:center; justify-content:center; color:var(--pink);
-    box-shadow:inset 0 0 0 1px rgba(232,67,122,0.12);
+    width:64px; height:64px; margin:0 auto 1rem; border-radius:22px;
+    background:linear-gradient(140deg, #fff0f6, #fff8fb);
+    display:flex; align-items:center; justify-content:center;
+    color:rgba(232,67,122,0.6); box-shadow:inset 0 0 0 1px rgba(232,67,122,0.09);
   }
-  .vacio-caja__ic svg { width:34px; height:34px; }
-  .vacio-caja h3 { margin:0 0 0.35rem; font-size:1.02rem; font-weight:700; color:var(--ink); }
-  .vacio-caja p { margin:0; color:var(--muted); font-size:0.85rem; line-height:1.6; }
-  .vacio-caja__tip {
-    display:inline-flex; align-items:center; gap:0.5rem; margin-top:1.3rem;
-    padding:0.5rem 0.9rem 0.5rem 0.55rem; border-radius:999px; background:#fbf2f6;
-    color:var(--muted); font-size:0.73rem; font-weight:600; text-align:left;
-  }
-  .vacio-caja__tip span { display:flex; width:22px; height:22px; border-radius:50%;
-                          background:#fff; color:var(--pink-dk); align-items:center;
-                          justify-content:center; flex:0 0 auto; }
-  .vacio-caja__tip svg { width:13px; height:13px; }
+  .vacio-caja__ic svg { width:29px; height:29px; }
+  .vacio-caja h3 { margin:0 0 0.4rem; font-size:0.95rem; font-weight:600;
+                   color:var(--ink-2); letter-spacing:0.01em; }
+  .vacio-caja p { margin:0; color:var(--muted); font-size:0.82rem; line-height:1.65; }
 
   /* Líneas de la venta */
   /* Cada producto de la venta: la foto a la izquierda ocupando el alto de las
@@ -343,7 +337,8 @@
     .buscador input::placeholder { font-size:13px; }
     .buscador .btn { min-height:48px; width:48px; }
     .buscador .campo-ic svg { left:0.85rem; width:16px; height:16px; }
-    .listo-escaner { font-size:0.56rem; margin-top:-0.1rem; }
+    .buscador__cod { right:0.85rem; }
+    .buscador__cod svg { width:19px; height:19px; }
 
     /* El modal ocupaba casi toda la pantalla por los espacios de escritorio. */
     .modal { padding:1.1rem 1rem max(1rem, env(safe-area-inset-bottom));
@@ -361,9 +356,8 @@
     .vacio-caja { padding:1.7rem 1rem 1.4rem; }
     .vacio-caja__ic { width:62px; height:62px; border-radius:20px; margin-bottom:0.9rem; }
     .vacio-caja__ic svg { width:28px; height:28px; }
-    .vacio-caja h3 { font-size:0.95rem; }
-    .vacio-caja p { font-size:0.8rem; }
-    .vacio-caja__tip { font-size:0.68rem; margin-top:1rem; }
+    .vacio-caja h3 { font-size:0.9rem; }
+    .vacio-caja p { font-size:0.78rem; }
 
     .li { gap:0.6rem; padding:0.5rem 0.7rem; }
     .li__img { width:52px; height:52px; border-radius:11px; }
@@ -387,6 +381,20 @@
   .chip--may { background:#e7f6ed; color:var(--ok); }
 
   /* Cliente */
+  /* Buscador de clientas con su botón para registrar una nueva al lado. */
+  .cliente-fila { display:flex; gap:0.5rem; align-items:center; position:relative; }
+  .cliente-fila .campo-ic { flex:1; }
+  .cliente-fila .btn { flex:0 0 auto; width:48px; min-height:48px; padding:0; }
+  .cliente-fila .btn svg { width:19px; height:19px; }
+  /* Flota sobre lo de abajo en vez de empujarlo: si empujara, el bloque de cobro
+     se correría y quedaría cortado justo cuando se busca a la clienta. */
+  .resultados--cli {
+    position:absolute; left:0; right:0; top:calc(100% + 7px); z-index:55;
+    max-height:min(300px, 52dvh); overflow-y:auto; box-shadow:var(--sombra);
+  }
+  .resultados__cab { padding:0.55rem 0.9rem 0.35rem; font-size:0.6rem; font-weight:700;
+                     letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .res--cli { min-height:54px; }
   .cliente-sel { display:flex; align-items:center; gap:0.6rem; }
   .cliente-sel__n { flex:1; font-weight:700; font-size:1rem; }
   .switch { display:flex; align-items:center; gap:0.65rem; margin-top:0.9rem;
@@ -552,17 +560,14 @@
   .sk-buscador { height:56px; border-radius:16px; flex:1; }
   .sk-boton { height:56px; width:56px; border-radius:999px; flex:0 0 auto; }
 
-  /* Señal de que el lector puede disparar sin tocar la pantalla */
-  .listo-escaner {
-    display:flex; align-items:center; justify-content:center; gap:0.45rem;
-    font-size:0.62rem; letter-spacing:0.14em; text-transform:uppercase;
-    color:var(--ok); font-weight:700; margin:-0.3rem 0 0.8rem;
+  /* Señal de que el lector dispara en este campo: un código de barras adentro,
+     sin texto. El cartel "listo para escanear" competía con el buscador. */
+  .buscador__cod {
+    position:absolute; right:1.15rem; display:flex; color:rgba(232,67,122,0.42);
+    pointer-events:none; transition:color .2s ease;
   }
-  .listo-escaner i { width:7px; height:7px; border-radius:50%; background:var(--ok);
-                     display:inline-block; animation:latir 1.8s ease-in-out infinite; }
-  @keyframes latir { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
-  .listo-escaner--off { color:var(--muted); }
-  .listo-escaner--off i { background:#d9c2ce; animation:none; }
+  .buscador__cod svg { width:21px; height:21px; }
+  .buscador input:focus ~ .buscador__cod { color:var(--pink); }
 
   /* Aviso flotante del escaneo (código no encontrado, producto agregado) */
   .flash {

@@ -4,7 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex, nofollow" />
-<title>Panel de Mayoreo · PinkPower HN</title>
+<title>Panel · PinkPower HN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
   :root { --pink:#e8437a; --pink-dk:#c01f6b; --ink:#3a1424; --muted:#9a7385; }
@@ -18,11 +21,27 @@
   /* Panel: aprovecha todo el ancho de la pantalla (con un tope razonable). */
   .admin { max-width: 1440px; margin: 0 auto; padding: 1.3rem 1.6rem 4rem; }
   h1 { font-size: 1.35rem; margin: 0; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
-  .top__brand { display: flex; align-items: center; gap: 0.6rem; flex: 1; }
+  /* ── Cabecera ── */
+  .top {
+    display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1.4rem;
+    padding-bottom: 1rem; border-bottom: 1px solid rgba(232,67,122,0.13);
+  }
+  .top__logo { display: flex; align-items: center; text-decoration: none; flex: 0 0 auto; }
+  .top__logo img { height: 34px; width: auto; display: block; }
+  .top__sep { width: 1px; height: 26px; background: rgba(26,10,18,0.13); flex: 0 0 auto; }
+  .top__eti {
+    flex: 1; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem;
+    font-weight: 600; color: var(--ink); line-height: 1;
+  }
   /* El boton de la caja es un enlace: necesita alinearse como los botones. */
-  a.btn { display: inline-flex; align-items: center; gap: 0.3rem; text-decoration: none; }
-  .top__brand b { color: var(--pink-dk); }
+  a.btn { display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
+  .btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
+  .btn--sm { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .btn--caja {
+    background: linear-gradient(135deg, #f0568a, var(--pink-dk)); color: #fff;
+    box-shadow: 0 6px 18px -8px rgba(192,31,107,0.8);
+  }
+  .btn--caja:hover { filter: brightness(1.06); background: linear-gradient(135deg, #f0568a, var(--pink-dk)); }
   .card {
     background: #fff; border-radius: 14px; padding: 1.3rem 1.3rem;
     box-shadow: 0 8px 28px rgba(150,30,80,0.10);
@@ -126,17 +145,28 @@
   .modal__acts { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.2rem; }
   .modal__acts .btn { padding: 0.7rem 1.5rem; }
 
-  /* ── Tabs (segmentan el panel: Mayoristas / Catálogos / General) ── */
-  .tabs { display: flex; gap: 0.2rem; border-bottom: 2px solid #f4e4ec; margin-bottom: 1.4rem; overflow-x: auto; }
+  /* ── Navegación (Mayoristas / Catálogos / General) ──
+     Pastillas sobre un riel: en el teléfono son mas faciles de tocar que un
+     subrayado fino, y el riel se desliza si no caben. */
+  .tabs {
+    display: flex; gap: 0.3rem; margin-bottom: 1.4rem; overflow-x: auto;
+    background: #fdeef5; border-radius: 999px; padding: 0.3rem;
+    width: fit-content; max-width: 100%;
+  }
   .tabs::-webkit-scrollbar { height: 0; }
   .tab {
     background: none; border: none; cursor: pointer; white-space: nowrap;
-    padding: 0.75rem 1.15rem; font-family: inherit; font-weight: 600; font-size: 0.9rem;
-    color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px;
-    display: inline-flex; align-items: center; gap: 0.45rem; transition: color 0.16s ease;
+    padding: 0.6rem 1.1rem; font-family: inherit; font-weight: 600; font-size: 0.85rem;
+    color: var(--muted); border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    transition: color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
   }
+  .tab svg { width: 16px; height: 16px; }
   .tab:hover { color: var(--pink-dk); }
-  .tab.is-active { color: var(--pink-dk); border-bottom-color: var(--pink); }
+  .tab.is-active {
+    color: var(--pink-dk); background: #fff;
+    box-shadow: 0 4px 12px -4px rgba(150,30,80,0.28);
+  }
   .tab-panel { display: none; }
   .tab-panel.is-active { display: block; animation: tabIn 0.22s ease; }
   @keyframes tabIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -185,7 +215,15 @@
     .search input { font-size: 0.85rem; }
     .pager { justify-content: center; }
     .pager__nav { flex: 1 1 100%; justify-content: space-between; }
-    .tab { padding: 0.7rem 0.85rem; font-size: 0.82rem; }
+    /* Cabecera compacta: el logo manda y los botones se quedan en su icono. */
+    .top { gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.8rem; }
+    .top__logo img { height: 28px; }
+    .top__eti { font-size: 1.15rem; }
+    .top .btn span { display: none; }
+    .top .btn { padding: 0.5rem 0.65rem; }
+    .tabs { width: 100%; justify-content: space-between; }
+    .tab { padding: 0.55rem 0.7rem; font-size: 0.76rem; flex: 1; justify-content: center; }
+    .tab svg { width: 15px; height: 15px; }
     /* Textos un poco más pequeños en móvil */
     tbody tr td:not(.td-acts) { font-size: 0.84rem; }
     tbody tr td:not(.td-acts)::before { font-size: 0.58rem; }
@@ -220,20 +258,62 @@
 
   <!-- PANEL -->
   <div id="panel-view" class="admin hidden">
-    <div class="top">
-      <div class="top__brand"><span>🛍️</span><h1>Mayoreo · <b>PinkPower</b></h1></div>
+    <!-- El panel dejo de ser solo de mayoreo (tiene catalogos y ajustes), asi
+         que la cabecera lleva el logo de la tienda y no un titulo de modulo. -->
+    <header class="top">
+      <a class="top__logo" href="/" title="Ir a la tienda">
+        <img src="/img/logo.png" alt="PinkPower HN" />
+      </a>
+      <span class="top__sep"></span>
+      <span class="top__eti">Panel</span>
       <!-- La caja abre en pantalla completa (mismo usuario y token que el panel):
            necesita botones grandes y el foco fijo en el buscador para el lector. -->
-      <a class="btn btn--sm" href="/caja/" id="ir-caja">🧾 Caja</a>
-      <button class="btn btn--ghost btn--sm" id="logout">Salir</button>
-    </div>
+      <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span>Caja</span>
+      </a>
+      <button class="btn btn--ghost btn--sm" id="logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Salir</span>
+      </button>
+    </header>
 
-    <!-- Tabs de navegación del panel -->
-    <div class="tabs" role="tablist">
-      <button class="tab is-active" data-tab="mayoristas">👥 Mayoristas</button>
-      <button class="tab" data-tab="catalogos">🛍️ Catálogos</button>
-      <button class="tab" data-tab="general">⚙️ General</button>
-    </div>
+    <!-- Navegación del panel: pastillas, que en el teléfono se entienden mejor
+         que un subrayado fino y se pueden tocar sin apuntar. -->
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="mayoristas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9.5" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+        </svg>
+        Mayoristas
+      </button>
+      <button class="tab" data-tab="catalogos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        Catálogos
+      </button>
+      <button class="tab" data-tab="general">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        General
+      </button>
+    </nav>
 
     <!-- TAB: Mayoristas (lista con buscador + paginación) -->
     <section class="tab-panel is-active" data-tab="mayoristas">

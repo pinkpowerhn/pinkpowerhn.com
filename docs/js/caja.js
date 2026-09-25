@@ -419,6 +419,14 @@ function pintar() {
   if (estado.resultado) { main.innerHTML = vistaExito(); main.classList.add('caja--exito'); return; }
   main.classList.remove('caja--exito');
 
+  // Mientras llega el catálogo, la pantalla entera es esqueleto: mostrar la
+  // mitad derecha ya armada (con totales en cero) hacía ver la caja a medio
+  // hacer, como si algo hubiera fallado.
+  if (estado.cargandoCatalogo && !estado.errorCatalogo) {
+    main.innerHTML = esqueletoPantalla();
+    return;
+  }
+
   const valorQ = $('q') ? $('q').value : '';
   const valorCli = $('q-cliente') ? $('q-cliente').value : '';
   const activo = document.activeElement ? document.activeElement.id : '';
@@ -452,26 +460,58 @@ function pintar() {
   devolverScroll(main, tops);
 }
 
-// Esqueletos mientras llega el catálogo: la pantalla se arma igual que cuando
-// hay datos, así no da el salto de "cargando" a la parrilla llena.
-function esqueletos(n = 6) {
+// Esqueleto de la pantalla completa: mismas cajas y mismas alturas que la caja
+// ya cargada, para que al llegar los datos nada salte de lugar.
+function esqueletoPantalla() {
+  const filas = (n) => Array.from({ length: n }, () => `
+    <div class="sk-fila">
+      <div class="sk sk-img"></div>
+      <div class="sk-txt"><div class="sk sk-l1"></div><div class="sk sk-l2"></div></div>
+      <div class="sk sk-pre"></div>
+    </div>`).join('');
   return `
-    <div class="buscador">
-      <div class="sk sk-buscador"></div>
-      <div class="sk sk-boton"></div>
-    </div>
-    <div class="tarjeta">
-      ${Array.from({ length: n }, () => `
-        <div class="sk-fila">
-          <div class="sk sk-img"></div>
-          <div class="sk-txt"><div class="sk sk-l1"></div><div class="sk sk-l2"></div></div>
-          <div class="sk sk-pre"></div>
-        </div>`).join('')}
+    <section class="col-izq">
+      <div class="buscador-zona">
+        <div class="buscador">
+          <div class="sk sk-buscador"></div>
+          <div class="sk sk-boton"></div>
+        </div>
+      </div>
+      <div class="tarjeta">${filas(6)}</div>
+    </section>
+    <aside class="col-der">
+      <div class="tarjeta">
+        <div class="tarjeta__cab"><div class="sk sk-cab"></div></div>
+        <div class="tarjeta__cuerpo">
+          <div class="sk sk-campo"></div>
+          <div class="sk sk-l2" style="margin-top:0.9rem; height:22px; width:70%"></div>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <div class="tarjeta__cab"><div class="sk sk-cab"></div></div>
+        <div class="tarjeta__cuerpo">
+          <div class="sk-linea"><div class="sk sk-l2" style="width:30%"></div>
+                                <div class="sk sk-l2" style="width:22%"></div></div>
+          <div class="sk-linea" style="margin-top:1rem">
+            <div class="sk sk-l2" style="width:24%"></div>
+            <div class="sk" style="height:30px; width:42%"></div>
+          </div>
+          <div class="sk-pagos">
+            <div class="sk sk-pago"></div><div class="sk sk-pago"></div>
+            <div class="sk sk-pago"></div><div class="sk sk-pago"></div>
+          </div>
+          <div class="sk sk-cobrar"></div>
+        </div>
+      </div>
+    </aside>
+    <div class="barra">
+      <div class="barra__tot"><div class="sk sk-l2" style="width:60px"></div>
+                              <div class="sk" style="height:26px; width:120px"></div></div>
+      <div class="sk sk-cobrar" style="margin:0"></div>
     </div>`;
 }
 
 function bloqueBuscador(valor) {
-  if (estado.cargandoCatalogo) return esqueletos();
   if (estado.errorCatalogo) {
     return `<div class="tarjeta"><div class="tarjeta__cuerpo">
       <div class="aviso-caja aviso-caja--roja">${esc(estado.errorCatalogo)}</div>
@@ -513,7 +553,6 @@ function bloqueResultados() {
 }
 
 function bloqueLineas() {
-  if (estado.cargandoCatalogo) return '';   // los esqueletos ya ocupan ese lugar
   if (!estado.venta.length) {
     return `<div class="tarjeta vacio-caja">
       <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>

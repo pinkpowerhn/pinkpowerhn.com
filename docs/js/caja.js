@@ -571,7 +571,7 @@ function bloqueBuscador(valor) {
                   ${valor ? '' : 'hidden'}>&times;</button>
         </span>
       </div>
-      ${estado.hayCamara ? `<button class="btn" data-accion="camara" type="button"
+      ${estado.hayCamara ? `<button class="btn solo-escritorio" data-accion="camara" type="button"
               title="Escanear con la cámara" aria-label="Escanear con la cámara">
               ${svg(IC.camara, 1.8)}</button>` : ''}
       <button class="btn" data-accion="manual" type="button" title="Producto manual"
@@ -605,8 +605,8 @@ function bloqueLineas() {
         <h3>Escaneá el primer producto</h3>
         <p>Tocá el código de barras para abrir la cámara,<br />
            pasá el lector, o escribí el nombre en el buscador.</p>
-        <button class="btn btn--pink vacio-caja__accion" data-accion="camara" type="button">
-          ${svg(IC.camara, 1.8)} Escanear con la cámara</button>
+        <button class="btn btn--pink vacio-caja__accion solo-escritorio" data-accion="camara"
+          type="button">${svg(IC.camara, 1.8)} Escanear con la cámara</button>
       ` : `
         <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
         <h3>Todavía no hay productos</h3>
@@ -787,6 +787,8 @@ function bloqueResumen() {
 
 function barraMovil() {
   return `<div class="barra">
+    ${estado.hayCamara ? `<button class="btn btn--ancho barra__escanear" data-accion="camara"
+      type="button">${svg(IC.camara, 1.8)} Escanear con la cámara</button>` : ''}
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
@@ -1225,10 +1227,33 @@ function cargarZxing() {
 // Dentro de la cámara hay que ver que el producto entró: el aviso flotante solo
 // no alcanzaba (de hecho quedaba tapado), y la clienta escaneó cinco veces lo
 // mismo sin darse cuenta.
+function marcadorRepetido(codigo) {
+  const caja = document.getElementById('camara-marcador');
+  if (!caja || caja.dataset.repetido === codigo) return;
+  // El visto con el nombre del producto tiene que quedarse un momento: si no,
+  // al agregar uno nuevo el aviso saltaba enseguida a "ya está en la venta".
+  if (camara && Date.now() - camara.ultimoT < 2500) return;
+  caja.dataset.repetido = codigo;
+  const v = estado.porBarcode.get(codigo);
+  const linea = v ? estado.venta.find((l) => l.variant_id === v.variant_id) : null;
+  caja.innerHTML = `
+    <p class="camara__ayuda">Ya está en la venta${linea ? ': ' + esc(linea.nombre) : ''}</p>
+    <button class="camara__mas" type="button" data-sumar="${esc(codigo)}">
+      Sumar otro (llevás ${linea ? linea.cantidad : 1})</button>`;
+  const btn = caja.querySelector('[data-sumar]');
+  if (btn) btn.addEventListener('click', () => {
+    const p = estado.porBarcode.get(codigo);
+    if (!p) return;
+    agregar(p);
+    marcadorCamara(true);
+  });
+}
+
 function marcadorCamara(entro) {
   if (!camara) return;
   const caja = document.getElementById('camara-marcador');
   if (!caja) return;
+  caja.dataset.repetido = '';
   const unidades = estado.venta.reduce((n, l) => n + l.cantidad, 0);
   const ultima = estado.venta[estado.venta.length - 1];
   if (!entro) {
@@ -1321,7 +1346,7 @@ async function abrirCamara() {
     }
   } catch (_) {}
   camara = { stream, video, caja, porTecla, timer: null, lector: null,
-             ultimo: '', ultimoT: 0, vioVacio: true };
+             ultimo: '', ultimoT: 0, leidos: new Set() };
 
   const alLeer = (texto) => {
     const codigo = String(texto || '').trim();
@@ -1331,11 +1356,16 @@ async function abrirCamara() {
     // segundo. Para NO cobrar de más, el mismo código solo vuelve a contar
     // cuando el producto salió del encuadre (se vio un fotograma sin código).
     // Uno distinto entra enseguida, que es lo que pasa al pasar productos.
-    if (codigo === camara.ultimo && !camara.vioVacio) return;
+    // Cada producto entra UNA vez mientras la cámara está abierta. Se intentó
+    // repetir cuando el código salía del encuadre, pero al reenfocar la cámara lo
+    // pierde varios segundos y el mismo producto entraba tres o cuatro veces. Y
+    // cobrar de más es peor que tocar un botón: si hacen falta dos, se suman a
+    // mano desde el propio marcador.
+    if (camara.leidos.has(codigo)) { marcadorRepetido(codigo); return; }
     if (ahora - camara.ultimoT < 600) return;   // dos fotogramas del mismo instante
+    camara.leidos.add(codigo);
     camara.ultimo = codigo;
     camara.ultimoT = ahora;
-    camara.vioVacio = false;
     if (navigator.vibrate) navigator.vibrate(40);
     const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
     procesarEscaneo(codigo);
@@ -1350,7 +1380,6 @@ async function abrirCamara() {
         try {
           const encontrados = await detector.detect(video);
           if (encontrados && encontrados.length) alLeer(encontrados[0].rawValue);
-          else if (camara) camara.vioVacio = true;
         } catch (_) {}
       }, 250);
       return;
@@ -1380,11 +1409,7 @@ async function abrirCamara() {
         const mapa = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(fuente));
         const res = lector.decodeBitmap(mapa);
         if (res) alLeer(res.getText());
-      } catch (_) {
-        // Fotograma sin código: es lo normal, y además avisa que el producto
-        // anterior ya salió del encuadre.
-        if (camara) camara.vioVacio = true;
-      }
+      } catch (_) { /* fotograma sin código: es lo normal */ }
     }, 300);
   } catch (err) {
     flash('Este navegador no puede escanear con la cámara', 'mal');

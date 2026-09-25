@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="/css/ui-tabla.css" />
+<script src="/js/ui-tabla.js" defer></script>
 <style>
   :root { --pink:#e8437a; --pink-dk:#c01f6b; --ink:#3a1424; --muted:#9a7385; }
   * { box-sizing: border-box; }
@@ -87,11 +89,13 @@
   a.btn { display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
   .btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
   .btn--sm { display: inline-flex; align-items: center; gap: 0.4rem; }
-  .btn--caja {
-    background: linear-gradient(135deg, #f0568a, var(--pink-dk)); color: #fff;
-    box-shadow: 0 6px 18px -8px rgba(192,31,107,0.8);
+  /* La caja destaca sin gritar: rosa claro con el texto oscuro, y la misma
+     pastilla que el menu de la cuenta para que la pareja se vea de una pieza. */
+  a.btn--caja {
+    background: #ffe9f2; color: var(--pink-dk); border: 1.5px solid #fbd3e4;
+    border-radius: 999px; box-shadow: none;
   }
-  .btn--caja:hover { filter: brightness(1.06); background: linear-gradient(135deg, #f0568a, var(--pink-dk)); }
+  a.btn--caja:hover { background: #ffd9ea; color: var(--pink-dk); border-color: var(--pink); }
   .card {
     background: #fff; border-radius: 14px; padding: 1.3rem 1.3rem;
     box-shadow: 0 8px 28px rgba(150,30,80,0.10);
@@ -137,10 +141,6 @@
     color: var(--muted); font-weight: 600; font-size: 0.92rem; pointer-events: none;
   }
   .money input { padding-left: 2.1rem; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 0.7rem 0.5rem; font-size: 0.9rem; border-bottom: 1px solid #f4e4ec; }
-  th { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-  tbody tr:hover { background: #fff8fb; }
   .pill { font-size: 0.66rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 999px; }
   .pill--on { background: #e3f9ec; color: #1c9e54; }
   .pill--off { background: #ffe6ec; color: #d61f4a; }
@@ -165,7 +165,6 @@
   }
   .list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
   .list-head h2 { margin: 0; }
-  .table-wrap { overflow-x: auto; }
 
   /* ── Modal (crear / editar mayorista) ── */
   .modal {
@@ -231,45 +230,22 @@
   .pager__nav { display: flex; align-items: center; gap: 0.5rem; }
   .pager__info { font-size: 0.8rem; color: var(--muted); }
 
-  /* ── Móvil: la tabla de mayoristas se rompía (5 columnas + 4 botones en la
-     última celda). En pantallas angostas cada fila se muestra como una tarjeta
-     apilada, con el nombre del campo (data-label) a la izquierda y los botones
-     de acción en su propia fila, para que no se desborden. ── */
+  /* ── Móvil (la lista de mayoristas trae su propia versión en tarjetas, en
+     css/ui-tabla.css) ── */
   @media (max-width: 640px) {
     .admin { padding: 1.1rem 1rem 3.5rem; }
-    table, tbody, tr, td { display: block; width: 100%; }
-    thead { display: none; }
-    tbody tr {
-      background: #fff8fb; border: 1.5px solid #f0d6e2; border-radius: 12px;
-      padding: 0.5rem 0.8rem; margin-bottom: 0.8rem;
-    }
-    tbody tr:hover { background: #fff8fb; }
-    tbody tr td { border: none; padding: 0.32rem 0; }
-    tbody tr td:not(.td-acts) {
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    }
-    tbody tr td:not(.td-acts)::before {
-      content: attr(data-label);
-      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--muted); flex: 0 0 auto;
-    }
-    /* Fila "sin mayoristas" (colspan) no lleva etiqueta ni flex */
-    tbody tr td[colspan] { display: block; }
-    tbody tr td[colspan]::before { display: none; }
-    .td-acts { padding-top: 0.5rem !important; margin-top: 0.15rem; border-top: 1px solid #f4e4ec !important; }
-    .acts { justify-content: flex-start; }
-    .acts .btn { flex: 1 1 auto; text-align: center; }
-    .list-head { flex-wrap: wrap; }
-    .list-head .btn { flex: 1 1 100%; padding: 0.5rem 1rem; font-size: 0.78rem; }
-    .search { max-width: none; min-width: 0; flex: 1 1 100%; }
-    .search input { font-size: 0.85rem; }
-    .pager { justify-content: center; }
-    .pager__nav { flex: 1 1 100%; justify-content: space-between; }
     /* Cabecera compacta: el logo manda y los botones se quedan en su icono. */
-    /* En el telefono no hace falta el titulo: ya se sabe donde esta. */
-    .top { gap: 0.5rem; grid-template-columns: auto 1fr; padding: 0.6rem 1rem; }
-    .top__marca img { height: 25px; }
+    /* En el telefono no hace falta el titulo: ya se sabe donde esta. El logo va
+       al centro, con la caja de un lado y la cuenta del otro.
+       display:contents disuelve el grupo de la derecha para que sus dos botones
+       entren como celdas propias del grid y se puedan repartir. */
+    .top { gap: 0.5rem; grid-template-columns: 1fr auto 1fr; padding: 0.6rem 0.9rem; }
     .top__tit { display: none; }
+    .top__der { display: contents; }
+    .top #ir-caja { order: 1; justify-self: start; }
+    .top__marca { order: 2; justify-self: center; }
+    .top__marca img { height: 25px; }
+    .top .cuenta { order: 3; justify-self: end; }
     .top .btn span { display: none; }
     .top .btn { padding: 0.5rem 0.65rem; }
     .cuenta__nom { display: none; }
@@ -278,9 +254,6 @@
     .tab { padding: 0.55rem 0.7rem; font-size: 0.76rem; flex: 1; justify-content: center; }
     .tab svg { width: 15px; height: 15px; }
     /* Textos un poco más pequeños en móvil */
-    tbody tr td:not(.td-acts) { font-size: 0.84rem; }
-    tbody tr td:not(.td-acts)::before { font-size: 0.58rem; }
-    .acts .btn { font-size: 0.72rem; padding: 0.4rem 0.6rem; }
     .card h2 { font-size: 0.9rem; }
     .card .muted, .pager__info { font-size: 0.76rem; }
     .chk { font-size: 0.85rem; }
@@ -395,20 +368,9 @@
     <!-- TAB: Mayoristas (lista con buscador + paginación) -->
     <section class="tab-panel is-active" data-tab="mayoristas">
       <div class="card">
-        <div class="list-head">
-          <div class="search">
-            <span class="search__ic">🔍</span>
-            <input type="search" id="search" placeholder="Buscar por mayorista" autocomplete="off" />
-          </div>
-          <button class="btn" id="open-new">＋ Nueva mayorista</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Usuario</th><th>Nombre</th><th>Emprendimiento</th><th>Estado</th><th>Catálogos en línea</th><th></th></tr></thead>
-            <tbody id="cuentas-body"></tbody>
-          </table>
-        </div>
-        <div class="pager" id="pager"></div>
+        <!-- La lista la arma el componente de tabla (docs/js/ui-tabla.js): trae
+             buscador, filtros, esqueleto, acciones en los tres puntos y paginado. -->
+        <div id="tabla-mayoristas"></div>
       </div>
     </section>
 
@@ -631,52 +593,10 @@ async function loadAll() {
   } catch (ex) { panelMsg(ex.message, false); }
 }
 
-// Lista de mayoristas: se trae completa y se filtra/pagina en el navegador.
-const PAGE_SIZE = 10;
+// Lista de mayoristas: se trae completa y el componente de tabla se encarga de
+// buscar, filtrar y paginar en el navegador.
 let cuentasAll = [];
-let cuentasPage = 1;
-let cuentasQuery = '';
-
-async function reloadCuentas() {
-  cuentasAll = await api('/admin/cuentas');
-  renderCuentas();
-}
-
-$('search').addEventListener('input', (e) => {
-  cuentasQuery = e.target.value;
-  cuentasPage = 1;
-  renderCuentas();
-});
-
-function filtrarCuentas() {
-  const q = cuentasQuery.trim().toLowerCase();
-  if (!q) return cuentasAll;
-  return cuentasAll.filter(r =>
-    (r.usuario || '').toLowerCase().includes(q) ||
-    (r.nombre || '').toLowerCase().includes(q) ||
-    (r.emprendimiento || '').toLowerCase().includes(q) ||
-    (r.telefono || '').toLowerCase().includes(q));
-}
-
-function renderPager(total, pages) {
-  const pager = $('pager');
-  if (total === 0) { pager.innerHTML = ''; return; }
-  const from = (cuentasPage - 1) * PAGE_SIZE + 1;
-  const to = Math.min(cuentasPage * PAGE_SIZE, total);
-  const info = pages <= 1
-    ? `${total} ${total === 1 ? 'mayorista' : 'mayoristas'}`
-    : `${from}–${to} de ${total}`;
-  const nav = pages <= 1 ? '' : `
-    <div class="pager__nav">
-      <button class="btn btn--ghost btn--sm" id="pg-prev" ${cuentasPage === 1 ? 'disabled' : ''}>‹ Anterior</button>
-      <span class="pager__info">Página ${cuentasPage} de ${pages}</span>
-      <button class="btn btn--ghost btn--sm" id="pg-next" ${cuentasPage === pages ? 'disabled' : ''}>Siguiente ›</button>
-    </div>`;
-  pager.innerHTML = `<span class="pager__info">${info}</span>${nav}`;
-  const prev = $('pg-prev'), next = $('pg-next');
-  if (prev) prev.addEventListener('click', () => { if (cuentasPage > 1) { cuentasPage--; renderCuentas(); } });
-  if (next) next.addEventListener('click', () => { if (cuentasPage < pages) { cuentasPage++; renderCuentas(); } });
-}
+let tablaMayoristas = null;
 
 // Sin teléfono la mayorista NO puede finalizar un pedido (el checkout lo toma de
 // su cuenta). Se marca en la lista para que sea fácil de detectar y corregir.
@@ -684,58 +604,68 @@ function sinTelefono(r) {
   return String(r.telefono || '').replace(/\D/g, '').length < 8;
 }
 
-function renderCuentas() {
-  const body = $('cuentas-body');
-  if (!cuentasAll.length) {
-    body.innerHTML = '<tr><td colspan="6" class="muted">Sin mayoristas todavía.</td></tr>';
-    $('pager').innerHTML = '';
-    return;
-  }
-  const filtered = filtrarCuentas();
-  if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="6" class="muted">Sin resultados para “${esc(cuentasQuery.trim())}”.</td></tr>`;
-    $('pager').innerHTML = '';
-    return;
-  }
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  if (cuentasPage > pages) cuentasPage = pages;
-  if (cuentasPage < 1) cuentasPage = 1;
-  const rows = filtered.slice((cuentasPage - 1) * PAGE_SIZE, cuentasPage * PAGE_SIZE);
-  body.innerHTML = rows.map(r => `
-    <tr>
-      <td data-label="Usuario"><b>${esc(r.usuario)}</b></td>
-      <td data-label="Nombre">${esc(r.nombre || '')}</td>
-      <td data-label="Emprendimiento">${esc(r.emprendimiento || '')}</td>
-      <td data-label="Estado">
+// Las acciones viejas leen sus datos del botón que las disparó. Desde el menú de
+// los tres puntos ya no hay botón, así que se les pasa uno de mentira con los
+// mismos datos: evita reescribir la lógica de cada acción.
+function comoBoton(datos) {
+  return { currentTarget: { dataset: datos, disabled: false } };
+}
+
+function crearTablaMayoristas() {
+  tablaMayoristas = PPTabla.crear($('tabla-mayoristas'), {
+    porPagina: 12,
+    buscarTexto: 'Buscar por nombre, usuaria o teléfono',
+    vacio: 'Todavía no hay mayoristas registradas',
+    accionPrincipal: { texto: '＋ Nueva mayorista', al: () => openMayoristaModal('create') },
+    columnas: [
+      { clave: 'usuario', titulo: 'Usuaria', principal: true },
+      { clave: 'nombre', titulo: 'Nombre' },
+      { clave: 'emprendimiento', titulo: 'Emprendimiento' },
+      { titulo: 'Estado', html: (r) => `
         <span class="pill ${r.activo ? 'pill--on' : 'pill--off'}">${r.activo ? 'Activa' : 'Inactiva'}</span>
-        ${sinTelefono(r) ? '<span class="pill pill--off" title="Sin teléfono no puede hacer pedidos: editala y agregáselo">Sin teléfono</span>' : ''}
-      </td>
-      <td data-label="Catálogos en línea"><span class="pill ${r.catalogo_online ? 'pill--on' : 'pill--off'}">${r.catalogo_online ? 'Habilitados' : 'No'}</span></td>
-      <td class="td-acts">
-        <div class="acts">
-          <button class="btn btn--ghost btn--sm act-edit" data-user="${esc(r.usuario)}" data-nombre="${esc(r.nombre || '')}" data-emp="${esc(r.emprendimiento || '')}" data-tel="${esc(r.telefono || '')}">Editar</button>
-          <button class="btn btn--ghost btn--sm act-pass" data-user="${esc(r.usuario)}">Clave</button>
-          <button class="btn btn--ghost btn--sm act-catalogo" data-user="${esc(r.usuario)}" data-on="${r.catalogo_online ? 1 : 0}">
-            ${r.catalogo_online ? 'Quitar catálogos' : 'Dar catálogos'}
-          </button>
-          <button class="btn btn--ghost btn--sm act-estado" data-user="${esc(r.usuario)}" data-activo="${r.activo ? 1 : 0}">
-            ${r.activo ? 'Desactivar' : 'Activar'}
-          </button>
-          <button class="btn btn--danger btn--sm act-delcat" data-user="${esc(r.usuario)}" data-n="${r.catalogos || 0}" ${(r.catalogos || 0) === 0 ? 'disabled' : ''}>
-            Borrar catálogos${(r.catalogos || 0) ? ` (${r.catalogos})` : ''}
-          </button>
-        </div>
-      </td>
-    </tr>`).join('');
-  body.querySelectorAll('.act-estado').forEach(b => b.addEventListener('click', toggleEstado));
-  body.querySelectorAll('.act-catalogo').forEach(b => b.addEventListener('click', toggleCatalogo));
-  body.querySelectorAll('.act-pass').forEach(b => b.addEventListener('click', cambiarPassword));
-  body.querySelectorAll('.act-edit').forEach(b => b.addEventListener('click', (e) => {
-    const d = e.currentTarget.dataset;
-    openMayoristaModal('edit', { usuario: d.user, nombre: d.nombre, emprendimiento: d.emp, telefono: d.tel });
-  }));
-  body.querySelectorAll('.act-delcat').forEach(b => b.addEventListener('click', borrarCatalogos));
-  renderPager(filtered.length, pages);
+        ${sinTelefono(r) ? '<span class="pill pill--off" title="Sin teléfono no puede hacer pedidos: editala y agregáselo">Sin teléfono</span>' : ''}` },
+      { titulo: 'Catálogos', html: (r) => `
+        <span class="pill ${r.catalogo_online ? 'pill--on' : 'pill--off'}">${r.catalogo_online ? 'Habilitados' : 'No'}</span>` },
+    ],
+    filtros: [
+      { clave: 'activo', titulo: 'Estado',
+        opciones: [{ v: 'si', t: 'Activas' }, { v: 'no', t: 'Inactivas' },
+                   { v: 'sintel', t: 'Sin teléfono' }],
+        aplica: (r, v) => v === 'si' ? !!r.activo : v === 'no' ? !r.activo : sinTelefono(r) },
+      { clave: 'catalogo_online', titulo: 'Catálogos',
+        opciones: [{ v: 'si', t: 'Con catálogos en línea' }, { v: 'no', t: 'Sin catálogos' }],
+        aplica: (r, v) => v === 'si' ? !!r.catalogo_online : !r.catalogo_online },
+    ],
+    buscar: (r, t) => [r.usuario, r.nombre, r.emprendimiento, r.telefono]
+      .some((x) => String(x || '').toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').includes(t)),
+    acciones: (r) => [
+      { texto: 'Editar datos',
+        al: () => openMayoristaModal('edit', { usuario: r.usuario, nombre: r.nombre || '',
+                                               emprendimiento: r.emprendimiento || '',
+                                               telefono: r.telefono || '' }) },
+      { texto: 'Cambiar contraseña',
+        al: () => cambiarPassword(comoBoton({ user: r.usuario })) },
+      { texto: r.catalogo_online ? 'Quitar catálogos en línea' : 'Dar catálogos en línea',
+        al: () => toggleCatalogo(comoBoton({ user: r.usuario, on: r.catalogo_online ? '1' : '0' })) },
+      { texto: r.activo ? 'Desactivar cuenta' : 'Activar cuenta', peligro: !!r.activo,
+        al: () => toggleEstado(comoBoton({ user: r.usuario, activo: r.activo ? '1' : '0' })) },
+      { texto: `Borrar catálogos${(r.catalogos || 0) ? ` (${r.catalogos})` : ''}`,
+        peligro: true, desactivada: !(r.catalogos || 0),
+        al: () => borrarCatalogos(comoBoton({ user: r.usuario, n: String(r.catalogos || 0) })) },
+    ],
+  });
+}
+
+async function reloadCuentas() {
+  if (!tablaMayoristas) crearTablaMayoristas();
+  tablaMayoristas.cargando();
+  cuentasAll = await api('/admin/cuentas');
+  tablaMayoristas.datos(cuentasAll);
+}
+
+function renderCuentas() {
+  if (tablaMayoristas) tablaMayoristas.datos(cuentasAll);
 }
 
 // ── Modal crear / editar mayorista (compartido) ──
@@ -769,7 +699,7 @@ mm.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', c
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && mm.classList.contains('is-open')) closeMayoristaModal();
 });
-$('open-new').addEventListener('click', () => openMayoristaModal('create'));
+// (El botón de "Nueva mayorista" ahora lo pinta el componente de tabla.)
 
 $('mm-form').addEventListener('submit', async (e) => {
   e.preventDefault();

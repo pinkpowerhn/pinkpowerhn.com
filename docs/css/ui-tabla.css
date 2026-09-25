@@ -1,0 +1,177 @@
+/* Componente de tabla del panel — PinkPower
+   En computadora es una tabla; por debajo de 760 px cada fila se vuelve una
+   tarjeta, porque una tabla de cinco columnas no se lee en un teléfono. */
+
+.pp-tabla { --pp-t-linea: rgba(26,10,18,0.08); }
+
+/* ── Barra de herramientas (buscar + filtros + acción) ───────────────────── */
+.pp-tabla__barra {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+.pp-tabla__buscar { position: relative; flex: 1 1 240px; max-width: 380px; display: flex; }
+.pp-tabla__buscar svg {
+  position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--muted); pointer-events: none;
+}
+.pp-tabla__buscar input {
+  width: 100%; padding: 0.7rem 0.9rem 0.7rem 2.6rem; margin: 0;
+  border: 1.5px solid #f0d6e2; border-radius: 999px; background: #fff;
+  font-family: inherit; font-size: 0.88rem; color: var(--ink);
+}
+.pp-tabla__buscar input:focus {
+  outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.pp-tabla__buscar input::-webkit-search-cancel-button { display: none; }
+
+/* Filtro: reusa el desplegable propio (mismo patrón que el de la tienda). */
+.pp-tabla__filtro { position: relative; flex: 0 0 auto; }
+.pp-tabla__filtro .pp-select__btn {
+  display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer;
+  background: #fff; border: 1.5px solid #f0d6e2; border-radius: 999px;
+  padding: 0.62rem 0.95rem; font-family: inherit; font-size: 0.82rem; font-weight: 600;
+  color: var(--ink); transition: border-color .18s ease, box-shadow .18s ease;
+}
+.pp-tabla__filtro .pp-select__btn svg:first-child { width: 15px; height: 15px; color: var(--pink); }
+.pp-tabla__filtro .pp-select__btn:hover { border-color: var(--pink); }
+.pp-tabla__filtro .pp-select__btn[aria-expanded="true"] {
+  border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.pp-tabla__filtro .pp-select__chev { width: 12px; height: 12px; color: var(--pink-dk); transition: transform .2s ease; }
+.pp-tabla__filtro .pp-select__btn[aria-expanded="true"] .pp-select__chev { transform: rotate(180deg); }
+.pp-tabla__filtro .pp-select__menu {
+  position: absolute; top: calc(100% + 7px); left: 0; z-index: 40; min-width: 210px;
+  background: #fff; border-radius: 15px; padding: 0.4rem;
+  border: 1px solid rgba(232,67,122,0.12); box-shadow: 0 20px 44px -18px rgba(150,30,80,0.45);
+  animation: ppTablaIn .16s ease;
+}
+.pp-tabla__filtro .pp-select__menu[hidden] { display: none; }
+.pp-tabla__filtro .pp-select__opt {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 0.6rem 0.75rem; border-radius: 10px; cursor: pointer; font-family: inherit;
+  font-size: 0.84rem; color: var(--ink); transition: background .15s ease;
+}
+.pp-tabla__filtro .pp-select__opt:hover { background: #fff0f6; }
+.pp-tabla__filtro .pp-select__opt.is-active { background: #ffeff6; color: var(--pink-dk); font-weight: 700; }
+@keyframes ppTablaIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.pp-tabla__principal { margin-left: auto; white-space: nowrap; }
+
+/* ── Tabla ───────────────────────────────────────────────────────────────── */
+.pp-tabla__tabla { width: 100%; border-collapse: collapse; }
+.pp-tabla__tabla th {
+  text-align: left; padding: 0 1rem 0.7rem; font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--pp-t-linea); white-space: nowrap;
+}
+.pp-tabla__tabla td {
+  padding: 0.85rem 1rem; border-bottom: 1px solid var(--pp-t-linea);
+  font-size: 0.87rem; color: var(--ink); vertical-align: middle;
+}
+.pp-tabla__tabla tbody tr { transition: background .15s ease; }
+.pp-tabla__tabla tbody tr:hover { background: #fffafc; }
+.pp-tabla__tabla tbody tr:last-child td { border-bottom: none; }
+.pp-tabla__td-ppal { font-weight: 700; }
+.pp-tabla__th-acc, .pp-tabla__td-acc { width: 48px; text-align: right; }
+
+/* Botón de los tres puntos */
+.pp-tabla__puntos {
+  width: 34px; height: 34px; border-radius: 50%; border: none; background: none;
+  color: var(--muted); cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; transition: background .15s ease, color .15s ease;
+}
+.pp-tabla__puntos svg { width: 18px; height: 18px; }
+.pp-tabla__puntos:hover { background: #ffeef5; color: var(--pink-dk); }
+
+/* Menú de acciones (se cuelga del body para que no lo recorte la tarjeta) */
+.pp-tabla__menu {
+  position: absolute; z-index: 90; min-width: 186px; background: #fff;
+  border-radius: 14px; padding: 0.4rem; border: 1px solid rgba(232,67,122,0.12);
+  box-shadow: 0 22px 46px -18px rgba(150,30,80,0.45); animation: ppTablaIn .15s ease;
+}
+.pp-tabla__op {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 0.62rem 0.7rem; border-radius: 10px; cursor: pointer; font-family: inherit;
+  font-size: 0.85rem; font-weight: 600; color: var(--ink); transition: background .15s ease, color .15s ease;
+}
+.pp-tabla__op:hover { background: #fff0f6; color: var(--pink-dk); }
+.pp-tabla__op.is-peligro { color: #c0392b; }
+.pp-tabla__op.is-peligro:hover { background: #ffeeec; color: #a93226; }
+.pp-tabla__op:disabled { color: #c9b3bf; cursor: not-allowed; background: none; }
+
+/* ── Esqueleto ───────────────────────────────────────────────────────────── */
+.pp-sk {
+  display: block; height: 11px; border-radius: 999px;
+  background: linear-gradient(100deg, #f7e6ee 20%, #fdf4f8 42%, #f7e6ee 62%);
+  background-size: 220% 100%; animation: ppSk 1.3s linear infinite;
+}
+.pp-sk--puntos { width: 18px; height: 18px; border-radius: 50%; margin-left: auto; }
+@keyframes ppSk { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+
+/* ── Vacío ───────────────────────────────────────────────────────────────── */
+.pp-tabla__vacio { text-align: center; padding: 3rem 1.2rem; }
+.pp-tabla__vacio-ic {
+  width: 58px; height: 58px; margin: 0 auto 0.9rem; border-radius: 20px;
+  background: linear-gradient(140deg, #fff0f6, #fff8fb); display: flex;
+  align-items: center; justify-content: center; color: rgba(232,67,122,0.55);
+  box-shadow: inset 0 0 0 1px rgba(232,67,122,0.09);
+}
+.pp-tabla__vacio-ic svg { width: 26px; height: 26px; }
+.pp-tabla__vacio p { margin: 0; color: var(--muted); font-size: 0.87rem; }
+
+/* ── Paginación ──────────────────────────────────────────────────────────── */
+.pp-tabla__pies {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.8rem;
+  padding-top: 1rem; margin-top: 0.2rem; flex-wrap: wrap;
+}
+.pp-tabla__cuenta { font-size: 0.78rem; color: var(--muted); }
+.pp-tabla__pags { display: flex; align-items: center; gap: 0.5rem; }
+.pp-tabla__pag {
+  border: 1.5px solid #f0d6e2; background: #fff; border-radius: 999px;
+  padding: 0.45rem 0.95rem; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+  color: var(--ink); cursor: pointer; transition: border-color .15s ease, color .15s ease;
+}
+.pp-tabla__pag:hover:not(:disabled) { border-color: var(--pink); color: var(--pink-dk); }
+.pp-tabla__pag:disabled { opacity: 0.45; cursor: not-allowed; }
+.pp-tabla__pag-num { font-size: 0.78rem; font-weight: 700; color: var(--muted); min-width: 52px; text-align: center; }
+
+/* ── Teléfono: cada fila es una tarjeta ──────────────────────────────────── */
+@media (max-width: 760px) {
+  .pp-tabla__tabla, .pp-tabla__tabla tbody, .pp-tabla__tabla tr, .pp-tabla__tabla td {
+    display: block; width: 100%;
+  }
+  .pp-tabla__tabla thead { display: none; }
+  .pp-tabla__tabla tbody tr {
+    position: relative; background: #fff; border: 1px solid var(--pp-t-linea);
+    border-radius: 16px; padding: 0.85rem 1rem; margin-bottom: 0.7rem;
+    box-shadow: 0 6px 18px -12px rgba(150,30,80,0.4);
+  }
+  .pp-tabla__tabla tbody tr:hover { background: #fff; }
+  .pp-tabla__tabla td { border: none; padding: 0.18rem 0; font-size: 0.83rem; }
+  /* Cada dato con su etiqueta chiquita al lado, salvo el principal, que hace de
+     título de la tarjeta. */
+  .pp-tabla__tabla td:not(.pp-tabla__td-ppal):not(.pp-tabla__td-acc) {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  }
+  .pp-tabla__tabla td:not(.pp-tabla__td-ppal):not(.pp-tabla__td-acc)::before {
+    content: attr(data-titulo); font-size: 0.58rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex: 0 0 auto;
+  }
+  .pp-tabla__td-ppal {
+    font-size: 0.98rem !important; font-weight: 700; padding: 0 3rem 0.5rem 0 !important;
+    margin-bottom: 0.4rem; border-bottom: 1px solid var(--pp-t-linea) !important;
+    /* El panel alinea las celdas a la derecha en su CSS viejo; el titulo de la
+       tarjeta tiene que quedar a la izquierda. */
+    text-align: left !important;
+  }
+  /* Los tres puntos van a la esquina de la tarjeta: las acciones dejan de ser
+     una hilera de botones que la llenaba. */
+  .pp-tabla__td-acc { position: absolute; top: 0.6rem; right: 0.6rem; width: auto; padding: 0 !important; }
+  .pp-tabla__barra { gap: 0.5rem; }
+  .pp-tabla__buscar { flex: 1 1 100%; max-width: none; }
+  .pp-tabla__filtro { flex: 1 1 auto; }
+  .pp-tabla__filtro .pp-select__btn { width: 100%; justify-content: center; }
+  .pp-tabla__principal { margin-left: 0; flex: 1 1 100%; justify-content: center; }
+  .pp-tabla__pies { justify-content: center; }
+  .pp-tabla__pags { flex: 1 1 100%; justify-content: space-between; }
+}

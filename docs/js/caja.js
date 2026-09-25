@@ -75,6 +75,7 @@ const estado = {
   buscandoCliente: false,
   resClientes: null,    // null = no se buscó; [] = sin resultados
   hayCamara: false,     // se muestra el botón de escanear solo si el equipo tiene
+  codigoSinHallar: '',  // último código escaneado que no está en el catálogo
   recientes: [],        // últimas clientas atendidas
   verRecientes: false,  // se muestran al tocar el campo, antes de escribir
 };
@@ -184,12 +185,12 @@ $('login-form').addEventListener('submit', async (e) => {
 });
 
 // ── Catálogo ─────────────────────────────────────────────────────────────────
-async function cargarCatalogo(intento = 1) {
+async function cargarCatalogo(intento = 1, forzar = false) {
   estado.cargandoCatalogo = true;
   estado.errorCatalogo = '';
   pintar();
   try {
-    const data = await api('/admin/caja/catalogo');
+    const data = await api('/admin/caja/catalogo' + (forzar ? '?refrescar=1' : ''));
     estado.catalogo = (data.variantes || []).map((v) => ({
       ...v,
       // Texto de búsqueda precalculado: buscar no puede recorrer y normalizar
@@ -206,7 +207,7 @@ async function cargarCatalogo(intento = 1) {
     // "Failed to fetch" en inglés; ahora se reintenta solo, dos veces.
     if (intento < 3 && err.message !== 'Sesión expirada') {
       await new Promise((r) => setTimeout(r, 900 * intento));
-      return cargarCatalogo(intento + 1);
+      return cargarCatalogo(intento + 1, forzar);
     }
     estado.errorCatalogo = err.message === 'Failed to fetch'
       ? 'No se pudo conectar. Revisá la señal y tocá Reintentar.'
@@ -225,6 +226,26 @@ async function cargarRecientes() {
   } catch (_) {
     estado.recientes = [];   // sin recientes la caja funciona igual
   }
+}
+
+// Repasa el catálogo sin que se note: ni esqueleto ni parpadeo, solo cambia la
+// lista en memoria. Así, un código cargado en Shopify aparece a los pocos
+// minutos aunque la caja lleve horas abierta.
+async function repasarCatalogo() {
+  if (estado.cargandoCatalogo || camara) return;
+  try {
+    const data = await api('/admin/caja/catalogo');
+    const nuevas = (data.variantes || []).map((v) => ({
+      ...v,
+      busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
+    }));
+    if (!nuevas.length) return;
+    estado.catalogo = nuevas;
+    estado.porBarcode = new Map();
+    for (const v of estado.catalogo) {
+      if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
+    }
+  } catch (_) { /* si falla, se sigue con el que había */ }
 }
 
 function buscarProductos(texto) {
@@ -253,6 +274,7 @@ function precioSegunModo(v) {
 }
 
 function agregar(v) {
+  estado.codigoSinHallar = '';
   const existente = estado.venta.find((l) => l.variant_id === v.variant_id);
   if (existente) {
     existente.cantidad += 1;
@@ -327,6 +349,7 @@ function cambio() {
 
 function nuevaVenta() {
   try { localStorage.removeItem(GUARDADO); } catch (_) {}
+  estado.codigoSinHallar = '';
   estado.venta = [];
   estado.cliente = null;
   estado.mayoreo = false;
@@ -512,6 +535,10 @@ function pintar() {
       <div class="buscador-zona">
         ${bloqueBuscador(valorQ)}
         <div id="resultados">${bloqueResultados()}</div>
+      ${estado.codigoSinHallar ? `<div class="sin-hallar">
+        <span>El código <b>${esc(estado.codigoSinHallar)}</b> no está en el catálogo.</span>
+        <button class="btn btn--sm" data-accion="rebuscar" type="button">Buscar de nuevo en Shopify</button>
+      </div>` : ''}
       </div>
       ${bloqueLineas()}
     </section>
@@ -1015,6 +1042,7 @@ $('caja-main').addEventListener('click', (e) => {
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
     case 'camara': abrirCamara(); break;
+    case 'rebuscar': buscarDeNuevo(estado.codigoSinHallar); break;
     case 'crear-cliente': pedirClienta(); break;
   }
 });
@@ -1182,8 +1210,41 @@ function procesarEscaneo(codigo) {
   // No todas las presentaciones tienen el código cargado todavía: en vez de no
   // hacer nada, se deja el código en el buscador y se avisa.
   if (q) { q.value = limpio; estado.resultados = buscarProductos(limpio); }
+  estado.codigoSinHallar = limpio;
   pintar();
-  flash('Ese código no está en el catálogo', 'mal');
+  if (!camara) flash('Ese código no está en el catálogo', 'mal');
+}
+
+// Pide el catálogo del momento (sin esperar al refresco de fondo) y vuelve a
+// probar ese código: es lo que hace falta apenas se carga un código en Shopify.
+async function buscarDeNuevo(codigo) {
+  const caja = document.getElementById('camara-marcador');
+  if (caja) caja.innerHTML = '<p class="camara__ayuda"><span class="puntos">Buscando en Shopify</span></p>';
+  else flash('Buscando en Shopify…');
+  try {
+    const data = await api('/admin/caja/catalogo?refrescar=1');
+    estado.catalogo = (data.variantes || []).map((v) => ({
+      ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
+    }));
+    estado.porBarcode = new Map();
+    for (const v of estado.catalogo) {
+      if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
+    }
+  } catch (_) {
+    if (caja) fichaCamara(codigo, 'No se pudo consultar. Revisá la señal.');
+    return;
+  }
+  const v = estado.porBarcode.get(codigo);
+  if (!v) {
+    if (caja) fichaCamara(codigo, 'Ese código sigue sin estar en Shopify');
+    else flash('Ese código sigue sin estar en Shopify', 'mal');
+    return;
+  }
+  if (camara) camara.leidos.delete(codigo);
+  estado.codigoSinHallar = '';
+  agregar(v);
+  if (camara) fichaCamara(codigo);
+  else flash(v.producto, 'ok');
 }
 
 // Se escucha en fase de CAPTURA para llegar antes que el manejador del buscador:
@@ -1277,8 +1338,15 @@ function fichaCamara(codigo, aviso) {
   if (!caja) return;
 
   if (aviso) {
-    caja.innerHTML = `<p class="camara__ayuda camara__ayuda--mal">${esc(aviso)}</p>`;
+    const puedeReintentar = aviso.includes('no está en el catálogo');
+    caja.innerHTML = `<div class="camara__aviso">
+        <p class="camara__ayuda camara__ayuda--mal">${esc(aviso)}</p>
+        ${puedeReintentar ? `<button class="camara__mas" type="button" data-rebuscar>
+          Buscar de nuevo en Shopify</button>` : ''}
+      </div>`;
     caja.dataset.codigo = '';
+    const btn = caja.querySelector('[data-rebuscar]');
+    if (btn) btn.addEventListener('click', () => buscarDeNuevo(codigo));
     return;
   }
   const v = estado.porBarcode.get(codigo);
@@ -1534,6 +1602,9 @@ function arrancar() {
   cargarCatalogo();
   cargarRecientes();
   detectarCamara();
+  // Tres minutos: el servidor rearma su copia cada dos, así que un código nuevo
+  // llega en unos cinco minutos como mucho, sin tocar nada.
+  setInterval(repasarCatalogo, 180000);
   if (recuperada) {
     setTimeout(() => flash('Retomamos la venta que tenías a medias', 'ok'), 800);
   }

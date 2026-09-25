@@ -270,6 +270,16 @@
   .buscador .limpiar[hidden] { display:none; }
   .buscador .btn { flex:0 0 auto; min-height:56px; width:56px; padding:0; }
 
+  /* Aviso de código que no está en el catálogo, con el botón para volver a
+     preguntarle a Shopify (por si se acaba de cargar ahí). */
+  .sin-hallar {
+    display:flex; align-items:center; justify-content:space-between; gap:0.7rem;
+    flex-wrap:wrap; background:#fff8e6; border:1px solid #f0dcb0; border-radius:14px;
+    padding:0.7rem 0.9rem; margin-bottom:0.9rem; font-size:0.82rem; color:var(--aviso);
+  }
+  .sin-hallar b { color:var(--ink); }
+  .sin-hallar .btn { background:#fff; border-color:#e8d3a8; color:var(--aviso); }
+
   /* Resultados */
   .resultados { background:#fff; border-radius:18px; overflow:hidden;
                 box-shadow:var(--sombra-sm); border:1px solid rgba(232,67,122,0.09); }
@@ -633,6 +643,12 @@
   .camara__ficha .cant { background:transparent; border-color:rgba(255,255,255,0.28); }
   .camara__ficha .cant button { background:transparent; color:#fff; }
   .camara__ficha .cant span { color:#fff; }
+  .camara__aviso { width:100%; text-align:center; padding:0.4rem 0; }
+  .camara__mas {
+    margin-top:0.4rem; border:none; border-radius:999px; cursor:pointer;
+    background:rgba(255,255,255,0.14); color:#fff; font-family:inherit;
+    font-size:0.78rem; font-weight:700; padding:0.5rem 1.1rem; min-height:38px;
+  }
   .camara__cerrar { margin-top:0.5rem; background:#fff; border-color:#fff; }
   .camara__luz {
     position:absolute; top:0.6rem; right:0.6rem;

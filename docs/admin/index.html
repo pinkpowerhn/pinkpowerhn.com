@@ -21,18 +21,66 @@
   /* Panel: aprovecha todo el ancho de la pantalla (con un tope razonable). */
   .admin { max-width: 1440px; margin: 0 auto; padding: 1.3rem 1.6rem 4rem; }
   h1 { font-size: 1.35rem; margin: 0; }
-  /* ── Cabecera ── */
+  /* ── Cabecera: barra blanca a todo el ancho ── */
   .top {
-    display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1.4rem;
-    padding-bottom: 1rem; border-bottom: 1px solid rgba(232,67,122,0.13);
+    position: sticky; top: 0; z-index: 60;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.7rem;
+    background: #fff; border-bottom: 1px solid rgba(232,67,122,0.12);
+    box-shadow: 0 2px 14px -8px rgba(150,30,80,0.35);
+    /* Sale del contenedor del panel para ocupar el ancho de la pantalla. */
+    margin: -1.3rem -1.6rem 1.5rem; padding: 0.7rem 1.6rem;
   }
-  .top__logo { display: flex; align-items: center; text-decoration: none; flex: 0 0 auto; }
-  .top__logo img { height: 34px; width: auto; display: block; }
-  .top__sep { width: 1px; height: 26px; background: rgba(26,10,18,0.13); flex: 0 0 auto; }
-  .top__eti {
-    flex: 1; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem;
-    font-weight: 600; color: var(--ink); line-height: 1;
+  .top__izq { display: flex; justify-content: flex-start; }
+  .top__der { display: flex; justify-content: flex-end; }
+  .top__marca { display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+                text-decoration: none; }
+  .top__marca img { height: 30px; width: auto; display: block; }
+  .top__marca span {
+    font-size: 0.56rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted);
   }
+
+  /* Menú de la cuenta */
+  .cuenta { position: relative; }
+  .cuenta__btn {
+    display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;
+    background: #fff; border: 1.5px solid #f0d6e2; border-radius: 999px;
+    padding: 0.3rem 0.7rem 0.3rem 0.3rem; font-family: inherit; font-size: 0.8rem;
+    font-weight: 600; color: var(--ink); transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .cuenta__btn:hover { border-color: var(--pink); }
+  .cuenta__btn[aria-expanded="true"] { border-color: var(--pink);
+    box-shadow: 0 0 0 3px rgba(232,67,122,0.13); }
+  .cuenta__ini {
+    width: 28px; height: 28px; border-radius: 50%; flex: 0 0 auto;
+    background: linear-gradient(135deg, #f0568a, var(--pink-dk)); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  }
+  .cuenta__ini--gr { width: 38px; height: 38px; font-size: 1rem; }
+  .cuenta__chev { width: 13px; height: 13px; color: var(--pink-dk); transition: transform 0.2s ease; }
+  .cuenta__btn[aria-expanded="true"] .cuenta__chev { transform: rotate(180deg); }
+  .cuenta__menu {
+    position: absolute; right: 0; top: calc(100% + 8px); z-index: 70; min-width: 230px;
+    background: #fff; border-radius: 16px; padding: 0.45rem;
+    border: 1px solid rgba(232,67,122,0.12);
+    box-shadow: 0 20px 44px -18px rgba(150,30,80,0.45);
+    animation: tabIn 0.16s ease;
+  }
+  .cuenta__menu[hidden] { display: none; }
+  .cuenta__cab { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.65rem 0.75rem;
+                 border-bottom: 1px solid #f7e7ef; margin-bottom: 0.35rem; }
+  .cuenta__cab b { display: block; font-size: 0.88rem; color: var(--ink); }
+  .cuenta__cab span { font-size: 0.68rem; color: var(--muted); }
+  .cuenta__op {
+    display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left;
+    background: none; border: none; cursor: pointer; padding: 0.65rem; border-radius: 11px;
+    font-family: inherit; font-size: 0.85rem; font-weight: 600; color: var(--ink);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .cuenta__op svg { width: 16px; height: 16px; color: var(--muted); }
+  .cuenta__op:hover { background: #fff0f6; color: var(--pink-dk); }
+  .cuenta__op:hover svg { color: var(--pink-dk); }
   /* El boton de la caja es un enlace: necesita alinearse como los botones. */
   a.btn { display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
   .btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
@@ -216,11 +264,13 @@
     .pager { justify-content: center; }
     .pager__nav { flex: 1 1 100%; justify-content: space-between; }
     /* Cabecera compacta: el logo manda y los botones se quedan en su icono. */
-    .top { gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.8rem; }
-    .top__logo img { height: 28px; }
-    .top__eti { font-size: 1.15rem; }
+    .top { gap: 0.5rem; margin: -1.1rem -1rem 1.1rem; padding: 0.6rem 1rem; }
+    .top__marca img { height: 25px; }
+    .top__marca span { font-size: 0.5rem; letter-spacing: 0.16em; }
     .top .btn span { display: none; }
     .top .btn { padding: 0.5rem 0.65rem; }
+    .cuenta__nom { display: none; }
+    .cuenta__btn { padding: 0.3rem; gap: 0.25rem; }
     .tabs { width: 100%; justify-content: space-between; }
     .tab { padding: 0.55rem 0.7rem; font-size: 0.76rem; flex: 1; justify-content: center; }
     .tab svg { width: 15px; height: 15px; }
@@ -258,32 +308,56 @@
 
   <!-- PANEL -->
   <div id="panel-view" class="admin hidden">
-    <!-- El panel dejo de ser solo de mayoreo (tiene catalogos y ajustes), asi
-         que la cabecera lleva el logo de la tienda y no un titulo de modulo. -->
+    <!-- Barra blanca a todo el ancho: el logo manda al centro, la caja queda a
+         mano a la izquierda y la sesion se administra desde el menu de la derecha. -->
     <header class="top">
-      <a class="top__logo" href="/" title="Ir a la tienda">
+      <div class="top__izq">
+        <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span>Caja</span>
+        </a>
+      </div>
+
+      <a class="top__marca" href="/" title="Ir a la tienda">
         <img src="/img/logo.png" alt="PinkPower HN" />
+        <span>Panel de administración</span>
       </a>
-      <span class="top__sep"></span>
-      <span class="top__eti">Panel</span>
-      <!-- La caja abre en pantalla completa (mismo usuario y token que el panel):
-           necesita botones grandes y el foco fijo en el buscador para el lector. -->
-      <a class="btn btn--sm btn--caja" href="/caja/" id="ir-caja">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-          <line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>
-        </svg>
-        <span>Caja</span>
-      </a>
-      <button class="btn btn--ghost btn--sm" id="logout">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-        <span>Salir</span>
-      </button>
+
+      <div class="top__der">
+        <div class="cuenta" id="cuenta">
+          <button class="cuenta__btn" id="cuenta-btn" type="button"
+                  aria-haspopup="menu" aria-expanded="false">
+            <span class="cuenta__ini" id="cuenta-ini">P</span>
+            <span class="cuenta__nom" id="cuenta-nom">Cuenta</span>
+            <svg class="cuenta__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="cuenta__menu" id="cuenta-menu" role="menu" hidden>
+            <div class="cuenta__cab">
+              <span class="cuenta__ini cuenta__ini--gr" id="cuenta-ini2">P</span>
+              <div>
+                <b id="cuenta-nom2">Cuenta</b>
+                <span>Administradora</span>
+              </div>
+            </div>
+            <button class="cuenta__op" id="logout" type="button" role="menuitem">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <!-- Navegación del panel: pastillas, que en el teléfono se entienden mejor
@@ -441,6 +515,7 @@
 <script>
 const API = 'https://api.pinkpowerhn.com';
 const TOKEN_KEY = 'pinkpower_admin_token';
+const USER_KEY = 'pinkpower_admin_usuario';
 let token = localStorage.getItem(TOKEN_KEY);
 
 const $ = (id) => document.getElementById(id);
@@ -457,6 +532,35 @@ async function api(path, opts = {}) {
   }
   return res.status === 204 ? null : res.json();
 }
+
+// ── Menú de la cuenta ──
+function pintarCuenta() {
+  const nombre = localStorage.getItem(USER_KEY) || 'Cuenta';
+  const inicial = nombre.trim().charAt(0) || 'P';
+  ['cuenta-nom', 'cuenta-nom2'].forEach(id => { const e = $(id); if (e) e.textContent = nombre; });
+  ['cuenta-ini', 'cuenta-ini2'].forEach(id => { const e = $(id); if (e) e.textContent = inicial; });
+}
+
+document.addEventListener('click', (e) => {
+  const menu = $('cuenta-menu'), btn = $('cuenta-btn');
+  if (!menu || !btn) return;
+  if (e.target.closest('#cuenta-btn')) {
+    const abrir = menu.hidden;
+    menu.hidden = !abrir;
+    btn.setAttribute('aria-expanded', String(abrir));
+    return;
+  }
+  if (!menu.hidden && !e.target.closest('#cuenta-menu')) {
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const menu = $('cuenta-menu'), btn = $('cuenta-btn');
+  if (menu && !menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+});
 
 function show(view) {
   $('login-view').classList.toggle('hidden', view !== 'login');
@@ -485,6 +589,10 @@ $('login-form').addEventListener('submit', async (e) => {
     if (!res.ok) throw new Error('Usuario o contraseña incorrectos');
     const data = await res.json();
     token = data.token; localStorage.setItem(TOKEN_KEY, token);
+    // El nombre se guarda para el menu de la cuenta (el login es el unico
+    // momento en que el servidor lo dice).
+    if (data.usuario) localStorage.setItem(USER_KEY, data.usuario);
+    pintarCuenta();
     show('panel'); loadAll();
   } catch (ex) {
     msg.textContent = ex.message; msg.classList.remove('hidden');
@@ -495,6 +603,8 @@ $('login-form').addEventListener('submit', async (e) => {
 
 function logout() {
   token = null; localStorage.removeItem(TOKEN_KEY); show('login');
+  const menu = $('cuenta-menu');
+  if (menu) { menu.hidden = true; $('cuenta-btn').setAttribute('aria-expanded', 'false'); }
 }
 $('logout').addEventListener('click', logout);
 
@@ -876,6 +986,7 @@ document.querySelectorAll('.pwd-eye').forEach(btn => {
 });
 
 // ── Init ──
+pintarCuenta();
 if (token) { show('panel'); loadAll(); } else { show('login'); }
 </script>
 </body>

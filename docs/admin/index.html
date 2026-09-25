@@ -19,7 +19,9 @@
   .admin { max-width: 1440px; margin: 0 auto; padding: 1.3rem 1.6rem 4rem; }
   h1 { font-size: 1.35rem; margin: 0; }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
-  .top__brand { display: flex; align-items: center; gap: 0.6rem; }
+  .top__brand { display: flex; align-items: center; gap: 0.6rem; flex: 1; }
+  /* El boton de la caja es un enlace: necesita alinearse como los botones. */
+  a.btn { display: inline-flex; align-items: center; gap: 0.3rem; text-decoration: none; }
   .top__brand b { color: var(--pink-dk); }
   .card {
     background: #fff; border-radius: 14px; padding: 1.3rem 1.3rem;
@@ -220,6 +222,9 @@
   <div id="panel-view" class="admin hidden">
     <div class="top">
       <div class="top__brand"><span>🛍️</span><h1>Mayoreo · <b>PinkPower</b></h1></div>
+      <!-- La caja abre en pantalla completa (mismo usuario y token que el panel):
+           necesita botones grandes y el foco fijo en el buscador para el lector. -->
+      <a class="btn btn--sm" href="/caja/" id="ir-caja">🧾 Caja</a>
       <button class="btn btn--ghost btn--sm" id="logout">Salir</button>
     </div>
 

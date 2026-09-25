@@ -648,7 +648,7 @@ function bloqueResumen() {
       ${estado.error ? `<div class="aviso-caja aviso-caja--roja">${esc(estado.error)}</div>` : ''}
 
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
-        style="margin-top:1rem" ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
+        ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
         ${estado.cobrando ? 'Cobrando…' : 'Cobrar ' + L(total())}
       </button>
     </div>

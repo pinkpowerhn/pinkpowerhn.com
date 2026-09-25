@@ -482,9 +482,9 @@ function bloqueBuscador(valor) {
         ${svg(IC.lupa, 1.9)}
         <input id="q" value="${esc(valor)}" placeholder="Escaneá o buscá el producto…"
                autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
-        <!-- El código de barras dentro del campo dice, sin texto, que el lector
-             dispara acá. Reemplaza al cartel de "listo para escanear". -->
-        <span class="buscador__cod" aria-hidden="true" ${valor ? 'hidden' : ''}>${svg(IC.codigo, 1.8)}</span>
+        <!-- Aviso dentro del propio campo: mientras no se escribe, recuerda que
+             el lector puede disparar ahi. Al escribir cede el lugar a la X. -->
+        <span class="escaner-chip" ${valor ? 'hidden' : ''}><i></i><b>Listo para escanear</b></span>
         <button class="limpiar" data-accion="limpiar-q" type="button" aria-label="Limpiar"
                 ${valor ? '' : 'hidden'}>&times;</button>
       </div>
@@ -728,8 +728,8 @@ $('caja-main').addEventListener('input', (e) => {
     if (cont) cont.innerHTML = bloqueResultados();
     const limpiar = document.querySelector('[data-accion="limpiar-q"]');
     if (limpiar) limpiar.hidden = !t.value;
-    const cod = document.querySelector('.buscador__cod');
-    if (cod) cod.hidden = !!t.value;
+    const chip = document.querySelector('.escaner-chip');
+    if (chip) chip.hidden = !!t.value;
     return;
   }
   if (t.id === 'q-cliente') {

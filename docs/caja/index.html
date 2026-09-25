@@ -237,7 +237,7 @@
   .buscador { position:relative; display:flex; gap:0.6rem; margin-bottom:0.9rem; }
   .buscador .campo-ic { flex:1; }
   .buscador input {
-    padding-left:2.9rem; padding-right:2.6rem; min-height:56px; border-radius:16px;
+    padding-left:2.9rem; padding-right:11.5rem; min-height:56px; border-radius:16px;
     background:#fff; box-shadow:var(--sombra-sm); border-color:transparent;
     font-size:16px; font-weight:500;
   }
@@ -337,8 +337,12 @@
     .buscador input::placeholder { font-size:13px; }
     .buscador .btn { min-height:48px; width:48px; }
     .buscador .campo-ic svg { left:0.85rem; width:16px; height:16px; }
-    .buscador__cod { right:0.85rem; }
-    .buscador__cod svg { width:19px; height:19px; }
+    /* En telefono el aviso se queda en el punto verde: el texto no cabe junto
+       al del buscador. */
+    .escaner-chip { right:0.6rem; padding:0.3rem; }
+    .escaner-chip b { display:none; }
+    .escaner-chip i { width:7px; height:7px; }
+    .buscador input { padding-right:2.4rem; }
 
     /* El modal ocupaba casi toda la pantalla por los espacios de escritorio. */
     .modal { padding:1.1rem 1rem max(1rem, env(safe-area-inset-bottom));
@@ -560,14 +564,18 @@
   .sk-buscador { height:56px; border-radius:16px; flex:1; }
   .sk-boton { height:56px; width:56px; border-radius:999px; flex:0 0 auto; }
 
-  /* Señal de que el lector dispara en este campo: un código de barras adentro,
-     sin texto. El cartel "listo para escanear" competía con el buscador. */
-  .buscador__cod {
-    position:absolute; right:1.15rem; display:flex; color:rgba(232,67,122,0.42);
-    pointer-events:none; transition:color .2s ease;
+  /* Aviso de escaneo DENTRO del campo, pegado a su esquina derecha: ocupa el
+     hueco que de todos modos queda libre y no agrega una linea a la pantalla. */
+  .escaner-chip {
+    position:absolute; right:0.75rem; top:50%; transform:translateY(-50%);
+    display:inline-flex; align-items:center; gap:0.4rem; pointer-events:none;
+    background:#eaf7ef; border-radius:999px; padding:0.3rem 0.65rem;
+    font-size:0.58rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--ok); white-space:nowrap;
   }
-  .buscador__cod svg { width:21px; height:21px; }
-  .buscador input:focus ~ .buscador__cod { color:var(--pink); }
+  .escaner-chip i { width:6px; height:6px; border-radius:50%; background:var(--ok);
+                    display:inline-block; animation:latir 1.8s ease-in-out infinite; }
+  @keyframes latir { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
 
   /* Aviso flotante del escaneo (código no encontrado, producto agregado) */
   .flash {

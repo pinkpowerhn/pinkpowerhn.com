@@ -1278,6 +1278,44 @@ function esCampoDeTexto(el) {
   return t === 'input' || t === 'textarea' || el.isContentEditable;
 }
 
+// ── El pip del escáner ──────────────────────────────────────────────────────
+// El sonido lo arma el navegador: el pip de un lector láser es un tono puro, así
+// que sintetizado suena igual, no pesa nada y suena en el acto (un archivo de
+// audio hay que cargarlo, y el primer escaneo del día llegaría mudo).
+let audio = null;
+
+function prepararAudio() {
+  try {
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+  } catch (_) { audio = null; }
+}
+
+function tono(hz, ms, volumen = 0.22, demora = 0) {
+  if (!audio) return;
+  const t0 = audio.currentTime + demora;
+  const osc = audio.createOscillator();
+  const vol = audio.createGain();
+  osc.type = 'square';            // el timbre seco del lector, no un pito redondo
+  osc.frequency.value = hz;
+  // Entra y sale rápido, pero no de golpe: cortado en seco chasquea.
+  vol.gain.setValueAtTime(0.0001, t0);
+  vol.gain.exponentialRampToValueAtTime(volumen, t0 + 0.008);
+  vol.gain.exponentialRampToValueAtTime(0.0001, t0 + ms / 1000);
+  osc.connect(vol);
+  vol.connect(audio.destination);
+  osc.start(t0);
+  osc.stop(t0 + ms / 1000 + 0.02);
+}
+
+function pip() { prepararAudio(); tono(2730, 110); }
+function pipMal() { prepararAudio(); tono(440, 130); tono(300, 180, 0.22, 0.15); }
+
+// Los navegadores no dejan sonar nada hasta que la persona toca la pantalla: se
+// deja el audio listo en el primer toque, no en el primer escaneo.
+document.addEventListener('pointerdown', prepararAudio, { once: true });
+document.addEventListener('keydown', prepararAudio, { once: true });
+
 function flash(texto, tipo = '') {
   // Con la cámara abierta no hace falta: el marcador de abajo ya dice lo que
   // entró, y el aviso flotante le tapaba el botón de Listo.
@@ -1306,6 +1344,7 @@ async function procesarEscaneo(codigo) {
 
   const v = estado.porBarcode.get(limpio);
   if (v) {
+    pip();
     agregar(v);
     flash(v.producto, 'ok');
     return;
@@ -1321,12 +1360,14 @@ async function procesarEscaneo(codigo) {
       busca: norm([enShopify.producto, enShopify.marca, enShopify.variante].filter(Boolean).join(' ')),
     });
     estado.porBarcode.set(limpio, enShopify);
+    pip();
     agregar(enShopify);
     if (camara) { fichaCamara(limpio); ventaCamara(); }
     else flash(enShopify.producto, 'ok');
     return;
   }
 
+  pipMal();
   if (q) { q.value = limpio; estado.resultados = buscarProductos(limpio); }
   estado.codigoSinHallar = limpio;
   pintar();

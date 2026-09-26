@@ -1620,13 +1620,27 @@ async function abrirCamara() {
     }
   } catch (_) {}
   camara = { stream, video, caja, porTecla, timer: null, lector: null,
-             ultimo: '', ultimoT: 0, leidos: new Set() };
+             ultimo: '', ultimoT: 0, leidos: new Set(),
+             candidato: '', candidatoT: 0 };
   ventaCamara();
 
   const alLeer = (texto) => {
     const codigo = String(texto || '').trim();
     if (!codigo || !camara) return;
     const ahora = Date.now();
+
+    // Confirmación: el mismo código tiene que leerse dos veces seguidas. Con una
+    // sola lectura, una imagen borrosa puede dar un código equivocado que igual
+    // pasa el dígito de control, y entonces entraría el producto que no es.
+    if (camara.candidato !== codigo) {
+      camara.candidato = codigo;
+      camara.candidatoT = ahora;
+      return;
+    }
+    if (ahora - camara.candidatoT > 2500) {   // muy separadas: no cuenta
+      camara.candidatoT = ahora;
+      return;
+    }
     // Un producto que se queda delante de la cámara se lee varias veces por
     // segundo. Para NO cobrar de más, el mismo código solo vuelve a contar
     // cuando el producto salió del encuadre (se vio un fotograma sin código).
@@ -1647,6 +1661,7 @@ async function abrirCamara() {
     camara.leidos.add(codigo);
     camara.ultimo = codigo;
     camara.ultimoT = ahora;
+    camara.candidato = '';
     if (navigator.vibrate) navigator.vibrate(40);
     const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
     procesarEscaneo(codigo);
@@ -1671,7 +1686,8 @@ async function abrirCamara() {
           if (!w || !h) return;
           lienzoNativo.width = w * 2; lienzoNativo.height = h * 2;
           const c2 = lienzoNativo.getContext('2d');
-          c2.imageSmoothingEnabled = false;
+          c2.imageSmoothingEnabled = true;
+          c2.imageSmoothingQuality = 'high';
           c2.drawImage(video, Math.round((video.videoWidth - w) / 2),
                        Math.round((video.videoHeight - h) / 2), w, h,
                        0, 0, lienzoNativo.width, lienzoNativo.height);
@@ -1717,7 +1733,10 @@ async function abrirCamara() {
         const x = Math.round((video.videoWidth - w) / 2);
         const y = Math.round((video.videoHeight - h) / 2);
         zoom.width = w * 2; zoom.height = h * 2;
-        zctx.imageSmoothingEnabled = false;
+        // Con suavizado: sin él, al ampliar al doble las barras finas se
+        // cuantizan y cambian de grosor, y el código se lee mal.
+        zctx.imageSmoothingEnabled = true;
+        zctx.imageSmoothingQuality = 'high';
         zctx.drawImage(video, x, y, w, h, 0, 0, zoom.width, zoom.height);
         try {
           const res = leerDe(zoom);

@@ -131,6 +131,7 @@ function pintar(r) {
         <div class="dato"><span>Fecha</span><b>${esc(fecha(r.fecha))}</b></div>
         ${r.cliente ? `<div class="dato"><span>Clienta</span><b>${esc(r.cliente)}</b></div>` : ''}
         <div class="dato"><span>Pago</span><b>${esc(PAGOS[r.pago] || r.pago || '')}${
+          r.banco ? ' · ' + esc(r.banco) : ''}${
           r.pagado === false ? ' · pendiente' : ''}</b></div>
       </div>
       <div class="items">${items}</div>

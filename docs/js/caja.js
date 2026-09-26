@@ -68,6 +68,8 @@ const estado = {
   descuento: { tipo: '', valor: 0 },
   descAbierto: false,   // desplegable propio del descuento
   pago: '',
+  banco: '',            // a qué banco entró la transferencia
+  bancoAbierto: false,  // su desplegable
   recibido: '',
   nota: '',
   cobrando: false,
@@ -94,7 +96,7 @@ function guardarVenta() {
     localStorage.setItem(GUARDADO, JSON.stringify({
       ts: Date.now(), venta: estado.venta, cliente: estado.cliente,
       mayoreo: estado.mayoreo, descuento: estado.descuento,
-      pago: estado.pago, recibido: estado.recibido, nota: estado.nota,
+      pago: estado.pago, banco: estado.banco, recibido: estado.recibido, nota: estado.nota,
     }));
   } catch (_) { /* sin espacio o en privado: la caja sigue funcionando igual */ }
 }
@@ -111,6 +113,7 @@ function recuperarVenta() {
     estado.mayoreo = !!d.mayoreo;
     estado.descuento = d.descuento || { tipo: '', valor: 0 };
     estado.pago = d.pago || '';
+    estado.banco = d.banco || '';
     estado.recibido = d.recibido || '';
     estado.nota = d.nota || '';
     return true;
@@ -386,6 +389,8 @@ function nuevaVenta() {
   estado.descuento = { tipo: '', valor: 0 };
   estado.descAbierto = false;
   estado.pago = '';
+  estado.banco = '';
+  estado.bancoAbierto = false;
   estado.recibido = '';
   estado.nota = '';
   estado.resultado = null;
@@ -397,8 +402,16 @@ function nuevaVenta() {
 }
 
 // ── Cobro ────────────────────────────────────────────────────────────────────
+// Una transferencia sin banco no sirve: es justo el dato que hace falta para
+// cuadrar despues con el estado de cuenta.
+function sePuedeCobrar() {
+  if (!estado.venta.length || !estado.pago || estado.cobrando) return false;
+  if (estado.pago === 'transferencia' && !estado.banco) return false;
+  return true;
+}
+
 async function cobrar() {
-  if (estado.cobrando || !estado.venta.length || !estado.pago) return;
+  if (!sePuedeCobrar()) return;
   estado.cobrando = true;
   estado.error = '';
   pintar();
@@ -416,6 +429,7 @@ async function cobrar() {
     cliente_nombre: estado.cliente ? estado.cliente.nombre : '',
     mayoreo: hayMayoreo(),
     pago: estado.pago,
+    banco: estado.pago === 'transferencia' ? estado.banco : '',
     recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
     cambio: vuelto,
     nota: estado.nota || '',
@@ -932,11 +946,29 @@ function bloqueResumen() {
         </div>
         ${num(estado.recibido) > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(cambio())}</b></div>` : ''}
       ` : ''}
+      ${estado.pago === 'transferencia' ? `
+        <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
+          <label>¿A qué banco?</label>
+          <div class="pp-select">
+            <button class="pp-select__btn" type="button" data-select="banco"
+                    aria-haspopup="listbox" aria-expanded="${estado.bancoAbierto}">
+              <span class="pp-select__lb">${estado.banco || 'Elegí el banco'}</span>
+              <svg class="pp-select__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="pp-select__menu" role="listbox" ${estado.bancoAbierto ? '' : 'hidden'}>
+              ${BANCOS.map((b) => `<button class="pp-select__opt ${b === estado.banco ? 'is-active' : ''}"
+                type="button" role="option" data-banco="${esc(b)}">${esc(b)}</button>`).join('')}
+            </div>
+          </div>
+        </div>
+      ` : ''}
       ${estado.pago === 'credito' ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago.</div>' : ''}
       ${estado.error ? `<div class="aviso-caja aviso-caja--roja">${esc(estado.error)}</div>` : ''}
 
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
-        ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
+        ${!sePuedeCobrar() ? 'disabled' : ''}>
         ${estado.cobrando ? 'Cobrando…' : 'Cobrar ' + L(total())}
       </button>
     </div>
@@ -947,8 +979,10 @@ function barraMovil() {
   return `<div class="barra">
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
-      ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
-      ${estado.cobrando ? 'Cobrando…' : (estado.pago ? 'Cobrar' : 'Elegí la forma de pago')}
+      ${!sePuedeCobrar() ? 'disabled' : ''}>
+      ${estado.cobrando ? 'Cobrando…'
+        : (!estado.pago ? 'Elegí la forma de pago'
+        : (estado.pago === 'transferencia' && !estado.banco ? 'Elegí el banco' : 'Cobrar'))}
     </button>
   </div>`;
 }
@@ -1121,6 +1155,10 @@ $('caja-main').addEventListener('click', (e) => {
   }
 
   // Desplegables propios: un clic afuera los cierra.
+  if (estado.bancoAbierto && !e.target.closest('.pp-select')) {
+    estado.bancoAbierto = false;
+    pintar();
+  }
   if (estado.descAbierto && !e.target.closest('.pp-select')) {
     estado.descAbierto = false;
     pintar();
@@ -1139,6 +1177,13 @@ $('caja-main').addEventListener('click', (e) => {
   const d = btn.dataset;
 
   if (d.select === 'desc') { estado.descAbierto = !estado.descAbierto; pintar(); return; }
+  if (d.select === 'banco') { estado.bancoAbierto = !estado.bancoAbierto; pintar(); return; }
+  if (d.banco !== undefined) {
+    estado.banco = d.banco;
+    estado.bancoAbierto = false;
+    pintar();
+    return;
+  }
   if (d.descTipo !== undefined) {
     estado.descuento.tipo = d.descTipo;
     if (!d.descTipo) estado.descuento.valor = 0;
@@ -1163,6 +1208,7 @@ $('caja-main').addEventListener('click', (e) => {
   if (d.menos !== undefined) { cambiarCantidad(Number(d.menos), -1); return; }
   if (d.pago !== undefined) {
     estado.pago = estado.pago === d.pago ? '' : d.pago;
+    if (estado.pago !== 'transferencia') estado.banco = '';
     pintar();
     return;
   }
@@ -1529,6 +1575,10 @@ document.addEventListener('click', (e) => {
 // ── Escanear con la cámara ───────────────────────────────────────────────────
 // Es el respaldo del lector, sobre todo para cobrar desde el teléfono. Chrome de
 // Android trae un detector propio; donde no está (Safari), se carga ZXing.
+// Los bancos a los que le transfieren. "Otro" para no dejarla trabada si le
+// transfieren desde uno que no está en la lista.
+const BANCOS = ['BAC', 'Atlántida', 'Banpaís', 'Ficohsa', 'Occidente', 'Otro'];
+
 const FORMATOS_CODIGO = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'];
 // Las dos zonas que se miran aparte del fotograma entero. La primera es la del
 // marco que ve la cajera; la segunda, un recorte cerrado del centro que se

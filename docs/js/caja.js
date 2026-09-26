@@ -1859,6 +1859,62 @@ function cerrarCamara() {
   enfocarBuscador();
 }
 
+// Lo que se le pide a la cámara. Sale aparte porque también se usa al cambiar
+// de cámara sin cerrar la hoja.
+function pedidoDeVideo(deviceId) {
+  const v = {
+    // 1920 y no más: en resolución máxima muchas cámaras enfocan más lento, y
+    // para un código de barras 1920 sobra. El problema nunca fue la cantidad de
+    // píxeles, fue el foco.
+    width: { ideal: 1920 }, height: { ideal: 1080 },
+    frameRate: { ideal: 30 },
+    resizeMode: { ideal: 'none' },
+    advanced: [{ focusMode: 'continuous' }],
+  };
+  if (deviceId) v.deviceId = { exact: deviceId };
+  else v.facingMode = { ideal: 'environment' };
+  return v;
+}
+
+// Las cámaras de atrás que tiene el teléfono. Solo se pueden mirar DESPUÉS de
+// que dieron permiso: antes, los nombres vienen vacíos.
+async function camarasDeAtras() {
+  try {
+    const equipos = await navigator.mediaDevices.enumerateDevices();
+    const videos = equipos.filter((e) => e.kind === 'videoinput');
+    const atras = videos.filter((e) => /back|rear|trasera|environment/i.test(e.label || ''));
+    return atras.length ? atras : videos;
+  } catch (_) { return []; }
+}
+
+// Cambia de cámara sin cerrar la hoja: en un teléfono con gran angular, macro y
+// principal, la que entrega el navegador puede ser una de enfoque fijo, que
+// nunca va a enfocar un código de cerca.
+async function cambiarDeCamara() {
+  if (!camara || !camara.camaras || camara.camaras.length < 2) return;
+  const sesion = camara.sesion;
+  camara.cual = (camara.cual + 1) % camara.camaras.length;
+  const elegida = camara.camaras[camara.cual];
+  let nuevo;
+  try {
+    nuevo = await navigator.mediaDevices.getUserMedia({
+      video: pedidoDeVideo(elegida.deviceId), audio: false });
+  } catch (_) {
+    flash('No se pudo cambiar de cámara', 'mal');
+    return;
+  }
+  if (!camara || camara.sesion !== sesion) {     // la cerraron mientras tanto
+    try { nuevo.getTracks().forEach((t) => t.stop()); } catch (_) {}
+    return;
+  }
+  try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+  camara.stream = nuevo;
+  camara.video.srcObject = nuevo;
+  await camara.video.play().catch(() => {});
+  camara.escenaCambio = true;      // otra cámara, otra imagen: se empieza limpio
+  flash(`Cámara ${camara.cual + 1} de ${camara.camaras.length}`, 'ok');
+}
+
 async function abrirCamara() {
   if (camara) return;
   const caja = document.createElement('div');
@@ -1888,7 +1944,8 @@ async function abrirCamara() {
              leidos: new Map(),            // código -> cuándo entró
              candidato: '', candidatoN: 0, // confirmación de los desconocidos
              escenaRef: null, escenaCambio: true,
-             paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…' };
+             paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…',
+             camaras: [], cual: 0 };
   // Se empieza en limpio, y si había un aviso puesto hay que repintar: si no,
   // el cartel viejo se queda en la pantalla de atrás con un código que el
   // estado ya no tiene, y su botón de reintentar sale a buscar nada.
@@ -1901,19 +1958,7 @@ async function abrirCamara() {
     // ajustes por omisión la imagen salía borrosa y costaba leer el código.
     // resizeMode 'none' evita que el navegador recorte o re-escale para cumplir
     // la medida pedida: se quiere el fotograma tal cual sale del sensor.
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        // 1920 y no más: en resolución máxima muchas cámaras enfocan más lento,
-        // y para un código de barras 1920 sobra. El problema nunca fue la
-        // cantidad de píxeles, fue el foco.
-        width: { ideal: 1920 }, height: { ideal: 1080 },
-        frameRate: { ideal: 30 },
-        resizeMode: { ideal: 'none' },
-        advanced: [{ focusMode: 'continuous' }],
-      },
-      audio: false,
-    });
+    stream = await navigator.mediaDevices.getUserMedia({ video: pedidoDeVideo(), audio: false });
   } catch (err) {
     if (camara && camara.sesion === sesion) cerrarCamara();
     else { caja.remove(); document.removeEventListener('keydown', porTecla); }
@@ -1946,6 +1991,51 @@ async function abrirCamara() {
         await pista.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
       } catch (_) { /* la camara no deja tocar el enfoque: no pasa nada */ }
     });
+  }
+
+  // Con el permiso ya dado se puede ver qué cámaras hay. Si el navegador nos dio
+  // una que no es la principal (pasa en los teléfonos con varias de atrás), se
+  // cambia a la primera de la lista, que es la que el sistema pone primero.
+  camara.camaras = await camarasDeAtras();
+  camara.cual = 0;
+  if (!camara || camara.sesion !== sesion) {
+    try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+    return;
+  }
+  try {
+    const actual = stream.getVideoTracks()[0].getSettings().deviceId;
+    const donde = camara.camaras.findIndex((c) => c.deviceId === actual);
+    const primera = camara.camaras[0];
+    // Siempre la PRIMERA de atrás: es la principal, la única que enfoca de
+    // cerca en la mayoría de los teléfonos. El navegador a veces entrega la gran
+    // angular, que tiene enfoque fijo y jamás va a leer un código.
+    if (donde !== 0 && primera && primera.deviceId) {
+      const mejor = await navigator.mediaDevices.getUserMedia({
+        video: pedidoDeVideo(primera.deviceId), audio: false });
+      try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      stream = mejor;
+      camara.stream = mejor;
+      video.srcObject = mejor;
+      await video.play().catch(() => {});
+      camara.cual = 0;
+    } else if (donde >= 0) {
+      camara.cual = donde;
+    }
+  } catch (_) { /* si algo falla se sigue con la que ya estaba */ }
+  if (!camara || camara.sesion !== sesion) return;
+
+  // Botón para ir cambiando de cámara, si hay más de una atrás. Es la salida
+  // cuando la que eligió el navegador no enfoca de cerca.
+  if (camara.camaras.length > 1 && visor) {
+    const btn = document.createElement('button');
+    btn.className = 'camara__cambiar';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Cambiar de cámara');
+    btn.innerHTML = svg('<path d="M3 8a2 2 0 0 1 2-2h2.2l1.2-2h6.8l1.2 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>'
+      + '<path d="M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0"></path>', 1.8)
+      + '<span>cambiar</span>';
+    btn.addEventListener('click', (ev) => { ev.stopPropagation(); cambiarDeCamara(); });
+    visor.appendChild(btn);
   }
 
   const pista = stream.getVideoTracks()[0];
@@ -2183,7 +2273,10 @@ function panelDiagnostico() {
     const vps = Math.round((camara.vueltas - antes) * 1000 / Math.max(1, t - cuando));
     antes = camara.vueltas; cuando = t;
     const v = camara.video;
+    const cam = (camara.camaras || [])[camara.cual];
+    const nombre = cam && cam.label ? cam.label.slice(0, 26) : 'la que dio el navegador';
     caja.innerHTML = `lector: ${esc(camara.motor)} · ${v.videoWidth}×${v.videoHeight}<br>`
+      + `cámara ${camara.cual + 1}/${(camara.camaras || []).length || 1}: ${esc(nombre)}<br>`
       + `${vps}/s · ${camara.ms} ms<br>`
       + `leído: ${esc(camara.ultimaCruda || '—')}`;
   }, 700);

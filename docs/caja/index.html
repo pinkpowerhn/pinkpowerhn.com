@@ -683,6 +683,17 @@
   }
   @keyframes enfoque { from { opacity:1 } to { opacity:0 } }
 
+  /* Cambiar de cámara: en los teléfonos con varias atrás, la que entrega el
+     navegador puede ser de enfoque fijo y no enfocar nunca de cerca. */
+  .camara__cambiar {
+    position:absolute; left:8px; top:8px; z-index:3; display:flex; align-items:center;
+    gap:0.35rem; border:none; cursor:pointer; font-family:inherit; font-weight:700;
+    font-size:0.62rem; color:#fff; background:rgba(0,0,0,0.45);
+    border-radius:999px; padding:0.32rem 0.6rem 0.32rem 0.45rem;
+  }
+  .camara__cambiar svg { width:15px; height:15px; }
+  .camara__cambiar:active { background:rgba(0,0,0,0.7); }
+
   /* Acercamiento: sirve para escanear desde más lejos, que es donde la cámara
      enfoca. Acercarse demasiado es lo que deja el código borroso. */
   .camara__zoom {

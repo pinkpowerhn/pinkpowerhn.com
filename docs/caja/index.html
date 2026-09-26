@@ -643,8 +643,14 @@
   .camara__total i { font-style:normal; color:#e6b9cd; font-size:0.72rem; font-weight:600; }
 
   .camara__visor {
-    position:relative; width:100%; height:min(32dvh, 260px); border-radius:16px;
+    position:relative; width:100%; height:min(42dvh, 340px); border-radius:16px;
     overflow:hidden; background:#000;
+  }
+  /* Solo en modo prueba: la resolución que entregó esta cámara. */
+  .camara__sello {
+    position:absolute; top:6px; left:8px; z-index:2; font-size:0.6rem;
+    font-weight:700; letter-spacing:0.08em; color:#fff;
+    background:rgba(0,0,0,0.45); border-radius:6px; padding:0.15rem 0.4rem;
   }
   .camara__video { width:100%; height:100%; object-fit:cover; display:block; }
   /* Marco de guía: cuatro esquinas, que ubican el código sin tapar la imagen. */

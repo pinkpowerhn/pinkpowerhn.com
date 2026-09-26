@@ -1599,10 +1599,14 @@ async function abrirCamara() {
   try {
     // Cámara trasera, la mayor resolución que dé y enfoque continuo: con los
     // ajustes por omisión la imagen salía borrosa y costaba leer el código.
+    // resizeMode 'none' evita que el navegador recorte o re-escale para cumplir
+    // la medida pedida: se quiere el fotograma tal cual sale del sensor.
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 1920 }, height: { ideal: 1080 },
+        width: { ideal: 2560 }, height: { ideal: 1440 },
+        frameRate: { ideal: 30 },
+        resizeMode: { ideal: 'none' },
         advanced: [{ focusMode: 'continuous' }],
       },
       audio: false,
@@ -1617,15 +1621,27 @@ async function abrirCamara() {
   await video.play().catch(() => {});
 
   const pista = stream.getVideoTracks()[0];
-  // Zoom: acerca la imagen y hace que un código chico ocupe más píxeles. Se pone
-  // un acercamiento suave (el que más se parezca a 2x sin pasarse).
+  // Nada de zoom de cámara. En el teléfono ese zoom es digital: recorta el
+  // centro y lo re-escala, así que entrega la mitad de resolución real y la
+  // imagen se ve borrosa —era la queja— y encima el código se lee peor. Para
+  // acercarse está el recorte del centro sobre el fotograma completo, más abajo,
+  // que trabaja con los píxeles de verdad.
   try {
-    const cap = pista.getCapabilities && pista.getCapabilities();
-    if (cap && cap.zoom && cap.zoom.max > cap.zoom.min) {
-      const deseado = Math.min(cap.zoom.max, Math.max(cap.zoom.min, 2));
-      await pista.applyConstraints({ advanced: [{ zoom: deseado }] });
+    const s = pista.getSettings ? pista.getSettings() : {};
+    if ((s.width || 0) < 1280) {   // el navegador dio poco: se insiste una vez
+      await pista.applyConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 } });
     }
   } catch (_) {}
+  // En modo prueba se ve qué resolución entregó de verdad este teléfono.
+  if (MODO_PRUEBA) {
+    try {
+      const s = pista.getSettings();
+      const sello = document.createElement('span');
+      sello.className = 'camara__sello';
+      sello.textContent = `${s.width}×${s.height}`;
+      caja.querySelector('.camara__visor').appendChild(sello);
+    } catch (_) {}
+  }
 
   // Linterna: en la tienda el producto suele quedar a contraluz o en sombra.
   try {
@@ -1715,6 +1731,7 @@ async function abrirCamara() {
     try {
       const detector = new window.BarcodeDetector({ formats: FORMATOS_CODIGO });
       const lienzoNativo = document.createElement('canvas');
+      let vuelta = false;
       camara.timer = setInterval(async () => {
         if (!camara) return;
         try {
@@ -1724,7 +1741,11 @@ async function abrirCamara() {
           const w = Math.round(video.videoWidth * 0.55);
           const h = Math.round(video.videoHeight * 0.45);
           if (!w || !h) return;
-          lienzoNativo.width = w * 2; lienzoNativo.height = h * 2;
+          // Ampliar solo si el recorte es chico. Con la camara dando 2560 px el
+          // recorte ya trae detalle de sobra, y un lienzo gigante hace lento el
+          // escaneo sin leer ni un codigo mas.
+          const f = w >= 1100 ? 1 : 2;
+          lienzoNativo.width = w * f; lienzoNativo.height = h * f;
           const c2 = lienzoNativo.getContext('2d');
           c2.imageSmoothingEnabled = true;
           c2.imageSmoothingQuality = 'high';
@@ -1732,7 +1753,19 @@ async function abrirCamara() {
                        Math.round((video.videoHeight - h) / 2), w, h,
                        0, 0, lienzoNativo.width, lienzoNativo.height);
           const cerca = await detector.detect(lienzoNativo);
-          if (cerca && cerca.length) alLeer(cerca[0].rawValue);
+          if (cerca && cerca.length) { alLeer(cerca[0].rawValue); return; }
+          // Tercer intento, un ciclo sí y otro no: el mismo recorte en blanco y
+          // negro con más contraste. Es lo que rescata los códigos impresos
+          // sobre plástico brillante o sobre fondo de color.
+          vuelta = !vuelta;
+          if (!vuelta) return;
+          c2.filter = 'grayscale(1) contrast(2.2) brightness(1.1)';
+          c2.drawImage(video, Math.round((video.videoWidth - w) / 2),
+                       Math.round((video.videoHeight - h) / 2), w, h,
+                       0, 0, lienzoNativo.width, lienzoNativo.height);
+          c2.filter = 'none';
+          const duro = await detector.detect(lienzoNativo);
+          if (duro && duro.length) alLeer(duro[0].rawValue);
         } catch (_) {}
       }, 250);
       return;
@@ -1772,7 +1805,8 @@ async function abrirCamara() {
         const h = Math.round(video.videoHeight * 0.45);
         const x = Math.round((video.videoWidth - w) / 2);
         const y = Math.round((video.videoHeight - h) / 2);
-        zoom.width = w * 2; zoom.height = h * 2;
+        const f = w >= 1100 ? 1 : 2;
+        zoom.width = w * f; zoom.height = h * f;
         // Con suavizado: sin él, al ampliar al doble las barras finas se
         // cuantizan y cambian de grosor, y el código se lee mal.
         zctx.imageSmoothingEnabled = true;

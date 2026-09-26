@@ -555,7 +555,7 @@ function pintar() {
       <div class="buscador-zona">
         ${bloqueBuscador(valorQ)}
         <div id="resultados">${bloqueResultados()}</div>
-      ${estado.codigoSinHallar ? `<div class="sin-hallar">
+      ${estado.codigoSinHallar && !camara ? `<div class="sin-hallar">
         <span>El código <b>${esc(estado.codigoSinHallar)}</b> no está en el catálogo.</span>
         <button class="btn btn--sm" data-accion="rebuscar" type="button">Buscar de nuevo en Shopify</button>
       </div>` : ''}
@@ -1474,6 +1474,33 @@ function verUltimoEnElFondo() {
   if (Math.abs(desfase) > 6) window.scrollBy(0, desfase);
 }
 
+// Una miniatura de 16x16 del video. Sirve para saber si la escena cambió: al
+// apartar un producto cambia mucho; al reenfocar, casi nada (a ese tamaño el
+// promedio de cada celda ya es un desenfoque). Es lo que permite distinguir
+// "volvió a pasar el producto" de "lo dejó delante de la cámara".
+const OJO = document.createElement('canvas');
+OJO.width = 16; OJO.height = 16;
+
+function firmaEscena(video) {
+  try {
+    const c = OJO.getContext('2d', { willReadFrequently: true });
+    c.drawImage(video, 0, 0, 16, 16);
+    const d = c.getImageData(0, 0, 16, 16).data;
+    const a = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) {
+      a[i] = (d[i * 4] * 3 + d[i * 4 + 1] * 6 + d[i * 4 + 2]) / 10;
+    }
+    return a;
+  } catch (_) { return null; }
+}
+
+function cambioLaEscena(a, b) {
+  if (!a || !b) return true;
+  let suma = 0;
+  for (let i = 0; i < 256; i++) suma += Math.abs(a[i] - b[i]);
+  return suma / 256 > 12;
+}
+
 function fichaCamara(codigo, aviso) {
   if (!camara) return;
   const caja = document.getElementById('camara-marcador');
@@ -1537,11 +1564,13 @@ function cerrarCamara() {
   try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
   if (camara.lector) { try { camara.lector.reset(); } catch (_) {} }
   clearInterval(camara.timer);
+  clearInterval(camara.ojo);
   camara.caja.remove();
   const main = $('caja-main');
   if (main) main.style.paddingBottom = '';   // se devuelve el alto normal
   document.removeEventListener('keydown', camara.porTecla);
   camara = null;
+  pintar();   // si algun codigo quedo sin reconocer, el aviso aparece ahora
   enfocarBuscador();
 }
 
@@ -1619,49 +1648,60 @@ async function abrirCamara() {
       caja.appendChild(btn);
     }
   } catch (_) {}
-  camara = { stream, video, caja, porTecla, timer: null, lector: null,
-             ultimo: '', ultimoT: 0, leidos: new Set(),
-             candidato: '', candidatoT: 0 };
+  camara = { stream, video, caja, porTecla, timer: null, lector: null, ojo: null,
+             ultimo: '', ultimoT: 0, leidos: new Map(),
+             candidato: '', candidatoT: 0, candidatoN: 0,
+             escenaRef: null, escenaCambio: true };
+  estado.codigoSinHallar = '';   // se empieza en limpio
   ventaCamara();
+  // Vigila si la escena cambió desde el último producto que entró.
+  camara.ojo = setInterval(() => {
+    if (!camara || camara.escenaCambio) return;
+    if (cambioLaEscena(firmaEscena(camara.video), camara.escenaRef)) {
+      camara.escenaCambio = true;
+    }
+  }, 200);
 
   const alLeer = (texto) => {
     const codigo = String(texto || '').trim();
     if (!codigo || !camara) return;
     const ahora = Date.now();
 
-    // Confirmación: el mismo código tiene que leerse dos veces seguidas. Con una
-    // sola lectura, una imagen borrosa puede dar un código equivocado que igual
-    // pasa el dígito de control, y entonces entraría el producto que no es.
-    if (camara.candidato !== codigo) {
+    // Confirmación: el mismo código tiene que repetirse antes de darlo por bueno.
+    // Con una sola lectura, una imagen borrosa da un código equivocado que igual
+    // pasa el dígito de control. Los que la caja ya conoce entran con dos
+    // lecturas; los desconocidos piden tres, porque casi siempre son eso mismo:
+    // una lectura errada (así se coló un 663350092868 que no existe, mientras el
+    // frasco decía 663350092738).
+    if (camara.candidato !== codigo || ahora - camara.candidatoT > 2500) {
       camara.candidato = codigo;
+      camara.candidatoN = 1;
       camara.candidatoT = ahora;
       return;
     }
-    if (ahora - camara.candidatoT > 2500) {   // muy separadas: no cuenta
-      camara.candidatoT = ahora;
+    camara.candidatoT = ahora;
+    camara.candidatoN += 1;
+    if (camara.candidatoN < (estado.porBarcode.has(codigo) ? 2 : 3)) return;
+
+    // Volver a pasar el mismo producto suma otra unidad, que es lo natural en el
+    // mostrador. Pero uno quieto delante de la cámara se lee cuatro veces por
+    // segundo: para no cobrar de más, solo vuelve a contar cuando la imagen
+    // cambió, o sea cuando el producto de verdad se movió. El tiempo solo no
+    // sirve: al reenfocar, la cámara pierde el código varios segundos sin que
+    // nadie lo haya tocado.
+    const visto = camara.leidos.get(codigo);
+    if (visto !== undefined && (ahora - visto < 1200 || !camara.escenaCambio)) {
+      const marcador = document.getElementById('camara-marcador');
+      if (marcador && marcador.dataset.codigo !== codigo) fichaCamara(codigo);
       return;
     }
-    // Un producto que se queda delante de la cámara se lee varias veces por
-    // segundo. Para NO cobrar de más, el mismo código solo vuelve a contar
-    // cuando el producto salió del encuadre (se vio un fotograma sin código).
-    // Uno distinto entra enseguida, que es lo que pasa al pasar productos.
-    // Cada producto entra UNA vez mientras la cámara está abierta. Se intentó
-    // repetir cuando el código salía del encuadre, pero al reenfocar la cámara lo
-    // pierde varios segundos y el mismo producto entraba tres o cuatro veces. Y
-    // cobrar de más es peor que tocar un botón: si hacen falta dos, se suman a
-    // mano desde el propio marcador.
-    // Ya escaneado: no suma solo, pero su ficha vuelve abajo para poder ajustar
-    // la cantidad con los botones.
-    if (camara.leidos.has(codigo)) {
-      const caja = document.getElementById('camara-marcador');
-      if (caja && caja.dataset.codigo !== codigo) fichaCamara(codigo);
-      return;
-    }
-    if (ahora - camara.ultimoT < 600) return;   // dos fotogramas del mismo instante
-    camara.leidos.add(codigo);
+    camara.leidos.set(codigo, ahora);
     camara.ultimo = codigo;
     camara.ultimoT = ahora;
     camara.candidato = '';
+    camara.candidatoN = 0;
+    camara.escenaRef = firmaEscena(camara.video);
+    camara.escenaCambio = false;
     if (navigator.vibrate) navigator.vibrate(40);
     const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
     procesarEscaneo(codigo);

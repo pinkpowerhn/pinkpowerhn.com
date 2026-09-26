@@ -556,7 +556,15 @@
     background:#fff; border-radius:16px; padding:0.4rem;
     border:1px solid rgba(232,67,122,0.12); box-shadow:var(--sombra);
     animation:menuIn .16s ease;
+    max-height:min(46dvh, 320px); overflow-y:auto;
   }
+  /* Hacia arriba cuando el campo está al final de la tarjeta: abriéndose hacia
+     abajo, la lista caía fuera de la pantalla y parecía que no había opciones. */
+  .pp-select__menu--arriba { top:auto; bottom:calc(100% + 8px); }
+
+  /* La tarjeta recorta por el borde redondeado, y con eso se comía el
+     desplegable. Mientras haya uno abierto, deja de recortar. */
+  .tarjeta--abierta { overflow:visible; }
   .pp-select__menu[hidden] { display:none; }
   @keyframes menuIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
   .pp-select__opt {

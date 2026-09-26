@@ -928,7 +928,7 @@ function bloqueResumen() {
   const pagos = [['efectivo', 'Efectivo', IC.efectivo], ['tarjeta', 'Tarjeta', IC.tarjeta],
                  ['transferencia', 'Transferencia', IC.transferencia], ['credito', 'Crédito', IC.credito]];
   const opcActual = OPCIONES_DESC.find((o) => o.v === estado.descuento.tipo) || OPCIONES_DESC[0];
-  return `<div class="tarjeta">
+  return `<div class="tarjeta tarjeta--cobro${estado.descAbierto || estado.bancoAbierto ? ' tarjeta--abierta' : ''}">
     <div class="tarjeta__cab">Cobro</div>
     <div class="tarjeta__cuerpo scroll-lindo">
       <div class="total-fila"><span>Subtotal</span><span>${L(subtotal())}</span></div>
@@ -979,7 +979,8 @@ function bloqueResumen() {
                    stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
-            <div class="pp-select__menu" role="listbox" ${estado.bancoAbierto ? '' : 'hidden'}>
+            <div class="pp-select__menu pp-select__menu--arriba" role="listbox"
+                 ${estado.bancoAbierto ? '' : 'hidden'}>
               ${BANCOS.map((b) => `<button class="pp-select__opt ${b === estado.banco ? 'is-active' : ''}"
                 type="button" role="option" data-banco="${esc(b)}">${esc(b)}</button>`).join('')}
             </div>
@@ -1199,7 +1200,17 @@ $('caja-main').addEventListener('click', (e) => {
   const d = btn.dataset;
 
   if (d.select === 'desc') { estado.descAbierto = !estado.descAbierto; pintar(); return; }
-  if (d.select === 'banco') { estado.bancoAbierto = !estado.bancoAbierto; pintar(); return; }
+  if (d.select === 'banco') {
+    estado.bancoAbierto = !estado.bancoAbierto;
+    pintar();
+    // Que la lista quede a la vista: el campo es el último de la pantalla y, al
+    // abrirse, la lista puede caer justo debajo del borde.
+    if (estado.bancoAbierto) {
+      const menu = document.querySelector('.pp-select__menu--arriba');
+      if (menu) menu.scrollIntoView({ block: 'nearest' });
+    }
+    return;
+  }
   if (d.banco !== undefined) {
     estado.banco = d.banco;
     estado.bancoAbierto = false;

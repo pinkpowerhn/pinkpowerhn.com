@@ -1358,7 +1358,14 @@ function pedirClienta() {
 //
 // En teléfono esto es además lo cómodo: sin foco no sale el teclado virtual
 // tapando media pantalla, y el lector Bluetooth funciona igual.
-const RITMO_LECTOR = 45;    // ms máximos entre teclas para considerarlo lector
+// Máximo entre teclas para tomarlo por lector y no por dedos. Un lector USB va a
+// 5-20 ms; escribiendo rápido a mano cuesta más de 100. 60 deja margen para los
+// lectores lentos sin confundirse con una persona.
+// Los bancos a los que le transfieren. "Otro" para no dejarla trabada si le
+// transfieren desde uno que no está en la lista.
+const BANCOS = ['BAC', 'Atlántida', 'Banpaís', 'Ficohsa', 'Occidente', 'Otro'];
+
+const RITMO_LECTOR = 60;
 const LARGO_MINIMO = 5;     // menos de esto no es un código de barras
 let bufer = '';
 let ultimaTecla = 0;
@@ -1429,6 +1436,17 @@ function flash(texto, tipo = '') {
   el._t = setTimeout(() => el.classList.remove('is-show'), 2200);
 }
 
+// Deja constancia de que ese codigo ya entro, y pide que el producto se mueva
+// antes de volver a contarlo. Vale para los dos caminos: el lector de mano y la
+// camara. Sin esto, con la camara abierta y el lector pasando el mismo codigo,
+// el producto entraba dos veces.
+function marcarLeido(codigo) {
+  if (!camara) return;
+  camara.leidos.set(codigo, Date.now());
+  camara.escenaRef = firmaEscena(camara.video);
+  camara.escenaCambio = false;
+}
+
 async function procesarEscaneo(codigo) {
   const limpio = (codigo || '').trim();
   if (!limpio) return;
@@ -1442,6 +1460,7 @@ async function procesarEscaneo(codigo) {
   if (v) {
     pip();
     agregar(v);
+    marcarLeido(limpio);
     flash(v.producto, 'ok');
     return;
   }
@@ -1458,6 +1477,7 @@ async function procesarEscaneo(codigo) {
     estado.porBarcode.set(limpio, enShopify);
     pip();
     agregar(enShopify);
+    marcarLeido(limpio);
     if (camara) { fichaCamara(limpio); ventaCamara(); }
     else flash(enShopify.producto, 'ok');
     return;
@@ -1483,6 +1503,7 @@ async function preguntarAShopify(codigo) {
 // Pide el catálogo del momento (sin esperar al refresco de fondo) y vuelve a
 // probar ese código: es lo que hace falta apenas se carga un código en Shopify.
 async function buscarDeNuevo(codigo) {
+  if (!String(codigo || '').trim()) return;   // sin código no hay qué buscar
   const caja = document.getElementById('camara-marcador');
   if (caja) caja.innerHTML = '<p class="camara__ayuda"><span class="puntos">Buscando en Shopify</span></p>';
   else flash('Buscando en Shopify…');
@@ -1516,11 +1537,7 @@ async function buscarDeNuevo(codigo) {
   }
   // Queda marcado como ya leído, no borrado: si se borrara, con el producto
   // todavía delante de la cámara entraría una segunda vez al instante.
-  if (camara) {
-    camara.leidos.set(codigo, Date.now());
-    camara.escenaRef = firmaEscena(camara.video);
-    camara.escenaCambio = false;
-  }
+  marcarLeido(codigo);
   estado.codigoSinHallar = '';
   agregar(v);
   if (camara) fichaCamara(codigo);
@@ -1581,14 +1598,8 @@ document.addEventListener('click', (e) => {
 // ── Escanear con la cámara ───────────────────────────────────────────────────
 // Es el respaldo del lector, sobre todo para cobrar desde el teléfono. Chrome de
 // Android trae un detector propio; donde no está (Safari), se carga ZXing.
-// Los bancos a los que le transfieren. "Otro" para no dejarla trabada si le
-// transfieren desde uno que no está en la lista.
-const BANCOS = ['BAC', 'Atlántida', 'Banpaís', 'Ficohsa', 'Occidente', 'Otro'];
-
 const FORMATOS_CODIGO = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'];
-// Las dos zonas que se miran aparte del fotograma entero. La primera es la del
-// marco que ve la cajera; la segunda, un recorte cerrado del centro que se
-// amplía, para los códigos chiquitos.
+
 // La franja del fotograma que entra en el visor (que recorta por los bordes).
 // Se calcula porque el fotograma puede venir vertical u horizontal segun el
 // telefono, y lo que se analiza tiene que ser lo mismo que la cajera ve.
@@ -1856,7 +1867,10 @@ async function abrirCamara() {
              candidato: '', candidatoN: 0, // confirmación de los desconocidos
              escenaRef: null, escenaCambio: true,
              paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…' };
-  estado.codigoSinHallar = '';   // se empieza en limpio
+  // Se empieza en limpio, y si había un aviso puesto hay que repintar: si no,
+  // el cartel viejo se queda en la pantalla de atrás con un código que el
+  // estado ya no tiene, y su botón de reintentar sale a buscar nada.
+  if (estado.codigoSinHallar) { estado.codigoSinHallar = ''; pintar(); }
   ventaCamara();
 
   let stream;
@@ -1892,6 +1906,9 @@ async function abrirCamara() {
   camara.stream = stream;
   video.srcObject = stream;
   await video.play().catch(() => {});
+  // Otra vez: arrancar el video también tarda, y si la cerraron en el medio todo
+  // lo que sigue tocaría una cámara que ya no existe.
+  if (!camara || camara.sesion !== sesion) return;
 
   // Tocar la imagen reenfoca, como en la cámara del teléfono. Es lo que saca de
   // apuros cuando el código quedó borroso y la cámara no se da cuenta sola.
@@ -2134,9 +2151,12 @@ function panelDiagnostico() {
   const caja = document.createElement('div');
   caja.className = 'camara__diag';
   camara.visor.appendChild(caja);
+  const sesion = camara.sesion;
   let antes = 0, cuando = Date.now();
   const refresco = setInterval(() => {
-    if (!camara) { clearInterval(refresco); return; }
+    // Se apaga con SU cámara: mirando solo si hay cámara, tras cerrar y volver a
+    // abrir seguía corriendo el de la anterior.
+    if (!camara || camara.sesion !== sesion) { clearInterval(refresco); return; }
     const t = Date.now();
     const vps = Math.round((camara.vueltas - antes) * 1000 / Math.max(1, t - cuando));
     antes = camara.vueltas; cuando = t;

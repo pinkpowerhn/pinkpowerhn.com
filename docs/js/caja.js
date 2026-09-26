@@ -1514,7 +1514,13 @@ async function buscarDeNuevo(codigo) {
     else flash('Ese código sigue sin estar en Shopify', 'mal');
     return;
   }
-  if (camara) camara.leidos.delete(codigo);
+  // Queda marcado como ya leído, no borrado: si se borrara, con el producto
+  // todavía delante de la cámara entraría una segunda vez al instante.
+  if (camara) {
+    camara.leidos.set(codigo, Date.now());
+    camara.escenaRef = firmaEscena(camara.video);
+    camara.escenaCambio = false;
+  }
   estado.codigoSinHallar = '';
   agregar(v);
   if (camara) fichaCamara(codigo);
@@ -1624,7 +1630,11 @@ function recorte(video, lienzo, zona, filtro, anchoMaximo) {
 }
 const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
 
-let camara = null;   // { stream, video, cerrar }
+let camara = null;
+// Cada apertura lleva su número. Abrir la cámara tarda (permiso, video, lector)
+// y en ese rato la pueden cerrar o volver a abrir: el número deja descartar lo
+// que venía en camino de una apertura que ya no vale.
+let sesionCamara = 0;
 
 async function detectarCamara() {
   try {
@@ -1764,14 +1774,28 @@ function fichaCamara(codigo, aviso) {
     </div>`;
   const menos = caja.querySelector('[data-cam-menos]');
   const mas = caja.querySelector('[data-cam-mas]');
+  // La línea se busca EN EL MOMENTO del toque: guardarse la posición de cuando
+  // se pintó la ficha hacía que, si la venta cambió, el botón le sumara a otro
+  // producto.
+  const donde = () => estado.venta.findIndex((x) => x.variant_id === l.variant_id);
   if (mas) mas.addEventListener('click', () => {
-    cambiarCantidad(i, 1); fichaCamara(codigo); ventaCamara();
+    const j = donde();
+    if (j === -1) return;
+    cambiarCantidad(j, 1); fichaCamara(codigo); ventaCamara();
   });
   if (menos) menos.addEventListener('click', () => {
-    cambiarCantidad(i, -1);
-    // Si se quitó la última unidad, la línea desaparece y se puede volver a escanear.
-    if (!estado.venta[i] || estado.venta[i].variant_id !== l.variant_id) {
-      if (camara) camara.leidos.delete(codigo);
+    const j = donde();
+    if (j === -1) return;
+    cambiarCantidad(j, -1);
+    // Si se quitó la última unidad, la línea desaparece. NO se borra de los ya
+    // leídos: con el producto todavía delante de la cámara, volvía a entrar solo
+    // y parecía que el botón no servía. Para reponerlo hay que pasarlo de nuevo,
+    // que es lo que la regla de "la imagen cambió" ya sabe distinguir.
+    if (donde() === -1) {
+      if (camara) {
+        camara.escenaRef = firmaEscena(camara.video);
+        camara.escenaCambio = false;
+      }
       caja.innerHTML = `<p class="camara__ayuda">Quitado de la venta</p>`;
       caja.dataset.codigo = '';
     } else {
@@ -1786,6 +1810,7 @@ function fichaCamara(codigo, aviso) {
 
 function cerrarCamara() {
   if (!camara) return;
+  sesionCamara += 1;   // invalida lo que esté en camino de esta apertura
   try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
   if (camara.lector) { try { camara.lector.reset(); } catch (_) {} }
   clearTimeout(camara.timer);    // el ciclo de lectura está encadenado
@@ -1818,9 +1843,21 @@ async function abrirCamara() {
     </div>`;
   document.body.appendChild(caja);
   const video = caja.querySelector('video');
+  const visor = caja.querySelector('.camara__visor');
   const porTecla = (e) => { if (e.key === 'Escape') cerrarCamara(); };
   document.addEventListener('keydown', porTecla);
   caja.querySelector('.camara__cerrar').addEventListener('click', cerrarCamara);
+
+  // Se registra YA, antes de los pasos lentos: si no, durante el arranque
+  // "Listo" no cerraba nada y tocar dos veces el botón abría dos cámaras.
+  const sesion = ++sesionCamara;
+  camara = { sesion, stream: null, video, caja, visor, timer: null, ojo: null, porTecla,
+             leidos: new Map(),            // código -> cuándo entró
+             candidato: '', candidatoN: 0, // confirmación de los desconocidos
+             escenaRef: null, escenaCambio: true,
+             paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…' };
+  estado.codigoSinHallar = '';   // se empieza en limpio
+  ventaCamara();
 
   let stream;
   try {
@@ -1842,14 +1879,19 @@ async function abrirCamara() {
       audio: false,
     });
   } catch (err) {
-    caja.remove();
-    document.removeEventListener('keydown', porTecla);
+    if (camara && camara.sesion === sesion) cerrarCamara();
+    else { caja.remove(); document.removeEventListener('keydown', porTecla); }
     flash('No se pudo abrir la cámara. Revisá el permiso.', 'mal');
     return;
   }
+  // La cerraron mientras se pedía el permiso: se apaga lo que llegó tarde.
+  if (!camara || camara.sesion !== sesion) {
+    try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+    return;
+  }
+  camara.stream = stream;
   video.srcObject = stream;
   await video.play().catch(() => {});
-  const visor = caja.querySelector('.camara__visor');
 
   // Tocar la imagen reenfoca, como en la cámara del teléfono. Es lo que saca de
   // apuros cuando el código quedó borroso y la cámara no se da cuenta sola.
@@ -1877,16 +1919,6 @@ async function abrirCamara() {
       await pista.applyConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 } });
     }
   } catch (_) {}
-  // En modo prueba se ve qué resolución entregó de verdad este teléfono.
-  if (MODO_PRUEBA) {
-    try {
-      const s = pista.getSettings();
-      const sello = document.createElement('span');
-      sello.className = 'camara__sello';
-      sello.textContent = `${s.width}×${s.height}`;
-      caja.querySelector('.camara__visor').appendChild(sello);
-    } catch (_) {}
-  }
 
   // Acercamiento a mano. Es la salida al problema de fondo: la camara no enfoca
   // de muy cerca, asi que hay que alejar el telefono; acercando con el zoom, el
@@ -1933,14 +1965,6 @@ async function abrirCamara() {
       caja.appendChild(btn);
     }
   } catch (_) {}
-  camara = { stream, video, caja, visor, timer: null, ojo: null, porTecla,
-             leidos: new Map(),            // código -> cuándo entró
-             candidato: '', candidatoN: 0, // confirmación de los desconocidos
-             escenaRef: null, escenaCambio: true,
-             paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…' };
-  estado.codigoSinHallar = '';   // se empieza en limpio
-  ventaCamara();
-
   // Vigila si la escena cambió desde el último producto que entró: es lo que
   // distingue "lo volvió a pasar" de "lo dejó delante de la cámara".
   camara.ojo = setInterval(() => {
@@ -1951,23 +1975,25 @@ async function abrirCamara() {
   }, 200);
 
   const motor = await armarMotor(video);
+  if (!camara || camara.sesion !== sesion) return;   // la cerraron mientras tanto
   if (!motor) {
-    flash('Este navegador no puede escanear con la cámara', 'mal');
     cerrarCamara();
+    flash('Este navegador no puede escanear con la cámara', 'mal');
     return;
   }
-  if (!camara) return;           // la cerraron mientras se preparaba
   camara.motor = motor.nombre;
   if (MODO_PRUEBA) panelDiagnostico();
-  cicloEscaneo(motor);
+  cicloEscaneo(motor, sesion);
 }
 
 // ── El ciclo de lectura ───────────────────────────────────────────────────────
 // Encadenado, no por intervalo: la vuelta siguiente arranca cuando terminó la
 // anterior. Con un intervalo fijo, en el teléfono se encimaban las llamadas
 // (analizar un fotograma tarda más que el intervalo) y el escaneo se arrastraba.
-async function cicloEscaneo(motor) {
-  if (!camara) return;
+async function cicloEscaneo(motor, sesion) {
+  // Se corta si esta cámara ya no es la de ahora: al cerrar y volver a abrir, el
+  // ciclo viejo seguía analizando en paralelo con el nuevo.
+  if (!camara || camara.sesion !== sesion) return;
   const arranque = (window.performance || Date).now();
   try {
     const v = camara.video;
@@ -1979,8 +2005,8 @@ async function cicloEscaneo(motor) {
       if (codigo) { camara.ultimaCruda = codigo; alLeer(codigo); }
     }
   } catch (_) { /* un fotograma que no se pudo leer no rompe el ciclo */ }
-  if (!camara) return;
-  camara.timer = setTimeout(() => cicloEscaneo(motor), 60);
+  if (!camara || camara.sesion !== sesion) return;
+  camara.timer = setTimeout(() => cicloEscaneo(motor, sesion), 60);
 }
 
 // Cada vuelta mira UNA zona, rotando: el fotograma entero, la franja que se ve

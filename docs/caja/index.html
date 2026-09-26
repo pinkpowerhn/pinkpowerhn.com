@@ -697,7 +697,7 @@
   /* Acercamiento: sirve para escanear desde más lejos, que es donde la cámara
      enfoca. Acercarse demasiado es lo que deja el código borroso. */
   .camara__zoom {
-    position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:3;
+    position:absolute; right:8px; bottom:8px; z-index:3;
     display:flex; flex-direction:column; gap:6px;
   }
   .camara__zoom button {
@@ -709,8 +709,9 @@
 
   /* Solo en modo prueba: qué está haciendo el lector, para poder diagnosticar
      desde una foto de la pantalla en vez de adivinar. */
+  /* Arriba a la derecha: abajo se montaba encima del texto de ayuda. */
   .camara__diag {
-    position:absolute; left:8px; bottom:8px; z-index:3; font-size:0.58rem;
+    position:absolute; right:8px; top:8px; z-index:3; font-size:0.54rem;
     line-height:1.5; font-weight:600; color:#fff; text-align:left;
     background:rgba(0,0,0,0.5); border-radius:8px; padding:0.3rem 0.5rem;
     font-family:ui-monospace, monospace; pointer-events:none;

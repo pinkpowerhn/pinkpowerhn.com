@@ -1883,8 +1883,27 @@ async function camarasDeAtras() {
     const equipos = await navigator.mediaDevices.enumerateDevices();
     const videos = equipos.filter((e) => e.kind === 'videoinput');
     const atras = videos.filter((e) => /back|rear|trasera|environment/i.test(e.label || ''));
-    return atras.length ? atras : videos;
+    const lista = atras.length ? atras : videos;
+    // Por el número que les pone el sistema ("camera 0", "camera2 3"): la 0 es
+    // la principal. El orden en que las devuelve el navegador no lo respeta.
+    return lista.slice().sort((a, b) => numeroDeCamara(a) - numeroDeCamara(b));
   } catch (_) { return []; }
+}
+
+function numeroDeCamara(equipo) {
+  const m = /camera2?\s*(\d+)/i.exec(equipo.label || '');
+  return m ? Number(m[1]) : 99;
+}
+
+// ¿Sabe enfocar? Una cámara de enfoque fijo —la gran angular de casi todos los
+// teléfonos— nunca va a leer un código de cerca, por rápido que vaya el lector.
+function sabeEnfocar(pista) {
+  try {
+    const cap = pista.getCapabilities && pista.getCapabilities();
+    if (!cap) return null;                 // el navegador no lo dice
+    if (!cap.focusMode) return null;
+    return cap.focusMode.includes('continuous') || cap.focusMode.includes('single-shot');
+  } catch (_) { return null; }
 }
 
 // Cambia de cámara sin cerrar la hoja: en un teléfono con gran angular, macro y
@@ -1912,7 +1931,9 @@ async function cambiarDeCamara() {
   camara.video.srcObject = nuevo;
   await camara.video.play().catch(() => {});
   camara.escenaCambio = true;      // otra cámara, otra imagen: se empieza limpio
-  flash(`Cámara ${camara.cual + 1} de ${camara.camaras.length}`, 'ok');
+  camara.enfoca = sabeEnfocar(nuevo.getVideoTracks()[0]);
+  flash(`Cámara ${camara.cual + 1} de ${camara.camaras.length}`
+        + (camara.enfoca === false ? ' · esta no enfoca' : ''), 'ok');
 }
 
 async function abrirCamara() {
@@ -1945,7 +1966,7 @@ async function abrirCamara() {
              candidato: '', candidatoN: 0, // confirmación de los desconocidos
              escenaRef: null, escenaCambio: true,
              paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…',
-             camaras: [], cual: 0 };
+             camaras: [], cual: 0, enfoca: null };
   // Se empieza en limpio, y si había un aviso puesto hay que repintar: si no,
   // el cartel viejo se queda en la pantalla de atrás con un código que el
   // estado ya no tiene, y su botón de reintentar sale a buscar nada.
@@ -2005,21 +2026,38 @@ async function abrirCamara() {
   try {
     const actual = stream.getVideoTracks()[0].getSettings().deviceId;
     const donde = camara.camaras.findIndex((c) => c.deviceId === actual);
-    const primera = camara.camaras[0];
-    // Siempre la PRIMERA de atrás: es la principal, la única que enfoca de
-    // cerca en la mayoría de los teléfonos. El navegador a veces entrega la gran
-    // angular, que tiene enfoque fijo y jamás va a leer un código.
-    if (donde !== 0 && primera && primera.deviceId) {
-      const mejor = await navigator.mediaDevices.getUserMedia({
-        video: pedidoDeVideo(primera.deviceId), audio: false });
-      try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
-      stream = mejor;
-      camara.stream = mejor;
-      video.srcObject = mejor;
-      await video.play().catch(() => {});
-      camara.cual = 0;
-    } else if (donde >= 0) {
-      camara.cual = donde;
+    if (donde >= 0) camara.cual = donde;
+    camara.enfoca = sabeEnfocar(stream.getVideoTracks()[0]);
+
+    // Si la que nos dieron NO sabe enfocar, se prueban las otras hasta dar con
+    // una que sí. Es lo que decide de verdad: una cámara de enfoque fijo no lee
+    // un código de cerca ni con el mejor lector.
+    if (camara.enfoca === false) {
+      for (let i = 0; i < camara.camaras.length; i++) {
+        const otra = camara.camaras[i];
+        if (!otra.deviceId || i === camara.cual) continue;
+        let probar;
+        try {
+          probar = await navigator.mediaDevices.getUserMedia({
+            video: pedidoDeVideo(otra.deviceId), audio: false });
+        } catch (_) { continue; }
+        if (!camara || camara.sesion !== sesion) {
+          try { probar.getTracks().forEach((t) => t.stop()); } catch (_) {}
+          return;
+        }
+        const enfoca = sabeEnfocar(probar.getVideoTracks()[0]);
+        if (enfoca !== false) {
+          try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+          stream = probar;
+          camara.stream = probar;
+          camara.cual = i;
+          camara.enfoca = enfoca;
+          video.srcObject = probar;
+          await video.play().catch(() => {});
+          break;
+        }
+        try { probar.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      }
     }
   } catch (_) { /* si algo falla se sigue con la que ya estaba */ }
   if (!camara || camara.sesion !== sesion) return;
@@ -2274,10 +2312,12 @@ function panelDiagnostico() {
     antes = camara.vueltas; cuando = t;
     const v = camara.video;
     const cam = (camara.camaras || [])[camara.cual];
-    const nombre = cam && cam.label ? cam.label.slice(0, 26) : 'la que dio el navegador';
+    const nombre = cam && cam.label ? cam.label.slice(0, 24) : 'la que dio el navegador';
+    const foco = camara.enfoca === true ? 'enfoca'
+               : camara.enfoca === false ? 'SIN ENFOQUE' : 'foco: no lo dice';
     caja.innerHTML = `lector: ${esc(camara.motor)} · ${v.videoWidth}×${v.videoHeight}<br>`
       + `cámara ${camara.cual + 1}/${(camara.camaras || []).length || 1}: ${esc(nombre)}<br>`
-      + `${vps}/s · ${camara.ms} ms<br>`
+      + `${esc(foco)} · ${vps}/s · ${camara.ms} ms<br>`
       + `leído: ${esc(camara.ultimaCruda || '—')}`;
   }, 700);
 }

@@ -1600,14 +1600,16 @@ function zonaCerca(zona) {
 }
 
 // Dibuja un recorte centrado del video en el lienzo, ampliado si es chico.
-function recorte(video, lienzo, zona, filtro) {
+function recorte(video, lienzo, zona, filtro, anchoMaximo) {
   const w = Math.round(video.videoWidth * zona.w);
   const h = Math.round(video.videoHeight * zona.h);
   if (!w || !h) return false;
-  // Ampliar solo si hace falta: con la cámara dando 2560 px el recorte ya trae
-  // detalle de sobra, y un lienzo gigante hace lento el escaneo sin leer más.
-  const f = w >= 1100 ? 1 : 2;
-  lienzo.width = w * f; lienzo.height = h * f;
+  // Se amplía si el recorte es chico y se achica si pasa del ancho máximo que
+  // pida quien llama: un lienzo enorme no lee ni un código más y hace lento el
+  // escaneo, que es lo que se nota en el teléfono.
+  let f = w >= 1100 ? 1 : 2;
+  if (anchoMaximo && w * f > anchoMaximo) f = anchoMaximo / w;
+  lienzo.width = Math.round(w * f); lienzo.height = Math.round(h * f);
   const c = lienzo.getContext('2d');
   // Con suavizado: sin él, al ampliar las barras finas se cuantizan y cambian
   // de grosor, y el código se lee mal.
@@ -1786,7 +1788,7 @@ function cerrarCamara() {
   if (!camara) return;
   try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
   if (camara.lector) { try { camara.lector.reset(); } catch (_) {} }
-  clearInterval(camara.timer);
+  clearTimeout(camara.timer);    // el ciclo de lectura está encadenado
   clearInterval(camara.ojo);
   camara.caja.remove();
   const main = $('caja-main');
@@ -1931,13 +1933,16 @@ async function abrirCamara() {
       caja.appendChild(btn);
     }
   } catch (_) {}
-  camara = { stream, video, caja, porTecla, timer: null, lector: null, ojo: null,
-             ultimo: '', ultimoT: 0, leidos: new Map(),
-             candidato: '', candidatoT: 0, candidatoN: 0,
-             escenaRef: null, escenaCambio: true };
+  camara = { stream, video, caja, visor, timer: null, ojo: null, porTecla,
+             leidos: new Map(),            // código -> cuándo entró
+             candidato: '', candidatoN: 0, // confirmación de los desconocidos
+             escenaRef: null, escenaCambio: true,
+             paso: 0, vueltas: 0, ms: 0, ultimaCruda: '', motor: '…' };
   estado.codigoSinHallar = '';   // se empieza en limpio
   ventaCamara();
-  // Vigila si la escena cambió desde el último producto que entró.
+
+  // Vigila si la escena cambió desde el último producto que entró: es lo que
+  // distingue "lo volvió a pasar" de "lo dejó delante de la cámara".
   camara.ojo = setInterval(() => {
     if (!camara || camara.escenaCambio) return;
     if (cambioLaEscena(firmaEscena(camara.video), camara.escenaRef)) {
@@ -1945,135 +1950,175 @@ async function abrirCamara() {
     }
   }, 200);
 
-  const alLeer = (texto) => {
-    const codigo = String(texto || '').trim();
-    if (!codigo || !camara) return;
-    const ahora = Date.now();
+  const motor = await armarMotor(video);
+  if (!motor) {
+    flash('Este navegador no puede escanear con la cámara', 'mal');
+    cerrarCamara();
+    return;
+  }
+  if (!camara) return;           // la cerraron mientras se preparaba
+  camara.motor = motor.nombre;
+  if (MODO_PRUEBA) panelDiagnostico();
+  cicloEscaneo(motor);
+}
 
-    // Confirmación: el mismo código tiene que repetirse antes de darlo por bueno.
-    // Con una sola lectura, una imagen borrosa da un código equivocado que igual
-    // pasa el dígito de control. Los que la caja ya conoce entran con dos
-    // lecturas; los desconocidos piden tres, porque casi siempre son eso mismo:
-    // una lectura errada (así se coló un 663350092868 que no existe, mientras el
-    // frasco decía 663350092738).
-    if (camara.candidato !== codigo || ahora - camara.candidatoT > 2500) {
-      camara.candidato = codigo;
-      camara.candidatoN = 1;
-      camara.candidatoT = ahora;
-      return;
+// ── El ciclo de lectura ───────────────────────────────────────────────────────
+// Encadenado, no por intervalo: la vuelta siguiente arranca cuando terminó la
+// anterior. Con un intervalo fijo, en el teléfono se encimaban las llamadas
+// (analizar un fotograma tarda más que el intervalo) y el escaneo se arrastraba.
+async function cicloEscaneo(motor) {
+  if (!camara) return;
+  const arranque = (window.performance || Date).now();
+  try {
+    const v = camara.video;
+    if (v.readyState >= 2 && v.videoWidth) {
+      const codigo = await motor.leer(v, camara.paso);
+      camara.paso = (camara.paso + 1) % 3;
+      camara.vueltas += 1;
+      camara.ms = Math.round((window.performance || Date).now() - arranque);
+      if (codigo) { camara.ultimaCruda = codigo; alLeer(codigo); }
     }
-    camara.candidatoT = ahora;
-    camara.candidatoN += 1;
-    if (camara.candidatoN < (estado.porBarcode.has(codigo) ? 2 : 3)) return;
+  } catch (_) { /* un fotograma que no se pudo leer no rompe el ciclo */ }
+  if (!camara) return;
+  camara.timer = setTimeout(() => cicloEscaneo(motor), 60);
+}
 
-    // Volver a pasar el mismo producto suma otra unidad, que es lo natural en el
-    // mostrador. Pero uno quieto delante de la cámara se lee cuatro veces por
-    // segundo: para no cobrar de más, solo vuelve a contar cuando la imagen
-    // cambió, o sea cuando el producto de verdad se movió. El tiempo solo no
-    // sirve: al reenfocar, la cámara pierde el código varios segundos sin que
-    // nadie lo haya tocado.
-    const visto = camara.leidos.get(codigo);
-    if (visto !== undefined && (ahora - visto < 1200 || !camara.escenaCambio)) {
-      const marcador = document.getElementById('camara-marcador');
-      if (marcador && marcador.dataset.codigo !== codigo) fichaCamara(codigo);
-      return;
-    }
-    camara.leidos.set(codigo, ahora);
-    camara.ultimo = codigo;
-    camara.ultimoT = ahora;
-    camara.candidato = '';
-    camara.candidatoN = 0;
-    camara.escenaRef = firmaEscena(camara.video);
-    camara.escenaCambio = false;
-    if (navigator.vibrate) navigator.vibrate(40);
-    const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
-    procesarEscaneo(codigo);
-    const entro = estado.venta.reduce((n, l) => n + l.cantidad, 0) > antes;
-    if (entro) fichaCamara(codigo);
-    else fichaCamara(codigo, 'Ese código no está en el catálogo');
-    ventaCamara();
-  };
+// Cada vuelta mira UNA zona, rotando: el fotograma entero, la franja que se ve
+// en el visor, y un recorte cerrado del centro con contraste (el que rescata los
+// códigos chicos y los impresos sobre plástico brillante). Así cada vuelta es
+// corta y entre tres se cubre todo.
+const CONTRASTE = 'grayscale(1) contrast(2.2) brightness(1.1)';
 
+async function armarMotor(video) {
+  // 1) El lector del navegador, que va por hardware y es el bueno.
   if ('BarcodeDetector' in window) {
     try {
-      const detector = new window.BarcodeDetector({ formats: FORMATOS_CODIGO });
-      const lienzoNativo = document.createElement('canvas');
-      let vuelta = 0;
-      camara.timer = setInterval(async () => {
-        if (!camara || !video.videoWidth) return;
-        try {
-          const encontrados = await detector.detect(video);
-          if (encontrados && encontrados.length) { alLeer(encontrados[0].rawValue); return; }
-          // La franja del marco: lo que la cajera ve encuadrado.
-          const zona = zonaVisible(video, visor);
-          if (!recorte(video, lienzoNativo, zona)) return;
-          const cerca = await detector.detect(lienzoNativo);
-          if (cerca && cerca.length) { alLeer(cerca[0].rawValue); return; }
-          // Y un ciclo sí y otro no, el recorte cerrado del centro con
-          // contraste: es el que rescata los códigos muy chicos y los impresos
-          // sobre plástico brillante o fondo de color.
-          vuelta = (vuelta + 1) % 2;
-          if (vuelta !== 1) return;
-          recorte(video, lienzoNativo, zonaCerca(zona), 'grayscale(1) contrast(2.2) brightness(1.1)');
-          const duro = await detector.detect(lienzoNativo);
-          if (duro && duro.length) alLeer(duro[0].rawValue);
-        } catch (_) {}
-      }, 250);
-      return;
-    } catch (_) { /* si el navegador no soporta esos formatos, cae a ZXing */ }
+      let formatos = FORMATOS_CODIGO;
+      if (window.BarcodeDetector.getSupportedFormats) {
+        // Solo los que dice soportar: pidiéndole uno que no tiene, fallaba el
+        // lector entero y se caía al de software, mucho más lento.
+        const soportados = await window.BarcodeDetector.getSupportedFormats();
+        formatos = FORMATOS_CODIGO.filter((f) => soportados.includes(f));
+      }
+      if (formatos.length) {
+        const detector = new window.BarcodeDetector({ formats: formatos });
+        const lienzo = document.createElement('canvas');
+        await detector.detect(video);      // una prueba: si no sirve, tira acá
+        return {
+          nombre: 'navegador',
+          leer: async (v, paso) => {
+            if (paso === 0) {
+              const r = await detector.detect(v);
+              return r && r.length ? r[0].rawValue : '';
+            }
+            const zona = zonaVisible(v, camara.visor);
+            if (!recorte(v, lienzo, paso === 1 ? zona : zonaCerca(zona),
+                         paso === 1 ? null : CONTRASTE)) return '';
+            const r = await detector.detect(lienzo);
+            return r && r.length ? r[0].rawValue : '';
+          },
+        };
+      }
+    } catch (_) { /* sin lector propio: se usa el de software */ }
   }
 
+  // 2) El de software, para los navegadores que no traen lector.
   try {
     await cargarZxing();
     const lector = new window.ZXing.BrowserMultiFormatReader();
-    camara.lector = lector;
-    // Bucle propio (tomar un fotograma y decodificarlo) en vez de la lectura
-    // continua de la librería: esa espera manejar ella misma el video y, con el
-    // stream ya puesto, nunca llamaba de vuelta.
+    if (camara) camara.lector = lector;
     const lienzo = document.createElement('canvas');
-    const ctx = lienzo.getContext('2d');
-    // Segundo lienzo con el CENTRO ampliado al doble: los códigos chicos (los de
-    // las etiquetas redondas en la base del envase) ocupan pocos píxeles en el
-    // fotograma entero y no se llegaban a leer.
-    const zoom = document.createElement('canvas');
     const leerDe = (cv) => {
       const fuente = new window.ZXing.HTMLCanvasElementLuminanceSource(cv);
       const mapa = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(fuente));
-      return lector.decodeBitmap(mapa);
+      const r = lector.decodeBitmap(mapa);
+      return r ? r.getText() : '';
     };
-    let turno = 0;
-    camara.timer = setInterval(() => {
-      if (!camara || !video.videoWidth) return;
-      lienzo.width = video.videoWidth;
-      lienzo.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      // Se alternan los dos: entero y centro ampliado, para no gastar el doble
-      // de trabajo en cada vuelta.
-      // Un turno la franja del marco, el otro el recorte cerrado del centro con
-      // contraste, para no gastar el doble de trabajo en cada vuelta.
-      turno = (turno + 1) % 2;
-      const visible = zonaVisible(video, visor);
-      const zona = turno === 1 ? visible : zonaCerca(visible);
-      const filtro = turno === 1 ? null : 'grayscale(1) contrast(2.2) brightness(1.1)';
-      if (recorte(video, zoom, zona, filtro)) {
-        try {
-          const res = leerDe(zoom);
-          if (res) { alLeer(res.getText()); return; }
-        } catch (_) { /* sin código en el recorte */ }
-      }
-      try {
-        // Se arma el mapa de luminancia del fotograma completo. Los atajos de la
-        // librería (decode / decodeFromVideoElement) miran el video tal como se
-        // ve en pantalla, que está recortado por el encuadre, y ahí el código
-        // queda fuera.
-        const res = leerDe(lienzo);
-        if (res) alLeer(res.getText());
-      } catch (_) { /* fotograma sin código: es lo normal */ }
-    }, 300);
-  } catch (err) {
-    flash('Este navegador no puede escanear con la cámara', 'mal');
-    cerrarCamara();
+    return {
+      nombre: 'software',
+      leer: async (v, paso) => {
+        // El fotograma entero son casi cuatro millones de píxeles: en el
+        // teléfono eso es carísimo, así que se achica antes de analizarlo.
+        const zona = paso === 0 ? { w: 1, h: 1 }
+                   : paso === 1 ? zonaVisible(v, camara.visor)
+                   : zonaCerca(zonaVisible(v, camara.visor));
+        if (!recorte(v, lienzo, zona, paso === 2 ? CONTRASTE : null, 1280)) return '';
+        try { return leerDe(lienzo); } catch (_) { return ''; }
+      },
+    };
+  } catch (_) {
+    return null;
   }
+}
+
+// ── Qué se acepta y qué no ────────────────────────────────────────────────────
+function alLeer(texto) {
+  const codigo = String(texto || '').trim();
+  if (!codigo || !camara) return;
+  const ahora = Date.now();
+
+  // Un código que ESTÁ en el catálogo entra con una sola lectura. Que una
+  // lectura errada caiga justo sobre uno de los mil quinientos códigos de la
+  // tienda es practicamente imposible, y exigir dos dejaba afuera los códigos
+  // difíciles —que son los que se leen una vez cada tantos intentos— o sea
+  // justo los que hay que rescatar.
+  // Uno DESCONOCIDO pide dos lecturas iguales, sin apuro de tiempo: ahí sí lo
+  // más probable es que sea una lectura errada (así se coló un 663350092868 que
+  // no existe, mientras el frasco decía 663350092738).
+  if (!estado.porBarcode.has(codigo)) {
+    if (camara.candidato !== codigo) {
+      camara.candidato = codigo;
+      camara.candidatoN = 1;
+      return;
+    }
+    camara.candidatoN += 1;
+    if (camara.candidatoN < 2) return;
+  }
+
+  // Volver a pasar el mismo producto suma otra unidad, que es lo natural en el
+  // mostrador. Pero uno quieto delante de la cámara se lee muchas veces por
+  // segundo: para no cobrar de más, solo vuelve a contar cuando la imagen
+  // cambió, o sea cuando el producto de verdad se movió.
+  const visto = camara.leidos.get(codigo);
+  if (visto !== undefined && (ahora - visto < 1200 || !camara.escenaCambio)) {
+    const marcador = document.getElementById('camara-marcador');
+    if (marcador && marcador.dataset.codigo !== codigo) fichaCamara(codigo);
+    return;
+  }
+
+  camara.leidos.set(codigo, ahora);
+  camara.candidato = '';
+  camara.candidatoN = 0;
+  camara.escenaRef = firmaEscena(camara.video);
+  camara.escenaCambio = false;
+  if (navigator.vibrate) navigator.vibrate(40);
+
+  const antes = estado.venta.reduce((n, l) => n + l.cantidad, 0);
+  procesarEscaneo(codigo);
+  const entro = estado.venta.reduce((n, l) => n + l.cantidad, 0) > antes;
+  if (entro) fichaCamara(codigo);
+  else fichaCamara(codigo, 'Ese código no está en el catálogo');
+  ventaCamara();
+}
+
+// ── Diagnóstico (solo en modo prueba) ─────────────────────────────────────────
+// Con una foto de esta pantalla se sabe qué lector usó el teléfono, qué
+// resolución dio y si está leyendo algo, en vez de andar adivinando.
+function panelDiagnostico() {
+  const caja = document.createElement('div');
+  caja.className = 'camara__diag';
+  camara.visor.appendChild(caja);
+  let antes = 0, cuando = Date.now();
+  const refresco = setInterval(() => {
+    if (!camara) { clearInterval(refresco); return; }
+    const t = Date.now();
+    const vps = Math.round((camara.vueltas - antes) * 1000 / Math.max(1, t - cuando));
+    antes = camara.vueltas; cuando = t;
+    const v = camara.video;
+    caja.innerHTML = `lector: ${esc(camara.motor)} · ${v.videoWidth}×${v.videoHeight}<br>`
+      + `${vps}/s · ${camara.ms} ms<br>`
+      + `leído: ${esc(camara.ultimaCruda || '—')}`;
+  }, 700);
 }
 
 // ── Arranque ─────────────────────────────────────────────────────────────────

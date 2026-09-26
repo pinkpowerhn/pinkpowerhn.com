@@ -696,6 +696,15 @@
   }
   .camara__zoom button:active { background:rgba(0,0,0,0.7); }
 
+  /* Solo en modo prueba: qué está haciendo el lector, para poder diagnosticar
+     desde una foto de la pantalla en vez de adivinar. */
+  .camara__diag {
+    position:absolute; left:8px; bottom:8px; z-index:3; font-size:0.58rem;
+    line-height:1.5; font-weight:600; color:#fff; text-align:left;
+    background:rgba(0,0,0,0.5); border-radius:8px; padding:0.3rem 0.5rem;
+    font-family:ui-monospace, monospace; pointer-events:none;
+  }
+
   /* Solo en modo prueba: la resolución que entregó esta cámara. */
   .camara__sello {
     position:absolute; top:6px; left:8px; z-index:2; font-size:0.6rem;

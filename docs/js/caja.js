@@ -1022,8 +1022,11 @@ function vistaExito() {
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
       <div class="recibo-acciones">
-        <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
-          ${svg(IC.whatsapp, 0)} Enviar el recibo por WhatsApp</button>
+        <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
+          ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
+            ? 'Mandar el recibo (imagen)' : 'Bajar el recibo (imagen)'}</button>
+        <button class="btn btn--ancho" data-accion="recibo-wa" type="button">
+          Mandar solo el enlace</button>
         <div class="recibo-acciones__fila">
           <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
           <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
@@ -1039,6 +1042,206 @@ function vistaExito() {
 function urlRecibo() {
   const r = estado.resultado;
   return r && r.recibo ? `${location.origin}/recibo/?t=${encodeURIComponent(r.recibo)}` : '';
+}
+
+// ── El recibo como imagen ────────────────────────────────────────────────────
+// Adjuntar un archivo a WhatsApp desde el navegador solo se puede por el menú
+// de compartir del propio teléfono. Donde no existe (una computadora), se baja
+// la imagen para adjuntarla a mano.
+function sePuedeCompartirArchivo() {
+  try {
+    return !!(navigator.canShare && navigator.share
+      && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] }));
+  } catch (_) { return false; }
+}
+
+function cargarImagen(src) {
+  return new Promise((ok) => {
+    const im = new Image();
+    im.onload = () => ok(im);
+    im.onerror = () => ok(null);
+    im.src = src;
+  });
+}
+
+// Dibuja el recibo y devuelve el PNG. Al doble de resolución para que el texto
+// se lea bien cuando WhatsApp lo comprime.
+async function dibujarRecibo(d) {
+  const E = 2, A = 420, M = 26;          // escala, ancho, margen
+  const logo = await cargarImagen('/img/logo.png');
+  const lienzo = document.createElement('canvas');
+  const c = lienzo.getContext('2d');
+
+  // Primera pasada sin dibujar: cuánto mide cada nombre partido en líneas.
+  const medir = () => {
+    c.font = '600 13px Montserrat, sans-serif';
+    return (d.items || []).map((it) => partirTexto(c, it.nombre, A - M * 2 - 90));
+  };
+  lienzo.width = A * E; lienzo.height = 100;   // provisorio, para poder medir
+  c.scale(E, E);
+  const nombres = medir();
+  const altoItems = nombres.reduce((n, ls) => n + 18 + ls.length * 16, 0);
+  const hayDesc = d.descuento && d.descuento.monto > 0;
+  const cuantosDatos = 2 + (d.ensayo || !d.numero ? 0 : 1) + (d.cliente ? 1 : 0);
+  const alto = 150 + Math.ceil(cuantosDatos / 2) * 38 + 36 + altoItems + 30
+             + (hayDesc ? 44 : 0) + 56 + (d.recibido ? 44 : 0) + 100;
+
+  lienzo.width = A * E; lienzo.height = Math.round(alto) * E;
+  const x = lienzo.getContext('2d');
+  x.scale(E, E);
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, A, alto);
+
+  let y = 30;
+  if (logo) {
+    const w = 96, h = logo.height * (w / logo.width);
+    x.drawImage(logo, (A - w) / 2, y, w, h);
+    y += h + 14;
+  } else { y += 10; }
+  x.fillStyle = '#8a6f7c'; x.font = '700 9px Montserrat, sans-serif';
+  x.textAlign = 'center';
+  x.fillText('COMPROBANTE DE COMPRA', A / 2, y);
+  y += 10;
+  if (d.ensayo) {
+    x.fillStyle = '#8a6d12'; x.font = '700 9px Montserrat, sans-serif';
+    x.fillText('PRUEBA · SIN VALOR', A / 2, y + 12);
+    y += 16;
+  }
+  y += 14;
+  linea(x, M, y, A - M); y += 20;
+
+  // Datos en dos columnas, colocados por orden: así no queda un hueco cuando
+  // alguno falta (una prueba no tiene número de pedido, una venta puede no
+  // llevar clienta).
+  x.textAlign = 'left';
+  const datos = [];
+  if (!d.ensayo && d.numero) datos.push(['PEDIDO', d.numero]);
+  datos.push(['FECHA', fechaCorta(d.fecha)]);
+  if (d.cliente) datos.push(['CLIENTA', d.cliente]);
+  datos.push(['PAGO', (PAGOS_TEXTO[d.pago] || d.pago || '')
+                      + (d.banco ? ' · ' + d.banco : '')]);
+  datos.forEach(([etiqueta, valor], i) => {
+    const px = (i % 2) ? A / 2 : M;
+    const py = y + Math.floor(i / 2) * 38;
+    x.fillStyle = '#8a6f7c'; x.font = '700 8px Montserrat, sans-serif';
+    x.fillText(etiqueta, px, py);
+    x.fillStyle = '#1a0a12'; x.font = '600 12px Montserrat, sans-serif';
+    x.fillText(recortar(x, valor, A / 2 - M - 10), px, py + 15);
+  });
+  y += Math.ceil(datos.length / 2) * 38;
+  linea(x, M, y, A - M); y += 18;
+
+  // Productos.
+  (d.items || []).forEach((it, i) => {
+    const ls = nombres[i];
+    x.fillStyle = '#1a0a12'; x.font = '600 13px Montserrat, sans-serif';
+    ls.forEach((t, j) => x.fillText(t, M, y + j * 16));
+    x.textAlign = 'right';
+    x.fillText(L(it.importe), A - M, y);
+    x.textAlign = 'left';
+    x.fillStyle = '#8a6f7c'; x.font = '500 11px Montserrat, sans-serif';
+    x.fillText(`${it.cantidad} × ${L(it.precio)}`, M, y + ls.length * 16 + 2);
+    y += 18 + ls.length * 16;
+  });
+  y += 8; linea(x, M, y, A - M); y += 20;
+
+  const fila = (etiqueta, valor, fuerte) => {
+    x.fillStyle = fuerte ? '#1a0a12' : '#8a6f7c';
+    x.font = (fuerte ? '700 11px' : '500 12px') + ' Montserrat, sans-serif';
+    x.fillText(etiqueta, M, y);
+    x.textAlign = 'right';
+    x.fillStyle = fuerte ? '#c22a5e' : '#1a0a12';
+    x.font = (fuerte ? '700 22px' : '600 12px') + ' Montserrat, sans-serif';
+    x.fillText(valor, A - M, y + (fuerte ? 4 : 0));
+    x.textAlign = 'left';
+    y += fuerte ? 34 : 22;
+  };
+  if (hayDesc) {
+    fila('Subtotal', L(d.subtotal));
+    fila('Descuento' + (d.descuento.tipo === 'porcentaje' ? ` (${d.descuento.valor}%)` : ''),
+         '− ' + L(d.descuento.monto));
+  }
+  fila('TOTAL', L(d.total), true);
+  if (d.recibido) { fila('Recibido', L(d.recibido)); fila('Cambio', L(d.cambio || 0)); }
+
+  y += 6; linea(x, M, y, A - M); y += 26;
+  x.textAlign = 'center';
+  x.fillStyle = '#1a0a12'; x.font = '600 15px Montserrat, sans-serif';
+  x.fillText('¡Gracias por su compra!', A / 2, y);
+  x.fillStyle = '#8a6f7c'; x.font = '500 10px Montserrat, sans-serif';
+  x.fillText('Pink Power · Honduras', A / 2, y + 18);
+
+  return new Promise((ok) => lienzo.toBlob(ok, 'image/png'));
+}
+
+const PAGOS_TEXTO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta',
+                      transferencia: 'Transferencia', credito: 'Crédito' };
+
+function linea(x, x1, y, x2) {
+  x.strokeStyle = 'rgba(26,10,18,0.12)'; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(x1, y); x.lineTo(x2, y); x.stroke();
+}
+
+function partirTexto(c, texto, ancho) {
+  const palabras = String(texto || '').split(/\s+/);
+  const lineas = []; let actual = '';
+  for (const p of palabras) {
+    const probar = actual ? actual + ' ' + p : p;
+    if (c.measureText(probar).width > ancho && actual) { lineas.push(actual); actual = p; }
+    else actual = probar;
+  }
+  if (actual) lineas.push(actual);
+  return lineas.slice(0, 2);
+}
+
+function recortar(x, texto, ancho) {
+  let t = String(texto || '');
+  while (t.length > 3 && x.measureText(t).width > ancho) t = t.slice(0, -1);
+  return t;
+}
+
+// Corta de verdad: escrita larga no entraba en la columna y se cortaba sola.
+function fechaCorta(iso) {
+  const f = new Date(iso);
+  if (isNaN(f)) return '';
+  return f.toLocaleDateString('es-HN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    + ' · ' + f.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })
+        .replace(/\s?([ap])\.\s?m\./i, ' $1.m.');
+}
+
+async function mandarReciboEnImagen() {
+  const r = estado.resultado;
+  if (!r || !r.recibo) return;
+  flash('Armando el recibo…');
+  let datos;
+  try {
+    datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
+  } catch (_) {
+    flash('No se pudo armar el recibo. Revisá la señal.', 'mal');
+    return;
+  }
+  let imagen;
+  try {
+    imagen = await dibujarRecibo(datos);
+  } catch (_) { imagen = null; }
+  if (!imagen) { flash('No se pudo armar la imagen', 'mal'); return; }
+
+  const nombre = `recibo-${(datos.numero || 'pinkpower').replace(/[^\w-]/g, '')}.png`;
+  const archivo = new File([imagen], nombre, { type: 'image/png' });
+  if (sePuedeCompartirArchivo()) {
+    try {
+      await navigator.share({ files: [archivo] });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;   // la cerró ella
+    }
+  }
+  // Sin menú de compartir: se baja para adjuntarla a mano.
+  const url = URL.createObjectURL(imagen);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  flash('Recibo guardado en el teléfono', 'ok');
 }
 
 function mandarReciboWhatsApp() {
@@ -1258,6 +1461,7 @@ $('caja-main').addEventListener('click', (e) => {
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
     case 'recibo-wa': mandarReciboWhatsApp(); break;
+    case 'recibo-img': mandarReciboEnImagen(); break;
     case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
     case 'recibo-copiar':
       navigator.clipboard.writeText(urlRecibo())

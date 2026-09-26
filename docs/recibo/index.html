@@ -64,6 +64,18 @@
     border: 1px solid #e8cf8a; border-radius: 999px; padding: 0.3rem 0.8rem;
     font-size: 0.64rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
   }
+  .redes { display: flex; gap: 0.5rem; margin: 0.9rem 0 1rem; }
+  .red {
+    flex: 1; display: block; text-decoration: none; border-radius: 12px;
+    padding: 0.6rem 0.5rem; font-size: 0.76rem; font-weight: 700;
+    color: var(--pink-dk); background: #fff1f6; border: 1px solid rgba(232,67,122,0.16);
+  }
+  .red--ig {
+    color: #fff; border-color: transparent;
+    background: linear-gradient(135deg, #f9ce34, #ee2a7b 55%, #6228d7);
+  }
+  .red:active { transform: scale(0.98); }
+
   .aviso { text-align: center; padding: 3rem 1.5rem; color: var(--muted); }
   .aviso b { display: block; color: var(--tinta); font-size: 1.05rem; margin-bottom: 0.4rem; }
   .cargando { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.9rem; }
@@ -80,6 +92,11 @@
     body { background: #fff; padding: 0; display: block; }
     .hoja { max-width: none; box-shadow: none; border-radius: 0; }
     .imprimir { display: none; }
+    /* En papel, los botones se vuelven texto: tocarlos no se puede. */
+    .redes { display: block; }
+    .red { background: none; border: none; color: #000; padding: 0.1rem;
+           display: inline; font-size: 0.7rem; }
+    .red--ig::after { content: ' @pinkpowerhn'; }
   }
 </style>
 </head>
@@ -147,6 +164,12 @@ function pintar(r) {
     </div>
     <div class="pie">
       <b>¡Gracias por su compra!</b>
+      <div class="redes">
+        <a class="red red--ig" href="https://instagram.com/pinkpowerhn"
+           target="_blank" rel="noopener">Seguinos en Instagram</a>
+        <a class="red" href="https://pinkpowerhn.com" target="_blank" rel="noopener">
+          Comprá en línea</a>
+      </div>
       Pink Power · Honduras<br />
       Este comprobante no sustituye una factura fiscal.
     </div>`;

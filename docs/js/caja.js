@@ -12,6 +12,15 @@
 //   mismo patrón del selector de orden de la tienda.
 
 const API = 'https://api.pinkpowerhn.com';
+
+// Las redes de la tienda, para invitar a seguirlas desde el recibo. En un solo
+// lugar: salen en el mensaje de WhatsApp, en la pagina del recibo y en la imagen.
+const TIENDA = {
+  instagram: 'pinkpowerhn',
+  instagramUrl: 'https://instagram.com/pinkpowerhn',
+  webUrl: 'https://pinkpowerhn.com',
+  web: 'pinkpowerhn.com',
+};
 const TOKEN_KEY = 'pinkpower_admin_token';
 let token = localStorage.getItem(TOKEN_KEY);
 
@@ -1084,7 +1093,7 @@ async function dibujarRecibo(d) {
   const hayDesc = d.descuento && d.descuento.monto > 0;
   const cuantosDatos = 2 + (d.ensayo || !d.numero ? 0 : 1) + (d.cliente ? 1 : 0);
   const alto = 150 + Math.ceil(cuantosDatos / 2) * 38 + 36 + altoItems + 30
-             + (hayDesc ? 44 : 0) + 56 + (d.recibido ? 44 : 0) + 100;
+             + (hayDesc ? 44 : 0) + 56 + (d.recibido ? 44 : 0) + 136;
 
   lienzo.width = A * E; lienzo.height = Math.round(alto) * E;
   const x = lienzo.getContext('2d');
@@ -1167,8 +1176,12 @@ async function dibujarRecibo(d) {
   x.textAlign = 'center';
   x.fillStyle = '#1a0a12'; x.font = '600 15px Montserrat, sans-serif';
   x.fillText('¡Gracias por su compra!', A / 2, y);
+  // En una imagen el texto no se puede tocar, así que los enlaces de verdad van
+  // en el mensaje de WhatsApp. Acá quedan a la vista, que es lo que se guarda.
+  x.fillStyle = '#c22a5e'; x.font = '600 11px Montserrat, sans-serif';
+  x.fillText(`Seguinos @${TIENDA.instagram}`, A / 2, y + 22);
   x.fillStyle = '#8a6f7c'; x.font = '500 10px Montserrat, sans-serif';
-  x.fillText('Pink Power · Honduras', A / 2, y + 18);
+  x.fillText(`Comprá en línea · ${TIENDA.web}`, A / 2, y + 38);
 
   return new Promise((ok) => lienzo.toBlob(ok, 'image/png'));
 }
@@ -1229,7 +1242,7 @@ async function mandarReciboEnImagen() {
   const archivo = new File([imagen], nombre, { type: 'image/png' });
   if (sePuedeCompartirArchivo()) {
     try {
-      await navigator.share({ files: [archivo] });
+      await navigator.share({ files: [archivo], text: invitacion() });
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;   // la cerró ella
@@ -1244,13 +1257,21 @@ async function mandarReciboEnImagen() {
   flash('Recibo guardado en el teléfono', 'ok');
 }
 
+// La invitación a seguirlos. Va en el mensaje, no en la imagen: acá los enlaces
+// se tocan, que es lo que hace falta para que de verdad lleguen al Instagram.
+function invitacion() {
+  return `Seguinos en Instagram: ${TIENDA.instagramUrl}\n`
+    + `Y comprá en línea cuando quieras: ${TIENDA.webUrl}`;
+}
+
 function mandarReciboWhatsApp() {
   const r = estado.resultado;
   if (!r || !r.recibo) return;
   const nombre = (r.nombreCliente || '').split(' ')[0];
   const texto = `Hola${nombre ? ' ' + nombre : ''}! Gracias por su compra en Pink Power 💕\n`
     + `${r.name && !r.ensayo ? 'Pedido ' + r.name + ' · ' : ''}Total ${L(r.total)}\n`
-    + `Su recibo: ${urlRecibo()}`;
+    + `Su recibo: ${urlRecibo()}\n\n`
+    + invitacion();
   // WhatsApp quiere el numero internacional, solo digitos y sin el "+". Los
   // telefonos de aca se guardan de ocho cifras (9988-7766): sin el 504 delante,
   // el enlace abre un chat que no existe.

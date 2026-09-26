@@ -433,9 +433,9 @@ let temporizadorCliente = null;
 function buscarClientas(texto) {
   clearTimeout(temporizadorCliente);
   const q = (texto || '').trim();
-  if (q.length < 2) { estado.resClientes = null; pintar(); return; }
+  if (q.length < 2) { estado.resClientes = null; pintarListaClientas(); return; }
   estado.buscandoCliente = true;
-  pintar();
+  pintarListaClientas();
   temporizadorCliente = setTimeout(async () => {
     try {
       const r = await api('/admin/caja/clientes?q=' + encodeURIComponent(q));
@@ -444,7 +444,7 @@ function buscarClientas(texto) {
       estado.resClientes = [];
     } finally {
       estado.buscandoCliente = false;
-      pintar();
+      pintarListaClientas();
     }
   }, 300);
 }
@@ -740,6 +740,39 @@ function bloqueLineas() {
   </div>`;
 }
 
+// Solo la lista, sin tocar el resto: repintar la pantalla entera en cada tecla
+// hacía temblar toda la caja mientras se escribía el nombre.
+function pintarListaClientas() {
+  const cont = document.getElementById('lista-clientas');
+  if (!cont) { pintar(); return; }
+  const f = (c, i, origen) => `
+      <button class="res res--cli" data-cli="${i}" data-origen="${origen}" type="button">
+        <span class="res__txt">
+          <span class="res__nom">${esc(c.nombre)}</span>
+          <span class="res__meta">${esc(c.telefono || 'sin teléfono')}</span>
+        </span>
+        ${c.mayoreo ? '<span class="chip chip--may">Mayorista</span>' : ''}
+      </button>`;
+  if (estado.buscandoCliente) {
+    cont.innerHTML = '<div class="resultados resultados--cli"><div class="vacio"><span class="puntos">Buscando</span></div></div>';
+  } else if (estado.resClientes && estado.resClientes.length) {
+    cont.innerHTML = `<div class="resultados resultados--cli scroll-lindo">
+      ${estado.resClientes.map((c, i) => f(c, i, 'busqueda')).join('')}</div>`;
+  } else if (estado.resClientes) {
+    cont.innerHTML = `<div class="resultados resultados--cli">
+      <div class="vacio" style="padding:0.9rem">No encontramos esta clienta.</div>
+      <button class="btn btn--ancho" data-accion="crear-cliente" type="button"
+              style="margin:0 0.5rem 0.5rem; width:calc(100% - 1rem)">Crear clienta</button>
+    </div>`;
+  } else if (estado.verRecientes && estado.recientes.length) {
+    cont.innerHTML = `<div class="resultados resultados--cli scroll-lindo">
+      <div class="resultados__cab">Últimas clientas</div>
+      ${estado.recientes.map((c, i) => f(c, i, 'recientes')).join('')}</div>`;
+  } else {
+    cont.innerHTML = '';
+  }
+}
+
 function bloqueCliente(valorCli) {
   if (estado.cliente) {
     return `<div class="tarjeta">
@@ -764,15 +797,21 @@ function bloqueCliente(valorCli) {
         ${c.mayoreo ? '<span class="chip chip--may">Mayorista</span>' : ''}
       </button>`;
 
+  // TODO lo que se despliega (buscando, resultados, "no encontramos") va dentro
+  // del mismo contenedor flotante. Antes el aviso de "Buscando" no lo llevaba y
+  // se metía en la fila del campo, que es horizontal: salía al lado del input.
   let lista = '';
   if (estado.buscandoCliente) {
-    lista = '<div class="vacio"><span class="puntos">Buscando</span></div>';
+    lista = '<div class="resultados resultados--cli"><div class="vacio"><span class="puntos">Buscando</span></div></div>';
   } else if (estado.resClientes && estado.resClientes.length) {
     lista = `<div class="resultados resultados--cli scroll-lindo">
       ${estado.resClientes.map((c, i) => fila(c, i, 'busqueda')).join('')}</div>`;
   } else if (estado.resClientes) {
-    lista = `<div class="vacio" style="padding:0.9rem 0 0.7rem">No encontramos esta clienta.</div>
-      <button class="btn btn--ancho" data-accion="crear-cliente" type="button">Crear clienta</button>`;
+    lista = `<div class="resultados resultados--cli">
+      <div class="vacio" style="padding:0.9rem">No encontramos esta clienta.</div>
+      <button class="btn btn--ancho" data-accion="crear-cliente" type="button"
+              style="margin:0 0.5rem 0.5rem; width:calc(100% - 1rem)">Crear clienta</button>
+    </div>`;
   } else if (estado.verRecientes && estado.recientes.length) {
     // Antes de escribir nada: las últimas que compraron. En el mostrador casi
     // siempre es una de ellas.
@@ -796,7 +835,7 @@ function bloqueCliente(valorCli) {
         <!-- La lista va DENTRO de la fila: es su ancla. Estando fuera se colgaba
              del alto de toda la tarjeta y aparecía muy abajo, dejando asomar el
              interruptor de mayoreo entre el campo y los resultados. -->
-        ${lista}
+        <div id="lista-clientas">${lista}</div>
       </div>
       ${interruptorMayoreo()}
     </div>
@@ -964,7 +1003,7 @@ $('caja-main').addEventListener('focusin', (e) => {
   if (e.target.id === 'q-cliente' && !estado.verRecientes && !estado.cliente
       && !e.target.value.trim() && estado.recientes.length) {
     estado.verRecientes = true;
-    pintar();
+    pintarListaClientas();
   }
 });
 
@@ -1011,7 +1050,7 @@ $('caja-main').addEventListener('click', (e) => {
   }
   if (estado.verRecientes && !e.target.closest('.tarjeta--cliente')) {
     estado.verRecientes = false;
-    pintar();
+    pintarListaClientas();
   }
   // La lista de productos también se cierra al tocar fuera: si no, queda tapando
   // la venta. El texto escrito se conserva, así que basta volver a escribir.

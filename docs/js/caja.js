@@ -1436,21 +1436,42 @@ function ventaCamara() {
     caja.innerHTML = '<p class="camara__vacia">Todavía no hay productos</p>';
     return;
   }
+  const unidades = estado.venta.reduce((n, l) => n + l.cantidad, 0);
   caja.innerHTML = `
-    <div class="camara__filas">
-      ${estado.venta.map((l) => `
-        <div class="camara__fila">
-          <span class="camara__cant">${l.cantidad}</span>
-          <span class="camara__nom">${esc(l.nombre)}</span>
-          <span class="camara__imp">${L(l.precio * l.cantidad)}</span>
-        </div>`).join('')}
-    </div>
     <div class="camara__total">
-      <span>Total</span><b>${L(total())}</b>
+      <span>Total <i>· ${unidades} producto${unidades !== 1 ? 's' : ''}</i></span>
+      <b>${L(total())}</b>
     </div>`;
-  // La última línea siempre a la vista: es la que acaba de entrar.
-  const filas = caja.querySelector('.camara__filas');
-  if (filas) filas.scrollTop = filas.scrollHeight;
+  // Lo último agregado se lleva a la vista en la pantalla de atrás, justo encima
+  // de la hoja: el detalle con fotos se lee ahí, no dentro de la cámara.
+  verUltimoEnElFondo();
+  // Y otra vez cuando la hoja terminó de entrar: mientras se desliza, su borde
+  // todavía no está donde va a quedar y la cuenta sale corrida.
+  const hoja = document.querySelector('.camara__hoja');
+  if (hoja && hoja.getAnimations().length) {
+    Promise.all(hoja.getAnimations().map((a) => a.finished))
+      .then(() => verUltimoEnElFondo())
+      .catch(() => {});
+  }
+}
+
+function verUltimoEnElFondo() {
+  const lineas = document.querySelectorAll('.li');
+  const ultima = lineas[lineas.length - 1];
+  const hoja = document.querySelector('.camara__hoja');
+  if (!ultima || !hoja) return;
+  // Hueco al pie mientras la cámara está abierta: sin él la página ya está al
+  // final del scroll y la última línea no puede subir por encima de la hoja.
+  const main = $('caja-main');
+  if (main) main.style.paddingBottom = Math.round(hoja.getBoundingClientRect().height + 24) + 'px';
+  // Se acomoda la pantalla de atrás para que lo último agregado quede JUSTO
+  // encima de la hoja. Si no, en el teléfono la hoja tapa la parte de la lista
+  // donde acaba de entrar el producto.
+  const libre = hoja.getBoundingClientRect().top;
+  const desfase = ultima.getBoundingClientRect().bottom - (libre - 12);
+  // Instantáneo, no suave: el desplazamiento animado se pausa cuando el sistema
+  // ahorra recursos, y en el mostrador conviene que el salto sea inmediato.
+  if (Math.abs(desfase) > 6) window.scrollBy(0, desfase);
 }
 
 function fichaCamara(codigo, aviso) {
@@ -1517,6 +1538,8 @@ function cerrarCamara() {
   if (camara.lector) { try { camara.lector.reset(); } catch (_) {} }
   clearInterval(camara.timer);
   camara.caja.remove();
+  const main = $('caja-main');
+  if (main) main.style.paddingBottom = '';   // se devuelve el alto normal
   document.removeEventListener('keydown', camara.porTecla);
   camara = null;
   enfocarBuscador();

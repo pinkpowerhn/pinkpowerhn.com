@@ -604,10 +604,14 @@
      No ocupa toda la pantalla: es una hoja de abajo, para que la venta se siga
      viendo mientras se escanea (así lo pidió la clienta). */
   .camara {
+    /* Sin difuminado y con un velo apenas perceptible: detrás se tienen que ver
+       las tarjetas de la venta con sus fotos, que es como la cajera confirma
+       que entró lo correcto. */
     position:fixed; inset:0; z-index:85; display:flex; align-items:flex-end;
-    justify-content:center; background:rgba(26,10,18,0.45); backdrop-filter:blur(2px);
-    overflow:hidden;
+    justify-content:center; background:rgba(26,10,18,0.12);
+    overflow:hidden; pointer-events:none;
   }
+  .camara__hoja, .camara__luz { pointer-events:auto; }
   .camara__hoja {
     width:100%; max-width:520px; background:#140a11; border-radius:22px 22px 0 0;
     padding:0.9rem 0.9rem max(0.9rem, env(safe-area-inset-bottom));
@@ -624,32 +628,19 @@
   @keyframes hojaIn { from { transform:translateY(24px); opacity:0.5; } to { transform:none; opacity:1; } }
   /* La venta dentro de la hoja: se ve entrar cada producto con su importe y el
      total sumando, que es lo que la cajera necesita para confirmar sin salir. */
-  .camara__venta { margin-bottom:0.7rem; }
-  .camara__filas { flex:1 1 auto; }
-  .camara__vacia { margin:0; padding:0.6rem 0; text-align:center; color:#a98b9a;
+  /* Solo el total: el detalle de la venta se ve detrás, en las tarjetas de
+     verdad, que es lo que pidió la clienta. */
+  .camara__venta { margin-bottom:0.6rem; flex:0 0 auto; }
+  .camara__vacia { margin:0; padding:0.4rem 0; text-align:center; color:#a98b9a;
                    font-size:0.8rem; }
-  .camara__filas { max-height:min(26dvh, 190px); overflow-y:auto; }
-  .camara__fila {
-    display:flex; align-items:center; gap:0.6rem; padding:0.4rem 0.2rem;
-    border-bottom:1px solid rgba(255,255,255,0.08); font-size:0.82rem;
-  }
-  .camara__fila:last-child { border-bottom:none; }
-  .camara__cant {
-    min-width:24px; height:24px; border-radius:8px; background:rgba(255,255,255,0.14);
-    color:#fff; display:flex; align-items:center; justify-content:center;
-    font-size:0.75rem; font-weight:700; flex:0 0 auto; padding:0 0.3rem;
-  }
-  .camara__nom { flex:1; min-width:0; color:#f3dbe6; overflow:hidden;
-                 text-overflow:ellipsis; white-space:nowrap; }
-  .camara__imp { color:#fff; font-weight:700; white-space:nowrap; }
   .camara__total {
     display:flex; align-items:baseline; justify-content:space-between;
-    padding:0.6rem 0.2rem 0.2rem; border-top:1px solid rgba(255,255,255,0.18);
-    margin-top:0.3rem;
+    padding:0.1rem 0.2rem 0.5rem;
   }
   .camara__total span { color:#e6b9cd; font-size:0.62rem; letter-spacing:0.16em;
                         text-transform:uppercase; font-weight:700; }
-  .camara__total b { color:#fff; font-size:1.3rem; }
+  .camara__total b { color:#fff; font-size:1.35rem; }
+  .camara__total i { font-style:normal; color:#e6b9cd; font-size:0.72rem; font-weight:600; }
 
   .camara__visor {
     position:relative; width:100%; height:min(32dvh, 260px); border-radius:16px;

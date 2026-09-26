@@ -691,7 +691,7 @@ function bloqueLineas() {
         <button class="btn btn--pink vacio-caja__accion" data-accion="camara"
           type="button">${svg(IC.codigo, 1.8)} Escanear con la cámara</button>
         <button class="li-manual vacio-caja__manual" data-accion="manual" type="button">
-          ${svg(IC.mas, 2)} Agregar producto manual</button>
+          ${svg(IC.mas, 2)} Agregar personalizado</button>
       ` : `
         <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
         <h3>Todavía no hay productos</h3>
@@ -737,9 +737,14 @@ function bloqueLineas() {
           </div>
         </div>
       </div>`).join('')}
-    <button class="li-manual" data-accion="manual" type="button">
-      ${svg(IC.mas, 2)} Agregar producto manual
-    </button>
+    <div class="li-pie">
+      <button class="li-manual" data-accion="buscar" type="button">
+        ${svg(IC.lupa, 2)} Buscar en el catálogo
+      </button>
+      <button class="li-manual li-manual--sec" data-accion="manual" type="button">
+        ${svg(IC.mas, 2)} Agregar personalizado
+      </button>
+    </div>
   </div>`;
 }
 
@@ -1001,6 +1006,12 @@ $('caja-main').addEventListener('focusout', (e) => {
 });
 
 $('caja-main').addEventListener('focusin', (e) => {
+  // Va a escribir el nombre: la cámara estorba y hay que sacarla del medio.
+  if (e.target.id === 'q' && camara) {
+    cerrarCamara();
+    const i = $('q');
+    if (i) i.focus({ preventScroll: true });
+  }
   if (e.target.id === 'q-cliente' && !estado.verRecientes && !estado.cliente
       && !e.target.value.trim() && estado.recientes.length) {
     estado.verRecientes = true;
@@ -1043,6 +1054,15 @@ $('caja-main').addEventListener('keydown', (e) => {
 
 $('caja-main').addEventListener('click', (e) => {
   const btn = e.target.closest('button');
+
+  // Tocar el campo para escribir el nombre saca la camara del medio. Va tambien
+  // aqui y no solo en el foco: si el campo ya lo tenia, no hay evento de foco.
+  if (camara && e.target.id === 'q') {
+    cerrarCamara();
+    const i = $('q');
+    if (i) i.focus({ preventScroll: true });
+    return;
+  }
 
   // Desplegables propios: un clic afuera los cierra.
   if (estado.descAbierto && !e.target.closest('.pp-select')) {
@@ -1102,6 +1122,12 @@ $('caja-main').addEventListener('click', (e) => {
     case 'cobrar': cobrar(); break;
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
+    case 'buscar': {
+      if (camara) cerrarCamara();
+      const campo = $('q');
+      if (campo) { campo.scrollIntoView({ block: 'center' }); campo.focus(); }
+      break;
+    }
     case 'camara': abrirCamara(); break;
     case 'rebuscar': buscarDeNuevo(estado.codigoSinHallar); break;
     case 'crear-cliente': pedirClienta(); break;
@@ -1116,6 +1142,9 @@ $('btn-nueva').addEventListener('click', () => {
 
 // ── Modales ──────────────────────────────────────────────────────────────────
 function modal({ titulo, sub = '', cuerpo, ok = 'Guardar' }) {
+  // La cámara está por encima de los modales: si sigue abierta, el modal se
+  // abre debajo y parece que el botón no hizo nada.
+  if (camara) cerrarCamara();
   const el = document.createElement('div');
   el.className = 'modal-fondo';
   el.innerHTML = `
@@ -1146,7 +1175,7 @@ function modal({ titulo, sub = '', cuerpo, ok = 'Guardar' }) {
 
 function pedirManual() {
   const { el, cerrar } = modal({
-    titulo: 'Producto manual',
+    titulo: 'Producto personalizado',
     sub: 'Para algo que no está en el catálogo.',
     ok: 'Agregar',
     cuerpo: `
@@ -1570,7 +1599,9 @@ function cerrarCamara() {
   if (main) main.style.paddingBottom = '';   // se devuelve el alto normal
   document.removeEventListener('keydown', camara.porTecla);
   camara = null;
-  pintar();   // si algun codigo quedo sin reconocer, el aviso aparece ahora
+  // Solo se repinta si hay algo que mostrar: repintar rehace el buscador y le
+  // quita el foco, o sea le cierra el teclado en plena escritura.
+  if (estado.codigoSinHallar) pintar();
   enfocarBuscador();
 }
 

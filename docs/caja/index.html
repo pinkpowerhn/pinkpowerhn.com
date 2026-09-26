@@ -127,13 +127,15 @@
   body.es-prueba .cinta-prueba {
     display:block; background:#b8860b; color:#fff; text-align:center;
     font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
-    padding:0.4rem 1rem; position:sticky; top:0; z-index:50;
+    padding:0.4rem 1rem; position:sticky; top:0; z-index:60;
   }
   body.es-prueba .top { top:26px; }
 
   /* ── Cabecera ────────────────────────────────────────────────────────── */
   .top {
-    position:sticky; top:0; z-index:40;
+    /* Por encima del buscador (40). Con los dos en 40 ganaba el buscador por ir
+       después en la página, y el campo se veía flotando sobre el logo. */
+    position:sticky; top:0; z-index:55;
     background:rgba(255,255,255,0.86); backdrop-filter:blur(14px);
     border-bottom:1px solid rgba(232,67,122,0.14);
     /* Tres columnas: volver, logo al centro y la acción a la derecha. */
@@ -458,17 +460,25 @@
   }
   .li--especial .li__precio input { border-color:var(--pink); background:var(--pink-lt); }
 
-  /* "Agregar producto manual" al pie de la lista: en el buscador se confundía
-     con el botón de escanear (la mamá de la dueña tocó ahí para agregar). */
+  /* Pie de la lista. Primero "Buscar en el catálogo", que es lo que de verdad
+     se hace cuando un producto no trae código; "Agregar personalizado" al lado,
+     que casi no se usa y con el nombre viejo se confundía con buscar. */
+  .li-pie { display:flex; border-top:1px solid rgba(26,10,18,0.06); }
   .li-manual {
-    display:flex; align-items:center; justify-content:center; gap:0.45rem;
-    width:100%; border:none; background:none; cursor:pointer; font-family:inherit;
-    font-size:0.8rem; font-weight:600; color:var(--muted); padding:0.8rem;
-    border-top:1px solid rgba(26,10,18,0.06);
+    display:flex; align-items:center; justify-content:center; gap:0.4rem;
+    flex:1; border:none; background:none; cursor:pointer; font-family:inherit;
+    font-size:0.75rem; font-weight:600; color:var(--muted); padding:0.8rem 0.4rem;
+    white-space:nowrap;   /* partido en dos lineas quedaba el icono suelto */
   }
   .li-manual svg { width:15px; height:15px; }
   .li-manual:hover { color:var(--pink-dk); background:#fff7fa; }
-  .vacio-caja__manual { border-top:none; margin-top:0.4rem; }
+  .li-manual--sec { border-left:1px solid rgba(26,10,18,0.06); }
+  /* En pantallas angostas no caben lado a lado: uno debajo del otro. */
+  @media (max-width: 379px) {
+    .li-pie { flex-direction:column; }
+    .li-manual--sec { border-left:none; border-top:1px solid rgba(26,10,18,0.06); }
+  }
+  .vacio-caja__manual { border-top:none; margin-top:0.4rem; width:100%; }
 
   .chip { font-size:0.6rem; font-weight:700; border-radius:999px; padding:0.22rem 0.6rem;
           background:var(--pink-lt); color:var(--pink-dk); display:inline-block;

@@ -381,6 +381,7 @@ function cambio() {
 }
 
 function nuevaVenta() {
+  intentoActual = '';
   try { localStorage.removeItem(GUARDADO); } catch (_) {}
   estado.codigoSinHallar = '';
   estado.venta = [];
@@ -410,6 +411,18 @@ function sePuedeCobrar() {
   return true;
 }
 
+// El número vive mientras dure el intento de cobro: se borra al terminar bien y
+// al empezar una venta nueva, y se conserva si hubo error, que es justo cuando
+// la cajera vuelve a darle a Cobrar.
+let intentoActual = '';
+
+function numeroDeIntento() {
+  if (!intentoActual) {
+    intentoActual = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+  }
+  return intentoActual;
+}
+
 async function cobrar() {
   if (!sePuedeCobrar()) return;
   estado.cobrando = true;
@@ -434,6 +447,11 @@ async function cobrar() {
     cambio: vuelto,
     nota: estado.nota || '',
     ensayo: MODO_PRUEBA,
+    // Número de este cobro. Se conserva mientras la venta no se cobre, así que
+    // un reintento tras un corte de red llega con el MISMO número y el servidor
+    // devuelve el pedido que ya creó en vez de crear otro: sin esto, un pedido
+    // que se creó pero cuya respuesta no llegó se cobraba dos veces.
+    intento: numeroDeIntento(),
   };
   if (estado.descuento.tipo && num(estado.descuento.valor) > 0) {
     cuerpo.descuento = { tipo: estado.descuento.tipo, valor: num(estado.descuento.valor) };
@@ -443,12 +461,16 @@ async function cobrar() {
     estado.resultado = { ...r, cambio: vuelto,
                         telefono: estado.cliente ? (estado.cliente.telefono || '') : '',
                         nombreCliente: estado.cliente ? estado.cliente.nombre : '' };
+    intentoActual = '';                                       // ese cobro terminó
     try { localStorage.removeItem(GUARDADO); } catch (_) {}   // ya está cobrada
   } catch (err) {
     if (err.status === 409 && err.detalle && err.detalle.agotados) {
       const lista = err.detalle.agotados
         .map((a) => `${a.title} (quedan ${a.disponible})`).join(', ');
       estado.error = 'Se agotaron: ' + lista + '. Corregí la venta e intentá de nuevo.';
+    } else if (err.status === 409 && !(err.detalle && err.detalle.agotados)) {
+      estado.error = 'Ese cobro ya se está procesando. Esperá unos segundos y '
+        + 'fijate en Shopify antes de volver a intentar.';
     } else if (err.message === 'Failed to fetch') {
       estado.error = 'Sin conexión: no se pudo cobrar. La venta sigue armada, intentá de nuevo.';
     } else if (err.message !== 'Sesión expirada') {

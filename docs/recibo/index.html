@@ -136,7 +136,7 @@ function pintar(r) {
       </div>
       <div class="items">${items}</div>
       <div class="suma">
-        ${d || (r.subtotal && r.subtotal !== r.total)
+        ${d && d.monto > 0
           ? `<div class="fila"><span>Subtotal</span><b>${L(r.subtotal)}</b></div>` : ''}
         ${d && d.monto > 0 ? `<div class="fila"><span>Descuento${
           d.tipo === 'porcentaje' ? ' (' + d.valor + '%)' : ''}</span><b>− ${L(d.monto)}</b></div>` : ''}

@@ -127,7 +127,7 @@ function pintar(r) {
     </div>
     <div class="cuerpo">
       <div class="datos">
-        ${r.numero ? `<div class="dato"><span>Pedido</span><b>${esc(r.numero)}</b></div>` : ''}
+        ${r.numero && !r.ensayo ? `<div class="dato"><span>Pedido</span><b>${esc(r.numero)}</b></div>` : ''}
         <div class="dato"><span>Fecha</span><b>${esc(fecha(r.fecha))}</b></div>
         ${r.cliente ? `<div class="dato"><span>Clienta</span><b>${esc(r.cliente)}</b></div>` : ''}
         <div class="dato"><span>Pago</span><b>${esc(PAGOS[r.pago] || r.pago || '')}${
@@ -150,7 +150,7 @@ function pintar(r) {
       Este comprobante no sustituye una factura fiscal.
     </div>`;
   document.getElementById('imprimir').hidden = false;
-  document.title = 'Recibo ' + (r.numero || '') + ' · Pink Power';
+  document.title = 'Recibo ' + (r.ensayo ? '' : (r.numero || '')) + ' · Pink Power';
 }
 
 function sinRecibo(texto) {

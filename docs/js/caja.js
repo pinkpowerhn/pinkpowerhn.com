@@ -989,10 +989,14 @@ function mandarReciboWhatsApp() {
   if (!r || !r.recibo) return;
   const nombre = (r.nombreCliente || '').split(' ')[0];
   const texto = `Hola${nombre ? ' ' + nombre : ''}! Gracias por su compra en Pink Power 💕\n`
-    + `${r.name ? 'Pedido ' + r.name + ' · ' : ''}Total ${L(r.total)}\n`
+    + `${r.name && !r.ensayo ? 'Pedido ' + r.name + ' · ' : ''}Total ${L(r.total)}\n`
     + `Su recibo: ${urlRecibo()}`;
-  // Solo los digitos: WhatsApp no acepta el numero con espacios ni con +.
-  const tel = String(r.telefono || '').replace(/\D/g, '');
+  // WhatsApp quiere el numero internacional, solo digitos y sin el "+". Los
+  // telefonos de aca se guardan de ocho cifras (9988-7766): sin el 504 delante,
+  // el enlace abre un chat que no existe.
+  let tel = String(r.telefono || '').replace(/\D/g, '');
+  if (tel.startsWith('00')) tel = tel.slice(2);
+  if (tel.length === 8) tel = '504' + tel;
   // Sin numero, WhatsApp pregunta a quien mandarselo, que es lo que hace falta
   // cuando la venta fue sin clienta registrada.
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');

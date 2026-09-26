@@ -656,11 +656,9 @@ function bloqueBuscador(valor) {
                   ${valor ? '' : 'hidden'}>&times;</button>
         </span>
       </div>
-      ${estado.hayCamara ? `<button class="btn solo-escritorio" data-accion="camara" type="button"
+      ${estado.hayCamara ? `<button class="btn" data-accion="camara" type="button"
               title="Escanear con la cámara" aria-label="Escanear con la cámara">
-              ${svg(IC.camara, 1.8)}</button>` : ''}
-      <button class="btn" data-accion="manual" type="button" title="Producto manual"
-              aria-label="Agregar producto manual">${svg(IC.mas)}</button>
+              ${svg(IC.codigo, 1.8)}</button>` : ''}
     </div>`;
 }
 
@@ -690,8 +688,10 @@ function bloqueLineas() {
         <h3>Escaneá el primer producto</h3>
         <p>Tocá el código de barras para abrir la cámara,<br />
            pasá el lector, o escribí el nombre en el buscador.</p>
-        <button class="btn btn--pink vacio-caja__accion solo-escritorio" data-accion="camara"
+        <button class="btn btn--pink vacio-caja__accion" data-accion="camara"
           type="button">${svg(IC.codigo, 1.8)} Escanear con la cámara</button>
+        <button class="li-manual vacio-caja__manual" data-accion="manual" type="button">
+          ${svg(IC.mas, 2)} Agregar producto manual</button>
       ` : `
         <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
         <h3>Todavía no hay productos</h3>
@@ -737,6 +737,9 @@ function bloqueLineas() {
           </div>
         </div>
       </div>`).join('')}
+    <button class="li-manual" data-accion="manual" type="button">
+      ${svg(IC.mas, 2)} Agregar producto manual
+    </button>
   </div>`;
 }
 
@@ -915,8 +918,6 @@ function bloqueResumen() {
 
 function barraMovil() {
   return `<div class="barra">
-    ${estado.hayCamara ? `<button class="btn btn--ancho barra__escanear" data-accion="camara"
-      type="button">${svg(IC.codigo, 1.8)} Escanear con la cámara</button>` : ''}
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${(!estado.venta.length || !estado.pago || estado.cobrando) ? 'disabled' : ''}>
@@ -1279,7 +1280,7 @@ async function procesarEscaneo(codigo) {
     });
     estado.porBarcode.set(limpio, enShopify);
     agregar(enShopify);
-    if (camara) fichaCamara(limpio);
+    if (camara) { fichaCamara(limpio); ventaCamara(); }
     else flash(enShopify.producto, 'ok');
     return;
   }
@@ -1426,6 +1427,32 @@ function cargarZxing() {
 // Debajo del visor va la ficha del último producto escaneado, con sus botones de
 // cantidad: es lo que pidió la clienta para no tener que salir de la cámara para
 // corregir. También resuelve el caso de llevar dos iguales.
+// La venta, dentro de la hoja: la cajera ve entrar cada producto con su precio y
+// el total sumando, sin salir de la cámara.
+function ventaCamara() {
+  const caja = document.getElementById('camara-venta');
+  if (!caja) return;
+  if (!estado.venta.length) {
+    caja.innerHTML = '<p class="camara__vacia">Todavía no hay productos</p>';
+    return;
+  }
+  caja.innerHTML = `
+    <div class="camara__filas">
+      ${estado.venta.map((l) => `
+        <div class="camara__fila">
+          <span class="camara__cant">${l.cantidad}</span>
+          <span class="camara__nom">${esc(l.nombre)}</span>
+          <span class="camara__imp">${L(l.precio * l.cantidad)}</span>
+        </div>`).join('')}
+    </div>
+    <div class="camara__total">
+      <span>Total</span><b>${L(total())}</b>
+    </div>`;
+  // La última línea siempre a la vista: es la que acaba de entrar.
+  const filas = caja.querySelector('.camara__filas');
+  if (filas) filas.scrollTop = filas.scrollHeight;
+}
+
 function fichaCamara(codigo, aviso) {
   if (!camara) return;
   const caja = document.getElementById('camara-marcador');
@@ -1464,7 +1491,9 @@ function fichaCamara(codigo, aviso) {
     </div>`;
   const menos = caja.querySelector('[data-cam-menos]');
   const mas = caja.querySelector('[data-cam-mas]');
-  if (mas) mas.addEventListener('click', () => { cambiarCantidad(i, 1); fichaCamara(codigo); });
+  if (mas) mas.addEventListener('click', () => {
+    cambiarCantidad(i, 1); fichaCamara(codigo); ventaCamara();
+  });
   if (menos) menos.addEventListener('click', () => {
     cambiarCantidad(i, -1);
     // Si se quitó la última unidad, la línea desaparece y se puede volver a escanear.
@@ -1475,6 +1504,7 @@ function fichaCamara(codigo, aviso) {
     } else {
       fichaCamara(codigo);
     }
+    ventaCamara();
   });
   caja.classList.remove('camara__marcador--flash');
   void caja.offsetWidth;
@@ -1498,6 +1528,7 @@ async function abrirCamara() {
   caja.className = 'camara';
   caja.innerHTML = `
     <div class="camara__hoja">
+      <div class="camara__venta" id="camara-venta"></div>
       <div class="camara__visor">
         <video class="camara__video" playsinline muted></video>
         <div class="camara__marco"><span></span><span></span><span></span><span></span></div>
@@ -1567,6 +1598,7 @@ async function abrirCamara() {
   } catch (_) {}
   camara = { stream, video, caja, porTecla, timer: null, lector: null,
              ultimo: '', ultimoT: 0, leidos: new Set() };
+  ventaCamara();
 
   const alLeer = (texto) => {
     const codigo = String(texto || '').trim();
@@ -1598,6 +1630,7 @@ async function abrirCamara() {
     const entro = estado.venta.reduce((n, l) => n + l.cantidad, 0) > antes;
     if (entro) fichaCamara(codigo);
     else fichaCamara(codigo, 'Ese código no está en el catálogo');
+    ventaCamara();
   };
 
   if ('BarcodeDetector' in window) {

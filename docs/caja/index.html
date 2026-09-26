@@ -458,6 +458,18 @@
   }
   .li--especial .li__precio input { border-color:var(--pink); background:var(--pink-lt); }
 
+  /* "Agregar producto manual" al pie de la lista: en el buscador se confundía
+     con el botón de escanear (la mamá de la dueña tocó ahí para agregar). */
+  .li-manual {
+    display:flex; align-items:center; justify-content:center; gap:0.45rem;
+    width:100%; border:none; background:none; cursor:pointer; font-family:inherit;
+    font-size:0.8rem; font-weight:600; color:var(--muted); padding:0.8rem;
+    border-top:1px solid rgba(26,10,18,0.06);
+  }
+  .li-manual svg { width:15px; height:15px; }
+  .li-manual:hover { color:var(--pink-dk); background:#fff7fa; }
+  .vacio-caja__manual { border-top:none; margin-top:0.4rem; }
+
   .chip { font-size:0.6rem; font-weight:700; border-radius:999px; padding:0.22rem 0.6rem;
           background:var(--pink-lt); color:var(--pink-dk); display:inline-block;
           letter-spacing:0.08em; text-transform:uppercase; }
@@ -594,16 +606,53 @@
   .camara {
     position:fixed; inset:0; z-index:85; display:flex; align-items:flex-end;
     justify-content:center; background:rgba(26,10,18,0.45); backdrop-filter:blur(2px);
+    overflow:hidden;
   }
   .camara__hoja {
     width:100%; max-width:520px; background:#140a11; border-radius:22px 22px 0 0;
     padding:0.9rem 0.9rem max(0.9rem, env(safe-area-inset-bottom));
     box-shadow:0 -18px 40px -20px rgba(0,0,0,0.8);
     animation:hojaIn .24s cubic-bezier(.22,1,.36,1);
+    /* Nunca más alta que su contenedor (que ocupa la pantalla): si la venta
+       crece, la que cede es su lista, que tiene scroll propio, y el botón de
+       Listo siempre queda dentro. Con dvh no alcanzaba: esa medida no siempre
+       coincide con el alto real que el navegador deja usable. */
+    display:flex; flex-direction:column; max-height:100%; min-height:0;
   }
+  .camara__venta { flex:0 1 auto; min-height:0; display:flex; flex-direction:column; }
+  .camara__visor, .camara__marcador, .camara__cerrar { flex:0 0 auto; }
   @keyframes hojaIn { from { transform:translateY(24px); opacity:0.5; } to { transform:none; opacity:1; } }
+  /* La venta dentro de la hoja: se ve entrar cada producto con su importe y el
+     total sumando, que es lo que la cajera necesita para confirmar sin salir. */
+  .camara__venta { margin-bottom:0.7rem; }
+  .camara__filas { flex:1 1 auto; }
+  .camara__vacia { margin:0; padding:0.6rem 0; text-align:center; color:#a98b9a;
+                   font-size:0.8rem; }
+  .camara__filas { max-height:min(26dvh, 190px); overflow-y:auto; }
+  .camara__fila {
+    display:flex; align-items:center; gap:0.6rem; padding:0.4rem 0.2rem;
+    border-bottom:1px solid rgba(255,255,255,0.08); font-size:0.82rem;
+  }
+  .camara__fila:last-child { border-bottom:none; }
+  .camara__cant {
+    min-width:24px; height:24px; border-radius:8px; background:rgba(255,255,255,0.14);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:0.75rem; font-weight:700; flex:0 0 auto; padding:0 0.3rem;
+  }
+  .camara__nom { flex:1; min-width:0; color:#f3dbe6; overflow:hidden;
+                 text-overflow:ellipsis; white-space:nowrap; }
+  .camara__imp { color:#fff; font-weight:700; white-space:nowrap; }
+  .camara__total {
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:0.6rem 0.2rem 0.2rem; border-top:1px solid rgba(255,255,255,0.18);
+    margin-top:0.3rem;
+  }
+  .camara__total span { color:#e6b9cd; font-size:0.62rem; letter-spacing:0.16em;
+                        text-transform:uppercase; font-weight:700; }
+  .camara__total b { color:#fff; font-size:1.3rem; }
+
   .camara__visor {
-    position:relative; width:100%; height:min(40dvh, 300px); border-radius:16px;
+    position:relative; width:100%; height:min(32dvh, 260px); border-radius:16px;
     overflow:hidden; background:#000;
   }
   .camara__video { width:100%; height:100%; object-fit:cover; display:block; }

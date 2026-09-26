@@ -76,6 +76,7 @@ const estado = {
   resClientes: null,    // null = no se buscó; [] = sin resultados
   hayCamara: false,     // se muestra el botón de escanear solo si el equipo tiene
   codigoSinHallar: '',  // último código escaneado que no está en el catálogo
+  resultadosTotal: 0,   // cuántos coincidieron de verdad (la lista muestra los primeros)
   recientes: [],        // últimas clientas atendidas
   verRecientes: false,  // se muestran al tocar el campo, antes de escribir
 };
@@ -248,19 +249,27 @@ async function repasarCatalogo() {
   } catch (_) { /* si falla, se sigue con el que había */ }
 }
 
+const TOPE_RESULTADOS = 60;
+
 function buscarProductos(texto) {
   const q = norm(texto).trim();
   if (!q) return [];
   const palabras = q.split(/\s+/).filter(Boolean);
-  const out = [];
-  for (const v of estado.catalogo) {
-    if (palabras.every((p) => v.busca.includes(p))) {
-      out.push(v);
-      if (out.length >= 20) break;
-    }
-  }
-  // Los disponibles primero: lo normal es vender lo que hay.
-  return out.sort((a, b) => (a.disponible === b.disponible) ? 0 : (a.disponible ? -1 : 1));
+  // Se juntan TODAS las coincidencias y despues se ordena. Antes se cortaba en
+  // veinte ANTES de ordenar, y ahi se perdian productos: de los cuarenta y cinco
+  // "Coconut" solo llegaban los veinte primeros del catalogo, que esta ordenado
+  // por fecha de alta, asi que el que buscaba podia no salir nunca.
+  const todas = estado.catalogo.filter((v) => palabras.every((p) => v.busca.includes(p)));
+  todas.sort((a, b) => {
+    // Los disponibles primero: lo normal es vender lo que hay.
+    if (a.disponible !== b.disponible) return a.disponible ? -1 : 1;
+    // Despues, los que EMPIEZAN por lo que escribio: es lo que suele buscar.
+    const ea = a.busca.startsWith(q), eb = b.busca.startsWith(q);
+    if (ea !== eb) return ea ? -1 : 1;
+    return a.producto.localeCompare(b.producto, 'es');
+  });
+  estado.resultadosTotal = todas.length;
+  return todas.slice(0, TOPE_RESULTADOS);
 }
 
 // ── Venta ────────────────────────────────────────────────────────────────────
@@ -664,6 +673,10 @@ function bloqueBuscador(valor) {
 
 function bloqueResultados() {
   if (!estado.resultados.length) return '';
+  const sobran = (estado.resultadosTotal || 0) - estado.resultados.length;
+  const pie = sobran > 0
+    ? `<div class="resultados__pie">y ${sobran} más · escribí un poco más para afinar</div>`
+    : '';
   return `<div class="resultados scroll-lindo">${estado.resultados.map((v, i) => `
     <button class="res ${v.disponible ? '' : 'res--agotado'}" data-res="${i}" type="button">
       ${v.imagen ? `<img src="${esc(v.imagen)}" alt="" loading="lazy" />` : '<img alt="" />'}
@@ -674,7 +687,7 @@ function bloqueResultados() {
           ${v.disponible ? '' : '<span class="res__tag">agotado</span>'}</span>
       </span>
       <span class="res__pre">${L(precioSegunModo(v))}</span>
-    </button>`).join('')}</div>`;
+    </button>`).join('')}${pie}</div>`;
 }
 
 function bloqueLineas() {

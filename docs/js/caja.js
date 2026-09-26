@@ -1583,8 +1583,21 @@ const FORMATOS_CODIGO = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_
 // Las dos zonas que se miran aparte del fotograma entero. La primera es la del
 // marco que ve la cajera; la segunda, un recorte cerrado del centro que se
 // amplía, para los códigos chiquitos.
-const ZONA_MARCO = { w: 0.86, h: 0.42 };
-const ZONA_CERCA = { w: 0.50, h: 0.22 };
+// La franja del fotograma que entra en el visor (que recorta por los bordes).
+// Se calcula porque el fotograma puede venir vertical u horizontal segun el
+// telefono, y lo que se analiza tiene que ser lo mismo que la cajera ve.
+function zonaVisible(video, visor) {
+  const arVisor = (visor.clientWidth || 4) / (visor.clientHeight || 3);
+  const arVideo = (video.videoWidth || 4) / (video.videoHeight || 3);
+  return arVideo > arVisor
+    ? { w: arVisor / arVideo, h: 1 }    // video mas ancho: se recortan los lados
+    : { w: 1, h: arVideo / arVisor };   // video mas alto: se recorta arriba y abajo
+}
+
+// Un recorte mas cerrado dentro de lo visible, para los codigos chicos.
+function zonaCerca(zona) {
+  return { w: zona.w * 0.62, h: zona.h * 0.55 };
+}
 
 // Dibuja un recorte centrado del video en el lienzo, ampliado si es chico.
 function recorte(video, lienzo, zona, filtro) {
@@ -1796,7 +1809,7 @@ async function abrirCamara() {
       <div class="camara__visor">
         <video class="camara__video" playsinline muted></video>
         <div class="camara__marco"><span></span><span></span><span></span><span></span></div>
-        <p class="camara__ayuda">Apuntá al código de barras</p>
+        <p class="camara__ayuda">Apuntá al código · si se ve borroso, alejá un poco</p>
       </div>
       <div class="camara__marcador" id="camara-marcador"></div>
       <button class="btn btn--ancho camara__cerrar" type="button">Listo</button>
@@ -1816,7 +1829,10 @@ async function abrirCamara() {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
-        width: { ideal: 2560 }, height: { ideal: 1440 },
+        // 1920 y no más: en resolución máxima muchas cámaras enfocan más lento,
+        // y para un código de barras 1920 sobra. El problema nunca fue la
+        // cantidad de píxeles, fue el foco.
+        width: { ideal: 1920 }, height: { ideal: 1080 },
         frameRate: { ideal: 30 },
         resizeMode: { ideal: 'none' },
         advanced: [{ focusMode: 'continuous' }],
@@ -1831,19 +1847,28 @@ async function abrirCamara() {
   }
   video.srcObject = stream;
   await video.play().catch(() => {});
-  // El visor toma la proporción real de la cámara: así se ve el fotograma
-  // entero, que es justo el que se analiza, y no una franja recortada.
-  if (video.videoWidth && video.videoHeight) {
-    const visor = caja.querySelector('.camara__visor');
-    if (visor) visor.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  const visor = caja.querySelector('.camara__visor');
+
+  // Tocar la imagen reenfoca, como en la cámara del teléfono. Es lo que saca de
+  // apuros cuando el código quedó borroso y la cámara no se da cuenta sola.
+  if (visor) {
+    visor.addEventListener('click', async () => {
+      const pista = stream.getVideoTracks()[0];
+      if (!pista) return;
+      visor.classList.add('is-enfocando');
+      setTimeout(() => visor.classList.remove('is-enfocando'), 600);
+      try {
+        // Sacarlo de continuo y devolverlo obliga a enfocar de nuevo.
+        await pista.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        await pista.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      } catch (_) { /* la camara no deja tocar el enfoque: no pasa nada */ }
+    });
   }
 
   const pista = stream.getVideoTracks()[0];
-  // Nada de zoom de cámara. En el teléfono ese zoom es digital: recorta el
-  // centro y lo re-escala, así que entrega la mitad de resolución real y la
-  // imagen se ve borrosa —era la queja— y encima el código se lee peor. Para
-  // acercarse está el recorte del centro sobre el fotograma completo, más abajo,
-  // que trabaja con los píxeles de verdad.
+  // Sin zoom automático: el de la cámara es digital y recorta píxeles de verdad,
+  // así que ponerlo de entrada empeora la imagen para todos. Queda a mano, en
+  // los botones de abajo, para cuando haga falta alejarse del producto.
   try {
     const s = pista.getSettings ? pista.getSettings() : {};
     if ((s.width || 0) < 1280) {   // el navegador dio poco: se insiste una vez
@@ -1860,6 +1885,30 @@ async function abrirCamara() {
       caja.querySelector('.camara__visor').appendChild(sello);
     } catch (_) {}
   }
+
+  // Acercamiento a mano. Es la salida al problema de fondo: la camara no enfoca
+  // de muy cerca, asi que hay que alejar el telefono; acercando con el zoom, el
+  // codigo vuelve a llenar el cuadro sin salirse del rango de enfoque.
+  try {
+    const cap = pista.getCapabilities && pista.getCapabilities();
+    if (cap && cap.zoom && cap.zoom.max > cap.zoom.min && visor) {
+      let nivel = pista.getSettings().zoom || cap.zoom.min;
+      const paso = Math.max((cap.zoom.max - cap.zoom.min) / 8, cap.zoom.step || 0.1);
+      const mandos = document.createElement('div');
+      mandos.className = 'camara__zoom';
+      mandos.innerHTML = '<button type="button" data-zoom="+" aria-label="Acercar">+</button>'
+        + '<button type="button" data-zoom="-" aria-label="Alejar">−</button>';
+      mandos.addEventListener('click', async (ev) => {
+        ev.stopPropagation();          // no vale como toque para reenfocar
+        const b = ev.target.closest('[data-zoom]');
+        if (!b) return;
+        nivel = Math.min(cap.zoom.max, Math.max(cap.zoom.min,
+          nivel + (b.dataset.zoom === '+' ? paso : -paso)));
+        try { await pista.applyConstraints({ advanced: [{ zoom: nivel }] }); } catch (_) {}
+      });
+      visor.appendChild(mandos);
+    }
+  } catch (_) {}
 
   // Linterna: en la tienda el producto suele quedar a contraluz o en sombra.
   try {
@@ -1956,7 +2005,8 @@ async function abrirCamara() {
           const encontrados = await detector.detect(video);
           if (encontrados && encontrados.length) { alLeer(encontrados[0].rawValue); return; }
           // La franja del marco: lo que la cajera ve encuadrado.
-          if (!recorte(video, lienzoNativo, ZONA_MARCO)) return;
+          const zona = zonaVisible(video, visor);
+          if (!recorte(video, lienzoNativo, zona)) return;
           const cerca = await detector.detect(lienzoNativo);
           if (cerca && cerca.length) { alLeer(cerca[0].rawValue); return; }
           // Y un ciclo sí y otro no, el recorte cerrado del centro con
@@ -1964,7 +2014,7 @@ async function abrirCamara() {
           // sobre plástico brillante o fondo de color.
           vuelta = (vuelta + 1) % 2;
           if (vuelta !== 1) return;
-          recorte(video, lienzoNativo, ZONA_CERCA, 'grayscale(1) contrast(2.2) brightness(1.1)');
+          recorte(video, lienzoNativo, zonaCerca(zona), 'grayscale(1) contrast(2.2) brightness(1.1)');
           const duro = await detector.detect(lienzoNativo);
           if (duro && duro.length) alLeer(duro[0].rawValue);
         } catch (_) {}
@@ -2002,7 +2052,8 @@ async function abrirCamara() {
       // Un turno la franja del marco, el otro el recorte cerrado del centro con
       // contraste, para no gastar el doble de trabajo en cada vuelta.
       turno = (turno + 1) % 2;
-      const zona = turno === 1 ? ZONA_MARCO : ZONA_CERCA;
+      const visible = zonaVisible(video, visor);
+      const zona = turno === 1 ? visible : zonaCerca(visible);
       const filtro = turno === 1 ? null : 'grayscale(1) contrast(2.2) brightness(1.1)';
       if (recorte(video, zoom, zona, filtro)) {
         try {

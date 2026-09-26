@@ -667,20 +667,42 @@
   .camara__total b { color:#fff; font-size:1.35rem; }
   .camara__total i { font-style:normal; color:#e6b9cd; font-size:0.72rem; font-weight:600; }
 
-  /* La proporcion la pone la cámara (se fija al abrirla). Con alto fijo y
-     recorte a los lados, la cajera no veía la mitad del ancho del sensor. */
+  /* Proporción fija 4:3 y recorte por los bordes: el fotograma sale VERTICAL
+     (1440×2560), y dejándolo entero quedaba una columna angosta con dos barras
+     negras. Se muestra la franja central a todo lo ancho, que es la que se
+     analiza: lo que la cajera ve es exactamente lo que se lee. */
   .camara__visor {
-    position:relative; width:100%; aspect-ratio:16/9; max-height:min(42dvh, 340px);
+    position:relative; width:100%; aspect-ratio:4/3; max-height:min(44dvh, 360px);
     border-radius:16px; overflow:hidden; background:#000;
   }
+  /* Un destello al tocar, para que se note que pidió enfocar. */
+  .camara__visor.is-enfocando::after {
+    content:''; position:absolute; inset:0; z-index:4; pointer-events:none;
+    box-shadow:inset 0 0 0 3px rgba(255,255,255,0.85);
+    animation:enfoque 0.6s ease-out forwards;
+  }
+  @keyframes enfoque { from { opacity:1 } to { opacity:0 } }
+
+  /* Acercamiento: sirve para escanear desde más lejos, que es donde la cámara
+     enfoca. Acercarse demasiado es lo que deja el código borroso. */
+  .camara__zoom {
+    position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:3;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .camara__zoom button {
+    width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(0,0,0,0.45); color:#fff; font-size:1.05rem; font-weight:700;
+    font-family:inherit; display:flex; align-items:center; justify-content:center;
+  }
+  .camara__zoom button:active { background:rgba(0,0,0,0.7); }
+
   /* Solo en modo prueba: la resolución que entregó esta cámara. */
   .camara__sello {
     position:absolute; top:6px; left:8px; z-index:2; font-size:0.6rem;
     font-weight:700; letter-spacing:0.08em; color:#fff;
     background:rgba(0,0,0,0.45); border-radius:6px; padding:0.15rem 0.4rem;
   }
-  /* contain: se ve el fotograma completo, que es el que se analiza. */
-  .camara__video { width:100%; height:100%; object-fit:contain; display:block; }
+  .camara__video { width:100%; height:100%; object-fit:cover; display:block; }
   /* Marco de guía: cuatro esquinas, que ubican el código sin tapar la imagen. */
   /* Franja apaisada, la misma zona que se analiza: un código de barras es ancho
      y bajo, y así se sabe dónde ponerlo. */

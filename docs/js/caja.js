@@ -338,6 +338,26 @@ function actualizarTotales() {
   fijar('.barra__tot b', L(total()));
   const filas = document.querySelectorAll('.total-fila span:last-child');
   if (filas[0]) filas[0].textContent = L(subtotal());
+
+  // La línea del descuento hay que crearla o quitarla acá: mientras la cajera
+  // escribe el porcentaje no se repinta la pantalla (perdería el foco del
+  // campo), así que antes el descuento se aplicaba pero no se mostraba.
+  const monto = montoDescuento();
+  let linea = document.querySelector('.total-fila--desc');
+  if (monto > 0) {
+    if (!linea) {
+      const primera = document.querySelector('.total-fila');
+      if (primera) {
+        linea = document.createElement('div');
+        linea.className = 'total-fila total-fila--desc';
+        linea.innerHTML = '<span>Descuento</span><span></span>';
+        primera.insertAdjacentElement('afterend', linea);
+      }
+    }
+    if (linea) linea.querySelector('span:last-child').textContent = '− ' + L(monto);
+  } else if (linea) {
+    linea.remove();
+  }
   const btn = document.querySelector('.btn--cobrar.solo-escritorio');
   if (btn && !estado.cobrando) btn.textContent = 'Cobrar ' + L(total());
 }
@@ -807,7 +827,8 @@ function bloqueResumen() {
     <div class="tarjeta__cab">Cobro</div>
     <div class="tarjeta__cuerpo scroll-lindo">
       <div class="total-fila"><span>Subtotal</span><span>${L(subtotal())}</span></div>
-      ${desc > 0 ? `<div class="total-fila"><span>Descuento</span><span>− ${L(desc)}</span></div>` : ''}
+      ${desc > 0 ? `<div class="total-fila total-fila--desc"><span>Descuento</span>
+        <span>− ${L(desc)}</span></div>` : ''}
       <div class="total-grande"><span>Total</span><b>${L(total())}</b></div>
 
       <div style="display:flex; gap:0.6rem; margin-top:1rem; align-items:flex-start;">

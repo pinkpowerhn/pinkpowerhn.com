@@ -42,6 +42,7 @@ const IC = {
   camara: '<path d="M3 8a2 2 0 0 1 2-2h2.2l1.2-2h6.8l1.2 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>'
         + '<circle cx="12" cy="12.5" r="3.6"></circle>',
   // Código de barras con el haz del lector cruzándolo.
+  whatsapp: '<path fill="currentColor" stroke="none" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.82 2.41a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.17-.47-.29z"></path>',
   codigo: '<path d="M3 7V5a1 1 0 0 1 1-1h2"></path><path d="M18 4h2a1 1 0 0 1 1 1v2"></path>'
         + '<path d="M21 17v2a1 1 0 0 1-1 1h-2"></path><path d="M6 20H4a1 1 0 0 1-1-1v-2"></path>'
         + '<line x1="7" y1="8" x2="7" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line>'
@@ -401,16 +402,22 @@ async function cobrar() {
   estado.cobrando = true;
   estado.error = '';
   pintar();
+  const vuelto = estado.pago === 'efectivo' ? cambio() : 0;
   const cuerpo = {
+    // El nombre viaja solo para el recibo: el backend arma el pedido con el id.
     items: estado.venta.filter((l) => !l.manual).map((l) => ({
       variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio,
+      nombre: l.nombre,
     })),
     personalizados: estado.venta.filter((l) => l.manual).map((l) => ({
       titulo: l.nombre, precio: l.precio, cantidad: l.cantidad,
     })),
     cliente_id: estado.cliente ? estado.cliente.id : '',
+    cliente_nombre: estado.cliente ? estado.cliente.nombre : '',
     mayoreo: hayMayoreo(),
     pago: estado.pago,
+    recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
+    cambio: vuelto,
     nota: estado.nota || '',
     ensayo: MODO_PRUEBA,
   };
@@ -419,7 +426,9 @@ async function cobrar() {
   }
   try {
     const r = await api('/admin/caja/venta', { method: 'POST', body: JSON.stringify(cuerpo) });
-    estado.resultado = { ...r, cambio: estado.pago === 'efectivo' ? cambio() : 0 };
+    estado.resultado = { ...r, cambio: vuelto,
+                        telefono: estado.cliente ? (estado.cliente.telefono || '') : '',
+                        nombreCliente: estado.cliente ? estado.cliente.nombre : '' };
     try { localStorage.removeItem(GUARDADO); } catch (_) {}   // ya está cobrada
   } catch (err) {
     if (err.status === 409 && err.detalle && err.detalle.agotados) {
@@ -954,9 +963,39 @@ function vistaExito() {
     ${r.cambio > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
     ${!r.pagado ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago (crédito).</div>' : ''}
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
-    <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="nueva" style="margin-top:1.3rem">
+    ${r.recibo ? `
+      <div class="recibo-acciones">
+        <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
+          ${svg(IC.whatsapp, 0)} Enviar el recibo por WhatsApp</button>
+        <div class="recibo-acciones__fila">
+          <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
+          <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
+        </div>
+      </div>` : ''}
+    <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="nueva" style="margin-top:1.1rem">
       Nueva venta</button>
   </div>`;
+}
+
+// El enlace publico del recibo. Sale del mismo sitio en el que corre la caja,
+// asi que en la computadora de prueba apunta a la prueba y en la tienda al sitio.
+function urlRecibo() {
+  const r = estado.resultado;
+  return r && r.recibo ? `${location.origin}/recibo/?t=${encodeURIComponent(r.recibo)}` : '';
+}
+
+function mandarReciboWhatsApp() {
+  const r = estado.resultado;
+  if (!r || !r.recibo) return;
+  const nombre = (r.nombreCliente || '').split(' ')[0];
+  const texto = `Hola${nombre ? ' ' + nombre : ''}! Gracias por su compra en Pink Power 💕\n`
+    + `${r.name ? 'Pedido ' + r.name + ' · ' : ''}Total ${L(r.total)}\n`
+    + `Su recibo: ${urlRecibo()}`;
+  // Solo los digitos: WhatsApp no acepta el numero con espacios ni con +.
+  const tel = String(r.telefono || '').replace(/\D/g, '');
+  // Sin numero, WhatsApp pregunta a quien mandarselo, que es lo que hace falta
+  // cuando la venta fue sin clienta registrada.
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
 }
 
 // ── Eventos ──────────────────────────────────────────────────────────────────
@@ -1135,6 +1174,13 @@ $('caja-main').addEventListener('click', (e) => {
     case 'cobrar': cobrar(); break;
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
+    case 'recibo-wa': mandarReciboWhatsApp(); break;
+    case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
+    case 'recibo-copiar':
+      navigator.clipboard.writeText(urlRecibo())
+        .then(() => flash('Enlace copiado', 'ok'))
+        .catch(() => flash('No se pudo copiar', 'mal'));
+      break;
     case 'buscar': {
       if (camara) cerrarCamara();
       const campo = $('q');
@@ -1480,6 +1526,33 @@ document.addEventListener('click', (e) => {
 // Es el respaldo del lector, sobre todo para cobrar desde el teléfono. Chrome de
 // Android trae un detector propio; donde no está (Safari), se carga ZXing.
 const FORMATOS_CODIGO = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf'];
+// Las dos zonas que se miran aparte del fotograma entero. La primera es la del
+// marco que ve la cajera; la segunda, un recorte cerrado del centro que se
+// amplía, para los códigos chiquitos.
+const ZONA_MARCO = { w: 0.86, h: 0.42 };
+const ZONA_CERCA = { w: 0.50, h: 0.22 };
+
+// Dibuja un recorte centrado del video en el lienzo, ampliado si es chico.
+function recorte(video, lienzo, zona, filtro) {
+  const w = Math.round(video.videoWidth * zona.w);
+  const h = Math.round(video.videoHeight * zona.h);
+  if (!w || !h) return false;
+  // Ampliar solo si hace falta: con la cámara dando 2560 px el recorte ya trae
+  // detalle de sobra, y un lienzo gigante hace lento el escaneo sin leer más.
+  const f = w >= 1100 ? 1 : 2;
+  lienzo.width = w * f; lienzo.height = h * f;
+  const c = lienzo.getContext('2d');
+  // Con suavizado: sin él, al ampliar las barras finas se cuantizan y cambian
+  // de grosor, y el código se lee mal.
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.filter = filtro || 'none';
+  c.drawImage(video, Math.round((video.videoWidth - w) / 2),
+              Math.round((video.videoHeight - h) / 2), w, h,
+              0, 0, lienzo.width, lienzo.height);
+  c.filter = 'none';
+  return true;
+}
 const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
 
 let camara = null;   // { stream, video, cerrar }
@@ -1704,6 +1777,12 @@ async function abrirCamara() {
   }
   video.srcObject = stream;
   await video.play().catch(() => {});
+  // El visor toma la proporción real de la cámara: así se ve el fotograma
+  // entero, que es justo el que se analiza, y no una franja recortada.
+  if (video.videoWidth && video.videoHeight) {
+    const visor = caja.querySelector('.camara__visor');
+    if (visor) visor.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+  }
 
   const pista = stream.getVideoTracks()[0];
   // Nada de zoom de cámara. En el teléfono ese zoom es digital: recorta el
@@ -1816,39 +1895,22 @@ async function abrirCamara() {
     try {
       const detector = new window.BarcodeDetector({ formats: FORMATOS_CODIGO });
       const lienzoNativo = document.createElement('canvas');
-      let vuelta = false;
+      let vuelta = 0;
       camara.timer = setInterval(async () => {
-        if (!camara) return;
+        if (!camara || !video.videoWidth) return;
         try {
           const encontrados = await detector.detect(video);
           if (encontrados && encontrados.length) { alLeer(encontrados[0].rawValue); return; }
-          // Segundo intento sobre el centro ampliado, para los códigos chicos.
-          const w = Math.round(video.videoWidth * 0.55);
-          const h = Math.round(video.videoHeight * 0.45);
-          if (!w || !h) return;
-          // Ampliar solo si el recorte es chico. Con la camara dando 2560 px el
-          // recorte ya trae detalle de sobra, y un lienzo gigante hace lento el
-          // escaneo sin leer ni un codigo mas.
-          const f = w >= 1100 ? 1 : 2;
-          lienzoNativo.width = w * f; lienzoNativo.height = h * f;
-          const c2 = lienzoNativo.getContext('2d');
-          c2.imageSmoothingEnabled = true;
-          c2.imageSmoothingQuality = 'high';
-          c2.drawImage(video, Math.round((video.videoWidth - w) / 2),
-                       Math.round((video.videoHeight - h) / 2), w, h,
-                       0, 0, lienzoNativo.width, lienzoNativo.height);
+          // La franja del marco: lo que la cajera ve encuadrado.
+          if (!recorte(video, lienzoNativo, ZONA_MARCO)) return;
           const cerca = await detector.detect(lienzoNativo);
           if (cerca && cerca.length) { alLeer(cerca[0].rawValue); return; }
-          // Tercer intento, un ciclo sí y otro no: el mismo recorte en blanco y
-          // negro con más contraste. Es lo que rescata los códigos impresos
-          // sobre plástico brillante o sobre fondo de color.
-          vuelta = !vuelta;
-          if (!vuelta) return;
-          c2.filter = 'grayscale(1) contrast(2.2) brightness(1.1)';
-          c2.drawImage(video, Math.round((video.videoWidth - w) / 2),
-                       Math.round((video.videoHeight - h) / 2), w, h,
-                       0, 0, lienzoNativo.width, lienzoNativo.height);
-          c2.filter = 'none';
+          // Y un ciclo sí y otro no, el recorte cerrado del centro con
+          // contraste: es el que rescata los códigos muy chicos y los impresos
+          // sobre plástico brillante o fondo de color.
+          vuelta = (vuelta + 1) % 2;
+          if (vuelta !== 1) return;
+          recorte(video, lienzoNativo, ZONA_CERCA, 'grayscale(1) contrast(2.2) brightness(1.1)');
           const duro = await detector.detect(lienzoNativo);
           if (duro && duro.length) alLeer(duro[0].rawValue);
         } catch (_) {}
@@ -1870,7 +1932,6 @@ async function abrirCamara() {
     // las etiquetas redondas en la base del envase) ocupan pocos píxeles en el
     // fotograma entero y no se llegaban a leer.
     const zoom = document.createElement('canvas');
-    const zctx = zoom.getContext('2d');
     const leerDe = (cv) => {
       const fuente = new window.ZXing.HTMLCanvasElementLuminanceSource(cv);
       const mapa = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(fuente));
@@ -1884,19 +1945,12 @@ async function abrirCamara() {
       ctx.drawImage(video, 0, 0);
       // Se alternan los dos: entero y centro ampliado, para no gastar el doble
       // de trabajo en cada vuelta.
+      // Un turno la franja del marco, el otro el recorte cerrado del centro con
+      // contraste, para no gastar el doble de trabajo en cada vuelta.
       turno = (turno + 1) % 2;
-      if (turno === 1) {
-        const w = Math.round(video.videoWidth * 0.55);
-        const h = Math.round(video.videoHeight * 0.45);
-        const x = Math.round((video.videoWidth - w) / 2);
-        const y = Math.round((video.videoHeight - h) / 2);
-        const f = w >= 1100 ? 1 : 2;
-        zoom.width = w * f; zoom.height = h * f;
-        // Con suavizado: sin él, al ampliar al doble las barras finas se
-        // cuantizan y cambian de grosor, y el código se lee mal.
-        zctx.imageSmoothingEnabled = true;
-        zctx.imageSmoothingQuality = 'high';
-        zctx.drawImage(video, x, y, w, h, 0, 0, zoom.width, zoom.height);
+      const zona = turno === 1 ? ZONA_MARCO : ZONA_CERCA;
+      const filtro = turno === 1 ? null : 'grayscale(1) contrast(2.2) brightness(1.1)';
+      if (recorte(video, zoom, zona, filtro)) {
         try {
           const res = leerDe(zoom);
           if (res) { alLeer(res.getText()); return; }

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Recibo · Pink Power</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --pink: #e8437a; --pink-dk: #c22a5e; --tinta: #1a0a12; --muted: #8a6f7c;
+    --papel: #fff; --fondo: #fdf4f7; --linea: rgba(26,10,18,0.10);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fondo); color: var(--tinta);
+    font-family: Montserrat, system-ui, sans-serif; font-size: 15px;
+    padding: 1.1rem 1rem 2.5rem; display: flex; justify-content: center;
+  }
+  .hoja {
+    width: 100%; max-width: 420px; background: var(--papel); border-radius: 20px;
+    box-shadow: 0 10px 30px -18px rgba(26,10,18,0.35); overflow: hidden;
+  }
+  .cab { text-align: center; padding: 1.5rem 1.2rem 1.1rem; border-bottom: 1px dashed var(--linea); }
+  .cab img { height: 42px; width: auto; }
+  .cab p { margin: 0.55rem 0 0; font-size: 0.66rem; letter-spacing: 0.18em;
+           text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .cuerpo { padding: 1.2rem; }
+
+  .datos { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; margin-bottom: 1.1rem; }
+  .dato { flex: 1 1 42%; }
+  .dato span { display: block; font-size: 0.6rem; letter-spacing: 0.14em;
+               text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .dato b { font-weight: 600; font-size: 0.92rem; }
+
+  .items { border-top: 1px solid var(--linea); }
+  .item { display: flex; gap: 0.7rem; padding: 0.7rem 0; border-bottom: 1px solid var(--linea); }
+  .item__txt { flex: 1; min-width: 0; }
+  .item__nom { font-weight: 600; font-size: 0.9rem; line-height: 1.3; }
+  .item__sub { font-size: 0.76rem; color: var(--muted); margin-top: 0.15rem; }
+  .item__imp { font-weight: 700; white-space: nowrap; }
+
+  .suma { margin-top: 0.9rem; }
+  .fila { display: flex; justify-content: space-between; padding: 0.3rem 0; font-size: 0.9rem; }
+  .fila span { color: var(--muted); }
+  .fila--total {
+    margin-top: 0.5rem; padding-top: 0.7rem; border-top: 1px solid var(--linea);
+    align-items: baseline;
+  }
+  .fila--total span { color: var(--tinta); font-weight: 700; font-size: 0.66rem;
+                      letter-spacing: 0.16em; text-transform: uppercase; }
+  .fila--total b { font-size: 1.5rem; color: var(--pink-dk); }
+
+  .pie { text-align: center; padding: 1.2rem; border-top: 1px dashed var(--linea);
+         color: var(--muted); font-size: 0.76rem; line-height: 1.5; }
+  .pie b { display: block; font-family: 'Cormorant Garamond', serif; font-size: 1.25rem;
+           color: var(--tinta); font-weight: 600; margin-bottom: 0.25rem; }
+
+  .sello {
+    display: inline-block; margin-top: 0.6rem; background: #fff4d6; color: #8a6d12;
+    border: 1px solid #e8cf8a; border-radius: 999px; padding: 0.3rem 0.8rem;
+    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .aviso { text-align: center; padding: 3rem 1.5rem; color: var(--muted); }
+  .aviso b { display: block; color: var(--tinta); font-size: 1.05rem; margin-bottom: 0.4rem; }
+  .cargando { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.9rem; }
+
+  .imprimir {
+    display: block; width: 100%; max-width: 420px; margin: 0.9rem auto 0;
+    border: none; border-radius: 14px; padding: 0.85rem; cursor: pointer;
+    font-family: inherit; font-size: 0.85rem; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--pink), var(--pink-dk));
+  }
+
+  /* Al imprimir queda solo el papel: sin fondo, sin sombras, sin botón. */
+  @media print {
+    body { background: #fff; padding: 0; display: block; }
+    .hoja { max-width: none; box-shadow: none; border-radius: 0; }
+    .imprimir { display: none; }
+  }
+</style>
+</head>
+<body>
+<div style="width:100%; max-width:420px">
+  <div class="hoja" id="hoja">
+    <div class="cargando">Abriendo el recibo…</div>
+  </div>
+  <button class="imprimir" id="imprimir" hidden type="button">Imprimir o guardar en PDF</button>
+</div>
+
+<script>
+const API = 'https://api.pinkpowerhn.com';
+const L = (n) => 'L. ' + (Number(n) || 0).toLocaleString('es-HN', {
+  minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = (t) => String(t == null ? '' : t)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const PAGOS = { efectivo: 'Efectivo', tarjeta: 'Tarjeta',
+                transferencia: 'Transferencia', credito: 'Crédito' };
+
+function fecha(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'long', year: 'numeric' })
+    + ' · ' + d.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function pintar(r) {
+  const items = (r.items || []).map((i) => `
+    <div class="item">
+      <div class="item__txt">
+        <div class="item__nom">${esc(i.nombre)}</div>
+        <div class="item__sub">${i.cantidad} × ${L(i.precio)}</div>
+      </div>
+      <div class="item__imp">${L(i.importe)}</div>
+    </div>`).join('');
+
+  const d = r.descuento;
+  document.getElementById('hoja').innerHTML = `
+    <div class="cab">
+      <img src="/img/logo.png" alt="Pink Power" />
+      <p>Comprobante de compra</p>
+      ${r.ensayo ? '<div class="sello">Prueba · sin valor</div>' : ''}
+    </div>
+    <div class="cuerpo">
+      <div class="datos">
+        ${r.numero ? `<div class="dato"><span>Pedido</span><b>${esc(r.numero)}</b></div>` : ''}
+        <div class="dato"><span>Fecha</span><b>${esc(fecha(r.fecha))}</b></div>
+        ${r.cliente ? `<div class="dato"><span>Clienta</span><b>${esc(r.cliente)}</b></div>` : ''}
+        <div class="dato"><span>Pago</span><b>${esc(PAGOS[r.pago] || r.pago || '')}${
+          r.pagado === false ? ' · pendiente' : ''}</b></div>
+      </div>
+      <div class="items">${items}</div>
+      <div class="suma">
+        ${d || (r.subtotal && r.subtotal !== r.total)
+          ? `<div class="fila"><span>Subtotal</span><b>${L(r.subtotal)}</b></div>` : ''}
+        ${d && d.monto > 0 ? `<div class="fila"><span>Descuento${
+          d.tipo === 'porcentaje' ? ' (' + d.valor + '%)' : ''}</span><b>− ${L(d.monto)}</b></div>` : ''}
+        <div class="fila fila--total"><span>Total</span><b>${L(r.total)}</b></div>
+        ${r.recibido ? `<div class="fila"><span>Recibido</span><b>${L(r.recibido)}</b></div>` : ''}
+        ${r.cambio ? `<div class="fila"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
+      </div>
+    </div>
+    <div class="pie">
+      <b>¡Gracias por su compra!</b>
+      Pink Power · Honduras<br />
+      Este comprobante no sustituye una factura fiscal.
+    </div>`;
+  document.getElementById('imprimir').hidden = false;
+  document.title = 'Recibo ' + (r.numero || '') + ' · Pink Power';
+}
+
+function sinRecibo(texto) {
+  document.getElementById('hoja').innerHTML =
+    `<div class="aviso"><b>No encontramos este recibo</b>${esc(texto)}</div>`;
+}
+
+(async () => {
+  // El token puede venir como ?t= o al final de la ruta, para que el enlace se
+  // pueda acortar sin romper nada.
+  const p = new URLSearchParams(location.search);
+  const token = (p.get('t') || location.hash.replace('#', '') || '').trim();
+  if (!token) { sinRecibo('El enlace está incompleto.'); return; }
+  try {
+    const res = await fetch(`${API}/recibo/${encodeURIComponent(token)}`);
+    if (!res.ok) {
+      sinRecibo(res.status === 404
+        ? 'El enlace no es válido o el recibo ya no está disponible.'
+        : 'Intentá de nuevo en un momento.');
+      return;
+    }
+    pintar(await res.json());
+  } catch (_) {
+    sinRecibo('Revisá la conexión e intentá de nuevo.');
+  }
+})();
+
+document.getElementById('imprimir').addEventListener('click', () => window.print());
+</script>
+</body>
+</html>

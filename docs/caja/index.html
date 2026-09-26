@@ -356,6 +356,17 @@
   .vacio-caja__ic--boton svg { width:40px; height:40px; }
   .vacio-caja__ic--boton:active { transform:scale(0.96); }
   .vacio-caja__accion { margin-top:1.2rem; }
+
+  /* El recibo, en la pantalla de venta cobrada. */
+  .recibo-acciones { margin-top:1.3rem; display:flex; flex-direction:column; gap:0.55rem; }
+  .recibo-acciones__fila { display:flex; gap:0.55rem; }
+  .recibo-acciones__fila .btn { flex:1; font-size:0.78rem; }
+  .btn--wa {
+    background:#25d366; color:#fff; border-color:transparent; font-weight:700;
+    display:flex; align-items:center; justify-content:center; gap:0.5rem;
+  }
+  .btn--wa:hover { background:#1eb355; color:#fff; }
+  .btn--wa svg { width:18px; height:18px; }
   .vacio-caja h3 { margin:0 0 0.4rem; font-size:0.95rem; font-weight:600;
                    color:var(--ink-2); letter-spacing:0.01em; }
   .vacio-caja p { margin:0; color:var(--muted); font-size:0.82rem; line-height:1.65; }
@@ -656,9 +667,11 @@
   .camara__total b { color:#fff; font-size:1.35rem; }
   .camara__total i { font-style:normal; color:#e6b9cd; font-size:0.72rem; font-weight:600; }
 
+  /* La proporcion la pone la cámara (se fija al abrirla). Con alto fijo y
+     recorte a los lados, la cajera no veía la mitad del ancho del sensor. */
   .camara__visor {
-    position:relative; width:100%; height:min(42dvh, 340px); border-radius:16px;
-    overflow:hidden; background:#000;
+    position:relative; width:100%; aspect-ratio:16/9; max-height:min(42dvh, 340px);
+    border-radius:16px; overflow:hidden; background:#000;
   }
   /* Solo en modo prueba: la resolución que entregó esta cámara. */
   .camara__sello {
@@ -666,11 +679,14 @@
     font-weight:700; letter-spacing:0.08em; color:#fff;
     background:rgba(0,0,0,0.45); border-radius:6px; padding:0.15rem 0.4rem;
   }
-  .camara__video { width:100%; height:100%; object-fit:cover; display:block; }
+  /* contain: se ve el fotograma completo, que es el que se analiza. */
+  .camara__video { width:100%; height:100%; object-fit:contain; display:block; }
   /* Marco de guía: cuatro esquinas, que ubican el código sin tapar la imagen. */
+  /* Franja apaisada, la misma zona que se analiza: un código de barras es ancho
+     y bajo, y así se sabe dónde ponerlo. */
   .camara__marco {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:72%; height:52%; pointer-events:none;
+    width:86%; height:42%; pointer-events:none;
   }
   .camara__marco span {
     position:absolute; width:28px; height:28px; border:3px solid #fff; border-radius:4px;

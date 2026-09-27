@@ -395,9 +395,10 @@
     max-height:44dvh; overflow-y:auto;
   }
   .recibo-previa img {
-    width:100%; display:block; border-radius:10px;
-    box-shadow:0 6px 18px -12px rgba(26,10,18,0.5);
+    width:100%; max-width:320px; margin:0 auto 0.5rem; display:block;
+    border-radius:10px; box-shadow:0 6px 18px -12px rgba(26,10,18,0.5);
   }
+  .recibo-previa img:last-child { margin-bottom:0; }
 
   /* El recibo, en la pantalla de venta cobrada. */
   .recibo-acciones { margin-top:1.3rem; display:flex; flex-direction:column; gap:0.55rem; }

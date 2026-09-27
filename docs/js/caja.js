@@ -530,6 +530,10 @@ async function cobrar() {
                         nombreCliente: estado.cliente ? estado.cliente.nombre : '' };
     intentoActual = '';                                       // ese cobro terminó
     try { localStorage.removeItem(GUARDADO); } catch (_) {}   // ya está cobrada
+    // Se dibuja YA, sin esperar a que toque el botón: el navegador solo deja
+    // abrir el menú de compartir mientras dura el gesto de quien lo toca, y
+    // armar la imagen (con las fotos) tarda más que eso.
+    setTimeout(previsualizarRecibo, 0);
   } catch (err) {
     if (err.status === 409 && err.detalle && err.detalle.agotados) {
       const lista = err.detalle.agotados
@@ -1110,6 +1114,9 @@ function vistaExito() {
     ${!r.pagado ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago (crédito).</div>' : ''}
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
+      <div class="recibo-previa" id="recibo-previa">
+        <div class="vacio"><span class="puntos">Armando el recibo</span></div>
+      </div>
       <div class="recibo-acciones">
         <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
           ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
@@ -1391,13 +1398,14 @@ async function dibujarHoja(d, items, logo, o) {
     x.drawImage(logo, (A - w) / 2, y, w, h);
     y += h + 14;
   } else { y += 10; }
-  x.fillStyle = '#8a6f7c'; x.font = '700 9px Montserrat, sans-serif';
+  // El titulo, grande: es lo primero que se lee y dice que es el papel.
+  x.fillStyle = '#1a0a12'; x.font = '700 15px Montserrat, sans-serif';
   x.textAlign = 'center';
   // El numero va siempre que sea uno de verdad. En una venta de prueba no lo hay
   // ("(prueba)"), pero una cotizacion de prueba SI lleva su correlativo.
   const numero = d.numero && d.numero !== '(prueba)' ? ' ' + d.numero : '';
-  x.fillText((d.cotizacion ? 'COTIZACIÓN' : 'RECIBO') + numero, A / 2, y);
-  y += 10;
+  x.fillText((d.cotizacion ? 'COTIZACIÓN' : 'RECIBO') + numero, A / 2, y + 4);
+  y += 18;
   if (d.ensayo && o.primera) {
     x.fillStyle = '#8a6d12'; x.font = '700 9px Montserrat, sans-serif';
     x.fillText('PRUEBA · SIN VALOR', A / 2, y + 12);
@@ -1586,6 +1594,7 @@ async function mandarReciboEnImagen() {
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;   // la cerró ella
+      flash('WhatsApp no aceptó el envío: queda guardado en el teléfono', 'mal');
     }
   }
   // Sin menú de compartir: se bajan para adjuntarlas a mano.

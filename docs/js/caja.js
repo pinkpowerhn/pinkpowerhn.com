@@ -1582,22 +1582,34 @@ async function mandarReciboEnImagen() {
   const archivos = hojas.map((png, i) => new File([png],
     hojas.length > 1 ? `${base}-${i + 1}de${hojas.length}.png` : `${base}.png`,
     { type: 'image/png' }));
-  if (sePuedeCompartirArchivo()) {
-    try {
-      const hola = r.nombreCliente ? ' ' + r.nombreCliente.split(' ')[0] : '';
-      // Una cotización todavía no es una compra: lleva su propio mensaje, corto.
-      // La invitación a seguirlos va en el recibo de una venta, no acá.
-      const texto = r.cotizacion
-        ? `¡Hola${hola}! Le comparto su cotización 💕`
-        : `¡Hola${hola}! Gracias por tu compra en Pink Power 💕🛍️\n\n` + invitacion();
-      await navigator.share({ files: archivos, text });
-      return;
-    } catch (err) {
-      if (err && err.name === 'AbortError') return;   // la cerró ella
-      flash('WhatsApp no aceptó el envío: queda guardado en el teléfono', 'mal');
+  const hola = r.nombreCliente ? ' ' + r.nombreCliente.split(' ')[0] : '';
+  // Una cotización todavía no es una compra: lleva su propio mensaje, corto.
+  // La invitación a seguirlos va en el recibo de una venta, no acá.
+  const texto = r.cotizacion
+    ? `¡Hola${hola}! Le comparto su cotización 💕`
+    : `¡Hola${hola}! Gracias por tu compra en Pink Power 💕🛍️\n\n` + invitacion();
+
+  let motivo = '';
+  if (navigator.share && navigator.canShare) {
+    // Se prueban dos formas, de la mejor a la que más aguanta: hay teléfonos que
+    // rechazan el envío cuando lleva archivos Y texto juntos, y aceptan los
+    // archivos solos. Y se pregunta con los archivos DE VERDAD, no con uno de
+    // mentira: el teléfono puede aceptar compartir y rechazar justo estos.
+    for (const que of [{ files: archivos, text: texto }, { files: archivos }]) {
+      try {
+        if (!navigator.canShare(que)) { motivo = 'el teléfono no acepta este envío'; continue; }
+        await navigator.share(que);
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;   // la cerró ella
+        motivo = err ? `${err.name}: ${err.message}` : 'falló sin decir por qué';
+      }
     }
+  } else {
+    motivo = 'este navegador no sabe compartir archivos';
   }
-  // Sin menú de compartir: se bajan para adjuntarlas a mano.
+
+  // No se pudo mandar: se baja para adjuntarla a mano, y se dice por qué.
   archivos.forEach((archivo) => {
     const url = URL.createObjectURL(archivo);
     const a = document.createElement('a');
@@ -1605,7 +1617,9 @@ async function mandarReciboEnImagen() {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   });
-  flash(archivos.length > 1 ? `${archivos.length} hojas guardadas` : 'Recibo guardado', 'ok');
+  flash(MODO_PRUEBA && motivo
+    ? 'Guardado. No se pudo mandar: ' + motivo
+    : 'Recibo guardado: adjuntalo desde WhatsApp', 'mal');
 }
 
 // La invitación a seguirlos, con las palabras de la dueña. Va en el MENSAJE y no

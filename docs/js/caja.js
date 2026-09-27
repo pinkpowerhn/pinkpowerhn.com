@@ -77,12 +77,14 @@ const estado = {
   mayoreo: false,       // interruptor manual de precios de mayoreo
   descuento: { tipo: '', valor: 0 },
   descAbierto: false,   // desplegable propio del descuento
+  flete: '',            // '', 'local' o 'nacional'
   pago: '',
   banco: '',            // a qué banco entró la transferencia
   bancoAbierto: false,  // su desplegable
   recibido: '',
   nota: '',
   cobrando: false,
+  cotizando: false,     // armando el prerecibo, que no cobra nada
   resultado: null,      // venta terminada
   error: '',
   buscandoCliente: false,
@@ -106,7 +108,8 @@ function guardarVenta() {
     localStorage.setItem(GUARDADO, JSON.stringify({
       ts: Date.now(), venta: estado.venta, cliente: estado.cliente,
       mayoreo: estado.mayoreo, descuento: estado.descuento,
-      pago: estado.pago, banco: estado.banco, recibido: estado.recibido, nota: estado.nota,
+      pago: estado.pago, banco: estado.banco, flete: estado.flete,
+      recibido: estado.recibido, nota: estado.nota,
     }));
   } catch (_) { /* sin espacio o en privado: la caja sigue funcionando igual */ }
 }
@@ -124,6 +127,7 @@ function recuperarVenta() {
     estado.descuento = d.descuento || { tipo: '', valor: 0 };
     estado.pago = d.pago || '';
     estado.banco = d.banco || '';
+    estado.flete = d.flete || '';
     estado.recibido = d.recibido || '';
     estado.nota = d.nota || '';
     return true;
@@ -353,7 +357,11 @@ function montoDescuento() {
   return Math.min(subtotal(), v);
 }
 
-function total() { return Math.max(0, subtotal() - montoDescuento()); }
+// El descuento se aplica sobre los productos; el flete se suma despues, que es
+// como lo cobra ella: no se descuenta el envio.
+function total() {
+  return Math.max(0, subtotal() - montoDescuento()) + elFlete().monto;
+}
 
 function actualizarTotales() {
   const fijar = (sel, valor) => { const el = document.querySelector(sel); if (el) el.textContent = valor; };
@@ -403,6 +411,7 @@ function nuevaVenta() {
   estado.pago = '';
   estado.banco = '';
   estado.bancoAbierto = false;
+  estado.flete = '';
   estado.recibido = '';
   estado.nota = '';
   estado.resultado = null;
@@ -434,6 +443,50 @@ function numeroDeIntento() {
   return intentoActual;
 }
 
+// El prerecibo: el mismo recibo, pero sin venta. No crea pedido ni toca el
+// inventario, asi que la cajera puede pasarle un presupuesto a una clienta y
+// cobrarle despues (o no) sin gastar un numero de pedido.
+async function cotizar() {
+  if (estado.cotizando || !estado.venta.length) return;
+  estado.cotizando = true;
+  estado.error = '';
+  pintar();
+  const cuerpo = {
+    items: estado.venta.filter((l) => !l.manual).map((l) => ({
+      variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio, nombre: l.nombre,
+    })),
+    personalizados: estado.venta.filter((l) => l.manual).map((l) => ({
+      titulo: l.nombre, precio: l.precio, cantidad: l.cantidad,
+    })),
+    cliente_nombre: estado.cliente ? estado.cliente.nombre : '',
+    mayoreo: hayMayoreo(),
+    flete: elFlete().monto > 0
+      ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
+    total: total(),
+    ensayo: MODO_PRUEBA,
+  };
+  if (estado.descuento.tipo && num(estado.descuento.valor) > 0) {
+    cuerpo.descuento = { tipo: estado.descuento.tipo, valor: num(estado.descuento.valor) };
+  }
+  try {
+    const r = await api('/admin/caja/cotizacion',
+                        { method: 'POST', body: JSON.stringify(cuerpo) });
+    // La venta NO se borra: la cotización es un paso previo, y lo más probable
+    // es que después le cobre lo mismo.
+    ventaEnMano = { recibo: r.recibo, total: r.total, name: r.name,
+                    telefono: estado.cliente ? (estado.cliente.telefono || '') : '',
+                    nombreCliente: estado.cliente ? estado.cliente.nombre : '',
+                    ensayo: MODO_PRUEBA, cotizacion: true };
+    accionesDeRecibo({ numero: r.name, cliente: cuerpo.cliente_nombre,
+                       total: r.total, telefono: ventaEnMano.telefono });
+  } catch (err) {
+    estado.error = err.message || 'No se pudo armar la cotización';
+  } finally {
+    estado.cotizando = false;
+    pintar();
+  }
+}
+
 async function cobrar() {
   if (!sePuedeCobrar()) return;
   estado.cobrando = true;
@@ -454,6 +507,8 @@ async function cobrar() {
     mayoreo: hayMayoreo(),
     pago: estado.pago,
     banco: estado.pago === 'transferencia' ? estado.banco : '',
+    flete: elFlete().monto > 0
+      ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
     recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
     cambio: vuelto,
     nota: estado.nota || '',
@@ -945,6 +1000,8 @@ function bloqueResumen() {
       <div class="total-fila"><span>Subtotal</span><span>${L(subtotal())}</span></div>
       ${desc > 0 ? `<div class="total-fila total-fila--desc"><span>Descuento</span>
         <span>− ${L(desc)}</span></div>` : ''}
+      ${elFlete().monto > 0 ? `<div class="total-fila total-fila--flete">
+        <span>${esc(elFlete().titulo)}</span><span>${L(elFlete().monto)}</span></div>` : ''}
       <div class="total-grande"><span>Total</span><b>${L(total())}</b></div>
 
       <div style="display:flex; gap:0.6rem; margin-top:1rem; align-items:flex-start;">
@@ -964,6 +1021,15 @@ function bloqueResumen() {
         <input type="text" inputmode="decimal" style="flex:1; min-height:50px"
                value="${estado.descuento.valor || ''}" data-desc-valor placeholder="0"
                aria-label="Valor del descuento" ${estado.descuento.tipo ? '' : 'disabled'} />
+      </div>
+
+      <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
+        <label>Flete</label>
+        <div class="fletes">
+          ${FLETES.map((f) => `<button class="flete-btn" data-flete="${f.v}" type="button"
+            aria-pressed="${estado.flete === f.v}">${f.t}${
+              f.monto ? `<b>${L(f.monto)}</b>` : ''}</button>`).join('')}
+        </div>
       </div>
 
       <div class="pagos">
@@ -1004,6 +1070,10 @@ function bloqueResumen() {
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
         ${estado.cobrando ? 'Cobrando…' : 'Cobrar ' + L(total())}
+      </button>
+      <button class="btn btn--ancho btn--cotiza" data-accion="cotizar" type="button"
+        ${(!estado.venta.length || estado.cobrando) ? 'disabled' : ''}>
+        ${estado.cotizando ? 'Armando…' : 'Mandar cotización (no cobra)'}
       </button>
     </div>
   </div>`;
@@ -1246,9 +1316,15 @@ async function dibujarRecibo(d) {
   const nombres = medir();
   const altoItems = nombres.reduce((n, ls) => n + 18 + ls.length * 16, 0);
   const hayDesc = d.descuento && d.descuento.monto > 0;
-  const cuantosDatos = 2 + (d.ensayo || !d.numero ? 0 : 1) + (d.cliente ? 1 : 0);
+  const conFlete = d.flete && d.flete.monto > 0;
+  // Las mismas filas que se dibujan abajo: fecha, y segun el caso numero,
+  // clienta y pago (una cotizacion todavia no tiene pago).
+  const cuantosDatos = 1 + (d.ensayo || !d.numero ? 0 : 1)
+    + (d.cliente ? 1 : 0) + (d.cotizacion ? 0 : 1);
+  const filasSuma = (hayDesc || conFlete ? 1 : 0) + (hayDesc ? 1 : 0) + (conFlete ? 1 : 0);
   const alto = 150 + Math.ceil(cuantosDatos / 2) * 38 + 36 + altoItems + 30
-             + (hayDesc ? 44 : 0) + 56 + (d.recibido ? 44 : 0) + 136;
+             + filasSuma * 22 + 56 + (d.recibido ? 44 : 0) + 136
+             + (d.cotizacion ? 16 : 0);
 
   lienzo.width = A * E; lienzo.height = Math.round(alto) * E;
   const x = lienzo.getContext('2d');
@@ -1263,8 +1339,13 @@ async function dibujarRecibo(d) {
   } else { y += 10; }
   x.fillStyle = '#8a6f7c'; x.font = '700 9px Montserrat, sans-serif';
   x.textAlign = 'center';
-  x.fillText('COMPROBANTE DE COMPRA', A / 2, y);
+  x.fillText(d.cotizacion ? 'COTIZACIÓN' : 'COMPROBANTE DE COMPRA', A / 2, y);
   y += 10;
+  if (d.cotizacion) {
+    x.fillStyle = '#2f4f92'; x.font = '700 9px Montserrat, sans-serif';
+    x.fillText('AÚN NO ES UNA COMPRA', A / 2, y + 12);
+    y += 16;
+  }
   if (d.ensayo) {
     x.fillStyle = '#8a6d12'; x.font = '700 9px Montserrat, sans-serif';
     x.fillText('PRUEBA · SIN VALOR', A / 2, y + 12);
@@ -1278,11 +1359,11 @@ async function dibujarRecibo(d) {
   // llevar clienta).
   x.textAlign = 'left';
   const datos = [];
-  if (!d.ensayo && d.numero) datos.push(['PEDIDO', d.numero]);
+  if (!d.ensayo && d.numero) datos.push([d.cotizacion ? 'NÚMERO' : 'RECIBO', d.numero]);
   datos.push(['FECHA', fechaCorta(d.fecha)]);
   if (d.cliente) datos.push(['CLIENTA', d.cliente]);
   const forma = PAGOS_TEXTO[d.pago] || d.pago || '';
-  datos.push(['PAGO', forma
+  if (!d.cotizacion) datos.push(['PAGO', forma
     ? forma + (d.banco ? ' · ' + d.banco : '') + (d.pagado === false ? ' · pendiente' : '')
     : (d.pagado === false ? 'Pendiente' : 'Pagado')]);
   datos.forEach(([etiqueta, valor], i) => {
@@ -1321,18 +1402,20 @@ async function dibujarRecibo(d) {
     x.textAlign = 'left';
     y += fuerte ? 34 : 22;
   };
+  const hayFlete = d.flete && d.flete.monto > 0;
+  if (hayDesc || hayFlete) fila('Subtotal', L(d.subtotal));
   if (hayDesc) {
-    fila('Subtotal', L(d.subtotal));
     fila('Descuento' + (d.descuento.tipo === 'porcentaje' ? ` (${d.descuento.valor}%)` : ''),
          '− ' + L(d.descuento.monto));
   }
+  if (hayFlete) fila(d.flete.titulo, L(d.flete.monto));
   fila('TOTAL', L(d.total), true);
   if (d.recibido) { fila('Recibido', L(d.recibido)); fila('Cambio', L(d.cambio || 0)); }
 
   y += 6; linea(x, M, y, A - M); y += 26;
   x.textAlign = 'center';
   x.fillStyle = '#1a0a12'; x.font = '600 15px Montserrat, sans-serif';
-  x.fillText('¡Gracias por su compra!', A / 2, y);
+  x.fillText(d.cotizacion ? '¡Gracias por su interés!' : '¡Gracias por su compra!', A / 2, y);
   // En una imagen el texto no se puede tocar, así que los enlaces de verdad van
   // en el mensaje de WhatsApp. Acá quedan a la vista, que es lo que se guarda.
   x.fillStyle = '#c22a5e'; x.font = '600 11px Montserrat, sans-serif';
@@ -1650,6 +1733,11 @@ $('caja-main').addEventListener('click', (e) => {
   if (d.quitar !== undefined) { quitar(Number(d.quitar)); return; }
   if (d.mas !== undefined) { cambiarCantidad(Number(d.mas), 1); return; }
   if (d.menos !== undefined) { cambiarCantidad(Number(d.menos), -1); return; }
+  if (d.flete !== undefined) {
+    estado.flete = d.flete;
+    pintar();
+    return;
+  }
   if (d.pago !== undefined) {
     estado.pago = estado.pago === d.pago ? '' : d.pago;
     if (estado.pago !== 'transferencia') estado.banco = '';
@@ -1671,6 +1759,7 @@ $('caja-main').addEventListener('click', (e) => {
     case 'recibo-img': mandarReciboEnImagen(); break;
     case 'guardar-contacto': guardarContacto(); break;
     case 'ventas': verVentas(); break;
+    case 'cotizar': cotizar(); break;
     case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
     case 'recibo-copiar':
       navigator.clipboard.writeText(urlRecibo())
@@ -1815,6 +1904,18 @@ function pedirClienta() {
 // Los bancos a los que le transfieren. "Otro" para no dejarla trabada si le
 // transfieren desde uno que no está en la lista.
 const BANCOS = ['BAC', 'Atlántida', 'Banpaís', 'Ficohsa', 'Occidente', 'Otro'];
+
+// El envío, cuando la compra se manda. Viaja como línea de envío del pedido y
+// no como un producto más, para que los informes de Shopify sigan cuadrando.
+const FLETES = [
+  { v: '', t: 'Sin flete', monto: 0 },
+  { v: 'local', t: 'Local', monto: 95, titulo: 'Envío local' },
+  { v: 'nacional', t: 'Nacional', monto: 110, titulo: 'Envío nacional' },
+];
+
+function elFlete() {
+  return FLETES.find((f) => f.v === estado.flete) || FLETES[0];
+}
 
 const RITMO_LECTOR = 60;
 const LARGO_MINIMO = 5;     // menos de esto no es un código de barras

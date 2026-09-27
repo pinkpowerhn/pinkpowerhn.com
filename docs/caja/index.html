@@ -617,6 +617,24 @@
                        color:var(--muted); font-weight:700; }
   .total-grande b { font-size:1.85rem; font-weight:700; letter-spacing:-0.01em;
                     color:var(--pink-dk); line-height:1; }
+  /* El flete: tres opciones cortas, que se ven de un vistazo. */
+  /* La cotización no cobra: se ve como acción secundaria, no como el botón
+     grande de cobrar, para que no se confundan. */
+  .btn--cotiza { margin-top:0.5rem; font-size:0.82rem; }
+
+  .fletes { display:flex; gap:0.45rem; }
+  .flete-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:0.1rem;
+    border:1px solid rgba(232,67,122,0.18); background:#fff; border-radius:12px;
+    padding:0.5rem 0.3rem; cursor:pointer; font-family:inherit; font-size:0.76rem;
+    font-weight:600; color:var(--muted); min-height:50px; justify-content:center;
+  }
+  .flete-btn b { font-size:0.72rem; font-weight:700; }
+  .flete-btn[aria-pressed="true"] {
+    background:linear-gradient(135deg, var(--pink), var(--pink-dk));
+    color:#fff; border-color:transparent;
+  }
+
   .pagos { display:grid; grid-template-columns:1fr 1fr; gap:0.55rem; margin:0.9rem 0 0.2rem; }
   .pago-btn {
     min-height:56px; border:1.5px solid var(--linea); background:#fff; border-radius:16px;

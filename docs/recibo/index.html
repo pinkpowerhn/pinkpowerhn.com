@@ -59,6 +59,7 @@
   .pie b { display: block; font-family: 'Cormorant Garamond', serif; font-size: 1.25rem;
            color: var(--tinta); font-weight: 600; margin-bottom: 0.25rem; }
 
+  .sello--cot { background: #eef4ff; color: #2f4f92; border-color: #b9cdf0; }
   .sello {
     display: inline-block; margin-top: 0.6rem; background: #fff4d6; color: #8a6d12;
     border: 1px solid #e8cf8a; border-radius: 999px; padding: 0.3rem 0.8rem;
@@ -148,29 +149,33 @@ function pintar(r) {
   document.getElementById('hoja').innerHTML = `
     <div class="cab">
       <img src="/img/logo.png" alt="Pink Power" />
-      <p>Comprobante de compra</p>
+      <p>${r.cotizacion ? 'Cotización' : 'Comprobante de compra'}</p>
       ${r.ensayo ? '<div class="sello">Prueba · sin valor</div>' : ''}
+      ${r.cotizacion ? '<div class="sello sello--cot">Aún no es una compra</div>' : ''}
     </div>
     <div class="cuerpo">
       <div class="datos">
-        ${r.numero && !r.ensayo ? `<div class="dato"><span>Pedido</span><b>${esc(r.numero)}</b></div>` : ''}
+        ${r.numero && !r.ensayo ? `<div class="dato">
+          <span>${r.cotizacion ? 'Número' : 'Recibo'}</span><b>${esc(r.numero)}</b></div>` : ''}
         <div class="dato"><span>Fecha</span><b>${esc(fecha(r.fecha))}</b></div>
         ${r.cliente ? `<div class="dato"><span>Clienta</span><b>${esc(r.cliente)}</b></div>` : ''}
-        <div class="dato"><span>Pago</span><b>${esc(textoDePago(r))}</b></div>
+        ${r.cotizacion ? '' : `<div class="dato"><span>Pago</span><b>${esc(textoDePago(r))}</b></div>`}
       </div>
       <div class="items">${items}</div>
       <div class="suma">
-        ${d && d.monto > 0
+        ${(d && d.monto > 0) || (r.flete && r.flete.monto > 0)
           ? `<div class="fila"><span>Subtotal</span><b>${L(r.subtotal)}</b></div>` : ''}
         ${d && d.monto > 0 ? `<div class="fila"><span>Descuento${
           d.tipo === 'porcentaje' ? ' (' + d.valor + '%)' : ''}</span><b>− ${L(d.monto)}</b></div>` : ''}
+        ${r.flete && r.flete.monto > 0
+          ? `<div class="fila"><span>${esc(r.flete.titulo)}</span><b>${L(r.flete.monto)}</b></div>` : ''}
         <div class="fila fila--total"><span>Total</span><b>${L(r.total)}</b></div>
         ${r.recibido ? `<div class="fila"><span>Recibido</span><b>${L(r.recibido)}</b></div>` : ''}
         ${r.cambio ? `<div class="fila"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
       </div>
     </div>
     <div class="pie">
-      <b>¡Gracias por su compra!</b>
+      <b>${r.cotizacion ? '¡Gracias por su interés!' : '¡Gracias por su compra!'}</b>
       <div class="redes">
         <a class="red red--ig" href="https://instagram.com/pinkpowerhn"
            target="_blank" rel="noopener">Síguenos en Instagram</a>
@@ -178,10 +183,13 @@ function pintar(r) {
           Compra en línea</a>
       </div>
       Pink Power · Honduras<br />
-      Este comprobante no sustituye una factura fiscal.
+      ${r.cotizacion
+        ? 'Cotización sujeta a disponibilidad. No es un comprobante de compra.'
+        : 'Este comprobante no sustituye una factura fiscal.'}
     </div>`;
   document.getElementById('imprimir').hidden = false;
-  document.title = 'Recibo ' + (r.ensayo ? '' : (r.numero || '')) + ' · Pink Power';
+  document.title = (r.cotizacion ? 'Cotización ' : 'Recibo ')
+    + (r.ensayo ? '' : (r.numero || '')) + ' · Pink Power';
 }
 
 function sinRecibo(texto) {

@@ -1147,6 +1147,9 @@ function accionesDeRecibo(v) {
         <button class="modal__x" type="button" aria-label="Cerrar">×</button>
       </div>
       <div class="modal__lista">
+        <div class="recibo-previa" id="recibo-previa">
+          <div class="vacio"><span class="puntos">Armando el recibo</span></div>
+        </div>
         <div class="recibo-acciones">
           <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
             ${svg(IC.whatsapp, 0)} ${v.telefono
@@ -1167,6 +1170,7 @@ function accionesDeRecibo(v) {
   const cerrar = () => { fondo.remove(); ventaEnMano = null; };
   fondo.querySelector('.modal__x').addEventListener('click', cerrar);
   fondo.addEventListener('click', (e) => { if (e.target === fondo) cerrar(); });
+  previsualizarRecibo();
   fondo.addEventListener('click', (e) => {
     const b = e.target.closest('[data-accion]');
     if (!b) return;
@@ -1181,6 +1185,30 @@ function accionesDeRecibo(v) {
         break;
     }
   });
+}
+
+// El recibo a la vista antes de mandarlo: es la MISMA imagen que se va a
+// mandar, no una aproximación, y queda guardada para no dibujarla dos veces.
+async function previsualizarRecibo() {
+  const caja = document.getElementById('recibo-previa');
+  const r = laVenta();
+  if (!caja || !r || !r.recibo) return;
+  try {
+    const datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
+    const png = await dibujarRecibo(datos);
+    if (!png) throw new Error('sin imagen');
+    if (laVenta() !== r) return;          // cerraron y abrieron otra mientras tanto
+    r.imagen = png;
+    const img = document.createElement('img');
+    img.alt = 'Recibo';
+    img.src = URL.createObjectURL(png);
+    img.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(img.src), 60000));
+    caja.innerHTML = '';
+    caja.appendChild(img);
+  } catch (_) {
+    caja.innerHTML = '<div class="vacio">No se pudo mostrar el recibo, '
+      + 'pero igual se puede mandar.</div>';
+  }
 }
 
 // ── El recibo como imagen ────────────────────────────────────────────────────
@@ -1356,21 +1384,23 @@ function fechaCorta(iso) {
 async function mandarReciboEnImagen() {
   const r = laVenta();
   if (!r || !r.recibo) return;
-  flash('Armando el recibo…');
-  let datos;
-  try {
-    datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
-  } catch (_) {
-    flash('No se pudo armar el recibo. Revisá la señal.', 'mal');
-    return;
+  // Si ya se mostró la vista previa, esa misma imagen es la que se manda.
+  let imagen = r.imagen || null;
+  let datos = null;
+  if (!imagen) {
+    flash('Armando el recibo…');
+    try {
+      datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
+    } catch (_) {
+      flash('No se pudo armar el recibo. Revisá la señal.', 'mal');
+      return;
+    }
+    try { imagen = await dibujarRecibo(datos); } catch (_) { imagen = null; }
   }
-  let imagen;
-  try {
-    imagen = await dibujarRecibo(datos);
-  } catch (_) { imagen = null; }
   if (!imagen) { flash('No se pudo armar la imagen', 'mal'); return; }
 
-  const nombre = `recibo-${(datos.numero || 'pinkpower').replace(/[^\w-]/g, '')}.png`;
+  const numero = (datos && datos.numero) || r.name || 'pinkpower';
+  const nombre = `recibo-${String(numero).replace(/[^\w-]/g, '')}.png`;
   const archivo = new File([imagen], nombre, { type: 'image/png' });
   if (sePuedeCompartirArchivo()) {
     try {

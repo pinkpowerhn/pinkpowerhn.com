@@ -453,7 +453,8 @@ async function cotizar() {
   pintar();
   const cuerpo = {
     items: estado.venta.filter((l) => !l.manual).map((l) => ({
-      variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio, nombre: l.nombre,
+      variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio,
+      nombre: l.nombre, imagen: l.imagen || '',
     })),
     personalizados: estado.venta.filter((l) => l.manual).map((l) => ({
       titulo: l.nombre, precio: l.precio, cantidad: l.cantidad,
@@ -497,7 +498,7 @@ async function cobrar() {
     // El nombre viaja solo para el recibo: el backend arma el pedido con el id.
     items: estado.venta.filter((l) => !l.manual).map((l) => ({
       variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio,
-      nombre: l.nombre,
+      nombre: l.nombre, imagen: l.imagen || '',
     })),
     personalizados: estado.venta.filter((l) => l.manual).map((l) => ({
       titulo: l.nombre, precio: l.precio, cantidad: l.cantidad,
@@ -1269,16 +1270,18 @@ async function previsualizarRecibo() {
   if (!caja || !r || !r.recibo) return;
   try {
     const datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
-    const png = await dibujarRecibo(datos);
-    if (!png) throw new Error('sin imagen');
+    const hojas = await dibujarRecibo(datos);
+    if (!hojas.length) throw new Error('sin imagen');
     if (laVenta() !== r) return;          // cerraron y abrieron otra mientras tanto
-    r.imagen = png;
-    const img = document.createElement('img');
-    img.alt = 'Recibo';
-    img.src = URL.createObjectURL(png);
-    img.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(img.src), 60000));
+    r.imagen = hojas;
     caja.innerHTML = '';
-    caja.appendChild(img);
+    hojas.forEach((png) => {
+      const img = document.createElement('img');
+      img.alt = 'Recibo';
+      img.src = URL.createObjectURL(png);
+      img.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(img.src), 60000));
+      caja.appendChild(img);
+    });
   } catch (_) {
     caja.innerHTML = '<div class="vacio">No se pudo mostrar el recibo, '
       + 'pero igual se puede mandar.</div>';
@@ -1296,109 +1299,181 @@ function sePuedeCompartirArchivo() {
   } catch (_) { return false; }
 }
 
-function cargarImagen(src) {
+// Dibuja el recibo y devuelve las hojas en PNG, al doble de resolución para que
+// se lea cuando WhatsApp lo comprima. Son varias hojas cuando la venta es larga:
+// una sola imagen larguísima WhatsApp la achica hasta volverla ilegible.
+const HOJA_ANCHO = 420;
+const HOJA_ALTO_MAX = 920;      // más que esto, se parte en otra hoja
+const MARGEN = 26;
+const FOTO = 34;                // la miniatura del producto
+
+async function dibujarRecibo(d) {
+  const logo = await cargarImagen('/img/logo.png');
+  // Las fotos se piden con crossOrigin o el lienzo queda "contaminado" y no se
+  // puede exportar; si alguna no carga, esa línea va sin foto y ya.
+  const fotos = await Promise.all((d.items || [])
+    .map((it) => (it.imagen ? cargarImagen(it.imagen, true) : Promise.resolve(null))));
+
+  const medidor = document.createElement('canvas').getContext('2d');
+  medidor.font = '600 13px Montserrat, sans-serif';
+  const anchoNombre = HOJA_ANCHO - MARGEN * 2 - FOTO - 8 - 86;
+  const items = (d.items || []).map((it, i) => {
+    const ls = partirTexto(medidor, it.nombre, anchoNombre);
+    return { ...it, foto: fotos[i], lineas: ls,
+             alto: Math.max(FOTO + 10, 18 + ls.length * 16) };
+  });
+
+  const hayDesc = d.descuento && d.descuento.monto > 0;
+  const conFlete = d.flete && d.flete.monto > 0;
+  const cuantosDatos = 1 + (d.cliente ? 1 : 0) + (d.cotizacion ? 0 : 1);
+  const altoCabecera = 150 + (d.ensayo ? 16 : 0) + Math.ceil(cuantosDatos / 2) * 38 + 36;
+  const altoCierre = ((hayDesc || conFlete ? 1 : 0) + (hayDesc ? 1 : 0) + (conFlete ? 1 : 0)) * 22
+                   + 56 + (d.recibido ? 44 : 0) + 136;
+
+  // Se reparten los productos en hojas: la primera lleva la cabecera y la
+  // última los totales, así que cada una tiene su propio espacio disponible.
+  const hojas = [];
+  let actual = [];
+  for (const it of items) {
+    const primera = hojas.length === 0;
+    const disponible = HOJA_ALTO_MAX - (primera ? altoCabecera : 110) - 40;
+    const usado = actual.reduce((n, x) => n + x.alto, 0);
+    if (actual.length && usado + it.alto > disponible) {
+      hojas.push(actual);
+      actual = [];
+    }
+    actual.push(it);
+  }
+  hojas.push(actual);
+  // Si los totales no entran en la última, se van a una hoja aparte.
+  const ultima = hojas[hojas.length - 1];
+  const usadoUltima = ultima.reduce((n, x) => n + x.alto, 0);
+  const cabeceraUltima = hojas.length === 1 ? altoCabecera : 110;
+  if (cabeceraUltima + usadoUltima + altoCierre > HOJA_ALTO_MAX + 120) hojas.push([]);
+
+  const salida = [];
+  for (let n = 0; n < hojas.length; n++) {
+    salida.push(await dibujarHoja(d, hojas[n], logo, {
+      primera: n === 0, ultima: n === hojas.length - 1,
+      numero: n + 1, total: hojas.length,
+      altoCabecera, altoCierre, hayDesc, conFlete, cuantosDatos,
+    }));
+  }
+  return salida.filter(Boolean);
+}
+
+function cargarImagen(src, deOtroSitio) {
   return new Promise((ok) => {
     const im = new Image();
+    if (deOtroSitio) im.crossOrigin = 'anonymous';
     im.onload = () => ok(im);
     im.onerror = () => ok(null);
+    setTimeout(() => ok(null), 6000);   // una foto lenta no frena el recibo
     im.src = src;
   });
 }
 
-// Dibuja el recibo y devuelve el PNG. Al doble de resolución para que el texto
-// se lea bien cuando WhatsApp lo comprime.
-async function dibujarRecibo(d) {
-  const E = 2, A = 420, M = 26;          // escala, ancho, margen
-  const logo = await cargarImagen('/img/logo.png');
+async function dibujarHoja(d, items, logo, o) {
+  const A = HOJA_ANCHO, M = MARGEN;
+  const altoItems = items.reduce((n, it) => n + it.alto, 0);
+  const alto = (o.primera ? o.altoCabecera : 110) + altoItems
+             + (o.ultima ? o.altoCierre : 60);
+
   const lienzo = document.createElement('canvas');
-  const c = lienzo.getContext('2d');
-
-  // Primera pasada sin dibujar: cuánto mide cada nombre partido en líneas.
-  const medir = () => {
-    c.font = '600 13px Montserrat, sans-serif';
-    return (d.items || []).map((it) => partirTexto(c, it.nombre, A - M * 2 - 90));
-  };
-  lienzo.width = A * E; lienzo.height = 100;   // provisorio, para poder medir
-  c.scale(E, E);
-  const nombres = medir();
-  const altoItems = nombres.reduce((n, ls) => n + 18 + ls.length * 16, 0);
-  const hayDesc = d.descuento && d.descuento.monto > 0;
-  const conFlete = d.flete && d.flete.monto > 0;
-  // Las mismas filas que se dibujan abajo: fecha, y segun el caso numero,
-  // clienta y pago (una cotizacion todavia no tiene pago).
-  const cuantosDatos = 1 + (d.ensayo || !d.numero ? 0 : 1)
-    + (d.cliente ? 1 : 0) + (d.cotizacion ? 0 : 1);
-  const filasSuma = (hayDesc || conFlete ? 1 : 0) + (hayDesc ? 1 : 0) + (conFlete ? 1 : 0);
-  const alto = 150 + Math.ceil(cuantosDatos / 2) * 38 + 36 + altoItems + 30
-             + filasSuma * 22 + 56 + (d.recibido ? 44 : 0) + 136
-             + (d.cotizacion ? 16 : 0);
-
-  lienzo.width = A * E; lienzo.height = Math.round(alto) * E;
+  lienzo.width = A * 2; lienzo.height = Math.round(alto) * 2;
   const x = lienzo.getContext('2d');
-  x.scale(E, E);
+  x.scale(2, 2);
   x.fillStyle = '#ffffff'; x.fillRect(0, 0, A, alto);
 
   let y = 30;
   if (logo) {
-    const w = 96, h = logo.height * (w / logo.width);
+    const w = o.primera ? 96 : 68, h = logo.height * (w / logo.width);
     x.drawImage(logo, (A - w) / 2, y, w, h);
     y += h + 14;
   } else { y += 10; }
   x.fillStyle = '#8a6f7c'; x.font = '700 9px Montserrat, sans-serif';
   x.textAlign = 'center';
-  x.fillText(d.cotizacion ? 'COTIZACIÓN' : 'COMPROBANTE DE COMPRA', A / 2, y);
+  // El numero va siempre que sea uno de verdad. En una venta de prueba no lo hay
+  // ("(prueba)"), pero una cotizacion de prueba SI lleva su correlativo.
+  const numero = d.numero && d.numero !== '(prueba)' ? ' ' + d.numero : '';
+  x.fillText((d.cotizacion ? 'COTIZACIÓN' : 'RECIBO') + numero, A / 2, y);
   y += 10;
-  if (d.cotizacion) {
-    x.fillStyle = '#2f4f92'; x.font = '700 9px Montserrat, sans-serif';
-    x.fillText('AÚN NO ES UNA COMPRA', A / 2, y + 12);
-    y += 16;
-  }
-  if (d.ensayo) {
+  if (d.ensayo && o.primera) {
     x.fillStyle = '#8a6d12'; x.font = '700 9px Montserrat, sans-serif';
     x.fillText('PRUEBA · SIN VALOR', A / 2, y + 12);
     y += 16;
   }
+  if (o.total > 1) {
+    x.fillStyle = '#a98b9a'; x.font = '600 8px Montserrat, sans-serif';
+    x.fillText(`HOJA ${o.numero} DE ${o.total}`, A / 2, y + 12);
+    y += 14;
+  }
   y += 14;
   linea(x, M, y, A - M); y += 20;
 
-  // Datos en dos columnas, colocados por orden: así no queda un hueco cuando
-  // alguno falta (una prueba no tiene número de pedido, una venta puede no
-  // llevar clienta).
-  x.textAlign = 'left';
-  const datos = [];
-  if (!d.ensayo && d.numero) datos.push([d.cotizacion ? 'NÚMERO' : 'RECIBO', d.numero]);
-  datos.push(['FECHA', fechaCorta(d.fecha)]);
-  if (d.cliente) datos.push(['CLIENTA', d.cliente]);
-  const forma = PAGOS_TEXTO[d.pago] || d.pago || '';
-  if (!d.cotizacion) datos.push(['PAGO', forma
-    ? forma + (d.banco ? ' · ' + d.banco : '') + (d.pagado === false ? ' · pendiente' : '')
-    : (d.pagado === false ? 'Pendiente' : 'Pagado')]);
-  datos.forEach(([etiqueta, valor], i) => {
-    const px = (i % 2) ? A / 2 : M;
-    const py = y + Math.floor(i / 2) * 38;
-    x.fillStyle = '#8a6f7c'; x.font = '700 8px Montserrat, sans-serif';
-    x.fillText(etiqueta, px, py);
-    x.fillStyle = '#1a0a12'; x.font = '600 12px Montserrat, sans-serif';
-    x.fillText(recortar(x, valor, A / 2 - M - 10), px, py + 15);
-  });
-  y += Math.ceil(datos.length / 2) * 38;
-  linea(x, M, y, A - M); y += 18;
+  if (o.primera) {
+    x.textAlign = 'left';
+    const datos = [];
+    datos.push(['FECHA', fechaCorta(d.fecha)]);
+    if (d.cliente) datos.push(['CLIENTA', d.cliente]);
+    if (!d.cotizacion) {
+      const forma = PAGOS_TEXTO[d.pago] || d.pago || '';
+      datos.push(['PAGO', forma
+        ? forma + (d.banco ? ' · ' + d.banco : '') + (d.pagado === false ? ' · pendiente' : '')
+        : (d.pagado === false ? 'Pendiente' : 'Pagado')]);
+    }
+    datos.forEach(([etiqueta, valor], i) => {
+      const px = (i % 2) ? A / 2 : M;
+      const py = y + Math.floor(i / 2) * 38;
+      x.fillStyle = '#8a6f7c'; x.font = '700 8px Montserrat, sans-serif';
+      x.fillText(etiqueta, px, py);
+      x.fillStyle = '#1a0a12'; x.font = '600 12px Montserrat, sans-serif';
+      x.fillText(recortar(x, valor, A / 2 - M - 10), px, py + 15);
+    });
+    y += Math.ceil(datos.length / 2) * 38;
+    linea(x, M, y, A - M); y += 18;
+  }
 
-  // Productos.
-  (d.items || []).forEach((it, i) => {
-    const ls = nombres[i];
+  // Los productos, con su foto.
+  x.textAlign = 'left';
+  for (const it of items) {
+    const arriba = y - 12;
+    if (it.foto) {
+      x.save();
+      redondeado(x, M, arriba, FOTO, FOTO, 7);
+      x.clip();
+      // Se recorta al cuadrado sin deformar la foto.
+      const lado = Math.min(it.foto.width, it.foto.height);
+      x.drawImage(it.foto, (it.foto.width - lado) / 2, (it.foto.height - lado) / 2,
+                  lado, lado, M, arriba, FOTO, FOTO);
+      x.restore();
+    } else {
+      x.fillStyle = '#f8eef3';
+      redondeado(x, M, arriba, FOTO, FOTO, 7);
+      x.fill();
+    }
+    const tx = M + FOTO + 8;
     x.fillStyle = '#1a0a12'; x.font = '600 13px Montserrat, sans-serif';
-    ls.forEach((t, j) => x.fillText(t, M, y + j * 16));
+    it.lineas.forEach((t, j) => x.fillText(t, tx, y + j * 16));
     x.textAlign = 'right';
     x.fillText(L(it.importe), A - M, y);
     x.textAlign = 'left';
     x.fillStyle = '#8a6f7c'; x.font = '500 11px Montserrat, sans-serif';
-    x.fillText(`${it.cantidad} × ${L(it.precio)}`, M, y + ls.length * 16 + 2);
-    y += 18 + ls.length * 16;
-  });
-  y += 8; linea(x, M, y, A - M); y += 20;
+    x.fillText(`${it.cantidad} × ${L(it.precio)}`, tx, y + it.lineas.length * 16 + 2);
+    y += it.alto;
+  }
 
+  if (!o.ultima) {
+    y += 6;
+    x.textAlign = 'center';
+    x.fillStyle = '#a98b9a'; x.font = '500 10px Montserrat, sans-serif';
+    x.fillText('sigue en la hoja ' + (o.numero + 1), A / 2, y + 12);
+    return new Promise((ok) => lienzo.toBlob(ok, 'image/png'));
+  }
+
+  y += 8; linea(x, M, y, A - M); y += 20;
   const fila = (etiqueta, valor, fuerte) => {
+    x.textAlign = 'left';
     x.fillStyle = fuerte ? '#1a0a12' : '#8a6f7c';
     x.font = (fuerte ? '700 11px' : '500 12px') + ' Montserrat, sans-serif';
     x.fillText(etiqueta, M, y);
@@ -1406,16 +1481,14 @@ async function dibujarRecibo(d) {
     x.fillStyle = fuerte ? '#c22a5e' : '#1a0a12';
     x.font = (fuerte ? '700 22px' : '600 12px') + ' Montserrat, sans-serif';
     x.fillText(valor, A - M, y + (fuerte ? 4 : 0));
-    x.textAlign = 'left';
     y += fuerte ? 34 : 22;
   };
-  const hayFlete = d.flete && d.flete.monto > 0;
-  if (hayDesc || hayFlete) fila('Subtotal', L(d.subtotal));
-  if (hayDesc) {
+  if (o.hayDesc || o.conFlete) fila('Subtotal', L(d.subtotal));
+  if (o.hayDesc) {
     fila('Descuento' + (d.descuento.tipo === 'porcentaje' ? ` (${d.descuento.valor}%)` : ''),
          '− ' + L(d.descuento.monto));
   }
-  if (hayFlete) fila(d.flete.titulo, L(d.flete.monto));
+  if (o.conFlete) fila(d.flete.titulo, L(d.flete.monto));
   fila('TOTAL', L(d.total), true);
   if (d.recibido) { fila('Recibido', L(d.recibido)); fila('Cambio', L(d.cambio || 0)); }
 
@@ -1423,14 +1496,23 @@ async function dibujarRecibo(d) {
   x.textAlign = 'center';
   x.fillStyle = '#1a0a12'; x.font = '600 15px Montserrat, sans-serif';
   x.fillText(d.cotizacion ? '¡Gracias por su interés!' : '¡Gracias por su compra!', A / 2, y);
-  // En una imagen el texto no se puede tocar, así que los enlaces de verdad van
-  // en el mensaje de WhatsApp. Acá quedan a la vista, que es lo que se guarda.
   x.fillStyle = '#c22a5e'; x.font = '600 11px Montserrat, sans-serif';
   x.fillText(`Síguenos @${TIENDA.instagram}`, A / 2, y + 22);
   x.fillStyle = '#8a6f7c'; x.font = '500 10px Montserrat, sans-serif';
   x.fillText(`Compra en línea · ${TIENDA.web}`, A / 2, y + 38);
 
   return new Promise((ok) => lienzo.toBlob(ok, 'image/png'));
+}
+
+// Un rectangulo con las esquinas redondeadas, para las miniaturas.
+function redondeado(x, px, py, w, h, r) {
+  x.beginPath();
+  x.moveTo(px + r, py);
+  x.arcTo(px + w, py, px + w, py + h, r);
+  x.arcTo(px + w, py + h, px, py + h, r);
+  x.arcTo(px, py + h, px, py, r);
+  x.arcTo(px, py, px + w, py, r);
+  x.closePath();
 }
 
 const PAGOS_TEXTO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta',
@@ -1471,10 +1553,10 @@ function fechaCorta(iso) {
 async function mandarReciboEnImagen() {
   const r = laVenta();
   if (!r || !r.recibo) return;
-  // Si ya se mostró la vista previa, esa misma imagen es la que se manda.
-  let imagen = r.imagen || null;
+  // Si ya se mostró la vista previa, esas mismas hojas son las que se mandan.
+  let hojas = r.imagen || null;
   let datos = null;
-  if (!imagen) {
+  if (!hojas) {
     flash('Armando el recibo…');
     try {
       datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
@@ -1482,30 +1564,39 @@ async function mandarReciboEnImagen() {
       flash('No se pudo armar el recibo. Revisá la señal.', 'mal');
       return;
     }
-    try { imagen = await dibujarRecibo(datos); } catch (_) { imagen = null; }
+    try { hojas = await dibujarRecibo(datos); } catch (_) { hojas = null; }
   }
-  if (!imagen) { flash('No se pudo armar la imagen', 'mal'); return; }
+  if (!hojas || !hojas.length) { flash('No se pudo armar la imagen', 'mal'); return; }
 
   const numero = (datos && datos.numero) || r.name || 'pinkpower';
-  const nombre = `recibo-${String(numero).replace(/[^\w-]/g, '')}.png`;
-  const archivo = new File([imagen], nombre, { type: 'image/png' });
+  const base = `recibo-${String(numero).replace(/[^\w-]/g, '')}`;
+  // Varias hojas cuando la venta es larga: van todas en el mismo envío.
+  const archivos = hojas.map((png, i) => new File([png],
+    hojas.length > 1 ? `${base}-${i + 1}de${hojas.length}.png` : `${base}.png`,
+    { type: 'image/png' }));
   if (sePuedeCompartirArchivo()) {
     try {
       const hola = r.nombreCliente ? ' ' + r.nombreCliente.split(' ')[0] : '';
-      await navigator.share({ files: [archivo],
-        text: `¡Hola${hola}! Gracias por tu compra en Pink Power 💕🛍️\n\n` + invitacion() });
+      // Una cotización todavía no es una compra: lleva su propio mensaje, corto.
+      // La invitación a seguirlos va en el recibo de una venta, no acá.
+      const texto = r.cotizacion
+        ? `¡Hola${hola}! Le comparto su cotización 💕`
+        : `¡Hola${hola}! Gracias por tu compra en Pink Power 💕🛍️\n\n` + invitacion();
+      await navigator.share({ files: archivos, text });
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;   // la cerró ella
     }
   }
-  // Sin menú de compartir: se baja para adjuntarla a mano.
-  const url = URL.createObjectURL(imagen);
-  const a = document.createElement('a');
-  a.href = url; a.download = nombre;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-  flash('Recibo guardado en el teléfono', 'ok');
+  // Sin menú de compartir: se bajan para adjuntarlas a mano.
+  archivos.forEach((archivo) => {
+    const url = URL.createObjectURL(archivo);
+    const a = document.createElement('a');
+    a.href = url; a.download = archivo.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  });
+  flash(archivos.length > 1 ? `${archivos.length} hojas guardadas` : 'Recibo guardado', 'ok');
 }
 
 // La invitación a seguirlos, con las palabras de la dueña. Va en el MENSAJE y no

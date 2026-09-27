@@ -125,6 +125,15 @@ function fecha(iso) {
     + ' · ' + d.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
 }
 
+// De las ventas viejas no se guardaba la forma de pago, asi que ahi se dice al
+// menos si quedo pagada: un "· pendiente" suelto no significaba nada.
+function textoDePago(r) {
+  const forma = PAGOS[r.pago] || r.pago || '';
+  const banco = r.banco ? ' · ' + r.banco : '';
+  if (!forma) return r.pagado === false ? 'Pendiente' : 'Pagado';
+  return forma + banco + (r.pagado === false ? ' · pendiente' : '');
+}
+
 function pintar(r) {
   const items = (r.items || []).map((i) => `
     <div class="item">
@@ -147,9 +156,7 @@ function pintar(r) {
         ${r.numero && !r.ensayo ? `<div class="dato"><span>Pedido</span><b>${esc(r.numero)}</b></div>` : ''}
         <div class="dato"><span>Fecha</span><b>${esc(fecha(r.fecha))}</b></div>
         ${r.cliente ? `<div class="dato"><span>Clienta</span><b>${esc(r.cliente)}</b></div>` : ''}
-        <div class="dato"><span>Pago</span><b>${esc(PAGOS[r.pago] || r.pago || '')}${
-          r.banco ? ' · ' + esc(r.banco) : ''}${
-          r.pagado === false ? ' · pendiente' : ''}</b></div>
+        <div class="dato"><span>Pago</span><b>${esc(textoDePago(r))}</b></div>
       </div>
       <div class="items">${items}</div>
       <div class="suma">

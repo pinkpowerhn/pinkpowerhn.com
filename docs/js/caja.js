@@ -392,6 +392,7 @@ function cambio() {
 
 function nuevaVenta() {
   intentoActual = '';
+  ventaEnMano = null;
   try { localStorage.removeItem(GUARDADO); } catch (_) {}
   estado.codigoSinHallar = '';
   estado.venta = [];
@@ -1052,9 +1053,134 @@ function vistaExito() {
 
 // El enlace publico del recibo. Sale del mismo sitio en el que corre la caja,
 // asi que en la computadora de prueba apunta a la prueba y en la tienda al sitio.
+// De quien son las acciones del recibo: la venta recien cobrada, o una vieja
+// que se abrio desde la lista de ventas.
+let ventaEnMano = null;
+
+function laVenta() { return ventaEnMano || estado.resultado; }
+
 function urlRecibo() {
-  const r = estado.resultado;
+  const r = laVenta();
   return r && r.recibo ? `${location.origin}/recibo/?t=${encodeURIComponent(r.recibo)}` : '';
+}
+
+// ── Las ventas ya hechas ─────────────────────────────────────────────────────
+// Para mandarle el recibo a una clienta despues, cuando la venta ya paso. No se
+// puede rehacer la venta para eso: el producto ya se descontó del inventario.
+async function verVentas() {
+  const fondo = document.createElement('div');
+  fondo.className = 'modal-fondo';
+  fondo.innerHTML = `
+    <div class="modal scroll-lindo" role="dialog" aria-modal="true" aria-label="Ventas">
+      <div class="modal__agarre"></div>
+      <div class="modal__cab">
+        <div style="flex:1"><h2>Ventas</h2><p>Para volver a mandar un recibo</p></div>
+        <button class="modal__x" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal__lista" id="lista-ventas">
+        <div class="vacio"><span class="puntos">Buscando las ventas</span></div>
+      </div>
+    </div>`;
+  document.body.appendChild(fondo);
+  const cerrar = () => fondo.remove();
+  fondo.querySelector('.modal__x').addEventListener('click', cerrar);
+  fondo.addEventListener('click', (e) => { if (e.target === fondo) cerrar(); });
+
+  let ventas = [];
+  try {
+    ventas = (await api('/admin/caja/ventas')).ventas || [];
+  } catch (err) {
+    fondo.querySelector('#lista-ventas').innerHTML =
+      `<div class="vacio">No se pudieron traer las ventas.<br>${esc(err.message || '')}</div>`;
+    return;
+  }
+  const caja = fondo.querySelector('#lista-ventas');
+  if (!ventas.length) {
+    caja.innerHTML = '<div class="vacio">Todavía no hay ventas de mostrador.</div>';
+    return;
+  }
+  caja.innerHTML = ventas.map((v, i) => `
+    <button class="venta" data-venta="${i}" type="button">
+      <span class="venta__txt">
+        <span class="venta__nom">${esc(v.cliente || 'Sin clienta')}</span>
+        <span class="venta__meta">${esc(v.numero)} · ${esc(fechaCorta(v.fecha))}</span>
+      </span>
+      <span class="venta__imp">${L(v.total)}</span>
+    </button>`).join('');
+
+  caja.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-venta]');
+    if (!b) return;
+    const v = ventas[+b.dataset.venta];
+    b.disabled = true;
+    const antes = b.innerHTML;
+    b.innerHTML = '<span class="venta__txt"><span class="puntos">Armando el recibo</span></span>';
+    let token;
+    try {
+      token = (await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/recibo`,
+                         { method: 'POST' })).recibo;
+    } catch (err) {
+      b.disabled = false; b.innerHTML = antes;
+      flash(err.message || 'No se pudo armar el recibo', 'mal');
+      return;
+    }
+    // Las acciones del recibo pasan a ser de ESTA venta.
+    ventaEnMano = { recibo: token, total: v.total, name: v.numero,
+                    telefono: v.telefono, nombreCliente: v.cliente, ensayo: false };
+    cerrar();
+    accionesDeRecibo(v);
+  });
+}
+
+// Las mismas acciones de la pantalla de venta cobrada, para una venta vieja.
+function accionesDeRecibo(v) {
+  const fondo = document.createElement('div');
+  fondo.className = 'modal-fondo';
+  fondo.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Recibo">
+      <div class="modal__agarre"></div>
+      <div class="modal__cab">
+        <div style="flex:1">
+          <h2>${esc(v.numero)}</h2>
+          <p>${esc(v.cliente || 'Sin clienta')} · ${L(v.total)}</p>
+        </div>
+        <button class="modal__x" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal__lista">
+        <div class="recibo-acciones">
+          <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
+            ${svg(IC.whatsapp, 0)} ${v.telefono
+              ? 'Mandarle el recibo a la clienta' : 'Mandar el recibo por WhatsApp'}</button>
+          <button class="btn btn--ancho" data-accion="recibo-img" type="button">
+            ${sePuedeCompartirArchivo()
+              ? 'Mandar la imagen (a un contacto guardado)' : 'Bajar la imagen del recibo'}</button>
+          ${v.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto"
+            type="button">Guardar el contacto de la clienta</button>` : ''}
+          <div class="recibo-acciones__fila">
+            <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
+            <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(fondo);
+  const cerrar = () => { fondo.remove(); ventaEnMano = null; };
+  fondo.querySelector('.modal__x').addEventListener('click', cerrar);
+  fondo.addEventListener('click', (e) => { if (e.target === fondo) cerrar(); });
+  fondo.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-accion]');
+    if (!b) return;
+    switch (b.dataset.accion) {
+      case 'recibo-wa': mandarReciboWhatsApp(); break;
+      case 'recibo-img': mandarReciboEnImagen(); break;
+      case 'guardar-contacto': guardarContacto(); break;
+      case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
+      case 'recibo-copiar':
+        navigator.clipboard.writeText(urlRecibo())
+          .then(() => flash('Enlace copiado', 'ok')).catch(() => {});
+        break;
+    }
+  });
 }
 
 // ── El recibo como imagen ────────────────────────────────────────────────────
@@ -1130,8 +1256,10 @@ async function dibujarRecibo(d) {
   if (!d.ensayo && d.numero) datos.push(['PEDIDO', d.numero]);
   datos.push(['FECHA', fechaCorta(d.fecha)]);
   if (d.cliente) datos.push(['CLIENTA', d.cliente]);
-  datos.push(['PAGO', (PAGOS_TEXTO[d.pago] || d.pago || '')
-                      + (d.banco ? ' · ' + d.banco : '')]);
+  const forma = PAGOS_TEXTO[d.pago] || d.pago || '';
+  datos.push(['PAGO', forma
+    ? forma + (d.banco ? ' · ' + d.banco : '') + (d.pagado === false ? ' · pendiente' : '')
+    : (d.pagado === false ? 'Pendiente' : 'Pagado')]);
   datos.forEach(([etiqueta, valor], i) => {
     const px = (i % 2) ? A / 2 : M;
     const py = y + Math.floor(i / 2) * 38;
@@ -1226,7 +1354,7 @@ function fechaCorta(iso) {
 }
 
 async function mandarReciboEnImagen() {
-  const r = estado.resultado;
+  const r = laVenta();
   if (!r || !r.recibo) return;
   flash('Armando el recibo…');
   let datos;
@@ -1281,7 +1409,7 @@ function invitacion() {
 // toque. Sirve para el problema de fondo: una clienta recien creada no esta en
 // la agenda, y sin agendarla no se le puede mandar un archivo por WhatsApp.
 function guardarContacto() {
-  const r = estado.resultado;
+  const r = laVenta();
   if (!r || !r.telefono) return;
   const nombre = (r.nombreCliente || 'Clienta').trim();
   const partes = nombre.split(/\s+/);
@@ -1322,7 +1450,7 @@ function telefonoInternacional(telefono) {
 }
 
 function mandarReciboWhatsApp() {
-  const r = estado.resultado;
+  const r = laVenta();
   if (!r || !r.recibo) return;
   const nombre = (r.nombreCliente || '').split(' ')[0];
   const texto = `¡Hola${nombre ? ' ' + nombre : ''}! Gracias por tu compra en Pink Power 💕🛍️\n\n`
@@ -1539,6 +1667,7 @@ $('caja-main').addEventListener('click', (e) => {
     case 'recibo-wa': mandarReciboWhatsApp(); break;
     case 'recibo-img': mandarReciboEnImagen(); break;
     case 'guardar-contacto': guardarContacto(); break;
+    case 'ventas': verVentas(); break;
     case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
     case 'recibo-copiar':
       navigator.clipboard.writeText(urlRecibo())
@@ -1556,6 +1685,11 @@ $('caja-main').addEventListener('click', (e) => {
     case 'crear-cliente': pedirClienta(); break;
   }
 });
+
+// Los botones de la barra de arriba viven fuera de #caja-main, que es donde
+// escucha el manejador de acciones: se conectan aparte.
+const btnVentas = document.querySelector('.top [data-accion="ventas"]');
+if (btnVentas) btnVentas.addEventListener('click', verVentas);
 
 $('btn-nueva').addEventListener('click', () => {
   if (!estado.venta.length || estado.resultado || confirm('¿Borrar esta venta y empezar otra?')) {

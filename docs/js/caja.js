@@ -996,15 +996,18 @@ function bloqueResumen() {
   const opcActual = OPCIONES_DESC.find((o) => o.v === estado.descuento.tipo) || OPCIONES_DESC[0];
   return `<div class="tarjeta tarjeta--cobro${estado.descAbierto || estado.bancoAbierto ? ' tarjeta--abierta' : ''}">
     <div class="tarjeta__cab">Cobro</div>
-    <div class="tarjeta__cuerpo scroll-lindo">
+    <!-- Fuera de lo que se desplaza: el total es lo que la cajera necesita
+         siempre a la vista, y con el scroll interno se perdia de pantalla. -->
+    <div class="cobro-totales">
       <div class="total-fila"><span>Subtotal</span><span>${L(subtotal())}</span></div>
       ${desc > 0 ? `<div class="total-fila total-fila--desc"><span>Descuento</span>
         <span>− ${L(desc)}</span></div>` : ''}
       ${elFlete().monto > 0 ? `<div class="total-fila total-fila--flete">
         <span>${esc(elFlete().titulo)}</span><span>${L(elFlete().monto)}</span></div>` : ''}
       <div class="total-grande"><span>Total</span><b>${L(total())}</b></div>
-
-      <div style="display:flex; gap:0.6rem; margin-top:1rem; align-items:flex-start;">
+    </div>
+    <div class="tarjeta__cuerpo scroll-lindo">
+      <div style="display:flex; gap:0.6rem; align-items:flex-start;">
         <div class="pp-select" style="flex:1.3">
           <button class="pp-select__btn" type="button" data-select="desc"
                   aria-haspopup="listbox" aria-expanded="${estado.descAbierto}">
@@ -1067,6 +1070,10 @@ function bloqueResumen() {
       ${estado.pago === 'credito' ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago.</div>' : ''}
       ${estado.error ? `<div class="aviso-caja aviso-caja--roja">${esc(estado.error)}</div>` : ''}
 
+    </div>
+    <!-- Fuera del cuerpo: ahi adentro, pegado abajo, tapaba el selector de banco
+         y el campo "Recibí" justo cuando la cajera acababa de activarlos. -->
+    <div class="cierre-cobro">
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
         ${estado.cobrando ? 'Cobrando…' : 'Cobrar ' + L(total())}
@@ -1741,6 +1748,16 @@ $('caja-main').addEventListener('click', (e) => {
   if (d.pago !== undefined) {
     estado.pago = estado.pago === d.pago ? '' : d.pago;
     if (estado.pago !== 'transferencia') estado.banco = '';
+    // Los campos que aparecen con la forma de pago (el banco, el "Recibí") caen
+    // al final del bloque, que se desplaza por dentro: sin esto quedan fuera de
+    // la vista justo cuando hay que usarlos, y sin banco no deja cobrar.
+    const alElegir = estado.pago;
+    setTimeout(() => {
+      if (estado.pago !== alElegir) return;
+      const campo = document.querySelector(
+        alElegir === 'transferencia' ? '[data-select="banco"]' : '#recibido');
+      if (campo) campo.scrollIntoView({ block: 'nearest' });
+    }, 40);
     pintar();
     return;
   }
@@ -2857,11 +2874,27 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') guardarVenta();
 });
 
+// El alto real de la barra de arriba y de la cinta de prueba. Escritos a mano en
+// el CSS se desincronizan en cuanto se agrega un boton, y la pantalla deja de
+// cuadrar por unos pixeles: aparece scroll donde no deberia haberlo.
+function medirBarras() {
+  const raiz = document.documentElement;
+  const top = document.querySelector('.top');
+  const cinta = document.querySelector('.cinta-prueba');
+  if (top) raiz.style.setProperty('--alto-top',
+    Math.ceil(top.getBoundingClientRect().height) + 'px');
+  const alto = (cinta && cinta.offsetParent !== null)
+    ? Math.ceil(cinta.getBoundingClientRect().height) : 0;
+  raiz.style.setProperty('--alto-cinta', alto + 'px');
+}
+
 function arrancar() {
   mostrarCaja();
   const recuperada = recuperarVenta();
   if (MODO_PRUEBA) document.body.classList.add('es-prueba');
   pintar();
+  medirBarras();
+  window.addEventListener('resize', medirBarras);
   cargarCatalogo();
   cargarRecientes();
   detectarCamara();

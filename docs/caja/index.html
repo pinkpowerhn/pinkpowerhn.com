@@ -168,7 +168,8 @@
     body { overflow:hidden; }
     .caja { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:1.1rem;
             align-items:stretch; padding:1rem 1.3rem;
-            height:calc(100dvh - var(--alto-top)); overflow:hidden; }
+            height:calc(100dvh - var(--alto-top) - var(--alto-cinta, 0px));
+            overflow:hidden; }
     .col-izq, .col-der { display:flex; flex-direction:column; min-height:0; }
     .col-izq > .tarjeta:last-child, .col-der > .tarjeta:last-child { margin-bottom:0; }
     /* La lista de la venta y el buscador de clientas llevan su propio scroll. */
@@ -200,15 +201,43 @@
     .col-der > .tarjeta:last-child .tarjeta__cuerpo {
       overflow-y:auto; min-height:0; display:flex; flex-direction:column; flex:1 1 auto;
     }
-    .caja .btn--cobrar.solo-escritorio {
-      position:sticky; bottom:0; margin-top:auto; flex:0 0 auto;
-      box-shadow:0 -10px 16px -10px #fff, var(--sombra-sm);
+    /* La tarjeta de la clienta no se encoge: apretada por la de cobro, cortaba
+       el interruptor de mayoreo por la mitad. */
+    .col-der > .tarjeta:first-child { flex:0 0 auto; }
+
+    /* En una pantalla de portatil el bloque de cobro va justo: el desglose se
+       compacta para que quepan los controles sin tanto desplazamiento. */
+    .caja .cobro-totales { padding:0.6rem 1rem 0.1rem; }
+    .caja .total-fila { padding:0.12rem 0; font-size:0.82rem; }
+    .caja .total-grande { padding:0.35rem 0 0.2rem; }
+    .caja .total-grande b { font-size:1.45rem; }
+    .caja .fletes { gap:0.4rem; }
+    .caja .flete-btn { min-height:44px; padding:0.35rem 0.25rem; font-size:0.72rem; }
+    .caja .campo label { margin-bottom:0.25rem; }
+    .caja .pagos { margin:0.55rem 0 0.15rem; gap:0.45rem; }
+    .caja .pago-btn { min-height:44px; }
+    /* Los campos que aparecen con la forma de pago van pegados: son los ultimos
+       y cada milimetro cuenta para que el bloque entre sin desplazarse. */
+    .caja .tarjeta__cuerpo > .campo { margin-top:0.6rem !important; }
+
+    /* Cobrar y cotizar, al pie de la tarjeta y fuera de lo que se desplaza: asi
+       nunca tapan el selector de banco ni el campo "Recibi". */
+    .caja .cierre-cobro {
+      flex:0 0 auto; padding:0.2rem 1rem 0.9rem;
+      border-top:1px solid rgba(26,10,18,0.06);
     }
-    /* El cambio viaja pegado al boton: en una venta larga quedaba escondido
-       detras y es justo el dato que la cajera necesita a la vista. */
-    .caja .cambio { position:sticky; bottom:3.6rem; z-index:2; flex:0 0 auto; }
+    .caja .cierre-cobro .btn--cobrar { box-shadow:var(--sombra-sm); }
+    .caja .btn--cotiza { margin-top:0.4rem; min-height:42px; font-size:0.78rem; }
+    /* El cambio queda pegado al pie del bloque que se desplaza: es el dato que
+       la cajera necesita a la vista, y el boton de cobrar ya no vive aca dentro
+       (esta abajo, fijo), asi que ahora se pega a cero. */
+    .caja .cambio { position:sticky; bottom:0; z-index:2; flex:0 0 auto;
+                    box-shadow:0 -8px 12px -10px rgba(26,10,18,0.25); }
   }
-  :root { --alto-top: 60px; }   /* alto real de la barra superior */
+  /* Los mide el JS al arrancar: escritos a mano se desincronizan en cuanto
+     cambia algo de la barra, y entonces la pantalla no cuadra por unos pixeles
+     y aparece scroll donde no debe haberlo. */
+  :root { --alto-top: 60px; --alto-cinta: 0px; }
 
   /* ── Barra de desplazamiento propia ──────────────────────────────────────
      Va con CSS y no con una librería (SimpleBar, OverlayScrollbars,
@@ -608,6 +637,10 @@
   .pp-select__opt.is-active { background:#ffeff6; color:var(--pink-dk); font-weight:700; }
 
   /* ── Resumen y cobro ─────────────────────────────────────────────────── */
+  /* El bloque de totales, fijo arriba del cobro. */
+  .cobro-totales { padding:0.9rem 1rem 0.2rem; flex:0 0 auto; }
+  .caja .cobro-totales { padding:0.8rem 1rem 0.1rem; }
+
   .total-fila { display:flex; justify-content:space-between; align-items:baseline;
                 margin-bottom:0.35rem; font-size:0.85rem; color:var(--muted); }
   .total-grande { display:flex; justify-content:space-between; align-items:baseline;

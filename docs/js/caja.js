@@ -1032,11 +1032,14 @@ function vistaExito() {
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
       <div class="recibo-acciones">
-        <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
-          ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
-            ? 'Mandar el recibo (imagen)' : 'Bajar el recibo (imagen)'}</button>
-        <button class="btn btn--ancho" data-accion="recibo-wa" type="button">
-          Mandar solo el enlace</button>
+        <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
+          ${svg(IC.whatsapp, 0)} ${r.telefono
+            ? 'Mandarle el recibo a la clienta' : 'Mandar el recibo por WhatsApp'}</button>
+        <button class="btn btn--ancho" data-accion="recibo-img" type="button">
+          ${sePuedeCompartirArchivo()
+            ? 'Mandar la imagen (a un contacto guardado)' : 'Bajar la imagen del recibo'}</button>
+        ${r.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto" type="button">
+          Guardar el contacto de la clienta</button>` : ''}
         <div class="recibo-acciones__fila">
           <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
           <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
@@ -1274,6 +1277,50 @@ function invitacion() {
     + `Compra en línea cuando quieras:\n${TIENDA.webUrl}`;
 }
 
+// La ficha de contacto de la clienta, para que el telefono la guarde de un
+// toque. Sirve para el problema de fondo: una clienta recien creada no esta en
+// la agenda, y sin agendarla no se le puede mandar un archivo por WhatsApp.
+function guardarContacto() {
+  const r = estado.resultado;
+  if (!r || !r.telefono) return;
+  const nombre = (r.nombreCliente || 'Clienta').trim();
+  const partes = nombre.split(/\s+/);
+  const pila = partes.slice(1).join(' ');
+  const tel = telefonoInternacional(r.telefono);
+  const ficha = ['BEGIN:VCARD', 'VERSION:3.0',
+    `N:${pila};${partes[0]};;;`,
+    `FN:${nombre}`,
+    'ORG:Clienta Pink Power',
+    `TEL;TYPE=CELL:+${tel}`,
+    'END:VCARD'].join('\r\n');
+  // Solo se quitan los caracteres que un nombre de archivo no admite: con una
+  // lista de permitidos se perdían las tildes y quedaba "Mara Jos".
+  const archivo = new File([ficha], `${nombre.replace(/[\/:*?"<>|]/g, '')}.vcf`,
+                           { type: 'text/vcard' });
+  const bajar = () => {
+    const url = URL.createObjectURL(archivo);
+    const a = document.createElement('a');
+    a.href = url; a.download = archivo.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    flash('Abrí el archivo para guardar el contacto', 'ok');
+  };
+  if (sePuedeCompartirArchivo()) {
+    navigator.share({ files: [archivo] }).catch((err) => {
+      if (!err || err.name !== 'AbortError') bajar();
+    });
+  } else { bajar(); }
+}
+
+// El numero en formato internacional y solo con digitos, que es como lo quieren
+// tanto WhatsApp como la ficha de contacto.
+function telefonoInternacional(telefono) {
+  let tel = String(telefono || '').replace(/\D/g, '');
+  if (tel.startsWith('00')) tel = tel.slice(2);
+  if (tel.length === 8) tel = '504' + tel;   // acá los números son de ocho cifras
+  return tel;
+}
+
 function mandarReciboWhatsApp() {
   const r = estado.resultado;
   if (!r || !r.recibo) return;
@@ -1282,12 +1329,10 @@ function mandarReciboWhatsApp() {
     + `${r.name && !r.ensayo ? 'Pedido ' + r.name + ' · ' : ''}Total ${L(r.total)}\n`
     + `Tu recibo: ${sinProtocolo(urlRecibo())}\n\n`
     + invitacion();
-  // WhatsApp quiere el numero internacional, solo digitos y sin el "+". Los
-  // telefonos de aca se guardan de ocho cifras (9988-7766): sin el 504 delante,
-  // el enlace abre un chat que no existe.
-  let tel = String(r.telefono || '').replace(/\D/g, '');
-  if (tel.startsWith('00')) tel = tel.slice(2);
-  if (tel.length === 8) tel = '504' + tel;
+  // Con el número puesto, el chat se abre aunque la clienta NO esté guardada en
+  // los contactos: es el único camino para mandarle algo a alguien recién
+  // registrado, porque el menú de compartir del teléfono solo lista la agenda.
+  const tel = telefonoInternacional(r.telefono);
   // Sin numero, WhatsApp pregunta a quien mandarselo, que es lo que hace falta
   // cuando la venta fue sin clienta registrada.
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
@@ -1493,6 +1538,7 @@ $('caja-main').addEventListener('click', (e) => {
     case 'manual': pedirManual(); break;
     case 'recibo-wa': mandarReciboWhatsApp(); break;
     case 'recibo-img': mandarReciboEnImagen(); break;
+    case 'guardar-contacto': guardarContacto(); break;
     case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
     case 'recibo-copiar':
       navigator.clipboard.writeText(urlRecibo())

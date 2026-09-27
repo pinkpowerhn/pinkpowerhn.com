@@ -1033,14 +1033,13 @@ function vistaExito() {
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
       <div class="recibo-acciones">
-        <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
-          ${svg(IC.whatsapp, 0)} ${r.telefono
-            ? 'Mandarle el recibo a la clienta' : 'Mandar el recibo por WhatsApp'}</button>
-        <button class="btn btn--ancho" data-accion="recibo-img" type="button">
-          ${sePuedeCompartirArchivo()
-            ? 'Mandar la imagen (a un contacto guardado)' : 'Bajar la imagen del recibo'}</button>
+        <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
+          ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
+            ? 'Mandar el recibo por WhatsApp' : 'Bajar la imagen del recibo'}</button>
         ${r.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto" type="button">
-          Guardar el contacto de la clienta</button>` : ''}
+          Guardar el contacto de la clienta</button>
+          <p class="recibo-nota">Si todavía no la tenés en la agenda, guardala primero:
+          WhatsApp solo deja mandar fotos a los contactos guardados.</p>` : ''}
         <div class="recibo-acciones__fila">
           <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
           <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
@@ -1151,14 +1150,13 @@ function accionesDeRecibo(v) {
           <div class="vacio"><span class="puntos">Armando el recibo</span></div>
         </div>
         <div class="recibo-acciones">
-          <button class="btn btn--wa btn--ancho" data-accion="recibo-wa" type="button">
-            ${svg(IC.whatsapp, 0)} ${v.telefono
-              ? 'Mandarle el recibo a la clienta' : 'Mandar el recibo por WhatsApp'}</button>
-          <button class="btn btn--ancho" data-accion="recibo-img" type="button">
-            ${sePuedeCompartirArchivo()
-              ? 'Mandar la imagen (a un contacto guardado)' : 'Bajar la imagen del recibo'}</button>
+          <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
+            ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
+              ? 'Mandar el recibo por WhatsApp' : 'Bajar la imagen del recibo'}</button>
           ${v.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto"
-            type="button">Guardar el contacto de la clienta</button>` : ''}
+            type="button">Guardar el contacto de la clienta</button>
+            <p class="recibo-nota">Si todavía no la tenés en la agenda, guardala primero:
+            WhatsApp solo deja mandar fotos a los contactos guardados.</p>` : ''}
           <div class="recibo-acciones__fila">
             <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
             <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
@@ -1175,7 +1173,6 @@ function accionesDeRecibo(v) {
     const b = e.target.closest('[data-accion]');
     if (!b) return;
     switch (b.dataset.accion) {
-      case 'recibo-wa': mandarReciboWhatsApp(); break;
       case 'recibo-img': mandarReciboEnImagen(); break;
       case 'guardar-contacto': guardarContacto(); break;
       case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
@@ -1421,12 +1418,6 @@ async function mandarReciboEnImagen() {
   flash('Recibo guardado en el teléfono', 'ok');
 }
 
-// El enlace, sin el "https://" de adelante: se ve mucho más limpio en el chat y
-// WhatsApp lo reconoce igual como enlace.
-function sinProtocolo(url) {
-  return String(url || '').replace(/^https?:\/\//, '');
-}
-
 // La invitación a seguirlos, con las palabras de la dueña. Va en el MENSAJE y no
 // en la imagen: acá los enlaces se tocan, que es lo que hace falta para que de
 // verdad lleguen al Instagram.
@@ -1477,23 +1468,6 @@ function telefonoInternacional(telefono) {
   if (tel.startsWith('00')) tel = tel.slice(2);
   if (tel.length === 8) tel = '504' + tel;   // acá los números son de ocho cifras
   return tel;
-}
-
-function mandarReciboWhatsApp() {
-  const r = laVenta();
-  if (!r || !r.recibo) return;
-  const nombre = (r.nombreCliente || '').split(' ')[0];
-  const texto = `¡Hola${nombre ? ' ' + nombre : ''}! Gracias por tu compra en Pink Power 💕🛍️\n\n`
-    + `${r.name && !r.ensayo ? 'Pedido ' + r.name + ' · ' : ''}Total ${L(r.total)}\n`
-    + `Tu recibo: ${sinProtocolo(urlRecibo())}\n\n`
-    + invitacion();
-  // Con el número puesto, el chat se abre aunque la clienta NO esté guardada en
-  // los contactos: es el único camino para mandarle algo a alguien recién
-  // registrado, porque el menú de compartir del teléfono solo lista la agenda.
-  const tel = telefonoInternacional(r.telefono);
-  // Sin numero, WhatsApp pregunta a quien mandarselo, que es lo que hace falta
-  // cuando la venta fue sin clienta registrada.
-  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
 }
 
 // ── Eventos ──────────────────────────────────────────────────────────────────
@@ -1694,7 +1668,6 @@ $('caja-main').addEventListener('click', (e) => {
     case 'cobrar': cobrar(); break;
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
-    case 'recibo-wa': mandarReciboWhatsApp(); break;
     case 'recibo-img': mandarReciboEnImagen(); break;
     case 'guardar-contacto': guardarContacto(); break;
     case 'ventas': verVentas(); break;

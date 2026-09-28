@@ -1172,7 +1172,7 @@ async function verVentas() {
 
   let ventas = [];
   try {
-    ventas = (await api('/admin/caja/ventas')).ventas || [];
+    ventas = (await api('/admin/caja/ventas' + (MODO_PRUEBA ? '?prueba=1' : ''))).ventas || [];
   } catch (err) {
     fondo.querySelector('#lista-ventas').innerHTML =
       `<div class="vacio">No se pudieron traer las ventas.<br>${esc(err.message || '')}</div>`;
@@ -1186,7 +1186,8 @@ async function verVentas() {
   caja.innerHTML = ventas.map((v, i) => `
     <button class="venta" data-venta="${i}" type="button">
       <span class="venta__txt">
-        <span class="venta__nom">${esc(v.cliente || 'Sin clienta')}</span>
+        <span class="venta__nom">${esc(v.cliente || 'Sin clienta')}${
+          v.ensayo ? ' <span class="venta__ensayo">prueba</span>' : ''}</span>
         <span class="venta__meta">${esc(v.numero)} · ${esc(fechaCorta(v.fecha))}</span>
       </span>
       <span class="venta__imp">${L(v.total)}</span>
@@ -1199,10 +1200,14 @@ async function verVentas() {
     b.disabled = true;
     const antes = b.innerHTML;
     b.innerHTML = '<span class="venta__txt"><span class="puntos">Armando el recibo</span></span>';
-    let token;
+    // Las de prueba ya traen su recibo; para las de verdad se pide (y se arma
+    // si esa venta es anterior a que los recibos existieran).
+    let token = v.recibo;
     try {
-      token = (await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/recibo`,
-                         { method: 'POST' })).recibo;
+      if (!token) {
+        token = (await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/recibo`,
+                           { method: 'POST' })).recibo;
+      }
     } catch (err) {
       b.disabled = false; b.innerHTML = antes;
       flash(err.message || 'No se pudo armar el recibo', 'mal');
@@ -1210,7 +1215,7 @@ async function verVentas() {
     }
     // Las acciones del recibo pasan a ser de ESTA venta.
     ventaEnMano = { recibo: token, total: v.total, name: v.numero,
-                    telefono: v.telefono, nombreCliente: v.cliente, ensayo: false };
+                    telefono: v.telefono, nombreCliente: v.cliente, ensayo: !!v.ensayo };
     cerrar();
     accionesDeRecibo(v);
   });
@@ -1585,9 +1590,13 @@ async function mandarReciboEnImagen() {
   const hola = r.nombreCliente ? ' ' + r.nombreCliente.split(' ')[0] : '';
   // Una cotización todavía no es una compra: lleva su propio mensaje, corto.
   // La invitación a seguirlos va en el recibo de una venta, no acá.
+  // Sin nombre no hay a quién saludar: "¡Hola! Le comparto…" quedaba raro, así
+  // que el saludo solo va cuando la venta lleva clienta.
   const texto = r.cotizacion
-    ? `¡Hola${hola}! Le comparto su cotización 💕`
-    : `¡Hola${hola}! Gracias por tu compra en Pink Power 💕🛍️\n\n` + invitacion();
+    ? (hola ? `¡Hola${hola}! Le comparto su cotización 💕`
+            : 'Le comparto su cotización 💕')
+    : (hola ? `¡Hola${hola}! Gracias por tu compra en Pink Power 💕🛍️\n\n`
+            : '¡Gracias por tu compra en Pink Power! 💕🛍️\n\n') + invitacion();
 
   let motivo = '';
   if (navigator.share && navigator.canShare) {

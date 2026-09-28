@@ -1158,7 +1158,8 @@ async function verVentas() {
     <div class="modal scroll-lindo" role="dialog" aria-modal="true" aria-label="Ventas">
       <div class="modal__agarre"></div>
       <div class="modal__cab">
-        <div style="flex:1"><h2>Ventas</h2><p>Para volver a mandar un recibo</p></div>
+        <div style="flex:1"><h2>Ventas</h2>
+          <p>De la tienda y del mostrador, para volver a mandar un recibo</p></div>
         <button class="modal__x" type="button" aria-label="Cerrar">×</button>
       </div>
       <div class="modal__lista" id="lista-ventas">
@@ -1180,7 +1181,7 @@ async function verVentas() {
   }
   const caja = fondo.querySelector('#lista-ventas');
   if (!ventas.length) {
-    caja.innerHTML = '<div class="vacio">Todavía no hay ventas de mostrador.</div>';
+    caja.innerHTML = '<div class="vacio">Todavía no hay ventas.</div>';
     return;
   }
   caja.innerHTML = ventas.map((v, i) => `
@@ -1188,7 +1189,8 @@ async function verVentas() {
       <span class="venta__txt">
         <span class="venta__nom">${esc(v.cliente || 'Sin clienta')}${
           v.ensayo ? ' <span class="venta__ensayo">prueba</span>' : ''}</span>
-        <span class="venta__meta">${esc(v.numero)} · ${esc(fechaCorta(v.fecha))}</span>
+        <span class="venta__meta">${esc(v.numero)} · ${esc(fechaCorta(v.fecha))}${
+          v.origen ? ' · ' + esc(v.origen) : ''}</span>
       </span>
       <span class="venta__imp">${L(v.total)}</span>
     </button>`).join('');

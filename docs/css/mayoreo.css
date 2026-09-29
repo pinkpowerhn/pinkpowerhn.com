@@ -165,12 +165,26 @@ body.my-open > #product-page { display: none; }
   font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em;
 }
 .my-page__back:hover { color: #e8437a; }
-.my-page__title { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; color: #2a0f1c; }
+.my-page__title {
+  font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.95rem;
+  letter-spacing: 0.04em; text-transform: uppercase; color: #2a0f1c;
+}
 .my-page__spacer { width: 80px; }
 
+/* El título manda arriba; debajo, el formulario. Lo que explica el beneficio va
+   después, porque la que entra ya sabe a qué viene: primero el login. */
 .my-page__grid {
-  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 3rem; align-items: stretch;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "titulo login"
+    "pitch  login";
+  gap: 1.1rem 3rem; align-items: stretch;
 }
+.my-pitch__title { grid-area: titulo; }
+.my-pitch       { grid-area: pitch; }
+.my-login       { grid-area: login; }
 .my-pitch { display: flex; flex-direction: column; justify-content: center; }
 /* La tarjeta de login se estira a la misma altura que la sección de la izquierda
    y centra el formulario en vertical. */
@@ -184,9 +198,12 @@ body.my-open > #product-page { display: none; }
   background: linear-gradient(135deg, #ffe3ef, #ffd0e4);
   box-shadow: 0 8px 20px rgba(232, 67, 122, 0.22);
 }
+/* Los títulos van en la sans del sitio (no en la serif): así combinan con el
+   resto de la página, que es la que pidió la dueña. */
 .my-pitch__title {
-  font-family: 'Cormorant Garamond', serif; font-weight: 600;
-  font-size: 2.1rem; line-height: 1.12; color: #2a0f1c; margin: 0 0 0.7rem;
+  font-family: 'Montserrat', sans-serif; font-weight: 700;
+  font-size: 1.85rem; line-height: 1.22; letter-spacing: -0.01em;
+  color: #2a0f1c; margin: 0;
 }
 .my-pitch__sub { color: #7a5766; font-size: 0.98rem; line-height: 1.55; margin: 0 0 1.4rem; max-width: 40ch; }
 .my-pitch__list { list-style: none; margin: 0 0 1.4rem; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -205,17 +222,26 @@ body.my-open > #product-page { display: none; }
   box-shadow: 0 20px 55px -28px rgba(154, 0, 73, 0.4);
 }
 .my-login__title {
-  font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: #2a0f1c;
+  font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.12rem;
+  letter-spacing: 0.01em; color: #2a0f1c;
   margin: 0 0 1.2rem; text-align: center;
 }
 
 @media (max-width: 820px) {
   .my-shell { padding: var(--nav-h) 1rem 2.4rem; }
-  .my-page__grid { grid-template-columns: 1fr; gap: 1.8rem; }
+  /* En el teléfono: título, formulario y, hasta abajo, los beneficios. */
+  .my-page__grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas: "titulo" "login" "pitch";
+    gap: 1.4rem;
+  }
   .my-pitch { text-align: center; }
+  .my-pitch__title { text-align: center; font-size: 1.55rem; }
   .my-pitch__icon, .my-pitch__sub { margin-left: auto; margin-right: auto; }
   .my-pitch__list { max-width: 320px; margin-left: auto; margin-right: auto; }
-  .my-page__title { font-size: 1.1rem; }
+  .my-pitch__sub { margin-bottom: 1.1rem; }
+  .my-page__title { font-size: 0.85rem; }
   .my-page__spacer { width: 40px; }
 }
 

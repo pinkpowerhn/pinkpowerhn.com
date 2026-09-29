@@ -430,7 +430,7 @@ function renderProductos() {
   $('#cb-body').innerHTML = `
     ${state.colecciones.length ? `
     <div class="cb-cols">
-      <p class="cb-cols__label">Tocá una colección para ver sus productos y elegir los que querés:</p>
+      <p class="cb-cols__label">Toca una colección para ver sus productos y elegir los que quieres:</p>
       <div class="cb-chips">${chips}</div>
       <p class="cb-hint" style="margin:.5rem 0 0">Un mismo producto puede estar en varias colecciones, por eso los números pueden sumar más que el total.</p>
     </div>` : ''}
@@ -628,8 +628,8 @@ function renderPrecios(aviso = '') {
     </div>
     ${aviso ? `<p class="cb-hint cb-hint--ok">${esc(aviso)}</p>` : ''}
     <p class="cb-hint">${_precioVista === 'grupo'
-      ? `Ponele el precio a todo un grupo (misma colección y mismo precio de mayoreo) de una sola vez.${state.superCuenta ? '' : ' Debajo ves tu ganancia.'}`
-      : `Ponele el precio a cada producto.${state.superCuenta ? '' : ' Debajo ves tu ganancia.'} Dejalo en blanco si no querés mostrar precio.`}</p>
+      ? `Ponle el precio a todo un grupo (misma colección y mismo precio de mayoreo) de una sola vez.${state.superCuenta ? '' : ' Debajo ves tu ganancia.'}`
+      : `Ponle el precio a cada producto.${state.superCuenta ? '' : ' Debajo ves tu ganancia.'} Déjalo en blanco si no quieres mostrar precio.`}</p>
     <div id="cb-precios-cuerpo"></div>`;
 
   $('#cb-body').querySelectorAll('.cb-ptab').forEach(b =>
@@ -1011,7 +1011,7 @@ function renderGenerar() {
         ? 'Vas a guardar los cambios en el mismo link.'
         : (dias
             ? 'Cuando se cumpla el plazo, el link deja de funcionar.'
-            : 'El link no vence: lo podés compartir siempre.'));
+            : 'El link no vence: lo puedes compartir siempre.'));
   const btnLabel = soloPdf ? 'Descargar PDF' : (editando ? 'Guardar cambios' : 'Generar link');
   $('#cb-body').innerHTML = `
     <div class="cb-generar">

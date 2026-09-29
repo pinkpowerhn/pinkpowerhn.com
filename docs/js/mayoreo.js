@@ -73,19 +73,19 @@ export function showMayoreoPage() {
         <span class="my-page__spacer" aria-hidden="true"></span>
       </div>
       <div class="my-page__grid">
+        <h1 class="my-pitch__title">Compra al por mayor con Pink Power</h1>
         <section class="my-pitch">
-          <h1 class="my-pitch__title">Comprá al por mayor con Pink Power</h1>
-          <p class="my-pitch__sub">Ingresá con tu cuenta de mayorista para ver el catálogo con tus precios especiales y hacer tus pedidos.</p>
+          <p class="my-pitch__sub">Ingresa con tu cuenta de mayorista para ver el catálogo con tus precios especiales y hacer tus pedidos.</p>
           <ul class="my-pitch__list">
             <li>${CHECK}<span>Precios exclusivos de mayoreo</span></li>
             <li>${CHECK}<span>Catálogo con tu descuento ya aplicado</span></li>
             <li>${CHECK}<span>Atención directa por WhatsApp</span></li>
           </ul>
-          ${wa ? `<p class="my-pitch__foot">¿Aún no sos mayorista? <a href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">Escribinos por WhatsApp</a></p>` : ''}
+          ${wa ? `<p class="my-pitch__foot">¿Aún no eres mayorista? <a href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp</a></p>` : ''}
         </section>
         <section class="my-login">
           <div class="my-login__card">
-            <p class="my-login__title">Iniciá sesión</p>
+            <p class="my-login__title">Inicia Sesión</p>
             <form id="my-form" class="my-form">
               <label class="my-field">
                 <span>Usuario</span>
@@ -443,7 +443,7 @@ async function openPedidosModal() {
   m.hidden = false;
   document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => m.classList.add('is-open'));
-  // Encabezado + esqueleto (evita el parpadeo de "no tenés pedidos" mientras carga).
+  // Encabezado + esqueleto (evita el parpadeo de "no tienes pedidos" mientras carga).
   m.querySelector('.my-modal__panel').classList.toggle('my-modal__panel--wide', superCuenta);
   view.innerHTML = `
     <div class="my-modal__icon">📦</div>
@@ -471,7 +471,7 @@ function renderListaPedidos(pedidos) {
     view.innerHTML = `
       <div class="my-modal__icon">📦</div>
       <h2 class="my-modal__title">${superCuenta ? 'Pedidos de clientas' : 'Mis pedidos'}</h2>
-      <p class="my-pedidos__msg">${superCuenta ? 'No hay pedidos pagados en las últimas 2 semanas.' : 'Todavía no tenés pedidos pagados.'}</p>
+      <p class="my-pedidos__msg">${superCuenta ? 'No hay pedidos pagados en las últimas 2 semanas.' : 'Todavía no tienes pedidos pagados.'}</p>
       <p class="my-pedidos__hint">Cuando un pedido esté pagado, acá vas a poder crear su catálogo en PDF o descargar sus fotos.</p>`;
     return;
   }

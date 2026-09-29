@@ -1408,7 +1408,7 @@ function showCheckoutModal() {
       phone = (getState().mayoreoTelefono || '').trim();
       email = '';
       if (phone.replace(/\D/g, '').length < 8) {
-        showCoError('Tu cuenta de mayoreo no tiene teléfono registrado. Escribinos por WhatsApp para agregarlo; una vez agregado, cerrá sesión y volvé a entrar.');
+        showCoError('Tu cuenta de mayoreo no tiene teléfono registrado. Escríbenos por WhatsApp para agregarlo; una vez agregado, cierra sesión y vuelve a entrar.');
         return;
       }
     } else {

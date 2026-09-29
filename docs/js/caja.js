@@ -92,6 +92,7 @@ const estado = {
   hayCamara: false,     // se muestra el botón de escanear solo si el equipo tiene
   codigoSinHallar: '',  // último código escaneado que no está en el catálogo
   resultadosTotal: 0,   // cuántos coincidieron de verdad (la lista muestra los primeros)
+  buscadoEnShopify: false,   // estos resultados los trajo Shopify, no el catálogo
   recientes: [],        // últimas clientas atendidas
   verRecientes: false,  // se muestran al tocar el campo, antes de escribir
 };
@@ -269,6 +270,41 @@ async function repasarCatalogo() {
 
 const TOPE_RESULTADOS = 60;
 
+// Lo que la caja no encuentra, se lo pregunta a Shopify: su catálogo local
+// guarda título, marca y variante, y hay palabras que viven en la descripción.
+let buscaEnCurso = 0;
+
+async function buscarEnShopify(texto) {
+  const mia = ++buscaEnCurso;
+  const cont = $('resultados');
+  if (cont) {
+    cont.innerHTML = '<div class="resultados"><div class="vacio">'
+      + '<span class="puntos">Buscando en Shopify</span></div></div>';
+  }
+  let hallados = [];
+  try {
+    hallados = (await api('/admin/caja/buscar?q=' + encodeURIComponent(texto))).productos || [];
+  } catch (_) { hallados = []; }
+  // Mientras tanto siguió escribiendo: esta respuesta ya no vale.
+  if (mia !== buscaEnCurso) return;
+  const q = $('q');
+  if (!q || q.value.trim() !== texto) return;
+
+  // Se suman al catálogo para que la próxima búsqueda sea instantánea.
+  for (const v of hallados) {
+    if (estado.catalogo.some((x) => x.variant_id === v.variant_id)) continue;
+    estado.catalogo.push({
+      ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
+    });
+    if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
+  }
+  estado.resultados = hallados.slice(0, TOPE_RESULTADOS);
+  estado.resultadosTotal = hallados.length;
+  estado.buscadoEnShopify = true;
+  const caja = $('resultados');
+  if (caja) caja.innerHTML = bloqueResultados();
+}
+
 function buscarProductos(texto) {
   const q = norm(texto).trim();
   if (!q) return [];
@@ -287,6 +323,7 @@ function buscarProductos(texto) {
     return a.producto.localeCompare(b.producto, 'es');
   });
   estado.resultadosTotal = todas.length;
+  estado.buscadoEnShopify = false;
   return todas.slice(0, TOPE_RESULTADOS);
 }
 
@@ -789,10 +826,15 @@ function bloqueBuscador(valor) {
 
 function bloqueResultados() {
   if (!estado.resultados.length) return '';
-  const sobran = (estado.resultadosTotal || 0) - estado.resultados.length;
-  const pie = sobran > 0
-    ? `<div class="resultados__pie">y ${sobran} más · escribí un poco más para afinar</div>`
-    : '';
+  // Cuántos son, siempre: con treinta y ocho resultados el aroma que se busca
+  // puede estar más abajo, y sin el número uno mira los primeros y se rinde.
+  const total = estado.resultadosTotal || estado.resultados.length;
+  const sobran = total - estado.resultados.length;
+  const pie = `<div class="resultados__pie">${
+    sobran > 0 ? `${total} productos · se ven los primeros ${estado.resultados.length}, `
+                 + 'escribí un poco más para afinar'
+    : estado.buscadoEnShopify ? `${total} en Shopify (no estaban en el catálogo de la caja)`
+    : `${total} producto${total !== 1 ? 's' : ''}`}</div>`;
   return `<div class="resultados scroll-lindo">${estado.resultados.map((v, i) => `
     <button class="res ${v.disponible ? '' : 'res--agotado'}" data-res="${i}" type="button">
       ${v.imagen ? `<img src="${esc(v.imagen)}" alt="" loading="lazy" />` : '<img alt="" />'}
@@ -1695,11 +1737,15 @@ $('caja-main').addEventListener('input', (e) => {
     // Se repinta SOLO la lista de resultados. Repintar toda la pantalla en cada
     // tecla destruía y recreaba el propio campo, que es justo donde el lector
     // está escribiendo: se perdían caracteres de la lectura.
-    estado.resultados = buscarProductos(t.value.trim());
+    const texto = t.value.trim();
+    estado.resultados = buscarProductos(texto);
     const cont = $('resultados');
     if (cont) cont.innerHTML = bloqueResultados();
     const limpiar = document.querySelector('[data-accion="limpiar-q"]');
     if (limpiar) limpiar.hidden = !t.value;
+    // Lo que el catálogo de la caja no ve —una palabra que está solo en la
+    // descripción, como "pocketspray"— se lo pregunta a Shopify.
+    if (!estado.resultados.length && texto.length >= 3) buscarEnShopify(texto);
 
     return;
   }

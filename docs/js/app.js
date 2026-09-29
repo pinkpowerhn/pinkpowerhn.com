@@ -7,7 +7,8 @@ import { searchProducts, norm } from './search.js';
 import { shareLink, siteUrl } from './share.js';
 import { addToCart, removeFromCart, updateQuantity, clearCart, updateCartBadge, buildWhatsAppUrl, canAddNow } from './cart.js';
 import { onAdded } from './aroma.js';
-import { initMayoreo, restoreMayoreo, hasMayoreoSession } from './mayoreo.js';
+import { initMayoreo, restoreMayoreo, hasMayoreoSession,
+         showMayoreoPage, closeMayoreoPage, isMayoreoPageOpen, leaveMayoreoPage } from './mayoreo.js';
 
 // Orden del menú de categorías definido por el cliente. Las colecciones que
 // vengan de Shopify y no estén en esta lista se muestran después, en el orden
@@ -856,6 +857,7 @@ document.addEventListener('keydown', e => {
   if (lb && !lb.hidden) return;
   closeSearchOverlay();
   closeCheckoutModal();
+  if (isMayoreoPageOpen()) { leaveMayoreoPage(); return; }
   leaveProduct();
 });
 
@@ -1638,6 +1640,18 @@ function shareViewTitle() {
 //   #shop/product/<id>          → ficha de un producto (página dedicada)
 function handleHashRoute() {
   const hash  = location.hash;
+
+  // El acceso a mayoreo es su PROPIA página (#mayoreo), no un modal: así se
+  // puede compartir el enlace, el botón de atrás del teléfono funciona y no se
+  // pierde el formulario si la mayorista sale un momento.
+  if (hash === '#mayoreo') {
+    if (isProductPageOpen()) closeProductPage();
+    showMayoreoPage();
+    return;
+  }
+  // Se salió de mayoreo (Volver, atrás del navegador u otro enlace): se cierra.
+  if (isMayoreoPageOpen()) closeMayoreoPage();
+
   const isShop = hash.startsWith('#shop');
   const path  = isShop ? hash.replace('#shop', '').replace(/^\//, '') : '';
   const parts = path.split('/').filter(Boolean);
@@ -1699,7 +1713,9 @@ function handleHashRoute() {
 }
 
 window.addEventListener('hashchange', () => {
-  if (getState().products.length) handleHashRoute();
+  // #mayoreo no depende del catálogo: se abre aunque los productos aún no hayan
+  // cargado (si no, tocar "Mayoreo" recién abierta la página no hacía nada).
+  if (location.hash === '#mayoreo' || getState().products.length) handleHashRoute();
 });
 
 // ── API error banner ──────────────────────────────────────

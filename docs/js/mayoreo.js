@@ -29,72 +29,124 @@ function withViewTransition(fn) {
   else fn();
 }
 
-// ── Markup (se inyecta una sola vez) ──────────────────────
-function ensureMarkup() {
-  if (document.getElementById('mayoreo-modal')) return;
-  const wrap = document.createElement('div');
-  wrap.innerHTML = `
-    <div id="mayoreo-modal" class="my-modal" hidden>
-      <div class="my-modal__backdrop" data-close></div>
-      <div class="my-modal__panel" role="dialog" aria-modal="true" aria-labelledby="my-title">
-        <button class="my-modal__close" data-close aria-label="Cerrar">&times;</button>
-        <div class="my-modal__icon">🛍️</div>
-        <h2 id="my-title" class="my-modal__title">Acceso Mayoreo</h2>
-        <p class="my-modal__sub">Ingresá con tu usuario y contraseña de mayorista.</p>
-        <form id="my-form" class="my-form">
-          <label class="my-field">
-            <span>Usuario</span>
-            <input type="text" id="my-usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required />
-          </label>
-          <label class="my-field">
-            <span>Contraseña</span>
-            <div class="my-pwd-wrap">
-              <input type="password" id="my-password" autocomplete="current-password" required />
-              <button type="button" class="my-pwd-eye" aria-label="Mostrar u ocultar contraseña"></button>
-            </div>
-          </label>
-          <p id="my-error" class="my-form__error" hidden></p>
-          <button type="submit" id="my-submit" class="btn btn-primary my-form__submit">Ingresar</button>
-        </form>
+// ── Íconos ────────────────────────────────────────────────
+const EYE = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18.4 18.4 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2m-6.7-1.1a3 3 0 1 1-4.2-4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+const CHECK = '<svg class="my-pitch__check" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+// ── Página de acceso a mayoreo ────────────────────────────
+// Antes era un modal; ahora es una PÁGINA dedicada (mismo patrón que la ficha de
+// producto y el checkout): va en el flujo del documento, deja el header fijo del
+// sitio visible arriba, oculta el catálogo mientras está abierta y entra con una
+// transición suave. La lógica de login (onSubmit/enterMayoreo) se reutiliza igual.
+const PAGE_ID = 'mayoreo-page';
+let _myScrollY = 0;   // posición previa del catálogo, para restaurarla al salir
+// ¿Se llegó al acceso desde dentro del sitio (un clic) o por un enlace directo
+// (el que se manda por WhatsApp)? Con el enlace directo, "Volver" no puede hacer
+// `history.back()`: sacaría a la mayorista del sitio en vez de llevarla a la tienda.
+let _vinoDeAdentro = false;
+
+export function isMayoreoPageOpen() {
+  const p = document.getElementById(PAGE_ID);
+  return !!(p && !p.hidden);
+}
+
+export function showMayoreoPage() {
+  if (document.getElementById(PAGE_ID)) return;
+  // Si ya hay sesión de mayoreo activa, el login no aplica: se vuelve a la tienda.
+  if (hasMayoreoSession()) {
+    if (location.hash === '#mayoreo') location.hash = 'shop';
+    return;
+  }
+  const wa = (getState().waNumber || '').replace(/\D/g, '');
+  const page = document.createElement('div');
+  page.id = PAGE_ID;
+  page.className = 'my-page';
+  page.innerHTML = `
+    <div class="my-shell">
+      <div class="my-page__head">
+        <button class="my-page__back" id="my-page-close" type="button" aria-label="Volver">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          Volver
+        </button>
+        <span class="my-page__title">Acceso Mayoreo</span>
+        <span class="my-page__spacer" aria-hidden="true"></span>
+      </div>
+      <div class="my-page__grid">
+        <section class="my-pitch">
+          <h1 class="my-pitch__title">Comprá al por mayor con Pink Power</h1>
+          <p class="my-pitch__sub">Ingresá con tu cuenta de mayorista para ver el catálogo con tus precios especiales y hacer tus pedidos.</p>
+          <ul class="my-pitch__list">
+            <li>${CHECK}<span>Precios exclusivos de mayoreo</span></li>
+            <li>${CHECK}<span>Catálogo con tu descuento ya aplicado</span></li>
+            <li>${CHECK}<span>Atención directa por WhatsApp</span></li>
+          </ul>
+          ${wa ? `<p class="my-pitch__foot">¿Aún no sos mayorista? <a href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">Escribinos por WhatsApp</a></p>` : ''}
+        </section>
+        <section class="my-login">
+          <div class="my-login__card">
+            <p class="my-login__title">Iniciá sesión</p>
+            <form id="my-form" class="my-form">
+              <label class="my-field">
+                <span>Usuario</span>
+                <input type="text" id="my-usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+              </label>
+              <label class="my-field">
+                <span>Contraseña</span>
+                <div class="my-pwd-wrap">
+                  <input type="password" id="my-password" autocomplete="current-password" required />
+                  <button type="button" class="my-pwd-eye" aria-label="Mostrar u ocultar contraseña"></button>
+                </div>
+              </label>
+              <p id="my-error" class="my-form__error" hidden></p>
+              <button type="submit" id="my-submit" class="btn btn-primary my-form__submit">Ingresar</button>
+            </form>
+          </div>
+        </section>
       </div>
     </div>`;
-  document.body.appendChild(wrap);
 
-  wrap.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeModal));
-  document.getElementById('my-form').addEventListener('submit', onSubmit);
-  const EYE = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
-  const EYE_OFF = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18.4 18.4 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2m-6.7-1.1a3 3 0 1 1-4.2-4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-  const eye = wrap.querySelector('.my-pwd-eye');
+  // El header del sitio (<nav> fijo) queda visible arriba: se reserva su altura.
+  const navEl = document.querySelector('nav');
+  page.style.setProperty('--nav-h', `${navEl ? navEl.offsetHeight : 72}px`);
+  document.body.appendChild(page);
+  if (!document.body.classList.contains('my-open')) _myScrollY = window.scrollY;
+  document.body.classList.add('my-open');
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+  page.querySelector('#my-page-close').addEventListener('click', leaveMayoreoPage);
+  page.querySelector('#my-form').addEventListener('submit', onSubmit);
+  const eye = page.querySelector('.my-pwd-eye');
   eye.innerHTML = EYE;
   eye.addEventListener('click', () => {
-    const inp = document.getElementById('my-password');
+    const inp = page.querySelector('#my-password');
     const reveal = inp.type === 'password';
     inp.type = reveal ? 'text' : 'password';
     eye.innerHTML = reveal ? EYE_OFF : EYE;
   });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !document.getElementById('mayoreo-modal').hidden) closeModal();
-  });
+  setTimeout(() => page.querySelector('#my-usuario')?.focus(), 80);
 }
 
-// ── Modal ─────────────────────────────────────────────────
-function openModal() {
-  ensureMarkup();
-  const m = document.getElementById('mayoreo-modal');
-  document.getElementById('my-error').hidden = true;
-  document.getElementById('my-form').reset();
-  m.hidden = false;
-  document.body.style.overflow = 'hidden';   // bloquea el scroll de la página
-  requestAnimationFrame(() => m.classList.add('is-open'));
-  setTimeout(() => document.getElementById('my-usuario').focus(), 60);
+export function closeMayoreoPage() {
+  const page = document.getElementById(PAGE_ID);
+  if (!page) return;
+  page.remove();
+  _vinoDeAdentro = false;
+  if (document.body.classList.contains('my-open')) {
+    document.body.classList.remove('my-open');
+    window.scrollTo({ top: _myScrollY, left: 0, behavior: 'instant' });
+  }
 }
 
-function closeModal() {
-  const m = document.getElementById('mayoreo-modal');
-  if (!m || m.hidden) return;
-  m.classList.remove('is-open');
-  document.body.style.overflow = '';   // restaura el scroll
-  setTimeout(() => { m.hidden = true; }, 260);
+// Salir respetando la ruta (#mayoreo): back del navegador, "Volver" y Escape se
+// comportan igual y la URL queda limpia.
+export function leaveMayoreoPage() {
+  if (location.hash === '#mayoreo') {
+    if (_vinoDeAdentro && history.length > 1) history.back();
+    else location.hash = 'shop';
+  } else {
+    closeMayoreoPage();
+  }
 }
 
 async function onSubmit(e) {
@@ -113,9 +165,14 @@ async function onSubmit(e) {
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, nombre);
     localStorage.setItem(TEL_KEY, telefono);
-    closeModal();
     await enterMayoreo(data.token, nombre, telefono);
-    // Llevar la vista al catálogo para que se vean los precios de mayoreo.
+    // Cerrar la página de acceso y mostrar el catálogo (ya con precios de mayoreo).
+    // Se limpia la URL a #shop con replaceState (sin disparar otra navegación) para
+    // que el scroll a los productos funcione una vez visible el catálogo.
+    closeMayoreoPage();
+    if (location.hash === '#mayoreo') {
+      history.replaceState(null, '', `${location.pathname}${location.search}#shop`);
+    }
     document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (ex) {
     err.textContent = ex.message || 'No se pudo iniciar sesión';
@@ -659,20 +716,21 @@ export function hasMayoreoSession() {
 }
 
 export function initMayoreo() {
-  ensureMarkup();
   // El acceso está en varios lugares (header, cinta lateral y footer), así que se
-  // escucha por delegación. Si el clic viene de la cinta lateral, primero se cierra
-  // (la cinta va por encima del modal) y luego se abre el login.
+  // escucha por delegación y se navega a la ruta #mayoreo (la página se abre desde
+  // handleHashRoute). Si el clic viene de la cinta lateral, primero se cierra (va
+  // por encima) y luego se abre la página.
   document.addEventListener('click', e => {
     if (!e.target.closest('.mayoreo-access')) return;
     e.preventDefault();
+    _vinoDeAdentro = true;   // así "Volver" regresa a donde estaba, no fuera del sitio
     const drawer = document.getElementById('menu-drawer');
     if (drawer && !drawer.hidden) {
       document.getElementById('menu-close')?.click();
-      setTimeout(openModal, 260);   // espera a que termine de cerrarse
+      setTimeout(() => { location.hash = 'mayoreo'; }, 260);   // espera al cierre
       return;
     }
-    openModal();
+    location.hash = 'mayoreo';
   });
 }
 

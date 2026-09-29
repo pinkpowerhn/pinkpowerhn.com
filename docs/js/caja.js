@@ -48,6 +48,8 @@ const IC = {
   tarjeta: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line>',
   transferencia: '<polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>',
   credito: '<circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline>',
+  entrega: '<path d="M2 7h11v9H2z"></path><path d="M13 10h4l3 3v3h-7z"></path>'
+    + '<circle cx="6" cy="18" r="1.6"></circle><circle cx="17" cy="18" r="1.6"></circle>',
   check: '<polyline points="20 6 9 17 4 12"></polyline>',
   camara: '<path d="M3 8a2 2 0 0 1 2-2h2.2l1.2-2h6.8l1.2 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>'
         + '<circle cx="12" cy="12.5" r="3.6"></circle>',
@@ -396,8 +398,23 @@ function montoDescuento() {
 
 // El descuento se aplica sobre los productos; el flete se suma despues, que es
 // como lo cobra ella: no se descuenta el envio.
-function total() {
+function baseDeCobro() {
   return Math.max(0, subtotal() - montoDescuento()) + elFlete().monto;
+}
+
+// Cobrando contraentrega con flete nacional, el servicio de entrega se queda con
+// un 5% de TODO lo que cobra. Por eso no se le suma un 5%: se divide entre 0,95,
+// que es lo que deja que a la tienda le entre justo lo suyo. Es la misma cuenta
+// que ya hace la pagina.
+function comision() {
+  if (estado.pago !== 'contraentrega' || estado.flete !== 'nacional') return 0;
+  const base = baseDeCobro();
+  if (base <= 0) return 0;
+  return Math.ceil(base / 0.95) - base;
+}
+
+function total() {
+  return baseDeCobro() + comision();
 }
 
 function actualizarTotales() {
@@ -500,6 +517,7 @@ async function cotizar() {
     mayoreo: hayMayoreo(),
     flete: elFlete().monto > 0
       ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
+    comision: comision() > 0 ? { monto: comision() } : null,
     total: total(),
     ensayo: MODO_PRUEBA,
   };
@@ -547,6 +565,7 @@ async function cobrar() {
     banco: estado.pago === 'transferencia' ? estado.banco : '',
     flete: elFlete().monto > 0
       ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
+    comision: comision() > 0 ? { monto: comision() } : null,
     recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
     cambio: vuelto,
     nota: estado.nota || '',
@@ -562,7 +581,7 @@ async function cobrar() {
   }
   try {
     const r = await api('/admin/caja/venta', { method: 'POST', body: JSON.stringify(cuerpo) });
-    estado.resultado = { ...r, cambio: vuelto,
+    estado.resultado = { ...r, cambio: vuelto, pago: estado.pago,
                         telefono: estado.cliente ? (estado.cliente.telefono || '') : '',
                         nombreCliente: estado.cliente ? estado.cliente.nombre : '' };
     intentoActual = '';                                       // ese cobro terminó
@@ -1039,7 +1058,8 @@ const OPCIONES_DESC = [
 function bloqueResumen() {
   const desc = montoDescuento();
   const pagos = [['efectivo', 'Efectivo', IC.efectivo], ['tarjeta', 'Tarjeta', IC.tarjeta],
-                 ['transferencia', 'Transferencia', IC.transferencia], ['credito', 'Crédito', IC.credito]];
+                 ['transferencia', 'Transferencia', IC.transferencia], ['credito', 'Crédito', IC.credito],
+                 ['contraentrega', 'Contraentrega', IC.entrega]];
   const opcActual = OPCIONES_DESC.find((o) => o.v === estado.descuento.tipo) || OPCIONES_DESC[0];
   return `<div class="tarjeta tarjeta--cobro${estado.descAbierto || estado.bancoAbierto ? ' tarjeta--abierta' : ''}">
     <div class="tarjeta__cab">Cobro</div>
@@ -1051,6 +1071,8 @@ function bloqueResumen() {
         <span>− ${L(desc)}</span></div>` : ''}
       ${elFlete().monto > 0 ? `<div class="total-fila total-fila--flete">
         <span>${esc(elFlete().titulo)}</span><span>${L(elFlete().monto)}</span></div>` : ''}
+      ${comision() > 0 ? `<div class="total-fila total-fila--comision">
+        <span>Comisión (5%)</span><span>${L(comision())}</span></div>` : ''}
       <div class="total-grande"><span>Total</span><b>${L(total())}</b></div>
     </div>
     <div class="tarjeta__cuerpo scroll-lindo">
@@ -1083,7 +1105,8 @@ function bloqueResumen() {
       </div>
 
       <div class="pagos">
-        ${pagos.map(([v, t, ic]) => `<button class="pago-btn" data-pago="${v}" type="button"
+        ${pagos.map(([v, t, ic]) => `<button class="pago-btn${
+            v === 'contraentrega' ? ' pago-btn--ancho' : ''}" data-pago="${v}" type="button"
           aria-pressed="${estado.pago === v}">${svg(ic, 1.8)}<span>${t}</span></button>`).join('')}
       </div>
 
@@ -1115,6 +1138,10 @@ function bloqueResumen() {
         </div>
       ` : ''}
       ${estado.pago === 'credito' ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago.</div>' : ''}
+      ${estado.pago === 'contraentrega' ? `<div class="aviso-caja aviso-caja--amarilla">
+        Se cobra al entregar.${estado.flete === 'nacional'
+          ? ' Con flete nacional se agrega la comisión del 5%.'
+          : ' La comisión del 5% solo aplica con flete nacional.'}</div>` : ''}
       ${estado.error ? `<div class="aviso-caja aviso-caja--roja">${esc(estado.error)}</div>` : ''}
 
     </div>
@@ -1153,7 +1180,9 @@ function vistaExito() {
     <p class="pedido">${r.ensayo ? 'No se cobró nada · no quedó registrada' : 'Pedido ' + esc(r.name || '')}</p>
     <p class="monto">${L(r.total)}</p>
     ${r.cambio > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
-    ${!r.pagado ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago (crédito).</div>' : ''}
+    ${!r.pagado ? `<div class="aviso-caja aviso-caja--amarilla">${
+      r.pago === 'contraentrega' ? 'Queda pendiente: se cobra al entregar.'
+                                 : 'Queda pendiente de pago (crédito).'}</div>` : ''}
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
       <div class="recibo-previa" id="recibo-previa">
@@ -1381,9 +1410,11 @@ async function dibujarRecibo(d) {
 
   const hayDesc = d.descuento && d.descuento.monto > 0;
   const conFlete = d.flete && d.flete.monto > 0;
+  const conComision = d.comision && d.comision.monto > 0;
   const cuantosDatos = 1 + (d.cliente ? 1 : 0) + (d.cotizacion ? 0 : 1);
   const altoCabecera = 150 + (d.ensayo ? 16 : 0) + Math.ceil(cuantosDatos / 2) * 38 + 36;
-  const altoCierre = ((hayDesc || conFlete ? 1 : 0) + (hayDesc ? 1 : 0) + (conFlete ? 1 : 0)) * 22
+  const altoCierre = ((hayDesc || conFlete || conComision ? 1 : 0) + (hayDesc ? 1 : 0)
+                    + (conFlete ? 1 : 0) + (conComision ? 1 : 0)) * 22
                    + 56 + (d.recibido ? 44 : 0) + 136;
 
   // Se reparten los productos en hojas: la primera lleva la cabecera y la
@@ -1412,7 +1443,7 @@ async function dibujarRecibo(d) {
     salida.push(await dibujarHoja(d, hojas[n], logo, {
       primera: n === 0, ultima: n === hojas.length - 1,
       numero: n + 1, total: hojas.length,
-      altoCabecera, altoCierre, hayDesc, conFlete, cuantosDatos,
+      altoCabecera, altoCierre, hayDesc, conFlete, conComision, cuantosDatos,
     }));
   }
   return salida.filter(Boolean);
@@ -1540,12 +1571,13 @@ async function dibujarHoja(d, items, logo, o) {
     x.fillText(valor, A - M, y + (fuerte ? 4 : 0));
     y += fuerte ? 34 : 22;
   };
-  if (o.hayDesc || o.conFlete) fila('Subtotal', L(d.subtotal));
+  if (o.hayDesc || o.conFlete || o.conComision) fila('Subtotal', L(d.subtotal));
   if (o.hayDesc) {
     fila('Descuento' + (d.descuento.tipo === 'porcentaje' ? ` (${d.descuento.valor}%)` : ''),
          '− ' + L(d.descuento.monto));
   }
   if (o.conFlete) fila(d.flete.titulo, L(d.flete.monto));
+  if (o.conComision) fila('Comisión (5%)', L(d.comision.monto));
   fila('TOTAL', L(d.total), true);
   if (d.recibido) { fila('Recibido', L(d.recibido)); fila('Cambio', L(d.cambio || 0)); }
 
@@ -1573,7 +1605,8 @@ function redondeado(x, px, py, w, h, r) {
 }
 
 const PAGOS_TEXTO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta',
-                      transferencia: 'Transferencia', credito: 'Crédito' };
+                      transferencia: 'Transferencia', credito: 'Crédito',
+                      contraentrega: 'Contraentrega' };
 
 function linea(x, x1, y, x2) {
   x.strokeStyle = 'rgba(26,10,18,0.12)'; x.lineWidth = 1;

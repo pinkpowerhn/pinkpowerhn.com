@@ -672,6 +672,10 @@
     color:#fff; border-color:transparent;
   }
 
+  /* Cinco formas de pago: en dos columnas la ultima quedaba sola, asi que
+     contraentrega ocupa la fila entera. */
+  .pago-btn--ancho { grid-column:1 / -1; }
+
   .pagos { display:grid; grid-template-columns:1fr 1fr; gap:0.55rem; margin:0.9rem 0 0.2rem; }
   .pago-btn {
     min-height:56px; border:1.5px solid var(--linea); background:#fff; border-radius:16px;

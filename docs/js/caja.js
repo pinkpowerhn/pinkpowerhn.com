@@ -105,15 +105,37 @@ const estado = {
 const GUARDADO = 'pinkpower_caja_venta';
 const GUARDADO_TTL = 6 * 60 * 60 * 1000;   // seis horas: más viejo que eso, no sirve
 
+// La venta tal como está armada. Sirve para dos cosas: guardarla por si se
+// cierra la pestaña, y dejarla pegada a una cotización para poder retomarla.
+function loArmado() {
+  return {
+    venta: estado.venta, cliente: estado.cliente,
+    mayoreo: estado.mayoreo, descuento: estado.descuento,
+    pago: estado.pago, banco: estado.banco, flete: estado.flete,
+    recibido: estado.recibido, nota: estado.nota,
+  };
+}
+
+function aplicarArmado(d) {
+  if (!d || !Array.isArray(d.venta) || !d.venta.length) return false;
+  estado.venta = d.venta;
+  estado.cliente = d.cliente || null;
+  estado.mayoreo = !!d.mayoreo;
+  estado.descuento = d.descuento || { tipo: '', valor: 0 };
+  estado.pago = d.pago || '';
+  estado.banco = d.banco || '';
+  estado.flete = d.flete || '';
+  estado.recibido = d.recibido || '';
+  estado.nota = d.nota || '';
+  return true;
+}
+
 function guardarVenta() {
   try {
-    if (!estado.venta.length) { localStorage.removeItem(GUARDADO); return; }
-    localStorage.setItem(GUARDADO, JSON.stringify({
-      ts: Date.now(), venta: estado.venta, cliente: estado.cliente,
-      mayoreo: estado.mayoreo, descuento: estado.descuento,
-      pago: estado.pago, banco: estado.banco, flete: estado.flete,
-      recibido: estado.recibido, nota: estado.nota,
-    }));
+    // Una venta ya cobrada no se guarda: si se guardara, al volver a abrir la
+    // caja reaparecería armada y parecería que el pedido no se creó.
+    if (estado.resultado || !estado.venta.length) { localStorage.removeItem(GUARDADO); return; }
+    localStorage.setItem(GUARDADO, JSON.stringify({ ts: Date.now(), ...loArmado() }));
   } catch (_) { /* sin espacio o en privado: la caja sigue funcionando igual */ }
 }
 
@@ -124,16 +146,7 @@ function recuperarVenta() {
     const d = JSON.parse(crudo);
     if (!d || !Array.isArray(d.venta) || !d.venta.length) return false;
     if (Date.now() - (d.ts || 0) > GUARDADO_TTL) { localStorage.removeItem(GUARDADO); return false; }
-    estado.venta = d.venta;
-    estado.cliente = d.cliente || null;
-    estado.mayoreo = !!d.mayoreo;
-    estado.descuento = d.descuento || { tipo: '', valor: 0 };
-    estado.pago = d.pago || '';
-    estado.banco = d.banco || '';
-    estado.flete = d.flete || '';
-    estado.recibido = d.recibido || '';
-    estado.nota = d.nota || '';
-    return true;
+    return aplicarArmado(d);
   } catch (_) { return false; }
 }
 
@@ -452,9 +465,12 @@ function cambio() {
   return Math.max(0, rec - total());
 }
 
-function nuevaVenta() {
+// Todo lo que se arma para una venta. Se vacía apenas el pedido queda creado:
+// si no, la venta cobrada seguía en pantalla (y se volvía a guardar sola), y al
+// volver a la caja la cajera veía los productos ahí, como si no se hubiera
+// creado nada.
+function limpiarArmado() {
   intentoActual = '';
-  ventaEnMano = null;
   try { localStorage.removeItem(GUARDADO); } catch (_) {}
   estado.codigoSinHallar = '';
   estado.venta = [];
@@ -468,10 +484,15 @@ function nuevaVenta() {
   estado.flete = '';
   estado.recibido = '';
   estado.nota = '';
-  estado.resultado = null;
   estado.error = '';
   estado.resultados = [];
   estado.resClientes = null;
+}
+
+function nuevaVenta() {
+  ventaEnMano = null;
+  limpiarArmado();
+  estado.resultado = null;
   pintar();
   enfocarBuscador();
 }
@@ -520,6 +541,10 @@ async function cotizar() {
     comision: comision() > 0 ? { monto: comision() } : null,
     total: total(),
     ensayo: MODO_PRUEBA,
+    // Con qué se armó, para poder retomarla tal cual desde la lista de
+    // cotizaciones. El recibo solo no alcanza: no lleva el variant_id, sin el
+    // cual el pedido no descontaría inventario.
+    armado: loArmado(),
   };
   if (estado.descuento.tipo && num(estado.descuento.valor) > 0) {
     cuerpo.descuento = { tipo: estado.descuento.tipo, valor: num(estado.descuento.valor) };
@@ -584,8 +609,11 @@ async function cobrar() {
     estado.resultado = { ...r, cambio: vuelto, pago: estado.pago,
                         telefono: estado.cliente ? (estado.cliente.telefono || '') : '',
                         nombreCliente: estado.cliente ? estado.cliente.nombre : '' };
-    intentoActual = '';                                       // ese cobro terminó
-    try { localStorage.removeItem(GUARDADO); } catch (_) {}   // ya está cobrada
+    // El pedido ya existe en Shopify: la caja queda en blanco de una vez, con
+    // la pantalla de la venta cobrada encima (recibo, cambio, contacto). Así,
+    // pase lo que pase después —mandar el recibo, cerrar, recargar— nunca
+    // reaparece la venta vieja armada.
+    limpiarArmado();
     // Se dibuja YA, sin esperar a que toque el botón: el navegador solo deja
     // abrir el menú de compartir mientras dura el gesto de quien lo toca, y
     // armar la imagen (con las fotos) tarda más que eso.
@@ -1230,8 +1258,12 @@ async function verVentas() {
       <div class="modal__agarre"></div>
       <div class="modal__cab">
         <div style="flex:1"><h2>Ventas</h2>
-          <p>De la tienda y del mostrador, para volver a mandar un recibo</p></div>
+          <p>Para volver a mandar un recibo o retomar una cotización</p></div>
         <button class="modal__x" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="pestanas" role="tablist">
+        <button class="pestana pestana--activa" data-pest="ventas" type="button">Ventas</button>
+        <button class="pestana" data-pest="cotizaciones" type="button">Cotizaciones</button>
       </div>
       <div class="modal__lista" id="lista-ventas">
         <div class="vacio"><span class="puntos">Buscando las ventas</span></div>
@@ -1241,40 +1273,66 @@ async function verVentas() {
   const cerrar = () => fondo.remove();
   fondo.querySelector('.modal__x').addEventListener('click', cerrar);
   fondo.addEventListener('click', (e) => { if (e.target === fondo) cerrar(); });
-
-  let ventas = [];
-  try {
-    ventas = (await api('/admin/caja/ventas' + (MODO_PRUEBA ? '?prueba=1' : ''))).ventas || [];
-  } catch (err) {
-    fondo.querySelector('#lista-ventas').innerHTML =
-      `<div class="vacio">No se pudieron traer las ventas.<br>${esc(err.message || '')}</div>`;
-    return;
-  }
   const caja = fondo.querySelector('#lista-ventas');
-  if (!ventas.length) {
-    caja.innerHTML = '<div class="vacio">Todavía no hay ventas.</div>';
-    return;
+
+  // Cada pestaña se trae una sola vez y se recuerda: cambiar de una a otra es
+  // instantáneo, que es como se usa esto en el mostrador.
+  const traido = { ventas: null, cotizaciones: null };
+
+  fondo.querySelectorAll('[data-pest]').forEach((b) => {
+    b.addEventListener('click', () => {
+      fondo.querySelectorAll('[data-pest]').forEach((x) =>
+        x.classList.toggle('pestana--activa', x === b));
+      mostrar(b.dataset.pest);
+    });
+  });
+
+  async function mostrar(cual) {
+    if (traido[cual]) { pintarLista(cual); return; }
+    caja.innerHTML = `<div class="vacio"><span class="puntos">Buscando ${
+      cual === 'ventas' ? 'las ventas' : 'las cotizaciones'}</span></div>`;
+    const ruta = cual === 'ventas' ? '/admin/caja/ventas' : '/admin/caja/cotizaciones';
+    try {
+      const r = await api(ruta + (MODO_PRUEBA ? '?prueba=1' : ''));
+      traido[cual] = r[cual] || [];
+    } catch (err) {
+      caja.innerHTML = `<div class="vacio">No se pudieron traer ${
+        cual === 'ventas' ? 'las ventas' : 'las cotizaciones'}.<br>${esc(err.message || '')}</div>`;
+      return;
+    }
+    pintarLista(cual);
   }
-  caja.innerHTML = ventas.map((v, i) => `
-    <button class="venta" data-venta="${i}" type="button">
-      <span class="venta__txt">
-        <span class="venta__nom">${esc(v.cliente || 'Sin clienta')}${
-          v.ensayo ? ' <span class="venta__ensayo">prueba</span>' : ''}</span>
-        <span class="venta__meta">${esc(v.numero)} · ${esc(fechaCorta(v.fecha))}${
-          v.origen ? ' · ' + esc(v.origen) : ''}</span>
-      </span>
-      <span class="venta__imp">${L(v.total)}</span>
-    </button>`).join('');
+
+  function pintarLista(cual) {
+    const lista = traido[cual];
+    if (!lista.length) {
+      caja.innerHTML = `<div class="vacio">Todavía no hay ${
+        cual === 'ventas' ? 'ventas' : 'cotizaciones'}.</div>`;
+      return;
+    }
+    caja.innerHTML = lista.map((v, i) => `
+      <button class="venta" data-fila="${i}" type="button">
+        <span class="venta__txt">
+          <span class="venta__nom">${esc(v.cliente || 'Sin clienta')}${
+            v.ensayo ? ' <span class="venta__ensayo">prueba</span>' : ''}</span>
+          <span class="venta__meta">${esc(v.numero)} · ${esc(fechaCorta(v.fecha))}${
+            v.origen ? ' · ' + esc(v.origen) : ''}${
+            cual === 'cotizaciones' && !v.retomable ? ' · solo se puede ver' : ''}</span>
+        </span>
+        <span class="venta__imp">${L(v.total)}</span>
+      </button>`).join('');
+  }
 
   caja.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-venta]');
+    const b = e.target.closest('[data-fila]');
     if (!b) return;
-    const v = ventas[+b.dataset.venta];
+    const esCot = fondo.querySelector('.pestana--activa').dataset.pest === 'cotizaciones';
+    const v = traido[esCot ? 'cotizaciones' : 'ventas'][+b.dataset.fila];
     b.disabled = true;
     const antes = b.innerHTML;
     b.innerHTML = '<span class="venta__txt"><span class="puntos">Armando el recibo</span></span>';
-    // Las de prueba ya traen su recibo; para las de verdad se pide (y se arma
-    // si esa venta es anterior a que los recibos existieran).
+    // Las de prueba y las cotizaciones ya traen su recibo; para las ventas de
+    // verdad se pide (y se arma, si son anteriores a que los recibos existieran).
     let token = v.recibo;
     try {
       if (!token) {
@@ -1288,14 +1346,46 @@ async function verVentas() {
     }
     // Las acciones del recibo pasan a ser de ESTA venta.
     ventaEnMano = { recibo: token, total: v.total, name: v.numero,
-                    telefono: v.telefono, nombreCliente: v.cliente, ensayo: !!v.ensayo };
+                    telefono: v.telefono, nombreCliente: v.cliente, ensayo: !!v.ensayo,
+                    cotizacion: esCot };
     cerrar();
-    accionesDeRecibo(v);
+    accionesDeRecibo(v, esCot && v.retomable ? v : null);
   });
+
+  mostrar('ventas');
+}
+
+// Vuelve a poner en la caja una cotización: los mismos productos, la misma
+// clienta y el mismo descuento o flete, listos para cambiar lo que haga falta y
+// cobrar. Es lo que pidió la dueña: le confirman el presupuesto y lo cobra sin
+// volver a armarlo.
+async function retomarCotizacion(c, cerrar) {
+  if (estado.venta.length
+      && !confirm('Se va a reemplazar la venta que está armada por esta cotización. ¿Seguimos?')) {
+    return;
+  }
+  let r;
+  try {
+    r = await api('/admin/caja/cotizaciones/' + encodeURIComponent(c.recibo));
+  } catch (err) {
+    flash(err.message || 'No se pudo abrir la cotización', 'mal');
+    return;
+  }
+  if (!aplicarArmado(r.armado)) {
+    flash('Esa cotización no se puede retomar', 'mal');
+    return;
+  }
+  intentoActual = '';          // es una venta nueva, no el reintento de otra
+  ventaEnMano = null;
+  estado.resultado = null;
+  estado.error = '';
+  if (cerrar) cerrar();
+  pintar();
+  flash(`${r.numero || 'Cotización'} puesta en la caja`, 'ok');
 }
 
 // Las mismas acciones de la pantalla de venta cobrada, para una venta vieja.
-function accionesDeRecibo(v) {
+function accionesDeRecibo(v, cotizacion = null) {
   const fondo = document.createElement('div');
   fondo.className = 'modal-fondo';
   fondo.innerHTML = `
@@ -1313,6 +1403,10 @@ function accionesDeRecibo(v) {
           <div class="vacio"><span class="puntos">Armando el recibo</span></div>
         </div>
         <div class="recibo-acciones">
+          ${cotizacion ? `<button class="btn btn--pink btn--ancho" data-accion="retomar"
+            type="button">Pasar esta cotización a la caja</button>
+            <p class="recibo-nota">Se cargan los mismos productos y la misma clienta;
+            después se puede cambiar lo que sea y cobrar.</p>` : ''}
           <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
             ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
               ? 'Mandar el recibo por WhatsApp' : 'Bajar la imagen del recibo'}</button>
@@ -1338,6 +1432,7 @@ function accionesDeRecibo(v) {
     switch (b.dataset.accion) {
       case 'recibo-img': mandarReciboEnImagen(); break;
       case 'guardar-contacto': guardarContacto(); break;
+      case 'retomar': retomarCotizacion(cotizacion, cerrar); break;
       case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;
       case 'recibo-copiar':
         navigator.clipboard.writeText(urlRecibo())

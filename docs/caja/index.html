@@ -526,6 +526,17 @@
   /* Cada venta ya hecha, en la lista para reenviar su recibo. */
   .modal__lista { padding:0 1.1rem 1.1rem; max-height:60dvh; overflow-y:auto; }
 
+  /* Ventas y cotizaciones, una al lado de la otra. */
+  .pestanas { display:flex; gap:0.4rem; padding:0 1.1rem 0.6rem; }
+  .pestana {
+    flex:1; padding:0.5rem 0.6rem; border:1px solid rgba(26,10,18,0.12);
+    border-radius:999px; background:#fff; cursor:pointer;
+    font-family:inherit; font-size:0.82rem; font-weight:700; color:#6b5560;
+  }
+  .pestana--activa {
+    background:var(--pink); border-color:var(--pink); color:#fff;
+  }
+
   .venta {
     display:flex; align-items:center; gap:0.7rem; width:100%; text-align:left;
     border:none; border-bottom:1px solid rgba(26,10,18,0.06); background:none;

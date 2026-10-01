@@ -694,7 +694,24 @@ function elegirCliente(c) {
   enfocarBuscador();
 }
 
-async function crearClienta(datos, boton) {
+async function crearClienta(datos, boton, avisar) {
+  // `avisar` pinta el problema DENTRO del modal; sin él, en la pantalla de atrás.
+  const problema = (texto) => {
+    if (avisar) { avisar(texto); } else { estado.error = texto; pintar(); }
+    return false;
+  };
+  // La cuenta de acceso es aparte de la ficha: se revisa ANTES de crear nada, así
+  // no queda la clienta creada y el acceso a medias. Se revisa también en modo
+  // prueba: es donde la dueña va a aprender a usarlo.
+  const quiereAcceso = !!(datos.usuario || datos.password);
+  if (quiereAcceso) {
+    if (datos.usuario.length < 3) return problema('El usuario necesita al menos 3 letras');
+    if ((datos.password || '').length < 4) return problema('La contraseña necesita al menos 4 letras');
+    if (datos.telefono.replace(/\D/g, '').length < 8) {
+      return problema('Para darle acceso hace falta su teléfono');
+    }
+  }
+
   // En modo prueba la clienta NO se crea de verdad: si no, cada prueba dejaría
   // una ficha suelta en Shopify. Se arma una de mentira, solo para esta pantalla.
   if (MODO_PRUEBA) {
@@ -704,9 +721,11 @@ async function crearClienta(datos, boton) {
     };
     estado.recientes = [falsa, ...estado.recientes];
     pintar();
-    flash('Prueba: la clienta no se guardó', 'ok');
+    flash(quiereAcceso ? 'Prueba: ni la clienta ni su acceso se guardaron'
+                       : 'Prueba: la clienta no se guardó', 'ok');
     return true;
   }
+
   boton.disabled = true; boton.textContent = 'Creando…';
   try {
     const c = await api('/admin/caja/clientes', { method: 'POST', body: JSON.stringify(datos) });
@@ -714,12 +733,28 @@ async function crearClienta(datos, boton) {
     // Queda de primera en las recientes para que sea un toque, no una búsqueda.
     estado.recientes = [c, ...estado.recientes.filter((x) => x.id !== c.id)];
     pintar();
+
+    if (quiereAcceso) {
+      try {
+        await api('/admin/cuentas', { method: 'POST', body: JSON.stringify({
+          usuario: datos.usuario, password: datos.password,
+          nombre: c.nombre, telefono: datos.telefono,
+        }) });
+        flash(`${c.nombre} quedó registrada y ya puede entrar como ${datos.usuario}`, 'ok');
+      } catch (err) {
+        // La ficha YA quedó bien: solo falló el acceso, y eso se arregla desde
+        // el panel sin perder nada.
+        problema(`La clienta quedó registrada, pero el acceso no: ${
+          err.message || 'no se pudo crear'}. Se puede crear desde el panel.`);
+        return false;    // el modal se queda abierto: puede probar otro usuario
+      }
+      return true;
+    }
+
     flash(`${c.nombre} quedó registrada`, 'ok');
     return true;
   } catch (err) {
-    estado.error = err.message || 'No se pudo crear la clienta';
-    pintar();
-    return false;
+    return problema(err.message || 'No se pudo crear la clienta');
   } finally {
     boton.disabled = false; boton.textContent = 'Crear';
   }
@@ -2249,17 +2284,43 @@ function pedirClienta() {
       <div class="campo"><label for="c-tel">Teléfono</label>
         <input id="c-tel" type="tel" inputmode="tel" placeholder="9999-9999"
                value="${soloDigitos ? esc(inicial) : ''}" /></div>
-      <label class="switch"><input type="checkbox" id="c-may" /> Es mayorista</label>`,
+      <label class="switch"><input type="checkbox" id="c-may" /> Es mayorista</label>
+      <!-- El acceso a la página es otra cosa que la ficha de la clienta, y antes
+           había que ir al panel a crearlo. Acá se hace de una vez. -->
+      <div id="c-acceso" hidden style="margin-top:0.6rem">
+        <p class="recibo-nota" style="margin:0 0 0.5rem">
+          Para que entre a pinkpowerhn.com con precios de mayoreo, ponele usuario
+          y contraseña. Si lo dejás en blanco, queda solo la ficha.</p>
+        <div style="display:flex; gap:0.7rem">
+          <div class="campo" style="flex:1"><label for="c-user">Usuario</label>
+            <input id="c-user" autocapitalize="none" spellcheck="false" /></div>
+          <div class="campo" style="flex:1"><label for="c-pass">Contraseña</label>
+            <input id="c-pass" type="text" autocomplete="off" /></div>
+        </div>
+      </div>
+      <!-- El aviso va DENTRO del modal: en la pantalla de atrás queda tapado. -->
+      <div class="aviso-caja aviso-caja--roja" id="c-err" hidden></div>`,
   });
+  const may = el.querySelector('#c-may');
+  const acceso = el.querySelector('#c-acceso');
+  may.addEventListener('change', () => {
+    acceso.hidden = !may.checked;
+    if (may.checked) setTimeout(() => el.querySelector('#c-user').focus(), 60);
+  });
+  const aviso = el.querySelector('#c-err');
+  const avisar = (texto) => { aviso.textContent = texto || ''; aviso.hidden = !texto; };
   el.querySelector('[data-ok]').addEventListener('click', async (ev) => {
+    avisar('');
     const nombre = el.querySelector('#c-nom').value.trim();
-    if (!nombre) { el.querySelector('#c-nom').focus(); return; }
+    if (!nombre) { avisar('Falta el nombre'); el.querySelector('#c-nom').focus(); return; }
     const hecho = await crearClienta({
       nombre,
       apellido: el.querySelector('#c-ape').value.trim(),
       telefono: el.querySelector('#c-tel').value.trim(),
-      mayoreo: el.querySelector('#c-may').checked,
-    }, ev.target);
+      mayoreo: may.checked,
+      usuario: may.checked ? el.querySelector('#c-user').value.trim() : '',
+      password: may.checked ? el.querySelector('#c-pass').value : '',
+    }, ev.target, avisar);
     if (hecho) cerrar();
   });
   setTimeout(() => el.querySelector(soloDigitos ? '#c-tel' : '#c-nom').focus(), 80);

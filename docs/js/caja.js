@@ -720,7 +720,7 @@ async function crearClienta(datos, boton, avisar) {
       telefono: datos.telefono || '', mayoreo: !!datos.mayoreo,
     };
     estado.recientes = [falsa, ...estado.recientes];
-    pintar();
+    elegirCliente(falsa);
     flash(quiereAcceso ? 'Prueba: ni la clienta ni su acceso se guardaron'
                        : 'Prueba: la clienta no se guardó', 'ok');
     return true;
@@ -729,10 +729,11 @@ async function crearClienta(datos, boton, avisar) {
   boton.disabled = true; boton.textContent = 'Creando…';
   try {
     const c = await api('/admin/caja/clientes', { method: 'POST', body: JSON.stringify(datos) });
-    // No se agrega sola a la venta: la cajera la busca y la elige cuando quiera.
-    // Queda de primera en las recientes para que sea un toque, no una búsqueda.
+    // Queda puesta en la venta de una vez: si la está creando en medio de un
+    // cobro es porque es la clienta de ESTA venta, y tener que buscarla de nuevo
+    // era un paso de más. También queda primera en las recientes.
     estado.recientes = [c, ...estado.recientes.filter((x) => x.id !== c.id)];
-    pintar();
+    elegirCliente(c);
 
     if (quiereAcceso) {
       try {

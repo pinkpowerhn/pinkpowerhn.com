@@ -357,8 +357,13 @@ function precioSegunModo(v) {
   return v.precio;
 }
 
-function agregar(v) {
-  estado.codigoSinHallar = '';
+// `desdeLista` = lo tocó en los resultados de la búsqueda. En ese caso el aviso
+// de "ese código no está en el catálogo" se queda donde está: si se quitara, la
+// lista subiría una fila justo entre un toque y el siguiente, y el segundo toque
+// caería en el producto de al lado. Con el lector sí se limpia, que es cuando el
+// aviso ya no viene al caso.
+function agregar(v, desdeLista = false) {
+  if (!desdeLista) estado.codigoSinHallar = '';
   const existente = estado.venta.find((l) => l.variant_id === v.variant_id);
   if (existente) {
     existente.cantidad += 1;
@@ -2083,7 +2088,7 @@ $('caja-main').addEventListener('click', (e) => {
     // mismo aroma, cerrarla obligaba a escribir el aroma cuatro veces. La lista
     // se queda, y cada fila muestra cuántas unidades van ya en la venta. Para
     // salir de la búsqueda está la × del buscador.
-    agregar(estado.resultados[Number(d.res)]);
+    agregar(estado.resultados[Number(d.res)], true);
     return;
   }
   if (d.cli !== undefined) {

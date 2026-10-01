@@ -366,6 +366,11 @@
   .res__tag { font-size:0.6rem; background:#ffe9e9; color:var(--rojo); border-radius:6px;
               padding:0.12rem 0.4rem; margin-left:0.3rem; letter-spacing:0.06em;
               text-transform:uppercase; font-weight:700; }
+  /* Cuántas unidades de ese producto van ya en la venta: la lista de búsqueda
+     se queda abierta al agregar, y sin esto se pierde la cuenta. */
+  .res__lleva { font-size:0.62rem; background:#e8f7ee; color:#1f7a44; border-radius:999px;
+                padding:0.18rem 0.5rem; letter-spacing:0.04em; font-weight:700;
+                white-space:nowrap; flex:0 0 auto; }
   .vacio { padding:1.6rem 1.1rem; text-align:center; color:var(--muted); font-size:0.88rem;
            line-height:1.6; }
 
@@ -670,6 +675,17 @@
      grande de cobrar, para que no se confundan. */
   .btn--cotiza { margin-top:0.5rem; font-size:0.82rem; }
 
+  /* ¿La clienta ya se lo lleva, o es un encargo que se prepara después? */
+  .entrega {
+    display:flex; align-items:flex-start; gap:0.6rem; cursor:pointer;
+    margin-top:0.75rem; padding:0.6rem 0.7rem; border-radius:12px;
+    background:var(--pink-lt); border:1px solid rgba(232,67,122,0.16);
+  }
+  .entrega input { width:20px; height:20px; accent-color:var(--pink); flex:0 0 auto;
+                   margin-top:0.1rem; }
+  .entrega b { display:block; font-size:0.82rem; color:var(--ink); }
+  .entrega small { display:block; font-size:0.72rem; color:var(--muted); line-height:1.35; }
+
   .fletes { display:flex; gap:0.45rem; }
   .flete-btn {
     flex:1; display:flex; flex-direction:column; align-items:center; gap:0.1rem;
@@ -803,6 +819,16 @@
   }
   .camara__cambiar svg { width:15px; height:15px; }
   .camara__cambiar:active { background:rgba(0,0,0,0.7); }
+
+  /* Cuál cámara está puesta. Sin esto, al tocar "cambiar" no se notaba si
+     había cambiado algo. */
+  .camara__cual {
+    position:absolute; left:8px; top:40px; z-index:3; max-width:70%;
+    font-size:0.6rem; font-weight:700; color:#fff; background:rgba(0,0,0,0.45);
+    border-radius:999px; padding:0.25rem 0.55rem; letter-spacing:0.02em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .camara__cual--mala { background:rgba(197,32,32,0.72); }
 
   /* Acercamiento: sirve para escanear desde más lejos, que es donde la cámara
      enfoca. Acercarse demasiado es lo que deja el código borroso. */

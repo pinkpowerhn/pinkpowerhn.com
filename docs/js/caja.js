@@ -80,6 +80,8 @@ const estado = {
   descuento: { tipo: '', valor: 0 },
   descAbierto: false,   // desplegable propio del descuento
   flete: '',            // '', 'local' o 'nacional'
+  preparado: true,      // ¿ya se lo lleva? si no, el pedido queda por preparar
+  entregaTocada: false, // la cajera lo decidió a mano: no volver a adivinarlo
   pago: '',
   banco: '',            // a qué banco entró la transferencia
   bancoAbierto: false,  // su desplegable
@@ -112,6 +114,7 @@ function loArmado() {
     venta: estado.venta, cliente: estado.cliente,
     mayoreo: estado.mayoreo, descuento: estado.descuento,
     pago: estado.pago, banco: estado.banco, flete: estado.flete,
+    preparado: estado.preparado, entregaTocada: estado.entregaTocada,
     recibido: estado.recibido, nota: estado.nota,
   };
 }
@@ -125,6 +128,8 @@ function aplicarArmado(d) {
   estado.pago = d.pago || '';
   estado.banco = d.banco || '';
   estado.flete = d.flete || '';
+  estado.preparado = d.preparado === undefined ? !d.flete : !!d.preparado;
+  estado.entregaTocada = !!d.entregaTocada;
   estado.recibido = d.recibido || '';
   estado.nota = d.nota || '';
   return true;
@@ -457,12 +462,24 @@ function actualizarTotales() {
     linea.remove();
   }
   const btn = document.querySelector('.btn--cobrar.solo-escritorio');
-  if (btn && !estado.cobrando) btn.textContent = 'Cobrar ' + L(total());
+  if (btn && !estado.cobrando) btn.textContent = verboDeCobro() + ' ' + L(total());
 }
 
 function cambio() {
   const rec = num(estado.recibido);
   return Math.max(0, rec - total());
+}
+
+// Al crédito y contraentrega no entra plata ahora: el pedido queda pendiente.
+// Decir "Cobrar" hacía creer que quedaba pagado.
+function quedaPendiente() {
+  return estado.pago === 'credito' || estado.pago === 'contraentrega';
+}
+
+function verboDeCobro() {
+  if (estado.pago === 'credito') return 'Registrar al crédito';
+  if (estado.pago === 'contraentrega') return 'Registrar contraentrega';
+  return 'Cobrar';
 }
 
 // Todo lo que se arma para una venta. Se vacía apenas el pedido queda creado:
@@ -482,6 +499,8 @@ function limpiarArmado() {
   estado.banco = '';
   estado.bancoAbierto = false;
   estado.flete = '';
+  estado.preparado = true;
+  estado.entregaTocada = false;
   estado.recibido = '';
   estado.nota = '';
   estado.error = '';
@@ -593,6 +612,9 @@ async function cobrar() {
     comision: comision() > 0 ? { monto: comision() } : null,
     recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
     cambio: vuelto,
+    // Si la clienta ya se lo lleva, el pedido sale preparado; un encargo queda
+    // pendiente para que lo arme después quien lo prepara.
+    preparar: !!estado.preparado,
     nota: estado.nota || '',
     ensayo: MODO_PRUEBA,
     // Número de este cobro. Se conserva mientras la venta no se cobre, así que
@@ -882,6 +904,9 @@ function bloqueResultados() {
                  + 'escribí un poco más para afinar'
     : estado.buscadoEnShopify ? `${total} en Shopify (no estaban en el catálogo de la caja)`
     : `${total} producto${total !== 1 ? 's' : ''}`}</div>`;
+  // Lo que ya va en la venta, para que la lista pueda quedarse abierta sin que
+  // la cajera pierda la cuenta de lo que lleva tocado.
+  const llevado = new Map(estado.venta.map((l) => [l.variant_id, l.cantidad]));
   return `<div class="resultados scroll-lindo">${estado.resultados.map((v, i) => `
     <button class="res ${v.disponible ? '' : 'res--agotado'}" data-res="${i}" type="button">
       ${v.imagen ? `<img src="${esc(v.imagen)}" alt="" loading="lazy" />` : '<img alt="" />'}
@@ -891,6 +916,8 @@ function bloqueResultados() {
           ${v.existencia != null ? ' · ' + v.existencia + ' en existencia' : ''}
           ${v.disponible ? '' : '<span class="res__tag">agotado</span>'}</span>
       </span>
+      ${llevado.get(v.variant_id)
+        ? `<span class="res__lleva">${llevado.get(v.variant_id)} en la venta</span>` : ''}
       <span class="res__pre">${L(precioSegunModo(v))}</span>
     </button>`).join('')}${pie}</div>`;
 }
@@ -1132,6 +1159,18 @@ function bloqueResumen() {
         </div>
       </div>
 
+      <!-- Lo que se vende en el mostrador sale preparado; un encargo que se arma
+           después, no. Si no, hay que ir a Shopify a despreparar el pedido. -->
+      <label class="entrega">
+        <input type="checkbox" data-entrega ${estado.preparado ? 'checked' : ''} />
+        <span>
+          <b>${estado.preparado ? 'Ya se lo lleva' : 'Queda para preparar'}</b>
+          <small>${estado.preparado
+            ? 'El pedido sale marcado como preparado en Shopify.'
+            : 'Queda pendiente en Shopify, para armarlo después.'}</small>
+        </span>
+      </label>
+
       <div class="pagos">
         ${pagos.map(([v, t, ic]) => `<button class="pago-btn${
             v === 'contraentrega' ? ' pago-btn--ancho' : ''}" data-pago="${v}" type="button"
@@ -1178,7 +1217,8 @@ function bloqueResumen() {
     <div class="cierre-cobro">
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
-        ${estado.cobrando ? 'Cobrando…' : 'Cobrar ' + L(total())}
+        ${estado.cobrando ? (quedaPendiente() ? 'Registrando…' : 'Cobrando…')
+                          : verboDeCobro() + ' ' + L(total())}
       </button>
       <button class="btn btn--ancho btn--cotiza" data-accion="cotizar" type="button"
         ${(!estado.venta.length || estado.cobrando) ? 'disabled' : ''}>
@@ -1193,9 +1233,10 @@ function barraMovil() {
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${!sePuedeCobrar() ? 'disabled' : ''}>
-      ${estado.cobrando ? 'Cobrando…'
+      ${estado.cobrando ? (quedaPendiente() ? 'Registrando…' : 'Cobrando…')
         : (!estado.pago ? 'Elegí la forma de pago'
-        : (estado.pago === 'transferencia' && !estado.banco ? 'Elegí el banco' : 'Cobrar'))}
+        : (estado.pago === 'transferencia' && !estado.banco ? 'Elegí el banco'
+        : verboDeCobro()))}
     </button>
   </div>`;
 }
@@ -1211,6 +1252,8 @@ function vistaExito() {
     ${!r.pagado ? `<div class="aviso-caja aviso-caja--amarilla">${
       r.pago === 'contraentrega' ? 'Queda pendiente: se cobra al entregar.'
                                  : 'Queda pendiente de pago (crédito).'}</div>` : ''}
+    ${!r.ensayo && !r.preparado ? `<div class="aviso-caja aviso-caja--amarilla">
+      Queda pendiente de preparar en Shopify.</div>` : ''}
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
       <div class="recibo-previa" id="recibo-previa">
@@ -1386,10 +1429,15 @@ async function retomarCotizacion(c, cerrar) {
 
 // Las mismas acciones de la pantalla de venta cobrada, para una venta vieja.
 function accionesDeRecibo(v, cotizacion = null) {
+  // Una cotización no es un recibo: los botones lo dicen con sus palabras, que
+  // es lo que pidió la dueña ("dice enviar recibo y estoy cotizando").
+  const esCot = !!(laVenta() && laVenta().cotizacion);
+  const QUE = esCot ? 'la cotización' : 'el recibo';
   const fondo = document.createElement('div');
   fondo.className = 'modal-fondo';
   fondo.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Recibo">
+    <div class="modal" role="dialog" aria-modal="true"
+         aria-label="${esCot ? 'Cotización' : 'Recibo'}">
       <div class="modal__agarre"></div>
       <div class="modal__cab">
         <div style="flex:1">
@@ -1400,7 +1448,7 @@ function accionesDeRecibo(v, cotizacion = null) {
       </div>
       <div class="modal__lista">
         <div class="recibo-previa" id="recibo-previa">
-          <div class="vacio"><span class="puntos">Armando el recibo</span></div>
+          <div class="vacio"><span class="puntos">Armando ${QUE}</span></div>
         </div>
         <div class="recibo-acciones">
           ${cotizacion ? `<button class="btn btn--pink btn--ancho" data-accion="retomar"
@@ -1409,13 +1457,13 @@ function accionesDeRecibo(v, cotizacion = null) {
             después se puede cambiar lo que sea y cobrar.</p>` : ''}
           <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
             ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
-              ? 'Mandar el recibo por WhatsApp' : 'Bajar la imagen del recibo'}</button>
+              ? `Mandar ${QUE} por WhatsApp` : `Bajar la imagen de ${QUE}`}</button>
           ${v.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto"
             type="button">Guardar el contacto de la clienta</button>
             <p class="recibo-nota">Si todavía no la tenés en la agenda, guardala primero:
             WhatsApp solo deja mandar fotos a los contactos guardados.</p>` : ''}
           <div class="recibo-acciones__fila">
-            <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
+            <button class="btn" data-accion="recibo-ver" type="button">Ver ${QUE}</button>
             <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
           </div>
         </div>
@@ -1463,7 +1511,7 @@ async function previsualizarRecibo() {
       caja.appendChild(img);
     });
   } catch (_) {
-    caja.innerHTML = '<div class="vacio">No se pudo mostrar el recibo, '
+    caja.innerHTML = '<div class="vacio">No se pudo mostrar, '
       + 'pero igual se puede mandar.</div>';
   }
 }
@@ -1742,11 +1790,11 @@ async function mandarReciboEnImagen() {
   let hojas = r.imagen || null;
   let datos = null;
   if (!hojas) {
-    flash('Armando el recibo…');
+    flash(r.cotizacion ? 'Armando la cotización…' : 'Armando el recibo…');
     try {
       datos = await (await fetch(`${API}/recibo/${encodeURIComponent(r.recibo)}`)).json();
     } catch (_) {
-      flash('No se pudo armar el recibo. Revisá la señal.', 'mal');
+      flash('No se pudo armar. Revisá la señal.', 'mal');
       return;
     }
     try { hojas = await dibujarRecibo(datos); } catch (_) { hojas = null; }
@@ -1754,7 +1802,7 @@ async function mandarReciboEnImagen() {
   if (!hojas || !hojas.length) { flash('No se pudo armar la imagen', 'mal'); return; }
 
   const numero = (datos && datos.numero) || r.name || 'pinkpower';
-  const base = `recibo-${String(numero).replace(/[^\w-]/g, '')}`;
+  const base = `${r.cotizacion ? 'cotizacion' : 'recibo'}-${String(numero).replace(/[^\w-]/g, '')}`;
   // Varias hojas cuando la venta es larga: van todas en el mismo envío.
   const archivos = hojas.map((png, i) => new File([png],
     hojas.length > 1 ? `${base}-${i + 1}de${hojas.length}.png` : `${base}.png`,
@@ -1907,6 +1955,12 @@ $('caja-main').addEventListener('input', (e) => {
   if (t.dataset.descValor !== undefined) {
     estado.descuento.valor = t.value;
     actualizarTotales();
+    return;
+  }
+  if (t.dataset.entrega !== undefined) {
+    estado.preparado = !!t.checked;
+    estado.entregaTocada = true;    // ya lo decidió ella: no volver a adivinar
+    pintar();
   }
 });
 
@@ -2025,10 +2079,11 @@ $('caja-main').addEventListener('click', (e) => {
     return;
   }
   if (d.res !== undefined) {
-    const v = estado.resultados[Number(d.res)];
-    const q = $('q'); if (q) q.value = '';
-    estado.resultados = [];
-    agregar(v);
+    // La búsqueda NO se cierra al agregar: si la clienta lleva cuatro cosas del
+    // mismo aroma, cerrarla obligaba a escribir el aroma cuatro veces. La lista
+    // se queda, y cada fila muestra cuántas unidades van ya en la venta. Para
+    // salir de la búsqueda está la × del buscador.
+    agregar(estado.resultados[Number(d.res)]);
     return;
   }
   if (d.cli !== undefined) {
@@ -2041,6 +2096,10 @@ $('caja-main').addEventListener('click', (e) => {
   if (d.menos !== undefined) { cambiarCantidad(Number(d.menos), -1); return; }
   if (d.flete !== undefined) {
     estado.flete = d.flete;
+    // Con flete casi siempre es un envío, que se prepara después; sin flete, la
+    // clienta está enfrente y se lo lleva. Se adivina, pero manda lo que marque
+    // la cajera: si ya lo tocó a mano en esta venta, no se le cambia.
+    if (!estado.entregaTocada) estado.preparado = !estado.flete;
     pintar();
     return;
   }
@@ -2752,34 +2811,84 @@ function sabeEnfocar(pista) {
   } catch (_) { return null; }
 }
 
+// La cámara que la dueña encontró que SÍ lee. Se recuerda para no tener que
+// buscarla de nuevo en cada venta.
+const CAMARA_ELEGIDA = 'pinkpower_caja_camara';
+
+function camaraRecordada() {
+  try { return localStorage.getItem(CAMARA_ELEGIDA) || ''; } catch (_) { return ''; }
+}
+
+function recordarCamara(deviceId) {
+  try {
+    if (deviceId) localStorage.setItem(CAMARA_ELEGIDA, deviceId);
+  } catch (_) {}
+}
+
+// Cartel fijo con la cámara que está puesta. Antes solo salía un aviso de paso,
+// así que al tocar "cambiar" no se sabía si había cambiado algo.
+function pintarCualCamara() {
+  if (!camara || !camara.visor) return;
+  let cartel = camara.visor.querySelector('.camara__cual');
+  if (camara.camaras.length < 2) { if (cartel) cartel.remove(); return; }
+  if (!cartel) {
+    cartel = document.createElement('div');
+    cartel.className = 'camara__cual';
+    camara.visor.appendChild(cartel);
+  }
+  const nombre = (camara.camaras[camara.cual] || {}).label || '';
+  cartel.textContent = `Cámara ${camara.cual + 1} de ${camara.camaras.length}`
+    + (nombre ? ` · ${nombre.replace(/\s*\(.*\)\s*$/, '').slice(0, 26)}` : '')
+    + (camara.enfoca === false ? ' · no enfoca' : '');
+  cartel.classList.toggle('camara__cual--mala', camara.enfoca === false);
+}
+
 // Cambia de cámara sin cerrar la hoja: en un teléfono con gran angular, macro y
 // principal, la que entrega el navegador puede ser una de enfoque fijo, que
-// nunca va a enfocar un código de cerca.
+// nunca va a enfocar un código de cerca. Va probando las que hay hasta dar con
+// una DISTINTA de la puesta: hay teléfonos que entregan la misma por más que se
+// les pida otra, y entonces parecía que el botón no hacía nada.
 async function cambiarDeCamara() {
   if (!camara || !camara.camaras || camara.camaras.length < 2) return;
   const sesion = camara.sesion;
-  camara.cual = (camara.cual + 1) % camara.camaras.length;
-  const elegida = camara.camaras[camara.cual];
-  let nuevo;
-  try {
-    nuevo = await navigator.mediaDevices.getUserMedia({
-      video: pedidoDeVideo(elegida.deviceId), audio: false });
-  } catch (_) {
-    flash('No se pudo cambiar de cámara', 'mal');
+  const puesta = (() => {
+    try { return camara.stream.getVideoTracks()[0].getSettings().deviceId || ''; }
+    catch (_) { return ''; }
+  })();
+
+  for (let salto = 1; salto <= camara.camaras.length; salto++) {
+    const i = (camara.cual + salto) % camara.camaras.length;
+    const elegida = camara.camaras[i];
+    if (!elegida || !elegida.deviceId || elegida.deviceId === puesta) continue;
+    let nuevo;
+    try {
+      nuevo = await navigator.mediaDevices.getUserMedia({
+        video: pedidoDeVideo(elegida.deviceId), audio: false });
+    } catch (_) { continue; }                       // esa no se deja: la siguiente
+    if (!camara || camara.sesion !== sesion) {      // la cerraron mientras tanto
+      try { nuevo.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      return;
+    }
+    let dio = '';
+    try { dio = nuevo.getVideoTracks()[0].getSettings().deviceId || ''; } catch (_) {}
+    if (dio && puesta && dio === puesta) {          // dio la misma: no sirve
+      try { nuevo.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      continue;
+    }
+    try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+    camara.stream = nuevo;
+    camara.cual = i;
+    camara.video.srcObject = nuevo;
+    await camara.video.play().catch(() => {});
+    camara.escenaCambio = true;    // otra cámara, otra imagen: se empieza limpio
+    camara.enfoca = sabeEnfocar(nuevo.getVideoTracks()[0]);
+    recordarCamara(elegida.deviceId);
+    pintarCualCamara();
+    flash(`Cámara ${camara.cual + 1} de ${camara.camaras.length}`
+          + (camara.enfoca === false ? ' · esta no enfoca' : ''), 'ok');
     return;
   }
-  if (!camara || camara.sesion !== sesion) {     // la cerraron mientras tanto
-    try { nuevo.getTracks().forEach((t) => t.stop()); } catch (_) {}
-    return;
-  }
-  try { camara.stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
-  camara.stream = nuevo;
-  camara.video.srcObject = nuevo;
-  await camara.video.play().catch(() => {});
-  camara.escenaCambio = true;      // otra cámara, otra imagen: se empieza limpio
-  camara.enfoca = sabeEnfocar(nuevo.getVideoTracks()[0]);
-  flash(`Cámara ${camara.cual + 1} de ${camara.camaras.length}`
-        + (camara.enfoca === false ? ' · esta no enfoca' : ''), 'ok');
+  flash('Este teléfono no deja cambiar de cámara', 'mal');
 }
 
 async function abrirCamara() {
@@ -2825,7 +2934,20 @@ async function abrirCamara() {
     // ajustes por omisión la imagen salía borrosa y costaba leer el código.
     // resizeMode 'none' evita que el navegador recorte o re-escale para cumplir
     // la medida pedida: se quiere el fotograma tal cual sale del sensor.
-    stream = await navigator.mediaDevices.getUserMedia({ video: pedidoDeVideo(), audio: false });
+    //
+    // Si en este teléfono ya se eligió a mano una cámara que lee bien, se abre
+    // esa directo: encontrarla cuesta y no se puede pedir que la busque en cada
+    // venta. Si ya no existe, se cae a la de siempre.
+    const recordada = camaraRecordada();
+    try {
+      stream = recordada
+        ? await navigator.mediaDevices.getUserMedia({
+            video: pedidoDeVideo(recordada), audio: false })
+        : null;
+    } catch (_) { stream = null; }
+    if (!stream) {
+      stream = await navigator.mediaDevices.getUserMedia({ video: pedidoDeVideo(), audio: false });
+    }
   } catch (err) {
     if (camara && camara.sesion === sesion) cerrarCamara();
     else { caja.remove(); document.removeEventListener('keydown', porTecla); }
@@ -2877,8 +2999,9 @@ async function abrirCamara() {
 
     // Si la que nos dieron NO sabe enfocar, se prueban las otras hasta dar con
     // una que sí. Es lo que decide de verdad: una cámara de enfoque fijo no lee
-    // un código de cerca ni con el mejor lector.
-    if (camara.enfoca === false) {
+    // un código de cerca ni con el mejor lector. Pero si la cajera ya eligió una
+    // a mano, manda la suya: ella vio cuál lee.
+    if (camara.enfoca === false && !camaraRecordada()) {
       for (let i = 0; i < camara.camaras.length; i++) {
         const otra = camara.camaras[i];
         if (!otra.deviceId || i === camara.cual) continue;
@@ -2921,6 +3044,7 @@ async function abrirCamara() {
     btn.addEventListener('click', (ev) => { ev.stopPropagation(); cambiarDeCamara(); });
     visor.appendChild(btn);
   }
+  pintarCualCamara();
 
   const pista = stream.getVideoTracks()[0];
   // Sin zoom automático: el de la cámara es digital y recorta píxeles de verdad,

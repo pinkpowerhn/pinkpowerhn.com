@@ -352,6 +352,19 @@ function hayMayoreo() {
   return estado.mayoreo || !!(estado.cliente && estado.cliente.mayoreo);
 }
 
+// En una venta de mayoreo, un producto SIN precio de mayoreo se cobra al precio
+// de la tienda. Antes pasaba callado: "no hay manera de saber si algo se está
+// yendo con precio de detalle". Se marca en la lista, en la búsqueda y arriba
+// del botón de cobrar, para poder revisarlo o explicárselo a la clienta.
+function sinPrecioMayoreo(l) {
+  return hayMayoreo() && !l.manual && !l.especial
+    && (l.precioMayoreo == null || l.precioMayoreo === '');
+}
+
+function cuantasSinMayoreo() {
+  return estado.venta.filter(sinPrecioMayoreo).length;
+}
+
 function precioSegunModo(v) {
   if (hayMayoreo() && v.precio_mayoreo != null) return v.precio_mayoreo;
   return v.precio;
@@ -957,6 +970,8 @@ function bloqueResultados() {
           ${v.existencia != null ? ' · ' + v.existencia + ' en existencia' : ''}
           ${v.disponible ? '' : '<span class="res__tag">agotado</span>'}</span>
       </span>
+      ${hayMayoreo() && v.precio_mayoreo == null
+        ? '<span class="res__lleva res__lleva--ojo">sin precio de mayoreo</span>' : ''}
       ${llevado.get(v.variant_id)
         ? `<span class="res__lleva">${llevado.get(v.variant_id)} en la venta</span>` : ''}
       <span class="res__pre">${L(precioSegunModo(v))}</span>
@@ -994,7 +1009,8 @@ function bloqueLineas() {
       <!-- La foto ocupa el alto de las dos filas (nombre arriba, cantidad y
            precio abajo): así el renglón queda compacto y no sobra aire debajo
            de la imagen. -->
-      <div class="li ${l.especial ? 'li--especial' : ''}">
+      <div class="li ${l.especial ? 'li--especial' : ''}${
+        sinPrecioMayoreo(l) ? ' li--sinmayoreo' : ''}">
         ${l.imagen
           ? `<img class="li__img" src="${esc(l.imagen)}" alt="" loading="lazy" />`
           : '<div class="li__img li__img--vacia">✦</div>'}
@@ -1003,6 +1019,7 @@ function bloqueLineas() {
             <div class="li__nom">${esc(l.nombre)}${l.variante ? ` <span class="li__meta">· ${esc(l.variante)}</span>` : ''}
               ${l.manual ? ' <span class="chip">manual</span>' : ''}
               ${l.especial ? ' <span class="chip">precio especial</span>' : ''}
+              ${sinPrecioMayoreo(l) ? ' <span class="chip chip--ojo">precio de detalle</span>' : ''}
             </div>
             <button class="li__x" data-quitar="${i}" type="button" aria-label="Quitar">&times;</button>
           </div>
@@ -1245,6 +1262,11 @@ function bloqueResumen() {
           </div>
         </div>
       ` : ''}
+      ${cuantasSinMayoreo() ? `<div class="aviso-caja aviso-caja--ojo">
+        ${cuantasSinMayoreo() === 1
+          ? 'Hay 1 producto sin precio de mayoreo: va al precio de la tienda. Está marcado en la lista.'
+          : `Hay ${cuantasSinMayoreo()} productos sin precio de mayoreo: van al precio de la tienda. `
+            + 'Están marcados en la lista.'}</div>` : ''}
       ${estado.pago === 'credito' ? '<div class="aviso-caja aviso-caja--amarilla">Queda pendiente de pago.</div>' : ''}
       ${estado.pago === 'contraentrega' ? `<div class="aviso-caja aviso-caja--amarilla">
         Se cobra al entregar.${estado.flete === 'nacional'

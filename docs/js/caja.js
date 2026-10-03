@@ -71,6 +71,7 @@ const MODO_PRUEBA = new URLSearchParams(location.search).has('prueba');
 const estado = {
   catalogo: [],
   porBarcode: new Map(),
+  porVariante: new Map(),   // variante -> fila del catálogo (para las existencias)
   cargandoCatalogo: true,
   errorCatalogo: '',
   resultados: [],
@@ -237,10 +238,7 @@ async function cargarCatalogo(intento = 1, forzar = false) {
       // 1500 filas en cada tecla.
       busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
     }));
-    estado.porBarcode = new Map();
-    for (const v of estado.catalogo) {
-      if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
-    }
+    indexarCatalogo();
   } catch (err) {
     // La primera llamada al abrir falla a veces en el teléfono (la conexión
     // todavía se está levantando). Antes había que refrescar a mano y salía un
@@ -281,11 +279,26 @@ async function repasarCatalogo() {
     }));
     if (!nuevas.length) return;
     estado.catalogo = nuevas;
-    estado.porBarcode = new Map();
-    for (const v of estado.catalogo) {
-      if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
-    }
+    indexarCatalogo();
   } catch (_) { /* si falla, se sigue con el que había */ }
+}
+
+// Dos índices del catálogo: por código de barras (lo que lee el lector) y por
+// variante (para saber, en cualquier momento, cuántas dice el sistema que hay).
+function indexarCatalogo() {
+  estado.porBarcode = new Map();
+  estado.porVariante = new Map();
+  for (const v of estado.catalogo) {
+    if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
+    if (v.variant_id) estado.porVariante.set(v.variant_id, v);
+  }
+}
+
+// Lo que el sistema dice que hay de esa variante. Se mira en el catálogo y no en
+// la línea de la venta: así es el número de ahora, no el de cuando se agregó.
+function existenciaDe(variantId) {
+  const v = variantId && estado.porVariante ? estado.porVariante.get(variantId) : null;
+  return v && v.existencia != null ? v.existencia : null;
 }
 
 const TOPE_RESULTADOS = 60;
@@ -317,6 +330,7 @@ async function buscarEnShopify(texto) {
       ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
     });
     if (v.barcode) estado.porBarcode.set(v.barcode.trim(), v);
+    if (v.variant_id) estado.porVariante.set(v.variant_id, v);
   }
   estado.resultados = hallados.slice(0, TOPE_RESULTADOS);
   estado.resultadosTotal = hallados.length;
@@ -1017,6 +1031,13 @@ function bloqueLineas() {
         <div class="li__cont">
           <div class="li__top">
             <div class="li__nom">${esc(l.nombre)}${l.variante ? ` <span class="li__meta">· ${esc(l.variante)}</span>` : ''}
+              ${(() => {
+                const hay = existenciaDe(l.variant_id);
+                if (hay == null) return '';
+                const falta = l.cantidad > hay;
+                return ` <span class="chip ${falta ? 'chip--ojo' : 'chip--inv'}">${
+                  falta ? `lleva ${l.cantidad} y hay ${hay}` : `${hay} en existencia`}</span>`;
+              })()}
               ${l.manual ? ' <span class="chip">manual</span>' : ''}
               ${l.especial ? ' <span class="chip">precio especial</span>' : ''}
               ${sinPrecioMayoreo(l) ? ' <span class="chip chip--ojo">precio de detalle</span>' : ''}
@@ -2491,6 +2512,7 @@ async function procesarEscaneo(codigo) {
       busca: norm([enShopify.producto, enShopify.marca, enShopify.variante].filter(Boolean).join(' ')),
     });
     estado.porBarcode.set(limpio, enShopify);
+    if (enShopify.variant_id) estado.porVariante.set(enShopify.variant_id, enShopify);
     pip();
     agregar(enShopify);
     marcarLeido(limpio);
@@ -2529,6 +2551,7 @@ async function buscarDeNuevo(codigo) {
       ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
     });
     estado.porBarcode.set(codigo, v);
+    if (v.variant_id) estado.porVariante.set(v.variant_id, v);
   } else {
     // Último recurso: rearmar el catálogo completo contra Shopify.
     try {
@@ -2536,10 +2559,7 @@ async function buscarDeNuevo(codigo) {
       estado.catalogo = (data.variantes || []).map((x) => ({
         ...x, busca: norm([x.producto, x.marca, x.variante].filter(Boolean).join(' ')),
       }));
-      estado.porBarcode = new Map();
-      for (const x of estado.catalogo) {
-        if (x.barcode) estado.porBarcode.set(x.barcode.trim(), x);
-      }
+      indexarCatalogo();
     } catch (_) {
       if (caja) fichaCamara(codigo, 'No se pudo consultar. Revisá la señal.');
       return;
@@ -2792,6 +2812,15 @@ function fichaCamara(codigo, aviso) {
       <div class="camara__datos">
         <b>${esc(l.nombre)}</b>
         <span>${L(l.precio)} c/u · ${unidades} en la venta · ${L(total())}</span>
+        ${(() => {
+          // Lo que el sistema dice que hay: con el producto en la mano es cuando
+          // sirve, para ver de una si el inventario cuadra con lo físico.
+          const hay = existenciaDe(l.variant_id);
+          if (hay == null) return '';
+          return `<span class="camara__inv${l.cantidad > hay ? ' camara__inv--ojo' : ''}">${
+            l.cantidad > hay ? `lleva ${l.cantidad} y el sistema tiene ${hay}`
+                             : `${hay} en existencia`}</span>`;
+        })()}
       </div>
       <div class="cant">
         <button data-cam-menos type="button" aria-label="Menos">−</button>

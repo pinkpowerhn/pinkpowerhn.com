@@ -529,7 +529,7 @@
   /* Va a precio de tienda dentro de una venta de mayoreo: se ve de un vistazo. */
   .li--sinmayoreo { background:#fffaf4; }
   .li--sinmayoreo .li__precio input { border-color:#e8a15c; background:#fff4e8; }
-  .chip--ojo { background:#fff0e0; color:#9a4b00; }
+
 
   /* Pie de la lista. Primero "Buscar en el catálogo", que es lo que de verdad
      se hace cuando un producto no trae código; "Agregar personalizado" al lado,
@@ -586,6 +586,10 @@
           background:var(--pink-lt); color:var(--pink-dk); display:inline-block;
           letter-spacing:0.08em; text-transform:uppercase; }
   .chip--may { background:#e7f6ed; color:var(--ok); }
+  /* Ojo con esto: el producto va a precio de tienda en una venta de mayoreo. */
+  .chip--ojo { background:#fff0e0; color:#9a4b00; }
+  /* Lo que el sistema dice que hay de ese producto. */
+  .chip--inv { background:#eef4ff; color:#2d5aa8; }
 
   /* Cliente */
   /* Buscador de clientas con su botón para registrar una nueva al lado. */
@@ -897,6 +901,9 @@
   .camara__datos b { color:#fff; font-size:0.88rem; overflow:hidden; text-overflow:ellipsis;
                      white-space:nowrap; }
   .camara__datos span { color:#e6b9cd; font-size:0.72rem; }
+  /* Lo que el sistema dice que hay, con el producto en la mano. */
+  .camara__inv { color:#9fe0b8; font-size:0.7rem; font-weight:700; }
+  .camara__inv--ojo { color:#ffc48a; }
   .camara__ficha .cant { background:transparent; border-color:rgba(255,255,255,0.28); }
   .camara__ficha .cant button { background:transparent; color:#fff; }
   .camara__ficha .cant span { color:#fff; }

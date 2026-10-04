@@ -89,6 +89,11 @@ const estado = {
   recibido: '',
   parcial: false,       // la clienta abona una parte y queda debiendo el resto
   abono: '',            // cuánto entrega ahora
+  mixto: false,         // pagó con dos métodos (400 en tarjeta y 600 en transferencia)
+  monto1: '',           // cuánto con el primer método
+  pago2: '',            // el segundo método
+  banco2: '',
+  monto2: '',
   nota: '',
   cobrando: false,
   cotizando: false,     // armando el prerecibo, que no cobra nada
@@ -119,6 +124,8 @@ function loArmado() {
     pago: estado.pago, banco: estado.banco, flete: estado.flete,
     preparado: estado.preparado, entregaTocada: estado.entregaTocada,
     parcial: estado.parcial, abono: estado.abono,
+    mixto: estado.mixto, monto1: estado.monto1,
+    pago2: estado.pago2, banco2: estado.banco2, monto2: estado.monto2,
     recibido: estado.recibido, nota: estado.nota,
   };
 }
@@ -136,6 +143,11 @@ function aplicarArmado(d) {
   estado.entregaTocada = !!d.entregaTocada;
   estado.parcial = !!d.parcial;
   estado.abono = d.abono || '';
+  estado.mixto = !!d.mixto;
+  estado.monto1 = d.monto1 || '';
+  estado.pago2 = d.pago2 || '';
+  estado.banco2 = d.banco2 || '';
+  estado.monto2 = d.monto2 || '';
   estado.recibido = d.recibido || '';
   estado.nota = d.nota || '';
   return true;
@@ -502,8 +514,25 @@ function actualizarTotales() {
   if (btn && !estado.cobrando) btn.textContent = verboDeCobro() + ' ' + L(montoDelBoton());
 }
 
-// Lo que la clienta entrega ahora. Sin pago parcial, es todo.
+// Lo que la clienta entrega ahora, por método. Con un solo método es todo (o lo
+// que diga el pago parcial); con dos, lo que se puso en cada uno.
+function pagosDeLaVenta() {
+  if (estado.mixto) {
+    return [
+      { forma: estado.pago, monto: num(estado.monto1), banco: estado.banco },
+      { forma: estado.pago2, monto: num(estado.monto2), banco: estado.banco2 },
+    ].filter((x) => x.forma && x.monto > 0);
+  }
+  if (estado.parcial) {
+    return [{ forma: estado.pago, monto: montoAbono(), banco: estado.banco }];
+  }
+  return [];
+}
+
 function montoAbono() {
+  if (estado.mixto) {
+    return Math.min(total(), pagosDeLaVenta().reduce((s, x) => s + x.monto, 0));
+  }
   if (!estado.parcial) return total();
   return Math.min(total(), Math.max(0, num(estado.abono)));
 }
@@ -529,13 +558,14 @@ function verboDeCobro() {
   if (estado.pago === 'credito') return 'Registrar al crédito';
   if (estado.pago === 'contraentrega') return 'Registrar contraentrega';
   if (estado.parcial) return 'Registrar abono de';
+  if (estado.mixto) return loQueQueda() > 0 ? 'Registrar pagos de' : 'Cobrar';
   return 'Cobrar';
 }
 
 // Con pago parcial, el botón muestra lo que entra ahora, no el total: es lo que
 // la cajera tiene que recibir en la mano.
 function montoDelBoton() {
-  return estado.parcial ? montoAbono() : total();
+  return (estado.parcial || estado.mixto) ? montoAbono() : total();
 }
 
 // Todo lo que se arma para una venta. Se vacía apenas el pedido queda creado:
@@ -560,6 +590,11 @@ function limpiarArmado() {
   estado.recibido = '';
   estado.parcial = false;
   estado.abono = '';
+  estado.mixto = false;
+  estado.monto1 = '';
+  estado.pago2 = '';
+  estado.banco2 = '';
+  estado.monto2 = '';
   estado.nota = '';
   estado.error = '';
   estado.resultados = [];
@@ -583,6 +618,12 @@ function sePuedeCobrar() {
   // Un abono tiene que ser algo y menos que el total: si cubre todo, no es
   // abono, es el cobro normal.
   if (estado.parcial && !(montoAbono() > 0 && montoAbono() < total())) return false;
+  if (estado.mixto) {
+    const ps = pagosDeLaVenta();
+    if (ps.length < 2) return false;                       // falta el segundo
+    if (ps.some((x) => x.forma === 'transferencia' && !x.banco)) return false;
+    if (montoAbono() <= 0 || montoAbono() > total() + 0.009) return false;
+  }
   return true;
 }
 
@@ -673,8 +714,10 @@ async function cobrar() {
     comision: comision() > 0 ? { monto: comision() } : null,
     recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
     cambio: vuelto,
-    // Pago parcial: lo que entrega ahora. El pedido queda con el saldo real.
+    // Cómo paga: un método, dos (mixto), o menos que el total (parcial). El
+    // backend anota una transacción por cada uno.
     abono: estado.parcial ? montoAbono() : 0,
+    pagos: pagosDeLaVenta(),
     // Si la clienta ya se lo lleva, el pedido sale preparado; un encargo queda
     // pendiente para que lo arme después quien lo prepara.
     preparar: !!estado.preparado,
@@ -1214,6 +1257,14 @@ function interruptorMayoreo() {
   </label>`;
 }
 
+// El segundo método de un pago mixto: solo los que hacen entrar plata ahora
+// (al crédito y contraentrega no se paga en el momento).
+const PAGOS_SEGUNDO = [
+  ['efectivo', 'Efectivo', IC.efectivo],
+  ['tarjeta', 'Tarjeta', IC.tarjeta],
+  ['transferencia', 'Transferencia', IC.transferencia],
+];
+
 const OPCIONES_DESC = [
   { v: '', t: 'Sin descuento' },
   { v: 'porcentaje', t: 'Descuento por %' },
@@ -1291,18 +1342,60 @@ function bloqueResumen() {
            al recoger. Sin esto, la venta se registraba como cobrada completa y
            Shopify quedaba creyendo que entró más plata de la que entró. -->
       ${estado.pago && !quedaPendiente() ? `
-        <label class="switch" style="margin-top:0.8rem">
-          <input type="checkbox" data-parcial ${estado.parcial ? 'checked' : ''} />
-          Abona una parte (queda debiendo)
-        </label>
-        ${estado.parcial ? `
-          <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
-            <label for="abono">¿Cuánto entrega ahora?</label>
-            <input id="abono" type="text" inputmode="decimal"
-                   value="${estado.abono}" data-abono placeholder="0.00" />
-          </div>
-          <div class="cambio cambio--debe"><span>Queda debiendo</span><b>${L(loQueQueda())}</b></div>
+        ${!estado.mixto ? `
+          <label class="switch" style="margin-top:0.8rem">
+            <input type="checkbox" data-parcial ${estado.parcial ? 'checked' : ''} />
+            Pago parcial (queda debiendo)
+          </label>
+          ${estado.parcial ? `
+            <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
+              <label for="abono">¿Cuánto entrega ahora?</label>
+              <input id="abono" type="text" inputmode="decimal"
+                     value="${estado.abono}" data-abono placeholder="0.00" />
+            </div>
+          ` : ''}
         ` : ''}
+        ${!estado.parcial ? `
+          <label class="switch" style="margin-top:0.6rem">
+            <input type="checkbox" data-mixto ${estado.mixto ? 'checked' : ''} />
+            Pagó con dos métodos
+          </label>
+          ${estado.mixto ? `
+            <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
+              <label for="monto1">Con ${esc(PAGOS_TEXTO[estado.pago] || estado.pago)}</label>
+              <input id="monto1" type="text" inputmode="decimal"
+                     value="${estado.monto1}" data-monto1 placeholder="0.00" />
+            </div>
+            <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
+              <label>El otro método</label>
+              <div class="pagos pagos--segundo">
+                ${PAGOS_SEGUNDO.filter(([v]) => v !== estado.pago).map(([v, t, ic]) => `
+                  <button class="pago-btn" data-pago2="${v}" type="button"
+                    aria-pressed="${estado.pago2 === v}">${svg(ic, 1.6)}<span>${t}</span></button>`).join('')}
+              </div>
+            </div>
+            ${estado.pago2 === 'transferencia' ? `
+              <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
+                <label for="banco2">¿A qué banco?</label>
+                <select id="banco2" data-banco2 class="pp-select__btn" style="width:100%">
+                  <option value="">Elegí el banco</option>
+                  ${BANCOS.map((b) => `<option value="${esc(b)}" ${
+                    estado.banco2 === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}
+                </select>
+              </div>` : ''}
+            ${estado.pago2 ? `
+              <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
+                <label for="monto2">Con ${esc(PAGOS_TEXTO[estado.pago2] || estado.pago2)}</label>
+                <input id="monto2" type="text" inputmode="decimal"
+                       value="${estado.monto2}" data-monto2 placeholder="0.00" />
+              </div>` : ''}
+          ` : ''}
+        ` : ''}
+        ${(estado.parcial || estado.mixto) && loQueQueda() > 0
+          ? `<div class="cambio cambio--debe"><span>Queda debiendo</span><b>${L(loQueQueda())}</b></div>`
+          : ''}
+        ${estado.mixto && pagosDeLaVenta().length > 1 && loQueQueda() === 0
+          ? `<div class="cambio cambio--resumen"><span>Pagado completo</span><b>${L(montoAbono())}</b></div>` : ''}
       ` : ''}
 
       ${estado.pago === 'efectivo' ? `
@@ -1350,7 +1443,7 @@ function bloqueResumen() {
     <div class="cierre-cobro">
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
-        ${estado.cobrando ? (quedaPendiente() || estado.parcial ? 'Registrando…' : 'Cobrando…')
+        ${estado.cobrando ? (quedaPendiente() || estado.parcial || estado.mixto ? 'Registrando…' : 'Cobrando…')
                           : verboDeCobro() + ' ' + L(montoDelBoton())}
       </button>
       <button class="btn btn--ancho btn--cotiza" data-accion="cotizar" type="button"
@@ -1366,7 +1459,7 @@ function barraMovil() {
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${!sePuedeCobrar() ? 'disabled' : ''}>
-      ${estado.cobrando ? (quedaPendiente() || estado.parcial ? 'Registrando…' : 'Cobrando…')
+      ${estado.cobrando ? (quedaPendiente() || estado.parcial || estado.mixto ? 'Registrando…' : 'Cobrando…')
         : (!estado.pago ? 'Elegí la forma de pago'
         : (estado.pago === 'transferencia' && !estado.banco ? 'Elegí el banco'
         : verboDeCobro()))}
@@ -2122,6 +2215,22 @@ $('caja-main').addEventListener('input', (e) => {
     if (estado.parcial) setTimeout(() => $('abono')?.focus(), 40);
     return;
   }
+  if (t.dataset.mixto !== undefined) {
+    estado.mixto = !!t.checked;
+    if (!estado.mixto) { estado.pago2 = ''; estado.banco2 = ''; estado.monto1 = ''; estado.monto2 = ''; }
+    pintar();
+    return;
+  }
+  if (t.dataset.banco2 !== undefined) { estado.banco2 = t.value; pintar(); return; }
+  if (t.dataset.monto1 !== undefined || t.dataset.monto2 !== undefined) {
+    if (t.dataset.monto1 !== undefined) estado.monto1 = t.value;
+    else estado.monto2 = t.value;
+    // Como con el precio: repintar entero sacaría el foco del campo.
+    const debe = document.querySelector('.cambio--debe b');
+    if (debe) debe.textContent = L(loQueQueda());
+    actualizarTotales();
+    return;
+  }
   if (t.dataset.abono !== undefined) {
     estado.abono = t.value;
     // Como con el precio: repintar en cada tecla sacaría el foco del campo.
@@ -2269,6 +2378,17 @@ $('caja-main').addEventListener('click', (e) => {
     // clienta está enfrente y se lo lleva. Se adivina, pero manda lo que marque
     // la cajera: si ya lo tocó a mano en esta venta, no se le cambia.
     if (!estado.entregaTocada) estado.preparado = !estado.flete;
+    pintar();
+    return;
+  }
+  if (d.pago2 !== undefined) {
+    estado.pago2 = estado.pago2 === d.pago2 ? '' : d.pago2;
+    if (estado.pago2 !== 'transferencia') estado.banco2 = '';
+    // Lo que falta para el total, que es lo que casi siempre va en el segundo.
+    if (estado.pago2 && !estado.monto2) {
+      const resto = Math.max(0, total() - num(estado.monto1));
+      estado.monto2 = resto ? String(resto.toFixed(2)) : '';
+    }
     pintar();
     return;
   }

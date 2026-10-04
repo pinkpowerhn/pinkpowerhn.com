@@ -235,7 +235,8 @@
                     box-shadow:0 -8px 12px -10px rgba(26,10,18,0.25); }
     /* El "queda debiendo" va en su sitio, entre el monto del abono y el banco:
        pegado abajo tapaba justo los campos que la cajera esta llenando. */
-    .caja .cambio--debe { position:static; box-shadow:none; }
+    .caja .cambio--debe,
+    .caja .cambio--resumen { position:static; box-shadow:none; }
   }
   /* Los mide el JS al arrancar: escritos a mano se desincronizan en cuanto
      cambia algo de la barra, y entonces la pantalla no cuadra por unos pixeles

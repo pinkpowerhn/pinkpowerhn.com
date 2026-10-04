@@ -233,6 +233,9 @@
        (esta abajo, fijo), asi que ahora se pega a cero. */
     .caja .cambio { position:sticky; bottom:0; z-index:2; flex:0 0 auto;
                     box-shadow:0 -8px 12px -10px rgba(26,10,18,0.25); }
+    /* El "queda debiendo" va en su sitio, entre el monto del abono y el banco:
+       pegado abajo tapaba justo los campos que la cajera esta llenando. */
+    .caja .cambio--debe { position:static; box-shadow:none; }
   }
   /* Los mide el JS al arrancar: escritos a mano se desincronizan en cuanto
      cambia algo de la barra, y entonces la pantalla no cuadra por unos pixeles
@@ -732,6 +735,10 @@
   .cambio span { font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase;
                  color:var(--ok); font-weight:700; }
   .cambio b { font-size:1.55rem; font-weight:700; color:var(--ok); line-height:1; }
+  /* Lo que la clienta queda debiendo cuando abona una parte: va DESPUES de las
+     reglas de .cambio, que si no le pisan el color. */
+  .cambio--debe { background:#fff4e8; }
+  .cambio--debe span, .cambio--debe b { color:#9a4b00; }
   .aviso-caja { border-radius:14px; padding:0.8rem 1rem; margin-top:0.8rem;
                 font-size:0.85rem; font-weight:600; line-height:1.5; }
   .aviso-caja--amarilla { background:#fff8e6; color:var(--aviso); }

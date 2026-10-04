@@ -180,7 +180,7 @@ function pintar(r) {
         ${r.cambio ? `<div class="fila"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
         <!-- Pedido corregido despues de cobrar: queda un saldo y hay que decirlo. -->
         ${r.pendiente > 0 ? `
-          <div class="fila"><span>Pagado</span><b>${L(Math.max(0, (Number(r.total) || 0) - Number(r.pendiente)))}</b></div>
+          <div class="fila"><span>Abonado</span><b>${L(Math.max(0, (Number(r.total) || 0) - Number(r.pendiente)))}</b></div>
           <div class="fila fila--pend"><span>Pendiente</span><b>${L(r.pendiente)}</b></div>` : ''}
       </div>
     </div>

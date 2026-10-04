@@ -87,6 +87,8 @@ const estado = {
   banco: '',            // a qué banco entró la transferencia
   bancoAbierto: false,  // su desplegable
   recibido: '',
+  parcial: false,       // la clienta abona una parte y queda debiendo el resto
+  abono: '',            // cuánto entrega ahora
   nota: '',
   cobrando: false,
   cotizando: false,     // armando el prerecibo, que no cobra nada
@@ -116,6 +118,7 @@ function loArmado() {
     mayoreo: estado.mayoreo, descuento: estado.descuento,
     pago: estado.pago, banco: estado.banco, flete: estado.flete,
     preparado: estado.preparado, entregaTocada: estado.entregaTocada,
+    parcial: estado.parcial, abono: estado.abono,
     recibido: estado.recibido, nota: estado.nota,
   };
 }
@@ -131,6 +134,8 @@ function aplicarArmado(d) {
   estado.flete = d.flete || '';
   estado.preparado = d.preparado === undefined ? !d.flete : !!d.preparado;
   estado.entregaTocada = !!d.entregaTocada;
+  estado.parcial = !!d.parcial;
+  estado.abono = d.abono || '';
   estado.recibido = d.recibido || '';
   estado.nota = d.nota || '';
   return true;
@@ -494,12 +499,24 @@ function actualizarTotales() {
     linea.remove();
   }
   const btn = document.querySelector('.btn--cobrar.solo-escritorio');
-  if (btn && !estado.cobrando) btn.textContent = verboDeCobro() + ' ' + L(total());
+  if (btn && !estado.cobrando) btn.textContent = verboDeCobro() + ' ' + L(montoDelBoton());
+}
+
+// Lo que la clienta entrega ahora. Sin pago parcial, es todo.
+function montoAbono() {
+  if (!estado.parcial) return total();
+  return Math.min(total(), Math.max(0, num(estado.abono)));
+}
+
+function loQueQueda() {
+  return Math.max(0, total() - montoAbono());
 }
 
 function cambio() {
+  // Con pago parcial el vuelto se calcula contra lo que abona, no contra el
+  // total: si abona 1.570 y entrega 1.600, el cambio es 30.
   const rec = num(estado.recibido);
-  return Math.max(0, rec - total());
+  return Math.max(0, rec - montoAbono());
 }
 
 // Al crédito y contraentrega no entra plata ahora: el pedido queda pendiente.
@@ -511,7 +528,14 @@ function quedaPendiente() {
 function verboDeCobro() {
   if (estado.pago === 'credito') return 'Registrar al crédito';
   if (estado.pago === 'contraentrega') return 'Registrar contraentrega';
+  if (estado.parcial) return 'Registrar abono de';
   return 'Cobrar';
+}
+
+// Con pago parcial, el botón muestra lo que entra ahora, no el total: es lo que
+// la cajera tiene que recibir en la mano.
+function montoDelBoton() {
+  return estado.parcial ? montoAbono() : total();
 }
 
 // Todo lo que se arma para una venta. Se vacía apenas el pedido queda creado:
@@ -534,6 +558,8 @@ function limpiarArmado() {
   estado.preparado = true;
   estado.entregaTocada = false;
   estado.recibido = '';
+  estado.parcial = false;
+  estado.abono = '';
   estado.nota = '';
   estado.error = '';
   estado.resultados = [];
@@ -554,6 +580,9 @@ function nuevaVenta() {
 function sePuedeCobrar() {
   if (!estado.venta.length || !estado.pago || estado.cobrando) return false;
   if (estado.pago === 'transferencia' && !estado.banco) return false;
+  // Un abono tiene que ser algo y menos que el total: si cubre todo, no es
+  // abono, es el cobro normal.
+  if (estado.parcial && !(montoAbono() > 0 && montoAbono() < total())) return false;
   return true;
 }
 
@@ -644,6 +673,8 @@ async function cobrar() {
     comision: comision() > 0 ? { monto: comision() } : null,
     recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
     cambio: vuelto,
+    // Pago parcial: lo que entrega ahora. El pedido queda con el saldo real.
+    abono: estado.parcial ? montoAbono() : 0,
     // Si la clienta ya se lo lleva, el pedido sale preparado; un encargo queda
     // pendiente para que lo arme después quien lo prepara.
     preparar: !!estado.preparado,
@@ -1256,6 +1287,24 @@ function bloqueResumen() {
           aria-pressed="${estado.pago === v}">${svg(ic, 1.8)}<span>${t}</span></button>`).join('')}
       </div>
 
+      <!-- Pago parcial: la clienta encarga, transfiere una parte y paga el resto
+           al recoger. Sin esto, la venta se registraba como cobrada completa y
+           Shopify quedaba creyendo que entró más plata de la que entró. -->
+      ${estado.pago && !quedaPendiente() ? `
+        <label class="switch" style="margin-top:0.8rem">
+          <input type="checkbox" data-parcial ${estado.parcial ? 'checked' : ''} />
+          Abona una parte (queda debiendo)
+        </label>
+        ${estado.parcial ? `
+          <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
+            <label for="abono">¿Cuánto entrega ahora?</label>
+            <input id="abono" type="text" inputmode="decimal"
+                   value="${estado.abono}" data-abono placeholder="0.00" />
+          </div>
+          <div class="cambio cambio--debe"><span>Queda debiendo</span><b>${L(loQueQueda())}</b></div>
+        ` : ''}
+      ` : ''}
+
       ${estado.pago === 'efectivo' ? `
         <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
           <label for="recibido">Recibí</label>
@@ -1301,8 +1350,8 @@ function bloqueResumen() {
     <div class="cierre-cobro">
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
-        ${estado.cobrando ? (quedaPendiente() ? 'Registrando…' : 'Cobrando…')
-                          : verboDeCobro() + ' ' + L(total())}
+        ${estado.cobrando ? (quedaPendiente() || estado.parcial ? 'Registrando…' : 'Cobrando…')
+                          : verboDeCobro() + ' ' + L(montoDelBoton())}
       </button>
       <button class="btn btn--ancho btn--cotiza" data-accion="cotizar" type="button"
         ${(!estado.venta.length || estado.cobrando) ? 'disabled' : ''}>
@@ -1317,7 +1366,7 @@ function barraMovil() {
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${!sePuedeCobrar() ? 'disabled' : ''}>
-      ${estado.cobrando ? (quedaPendiente() ? 'Registrando…' : 'Cobrando…')
+      ${estado.cobrando ? (quedaPendiente() || estado.parcial ? 'Registrando…' : 'Cobrando…')
         : (!estado.pago ? 'Elegí la forma de pago'
         : (estado.pago === 'transferencia' && !estado.banco ? 'Elegí el banco'
         : verboDeCobro()))}
@@ -1329,11 +1378,15 @@ function vistaExito() {
   const r = estado.resultado;
   return `<div class="tarjeta exito">
     <div class="exito__check">${svg(IC.check, 2.6)}</div>
-    <h2>${r.ensayo ? 'Prueba lista' : (r.pagado ? 'Venta cobrada' : 'Venta registrada')}</h2>
+    <h2>${r.ensayo ? 'Prueba lista'
+      : r.pendiente > 0 ? 'Abono recibido'
+      : (r.pagado ? 'Venta cobrada' : 'Venta registrada')}</h2>
     <p class="pedido">${r.ensayo ? 'No se cobró nada · no quedó registrada' : 'Pedido ' + esc(r.name || '')}</p>
     <p class="monto">${L(r.total)}</p>
     ${r.cambio > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
-    ${!r.pagado ? `<div class="aviso-caja aviso-caja--amarilla">${
+    ${r.pendiente > 0 ? `<div class="aviso-caja aviso-caja--ojo">
+      Abonó ${L(r.abonado)} · queda debiendo <b>${L(r.pendiente)}</b>.</div>`
+    : !r.pagado ? `<div class="aviso-caja aviso-caja--amarilla">${
       r.pago === 'contraentrega' ? 'Queda pendiente: se cobra al entregar.'
                                  : 'Queda pendiente de pago (crédito).'}</div>` : ''}
     ${!r.ensayo && !r.preparado ? `<div class="aviso-caja aviso-caja--amarilla">
@@ -1819,7 +1872,7 @@ async function dibujarHoja(d, items, logo, o) {
   // Pedido corregido después de cobrar: hay que decir cuánto falta, si no la
   // clienta se queda con un recibo que parece pagado del todo.
   if (d.pendiente > 0) {
-    fila('Pagado', L(Math.max(0, (Number(d.total) || 0) - Number(d.pendiente))));
+    fila('Abonado', L(Math.max(0, (Number(d.total) || 0) - Number(d.pendiente))));
     fila('PENDIENTE', L(d.pendiente), true);
   }
 
@@ -2060,6 +2113,23 @@ $('caja-main').addEventListener('input', (e) => {
     estado.preparado = !!t.checked;
     estado.entregaTocada = true;    // ya lo decidió ella: no volver a adivinar
     pintar();
+    return;
+  }
+  if (t.dataset.parcial !== undefined) {
+    estado.parcial = !!t.checked;
+    if (!estado.parcial) estado.abono = '';
+    pintar();
+    if (estado.parcial) setTimeout(() => $('abono')?.focus(), 40);
+    return;
+  }
+  if (t.dataset.abono !== undefined) {
+    estado.abono = t.value;
+    // Como con el precio: repintar en cada tecla sacaría el foco del campo.
+    const debe = document.querySelector('.cambio--debe b');
+    if (debe) debe.textContent = L(loQueQueda());
+    const vuelto = document.querySelector('.cambio:not(.cambio--debe) b');
+    if (vuelto) vuelto.textContent = L(cambio());
+    actualizarTotales();
   }
 });
 

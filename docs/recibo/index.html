@@ -57,6 +57,8 @@
   .fila--total span { color: var(--tinta); font-weight: 700; font-size: 0.66rem;
                       letter-spacing: 0.16em; text-transform: uppercase; }
   .fila--total b { font-size: 1.5rem; color: var(--pink-dk); }
+  .fila--pend span { color: #9a4b00; font-weight: 700; }
+  .fila--pend b { color: #9a4b00; }
 
   .pie { text-align: center; padding: 1.2rem; border-top: 1px dashed var(--linea);
          color: var(--muted); font-size: 0.76rem; line-height: 1.5; }
@@ -176,6 +178,10 @@ function pintar(r) {
         <div class="fila fila--total"><span>Total</span><b>${L(r.total)}</b></div>
         ${r.recibido ? `<div class="fila"><span>Recibido</span><b>${L(r.recibido)}</b></div>` : ''}
         ${r.cambio ? `<div class="fila"><span>Cambio</span><b>${L(r.cambio)}</b></div>` : ''}
+        <!-- Pedido corregido despues de cobrar: queda un saldo y hay que decirlo. -->
+        ${r.pendiente > 0 ? `
+          <div class="fila"><span>Pagado</span><b>${L(Math.max(0, (Number(r.total) || 0) - Number(r.pendiente)))}</b></div>
+          <div class="fila fila--pend"><span>Pendiente</span><b>${L(r.pendiente)}</b></div>` : ''}
       </div>
     </div>
     <div class="pie">

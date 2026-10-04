@@ -1816,6 +1816,12 @@ async function dibujarHoja(d, items, logo, o) {
   if (o.conComision) fila('Comisión (5%)', L(d.comision.monto));
   fila('TOTAL', L(d.total), true);
   if (d.recibido) { fila('Recibido', L(d.recibido)); fila('Cambio', L(d.cambio || 0)); }
+  // Pedido corregido después de cobrar: hay que decir cuánto falta, si no la
+  // clienta se queda con un recibo que parece pagado del todo.
+  if (d.pendiente > 0) {
+    fila('Pagado', L(Math.max(0, (Number(d.total) || 0) - Number(d.pendiente))));
+    fila('PENDIENTE', L(d.pendiente), true);
+  }
 
   y += 6; linea(x, M, y, A - M); y += 26;
   x.textAlign = 'center';

@@ -1458,18 +1458,26 @@ async function verVentas() {
     b.disabled = true;
     const antes = b.innerHTML;
     b.innerHTML = '<span class="venta__txt"><span class="puntos">Armando el recibo</span></span>';
-    // Las de prueba y las cotizaciones ya traen su recibo; para las ventas de
-    // verdad se pide (y se arma, si son anteriores a que los recibos existieran).
+    // Para una venta de verdad se le pregunta siempre al servidor: ahí se arma el
+    // recibo si no existía y se pone al día si el pedido cambió después de
+    // cobrar (una clienta que cambia lo que lleva y la venta se corrige en
+    // Shopify). Las de prueba y las cotizaciones ya traen el suyo.
     let token = v.recibo;
+    let alDia = false;
     try {
-      if (!token) {
-        token = (await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/recibo`,
-                           { method: 'POST' })).recibo;
+      if (v.order_id) {
+        const r = await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/recibo`,
+                            { method: 'POST' });
+        token = r.recibo || token;
+        alDia = !!r.actualizado;
       }
     } catch (err) {
-      b.disabled = false; b.innerHTML = antes;
-      flash(err.message || 'No se pudo armar el recibo', 'mal');
-      return;
+      // Si ya había recibo, se sigue con ese: mejor el de antes que ninguno.
+      if (!token) {
+        b.disabled = false; b.innerHTML = antes;
+        flash(err.message || 'No se pudo armar el recibo', 'mal');
+        return;
+      }
     }
     // Las acciones del recibo pasan a ser de ESTA venta.
     ventaEnMano = { recibo: token, total: v.total, name: v.numero,
@@ -1477,6 +1485,7 @@ async function verVentas() {
                     cotizacion: esCot };
     cerrar();
     accionesDeRecibo(v, esCot && v.retomable ? v : null);
+    if (alDia) flash('El pedido había cambiado: el recibo quedó al día', 'ok');
   });
 
   mostrar('ventas');

@@ -1542,6 +1542,10 @@ async function submitCheckout(name, phone, email, checkout = null) {
     // Aylin los tenga aunque la clienta no llegue a mandar el mensaje de WhatsApp.
     envio: checkout?.deliveryLabel || null,
     pago:  checkout?.paymentLabel  || null,
+    // El MONTO del envío y de la comisión, no solo su nombre: sin esto el pedido
+    // en Shopify quedaba por menos de lo que la clienta paga.
+    envio_monto:    checkout?.shipping   || 0,
+    comision_monto: checkout?.commission || 0,
     line_items: cart.map(i => ({
       variant_id: i.variantId,
       quantity:   i.quantity,

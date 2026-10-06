@@ -650,7 +650,8 @@ async function cotizar() {
   const cuerpo = {
     items: estado.venta.filter((l) => !l.manual).map((l) => ({
       variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio,
-      nombre: l.nombre, imagen: l.imagen || '',
+      // La talla va aparte: el recibo la muestra debajo del nombre.
+      nombre: l.nombre, variante: l.variante || '', imagen: l.imagen || '',
     })),
     personalizados: estado.venta.filter((l) => l.manual).map((l) => ({
       titulo: l.nombre, precio: l.precio, cantidad: l.cantidad,
@@ -699,7 +700,8 @@ async function cobrar() {
     // El nombre viaja solo para el recibo: el backend arma el pedido con el id.
     items: estado.venta.filter((l) => !l.manual).map((l) => ({
       variant_id: l.variant_id, cantidad: l.cantidad, precio: l.precio,
-      nombre: l.nombre, imagen: l.imagen || '',
+      // La talla va aparte: el recibo la muestra debajo del nombre.
+      nombre: l.nombre, variante: l.variante || '', imagen: l.imagen || '',
     })),
     personalizados: estado.venta.filter((l) => l.manual).map((l) => ({
       titulo: l.nombre, precio: l.precio, cantidad: l.cantidad,
@@ -1929,7 +1931,10 @@ async function dibujarHoja(d, items, logo, o) {
     x.fillText(L(it.importe), A - M, y);
     x.textAlign = 'left';
     x.fillStyle = '#8a6f7c'; x.font = '500 11px Montserrat, sans-serif';
-    x.fillText(`${it.cantidad} × ${L(it.precio)}`, tx, y + it.lineas.length * 16 + 2);
+    // La talla va con el "1 × L. 500" y no en renglon propio: asi no cambia el
+    // alto de la linea, que es lo que decide donde se parte la hoja.
+    const detalle = (it.variante ? it.variante + ' · ' : '') + `${it.cantidad} × ${L(it.precio)}`;
+    x.fillText(detalle, tx, y + it.lineas.length * 16 + 2);
     y += it.alto;
   }
 

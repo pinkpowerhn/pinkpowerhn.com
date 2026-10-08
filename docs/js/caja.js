@@ -265,7 +265,7 @@ async function cargarCatalogo(intento = 1, forzar = false) {
       return cargarCatalogo(intento + 1, forzar);
     }
     estado.errorCatalogo = err.message === 'Failed to fetch'
-      ? 'No se pudo conectar. Revisá la señal y tocá Reintentar.'
+      ? 'No se pudo conectar. Revise la señal y toque Reintentar.'
       : (err.message || 'No se pudo cargar el catálogo');
   } finally {
     estado.cargandoCatalogo = false;
@@ -554,6 +554,17 @@ function quedaPendiente() {
   return estado.pago === 'credito' || estado.pago === 'contraentrega';
 }
 
+// Lo que falta para poder cobrar. Antes esto se escribia DENTRO del boton
+// ("Elegi el banco") y la mama de la duena creia que ese era el boton para
+// elegir el banco: ahora el boton siempre dice lo que hace y el faltante va
+// como un aviso aparte, encima.
+function faltaParaCobrar() {
+  if (!estado.venta.length) return '';
+  if (!estado.pago) return 'Falta elegir la forma de pago';
+  if (estado.pago === 'transferencia' && !estado.banco) return 'Falta elegir el banco';
+  return '';
+}
+
 function verboDeCobro() {
   if (estado.pago === 'credito') return 'Registrar al crédito';
   if (estado.pago === 'contraentrega') return 'Registrar contraentrega';
@@ -752,9 +763,9 @@ async function cobrar() {
     if (err.status === 409 && err.detalle && err.detalle.agotados) {
       const lista = err.detalle.agotados
         .map((a) => `${a.title} (quedan ${a.disponible})`).join(', ');
-      estado.error = 'Se agotaron: ' + lista + '. Corregí la venta e intentá de nuevo.';
+      estado.error = 'Se agotaron: ' + lista + '. Corrija la venta e intente de nuevo.';
     } else if (err.status === 409 && !(err.detalle && err.detalle.agotados)) {
-      estado.error = 'Ese cobro ya se está procesando. Esperá unos segundos y '
+      estado.error = 'Ese cobro ya se está procesando. Espere unos segundos y '
         + 'fijate en Shopify antes de volver a intentar.';
     } else if (err.message === 'Failed to fetch') {
       estado.error = 'Sin conexión: no se pudo cobrar. La venta sigue armada, intentá de nuevo.';
@@ -1021,7 +1032,7 @@ function bloqueBuscador(valor) {
     <div class="buscador">
       <div class="campo-ic">
         ${svg(IC.lupa, 1.9)}
-        <input id="q" value="${esc(valor)}" placeholder="Escaneá o buscá el producto…"
+        <input id="q" value="${esc(valor)}" placeholder="Escanee o busque el producto…"
                autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
         <!-- El punto verde avisa que el lector puede disparar acá. Comparte
              esquina con la X, en una fila, para que nunca se pisen. -->
@@ -1045,7 +1056,7 @@ function bloqueResultados() {
   const sobran = total - estado.resultados.length;
   const pie = `<div class="resultados__pie">${
     sobran > 0 ? `${total} productos · se ven los primeros ${estado.resultados.length}, `
-                 + 'escribí un poco más para afinar'
+                 + 'escriba un poco más para afinar'
     : estado.buscadoEnShopify ? `${total} en Shopify (no estaban en el catálogo de la caja)`
     : `${total} producto${total !== 1 ? 's' : ''}`}</div>`;
   // Lo que ya va en la venta, para que la lista pueda quedarse abierta sin que
@@ -1076,9 +1087,9 @@ function bloqueLineas() {
       ${estado.hayCamara ? `
         <button class="vacio-caja__ic vacio-caja__ic--boton" data-accion="camara" type="button">
           ${svg(IC.codigo, 1.6)}</button>
-        <h3>Escaneá el primer producto</h3>
-        <p>Tocá el código de barras para abrir la cámara,<br />
-           pasá el lector, o escribí el nombre en el buscador.</p>
+        <h3>Escanee el primer producto</h3>
+        <p>Toque el código de barras para abrir la cámara,<br />
+           pase el lector, o escriba el nombre en el buscador.</p>
         <button class="btn btn--pink vacio-caja__accion" data-accion="camara"
           type="button">${svg(IC.codigo, 1.8)} Escanear con la cámara</button>
         <button class="li-manual vacio-caja__manual" data-accion="manual" type="button">
@@ -1086,7 +1097,7 @@ function bloqueLineas() {
       ` : `
         <div class="vacio-caja__ic">${svg(IC.codigo, 1.6)}</div>
         <h3>Todavía no hay productos</h3>
-        <p>Pasá el lector por el código de barras<br />o escribí el nombre en el buscador.</p>
+        <p>Pase el lector por el código de barras<br />o escriba el nombre en el buscador.</p>
       `}
     </div>`;
   }
@@ -1380,7 +1391,7 @@ function bloqueResumen() {
               <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
                 <label for="banco2">¿A qué banco?</label>
                 <select id="banco2" data-banco2 class="pp-select__btn" style="width:100%">
-                  <option value="">Elegí el banco</option>
+                  <option value="">Elija el banco</option>
                   ${BANCOS.map((b) => `<option value="${esc(b)}" ${
                     estado.banco2 === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}
                 </select>
@@ -1414,7 +1425,7 @@ function bloqueResumen() {
           <div class="pp-select">
             <button class="pp-select__btn" type="button" data-select="banco"
                     aria-haspopup="listbox" aria-expanded="${estado.bancoAbierto}">
-              <span class="pp-select__lb">${estado.banco || 'Elegí el banco'}</span>
+              <span class="pp-select__lb">${estado.banco || 'Elija el banco'}</span>
               <svg class="pp-select__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -1443,6 +1454,7 @@ function bloqueResumen() {
     <!-- Fuera del cuerpo: ahi adentro, pegado abajo, tapaba el selector de banco
          y el campo "Recibí" justo cuando la cajera acababa de activarlos. -->
     <div class="cierre-cobro">
+      ${faltaParaCobrar() ? `<div class="barra__falta solo-escritorio">${faltaParaCobrar()}</div>` : ''}
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
         ${estado.cobrando ? (quedaPendiente() || estado.parcial || estado.mixto ? 'Registrando…' : 'Cobrando…')
@@ -1457,14 +1469,14 @@ function bloqueResumen() {
 }
 
 function barraMovil() {
+  const falta = faltaParaCobrar();
   return `<div class="barra">
+    ${falta ? `<div class="barra__falta">${falta}</div>` : ''}
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${!sePuedeCobrar() ? 'disabled' : ''}>
       ${estado.cobrando ? (quedaPendiente() || estado.parcial || estado.mixto ? 'Registrando…' : 'Cobrando…')
-        : (!estado.pago ? 'Elegí la forma de pago'
-        : (estado.pago === 'transferencia' && !estado.banco ? 'Elegí el banco'
-        : verboDeCobro()))}
+        : verboDeCobro() + ((estado.parcial || estado.mixto) ? ' ' + L(montoDelBoton()) : '')}
     </button>
   </div>`;
 }
@@ -1495,9 +1507,9 @@ function vistaExito() {
         <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
           ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
             ? 'Mandar el recibo por WhatsApp' : 'Bajar la imagen del recibo'}</button>
-        ${r.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto" type="button">
+        ${r.telefono ? `<button class="btn btn--ancho btn--wa-suave" data-accion="guardar-contacto" type="button">
           Guardar el contacto de la clienta</button>
-          <p class="recibo-nota">Si todavía no la tenés en la agenda, guardala primero:
+          <p class="recibo-nota">Si todavía no la tiene en la agenda, guárdela primero:
           WhatsApp solo deja mandar fotos a los contactos guardados.</p>` : ''}
         <div class="recibo-acciones__fila">
           <button class="btn" data-accion="recibo-ver" type="button">Ver el recibo</button>
@@ -1699,9 +1711,9 @@ function accionesDeRecibo(v, cotizacion = null) {
           <button class="btn btn--wa btn--ancho" data-accion="recibo-img" type="button">
             ${svg(IC.whatsapp, 0)} ${sePuedeCompartirArchivo()
               ? `Mandar ${QUE} por WhatsApp` : `Bajar la imagen de ${QUE}`}</button>
-          ${v.telefono ? `<button class="btn btn--ancho" data-accion="guardar-contacto"
+          ${v.telefono ? `<button class="btn btn--ancho btn--wa-suave" data-accion="guardar-contacto"
             type="button">Guardar el contacto de la clienta</button>
-            <p class="recibo-nota">Si todavía no la tenés en la agenda, guardala primero:
+            <p class="recibo-nota">Si todavía no la tiene en la agenda, guárdela primero:
             WhatsApp solo deja mandar fotos a los contactos guardados.</p>` : ''}
           <div class="recibo-acciones__fila">
             <button class="btn" data-accion="recibo-ver" type="button">Ver ${QUE}</button>
@@ -2135,7 +2147,7 @@ function guardarContacto() {
     a.href = url; a.download = archivo.name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    flash('Abrí el archivo para guardar el contacto', 'ok');
+    flash('Abra el archivo para guardar el contacto', 'ok');
   };
   if (sePuedeCompartirArchivo()) {
     navigator.share({ files: [archivo] }).catch((err) => {

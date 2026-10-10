@@ -665,6 +665,22 @@
           <div id="rep-desglose"></div>
         </div>
 
+        <!-- Lo vendido menos lo que costó el producto. El costo sale del campo
+             "costo por artículo" de Shopify, así que mientras falten productos
+             por llenar, el cálculo va incompleto y se dice cuánto cubre. -->
+        <div class="card rep-card" id="rep-ganancia-card">
+          <div class="rep-card__cab">
+            <h2>Ganancia bruta</h2>
+            <span class="rep-card__sub">lo vendido menos lo que le costó el producto</span>
+          </div>
+          <div id="rep-ganancia"></div>
+          <div class="rep-sub" id="rep-sincosto-caja" hidden>
+            <h3>Les falta ponerles el costo en Shopify</h3>
+            <p class="rep-nota" id="rep-sincosto-nota"></p>
+            <div id="rep-sincosto"></div>
+          </div>
+        </div>
+
         <!-- En qué se fue la plata del mismo período -->
         <div class="card rep-card" id="rep-gastos-card">
           <div class="rep-card__cab">
@@ -1432,6 +1448,10 @@ function repPintar(r) {
   // 1. Los números del período
   const kpis = [
     { lb: 'Vendido', nm: L(r.vendido), pie: `solo producto · en ${N(r.pedidos)} pedidos`, rosa: true },
+    { lb: 'Ganancia bruta', nm: r.cobertura ? L(r.ganancia) : '—',
+      pie: r.cobertura
+        ? `margen ${N(r.margen)}% · sobre el ${N(r.cobertura)}% que tiene costo`
+        : 'falta ponerle costo a los productos' },
     { lb: 'Gastado', nm: L(r.gastos || 0),
       pie: r.gastos_cuantos ? `en ${N(r.gastos_cuantos)} gasto${r.gastos_cuantos === 1 ? '' : 's'}`
                             : 'sin gastos anotados' },
@@ -1461,12 +1481,40 @@ function repPintar(r) {
       <span class="desglose__vl">${L(x.valor)}</span>
     </div>`).join('');
 
-  // 3. En qué se gastó
+  // 3. La ganancia bruta, y a cuáles les falta el costo
+  const ganancia = [
+    { nombre: 'Vendido de lo que sí tiene costo', valor: r.vendido_con_costo || 0 },
+    { nombre: 'Lo que le costó esa mercadería', valor: r.costo || 0, signo: '−' },
+    { nombre: `Ganancia bruta · margen ${N(r.margen || 0)}%`, valor: r.ganancia || 0,
+      signo: '=', fuerte: true },
+  ];
+  $('rep-ganancia').innerHTML = ganancia.map((x) => `
+    <div class="desglose__f${x.fuerte ? ' desglose__f--total' : ''}">
+      <span class="desglose__sg">${x.signo || ''}</span>
+      <span class="desglose__nm">${x.nombre}</span>
+      <span class="desglose__vl">${L(x.valor)}</span>
+    </div>`).join('');
+
+  const faltan = r.sin_costo || [];
+  $('rep-sincosto-caja').hidden = !faltan.length;
+  if (faltan.length) {
+    $('rep-sincosto-nota').textContent =
+      `La cuenta de arriba toma el ${N(r.cobertura || 0)}% de lo vendido. `
+      + `Los otros ${L(r.vendido_sin_costo || 0)} son ${N(faltan.length)} producto`
+      + `${faltan.length === 1 ? '' : 's'} sin costo en Shopify`
+      + (faltan.length > 10 ? '; estos son los que más pesan:' : ':');
+    repLista('rep-sincosto', faltan.slice(0, 10).map((x) => ({
+      nombre: x.producto + (x.variante ? ' · ' + x.variante : ''),
+      extra: N(x.unidades) + (x.unidades === 1 ? ' vendido' : ' vendidos'),
+      valor: x.monto })));
+  }
+
+  // 4. En qué se gastó
   repLista('rep-gastos', (r.gastos_por_categoria || []).map((x) => ({
     nombre: x.nombre, extra: x.cuantos + (x.cuantos === 1 ? ' gasto' : ' gastos'),
     valor: x.monto })));
 
-  // 4. Día a día
+  // 5. Día a día
   const dias = r.por_dia || [];
   const mejor = dias.reduce((a, d) => (d.monto > (a ? a.monto : 0) ? d : a), null);
   $('rep-dias-sub').textContent = mejor
@@ -1490,11 +1538,11 @@ function repPintar(r) {
                } } },
   });
 
-  // 5. De dónde viene la venta
+  // 6. De dónde viene la venta
   repDona('rep-g-canal', r.por_canal || []);
   repDona('rep-g-tipo', r.por_tipo || []);
 
-  // 6. Qué se vende: barras horizontales, que los nombres son largos
+  // 7. Qué se vende: barras horizontales, que los nombres son largos
   const top = (r.top_productos || []).slice(0, 12);
   repGrafica('rep-g-productos', {
     ...GRAFICA_BASE,
@@ -1513,7 +1561,7 @@ function repPintar(r) {
                } } },
   });
 
-  // 7. Cómo pagan
+  // 8. Cómo pagan
   const pagos = (r.por_pago || []).slice(0, 8);
   repGrafica('rep-g-pago', {
     ...GRAFICA_BASE,

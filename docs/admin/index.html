@@ -1392,6 +1392,10 @@ function repLista(id, filas, opciones = {}) {
 }
 
 function repDona(id, filas, vacio) {
+  // El porcentaje va junto al monto: se pidió ver cuánto pesa cada pedazo sin
+  // tener que sacar la cuenta.
+  const total = filas.reduce((a, x) => a + (Number(x.monto) || 0), 0) || 1;
+  const pct = (v) => N(Math.round((Number(v) || 0) / total * 1000) / 10) + '%';
   repGrafica(id, {
     ...GRAFICA_BASE,
     noData: { ...GRAFICA_BASE.noData, text: vacio || GRAFICA_BASE.noData.text },
@@ -1399,7 +1403,16 @@ function repDona(id, filas, vacio) {
     series: filas.map((x) => x.monto),
     labels: filas.map((x) => x.nombre),
     colors: ROSA,
-    legend: { position: 'bottom', fontSize: '12px', markers: { radius: 4 } },
+    // Los pedazos muy chiquitos se quedan sin número: no cabe y se encima con
+    // el de al lado. Ese dato igual sale en la leyenda y al pasar encima.
+    dataLabels: {
+      enabled: true,
+      formatter: (p) => (p >= 6 ? Math.round(p) + '%' : ''),
+      style: { fontSize: '12.5px', fontWeight: 700, fontFamily: 'inherit', colors: ['#fff'] },
+      dropShadow: { enabled: true, top: 0, left: 0, blur: 2, opacity: 0.25 },
+    },
+    legend: { position: 'bottom', fontSize: '12px', markers: { radius: 4 },
+              formatter: (nombre, o) => `${nombre} · ${pct(o.w.globals.series[o.seriesIndex])}` },
     stroke: { width: 2, colors: ['#fff'] },
     plotOptions: {
       pie: { donut: { size: '62%', labels: {
@@ -1409,7 +1422,7 @@ function repDona(id, filas, vacio) {
                  formatter: (w) => Lc(w.globals.seriesTotals.reduce((a, b) => a + b, 0)) },
       } } },
     },
-    tooltip: { ...GRAFICA_BASE.tooltip, y: { formatter: (v) => L(v) } },
+    tooltip: { ...GRAFICA_BASE.tooltip, y: { formatter: (v) => `${L(v)} · ${pct(v)}` } },
   });
 }
 

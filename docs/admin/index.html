@@ -264,6 +264,66 @@
   .tab-panel.is-active { display: block; animation: tabIn 0.22s ease; }
   @keyframes tabIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+  /* ── Reportes ──
+     El rango arriba (atajos + fechas), los numeros gruesos en tarjetas, y
+     debajo las tablas. Todo entra en el ancho del telefono. */
+  .rango { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: flex-end; }
+  .rango__rapidos { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .chip {
+    background: #fdeef5; border: 1px solid transparent; color: var(--pink-dk);
+    font-family: inherit; font-weight: 600; font-size: 0.78rem; cursor: pointer;
+    padding: 0.45rem 0.85rem; border-radius: 999px; transition: all 0.15s ease;
+  }
+  .chip:hover { background: #fbdcea; }
+  .chip.is-active { background: var(--pink); color: #fff; }
+  .rango__fechas { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+  .rango__fechas label { font-size: 0.72rem; color: var(--muted); font-weight: 600;
+                         display: flex; flex-direction: column; gap: 0.25rem; letter-spacing: 0.04em;
+                         text-transform: uppercase; }
+  .rango__fechas input { margin: 0; }
+  .rango__nota { margin: 0.9rem 0 0; font-size: 0.8rem; color: var(--muted); }
+  .rango__nota.is-error { color: #c0392b; }
+
+  .kpis { display: grid; gap: 0.8rem; margin-bottom: 1.1rem;
+          grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+  .kpi { background: #fff; border-radius: 16px; padding: 1rem 1.1rem;
+         box-shadow: 0 10px 26px -20px rgba(150,30,80,0.45); }
+  .kpi__lb { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+             color: var(--muted); font-weight: 700; }
+  .kpi__nm { font-size: 1.45rem; font-weight: 700; color: var(--ink); margin-top: 0.3rem;
+             line-height: 1.15; }
+  .kpi__pie { font-size: 0.74rem; color: var(--muted); margin-top: 0.2rem; }
+  .kpi--rosa .kpi__nm { color: var(--pink-dk); }
+
+  .rep-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+  /* Tabla llana: nombre a la izquierda, numero a la derecha y una barrita de
+     fondo que muestra el peso de cada fila sin necesidad de un grafico. */
+  .lista { display: flex; flex-direction: column; }
+  .lista__f { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem;
+              border-radius: 8px; position: relative; font-size: 0.84rem; }
+  .lista__f + .lista__f { border-top: 1px solid #f7e7ef; }
+  .lista__barra { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px;
+                  background: #fdeef5; z-index: 0; }
+  .lista__nm, .lista__vl, .lista__ex { position: relative; z-index: 1; }
+  .lista__nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lista__ex { color: var(--muted); font-size: 0.76rem; white-space: nowrap; }
+  .lista__vl { font-weight: 700; white-space: nowrap; }
+  .lista__vacia { color: var(--muted); font-size: 0.82rem; padding: 0.4rem 0; }
+
+  /* Las barras por dia: se desplazan si el mes es largo. */
+  .barras { display: flex; align-items: flex-end; gap: 3px; height: 130px;
+            overflow-x: auto; padding-bottom: 0.3rem; }
+  /* Con pocos dias no se estiran hasta volverse bloques. */
+  .barra { flex: 1 1 14px; max-width: 46px; background: linear-gradient(180deg, #f39ec0, var(--pink));
+           border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
+  .barra:hover { filter: brightness(1.07); }
+  .barra__t { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+              background: var(--ink); color: #fff; font-size: 0.68rem; padding: 0.2rem 0.4rem;
+              border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none;
+              transition: opacity 0.12s ease; }
+  .barra:hover .barra__t { opacity: 1; }
+
   /* ── Buscador de mayoristas ── */
   .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
   .search__ic { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9rem; pointer-events: none; }
@@ -395,6 +455,15 @@
         </svg>
         Catálogos
       </button>
+      <button class="tab" data-tab="reportes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        Reportes
+      </button>
       <button class="tab" data-tab="general">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -450,6 +519,59 @@
               </div>
               <button class="btn" id="dias-save">Guardar</button>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Reportes (ventas del periodo + descarga en Excel) -->
+    <section class="tab-panel" data-tab="reportes">
+      <div class="card">
+        <div class="rango">
+          <div class="rango__rapidos" id="rep-rapidos">
+            <button class="chip" data-rango="este-mes">Este mes</button>
+            <button class="chip" data-rango="mes-pasado">Mes pasado</button>
+            <button class="chip" data-rango="30">Últimos 30 días</button>
+            <button class="chip" data-rango="este-ano">Este año</button>
+          </div>
+          <div class="rango__fechas">
+            <label>Desde <input type="date" id="rep-desde" /></label>
+            <label>Hasta <input type="date" id="rep-hasta" /></label>
+            <button class="btn btn--primary" id="rep-ver">Ver</button>
+            <button class="btn" id="rep-excel">Descargar Excel</button>
+          </div>
+        </div>
+        <p class="rango__nota" id="rep-estado"></p>
+      </div>
+
+      <div id="rep-contenido" class="hidden">
+        <div class="kpis" id="rep-kpis"></div>
+
+        <div class="card">
+          <h2>Cuánto se vendió cada día</h2>
+          <div class="barras" id="rep-dias"></div>
+        </div>
+
+        <div class="rep-grid">
+          <div class="card">
+            <h2>Productos más vendidos</h2>
+            <div id="rep-productos"></div>
+          </div>
+          <div class="card">
+            <h2>Por dónde se vendió</h2>
+            <div id="rep-canal"></div>
+            <h2 style="margin-top:1.4rem">Mayoreo o detalle</h2>
+            <div id="rep-tipo"></div>
+          </div>
+          <div class="card">
+            <h2>Forma de pago</h2>
+            <div id="rep-pago"></div>
+            <h2 style="margin-top:1.4rem">Banco de las transferencias</h2>
+            <div id="rep-banco"></div>
+          </div>
+          <div class="card">
+            <h2>Quiénes compraron más</h2>
+            <div id="rep-clientas"></div>
           </div>
         </div>
       </div>
@@ -652,6 +774,9 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
 function setTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.tab === name));
+  // Los reportes se piden al abrirlos, no al entrar al panel: leer un mes
+  // entero de Shopify tarda unos segundos y no siempre se van a mirar.
+  if (name === 'reportes' && !repDatos) repCargar();
 }
 
 // ── Datos ──
@@ -993,6 +1118,158 @@ document.querySelectorAll('.pwd-eye').forEach(btn => {
 });
 
 // ── Init ──
+
+// ── Reportes de ventas ──
+// La dueña los pidió para cuadrar el mes: en pantalla los números gruesos y los
+// más vendidos, y en Excel el detalle para filtrar a su gusto. Se piden al
+// abrir la pestaña y no antes: leer un mes entero de Shopify tarda.
+const L = (n) => 'L. ' + Number(n || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const N = (n) => Number(n || 0).toLocaleString('es-HN');
+
+let repDatos = null;
+let repCargando = false;
+
+function repFecha(d) { return d.toISOString().slice(0, 10); }
+
+function repRango(cual) {
+  const hoy = new Date();
+  const y = hoy.getFullYear(), m = hoy.getMonth();
+  if (cual === 'este-mes') return [new Date(y, m, 1), hoy];
+  if (cual === 'mes-pasado') return [new Date(y, m - 1, 1), new Date(y, m, 0)];
+  if (cual === 'este-ano') return [new Date(y, 0, 1), hoy];
+  const atras = new Date(hoy); atras.setDate(atras.getDate() - 29);
+  return [atras, hoy];
+}
+
+function repPonerRango(cual) {
+  const [a, b] = repRango(cual);
+  $('rep-desde').value = repFecha(a);
+  $('rep-hasta').value = repFecha(b);
+  document.querySelectorAll('#rep-rapidos .chip')
+    .forEach((c) => c.classList.toggle('is-active', c.dataset.rango === cual));
+}
+
+// Una lista con barrita de fondo: el ancho muestra el peso de cada fila.
+function repLista(id, filas, opciones = {}) {
+  const caja = $(id);
+  if (!filas || !filas.length) {
+    caja.innerHTML = '<p class="lista__vacia">Nada en este período.</p>';
+    return;
+  }
+  const mayor = Math.max(...filas.map((f) => Math.abs(f.valor))) || 1;
+  caja.className = 'lista';
+  caja.innerHTML = filas.map((f) => `
+    <div class="lista__f">
+      <div class="lista__barra" style="width:${Math.max(2, (Math.abs(f.valor) / mayor) * 100)}%"></div>
+      <span class="lista__nm" title="${esc(f.nombre)}">${esc(f.nombre)}</span>
+      ${f.extra ? `<span class="lista__ex">${esc(f.extra)}</span>` : ''}
+      <span class="lista__vl">${opciones.crudo ? N(f.valor) : L(f.valor)}</span>
+    </div>`).join('');
+}
+
+function repPintar(r) {
+  $('rep-contenido').classList.remove('hidden');
+
+  const kpis = [
+    { lb: 'Vendido', nm: L(r.vendido), pie: `${N(r.pedidos)} pedidos`, rosa: true },
+    { lb: 'Venta promedio', nm: L(r.promedio), pie: 'por pedido' },
+    { lb: 'Productos vendidos', nm: N(r.unidades), pie: 'unidades' },
+    { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
+    { lb: 'Cobrado por envíos', nm: L(r.envios) },
+    { lb: 'Descuentos dados', nm: L(r.descuentos), pie: 'sobre todo de mayoreo' },
+  ];
+  if (r.cancelados) kpis.push({ lb: 'Cancelados', nm: N(r.cancelados), pie: 'no suman al total' });
+  $('rep-kpis').innerHTML = kpis.map((k) => `
+    <div class="kpi ${k.rosa ? 'kpi--rosa' : ''}">
+      <div class="kpi__lb">${k.lb}</div>
+      <div class="kpi__nm">${k.nm}</div>
+      ${k.pie ? `<div class="kpi__pie">${k.pie}</div>` : ''}
+    </div>`).join('');
+
+  const dias = r.por_dia || [];
+  const tope = Math.max(...dias.map((d) => d.monto), 1);
+  $('rep-dias').innerHTML = dias.length ? dias.map((d) => {
+    const [, mes, dia] = d.dia.split('-');
+    return `<div class="barra" style="height:${Math.max(2, (d.monto / tope) * 100)}%">
+      <span class="barra__t">${dia}/${mes} · ${L(d.monto)} · ${d.cuantos} pedido${d.cuantos === 1 ? '' : 's'}</span>
+    </div>`;
+  }).join('') : '<p class="lista__vacia">Sin ventas en este período.</p>';
+
+  repLista('rep-productos', (r.top_productos || []).map((p) => ({
+    nombre: p.producto + (p.variante ? ' · ' + p.variante : ''),
+    extra: p.unidades + 'u', valor: p.monto })));
+  repLista('rep-canal', (r.por_canal || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+  repLista('rep-tipo', (r.por_tipo || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+  repLista('rep-pago', (r.por_pago || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+  repLista('rep-banco', (r.por_banco || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+  repLista('rep-clientas', (r.top_clientas || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+}
+
+function repEstado(texto, error) {
+  const p = $('rep-estado');
+  p.textContent = texto;
+  p.classList.toggle('is-error', !!error);
+}
+
+async function repCargar() {
+  if (repCargando) return;
+  const desde = $('rep-desde').value, hasta = $('rep-hasta').value;
+  if (!desde || !hasta) { repEstado('Elija las dos fechas.', true); return; }
+  repCargando = true;
+  repEstado('Leyendo las ventas de Shopify…');
+  try {
+    const r = await api(`/admin/reportes?desde=${desde}&hasta=${hasta}`);
+    repDatos = r;
+    repPintar(r);
+    repEstado(`${N(r.pedidos)} pedidos entre el ${desde.split('-').reverse().join('/')} y el ${hasta.split('-').reverse().join('/')}.`);
+  } catch (ex) {
+    repEstado(ex.message, true);
+  } finally {
+    repCargando = false;
+  }
+}
+
+// La descarga va por fetch y no por un enlace: el archivo pide la contraseña en
+// la cabecera, y un <a href> no la lleva.
+async function repExcel() {
+  const desde = $('rep-desde').value, hasta = $('rep-hasta').value;
+  if (!desde || !hasta) { repEstado('Elija las dos fechas.', true); return; }
+  const boton = $('rep-excel');
+  const antes = boton.textContent;
+  boton.disabled = true; boton.textContent = 'Armando el archivo…';
+  try {
+    const res = await fetch(`${API}/admin/reportes/excel?desde=${desde}&hasta=${hasta}`,
+                            { headers: { 'Authorization': 'Bearer ' + token } });
+    if (res.status === 401) { logout(); return; }
+    if (!res.ok) throw new Error('No se pudo armar el reporte');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Ventas Pink Power ${desde} a ${hasta}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    repEstado('Archivo descargado.');
+  } catch (ex) {
+    repEstado(ex.message, true);
+  } finally {
+    boton.disabled = false; boton.textContent = antes;
+  }
+}
+
+document.querySelectorAll('#rep-rapidos .chip').forEach((c) =>
+  c.addEventListener('click', () => { repPonerRango(c.dataset.rango); repCargar(); }));
+['rep-desde', 'rep-hasta'].forEach((id) => $(id).addEventListener('change', () =>
+  document.querySelectorAll('#rep-rapidos .chip').forEach((c) => c.classList.remove('is-active'))));
+$('rep-ver').addEventListener('click', repCargar);
+$('rep-excel').addEventListener('click', repExcel);
+repPonerRango('este-mes');
+
 pintarCuenta();
 if (token) { show('panel'); loadAll(); } else { show('login'); }
 </script>

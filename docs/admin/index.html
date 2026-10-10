@@ -10,7 +10,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="/css/ui-tabla.css" />
+<link rel="stylesheet" href="/css/ui-rango.css" />
 <script src="/js/ui-tabla.js" defer></script>
+<script src="/js/ui-rango.js" defer></script>
+<!-- Las gráficas de los reportes. Se carga diferida: el panel abre en
+     Mayoristas y la mayoría de las veces ni se usa. -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js" defer></script>
 <style>
   :root { --pink:#e8437a; --pink-dk:#c01f6b; --ink:#3a1424; --muted:#9a7385; }
   * { box-sizing: border-box; }
@@ -265,64 +270,77 @@
   @keyframes tabIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
   /* ── Reportes ──
-     El rango arriba (atajos + fechas), los numeros gruesos en tarjetas, y
-     debajo las tablas. Todo entra en el ancho del telefono. */
-  .rango { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: flex-end; }
-  .rango__rapidos { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-  .chip {
-    background: #fdeef5; border: 1px solid transparent; color: var(--pink-dk);
-    font-family: inherit; font-weight: 600; font-size: 0.78rem; cursor: pointer;
-    padding: 0.45rem 0.85rem; border-radius: 999px; transition: all 0.15s ease;
+     Cada bloque en su tarjeta, con aire entre ellas: pegadas no se distinguia
+     donde terminaba un dato y empezaba otro. */
+  .rep-barra { position: sticky; top: 0.6rem; z-index: 12; }
+  .rep-barra__pie {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.8rem 1rem; flex-wrap: wrap; margin-top: 1rem;
+    padding-top: 0.9rem; border-top: 1px solid #f7e7ef;
   }
-  .chip:hover { background: #fbdcea; }
-  .chip.is-active { background: var(--pink); color: #fff; }
-  .rango__fechas { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
-  .rango__fechas label { font-size: 0.72rem; color: var(--muted); font-weight: 600;
-                         display: flex; flex-direction: column; gap: 0.25rem; letter-spacing: 0.04em;
-                         text-transform: uppercase; }
-  .rango__fechas input { margin: 0; }
-  .rango__nota { margin: 0.9rem 0 0; font-size: 0.8rem; color: var(--muted); }
-  .rango__nota.is-error { color: #c0392b; }
+  .rep-estado { margin: 0; font-size: 0.8rem; color: var(--muted); }
+  .rep-estado.is-error { color: #c0392b; }
+  .rep-bajar { display: flex; gap: 0.5rem; }
+  .rep-bajar .btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.55rem 1rem; font-size: 0.82rem;
+  }
+  .rep-bajar svg { width: 15px; height: 15px; }
 
-  .kpis { display: grid; gap: 0.8rem; margin-bottom: 1.1rem;
-          grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
-  .kpi { background: #fff; border-radius: 16px; padding: 1rem 1.1rem;
-         box-shadow: 0 10px 26px -20px rgba(150,30,80,0.45); }
-  .kpi__lb { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
-             color: var(--muted); font-weight: 700; }
-  .kpi__nm { font-size: 1.45rem; font-weight: 700; color: var(--ink); margin-top: 0.3rem;
-             line-height: 1.15; }
-  .kpi__pie { font-size: 0.74rem; color: var(--muted); margin-top: 0.2rem; }
-  .kpi--rosa .kpi__nm { color: var(--pink-dk); }
+  /* Entre tarjetas siempre el mismo aire, venga de donde venga. */
+  #rep-contenido > * + * { margin-top: 1.1rem; }
+  .rep-fila { display: grid; gap: 1.1rem; }
+  .rep-fila--2 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .rep-card__cab {
+    display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+    margin-bottom: 1.1rem;
+  }
+  .rep-card__cab h2 { margin: 0; }
+  .rep-card__sub { font-size: 0.76rem; color: var(--muted); }
+  .rep-sub { margin-top: 1.3rem; padding-top: 1.1rem; border-top: 1px solid #f7e7ef; }
+  .rep-sub h3 {
+    margin: 0 0 0.7rem; font-size: 0.78rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .rep-nota { margin: 1rem 0 0; font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
+  .rep-grafica { min-height: 60px; }
 
-  .rep-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  /* Los numeros grandes del periodo */
+  .kpis { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .kpi {
+    background: #fff; border-radius: 18px; padding: 1.15rem 1.25rem;
+    box-shadow: 0 12px 30px -24px rgba(150,30,80,0.5);
+    border: 1px solid rgba(232,67,122,0.07);
+  }
+  .kpi__lb {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--muted); font-weight: 700;
+  }
+  .kpi__nm { font-size: 1.5rem; font-weight: 700; color: var(--ink); margin-top: 0.35rem; line-height: 1.1; }
+  .kpi__pie { font-size: 0.73rem; color: var(--muted); margin-top: 0.3rem; }
+  .kpi--rosa {
+    background: linear-gradient(135deg, #fff, #fff6fa);
+    border-color: rgba(232,67,122,0.18);
+  }
+  .kpi--rosa .kpi__nm { color: var(--pink-dk); font-size: 1.7rem; }
 
-  /* Tabla llana: nombre a la izquierda, numero a la derecha y una barrita de
-     fondo que muestra el peso de cada fila sin necesidad de un grafico. */
+  /* Listas llanas: nombre, dato chico y numero, con una barrita de fondo que
+     muestra el peso de la fila sin montar un grafico para tres datos. */
   .lista { display: flex; flex-direction: column; }
-  .lista__f { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem;
-              border-radius: 8px; position: relative; font-size: 0.84rem; }
+  .lista__f {
+    display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.6rem;
+    border-radius: 8px; position: relative; font-size: 0.84rem;
+  }
   .lista__f + .lista__f { border-top: 1px solid #f7e7ef; }
-  .lista__barra { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px;
-                  background: #fdeef5; z-index: 0; }
+  .lista__barra {
+    position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px;
+    background: #fdeef5; z-index: 0;
+  }
   .lista__nm, .lista__vl, .lista__ex { position: relative; z-index: 1; }
   .lista__nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lista__ex { color: var(--muted); font-size: 0.76rem; white-space: nowrap; }
   .lista__vl { font-weight: 700; white-space: nowrap; }
   .lista__vacia { color: var(--muted); font-size: 0.82rem; padding: 0.4rem 0; }
-
-  /* Las barras por dia: se desplazan si el mes es largo. */
-  .barras { display: flex; align-items: flex-end; gap: 3px; height: 130px;
-            overflow-x: auto; padding-bottom: 0.3rem; }
-  /* Con pocos dias no se estiran hasta volverse bloques. */
-  .barra { flex: 1 1 14px; max-width: 46px; background: linear-gradient(180deg, #f39ec0, var(--pink));
-           border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
-  .barra:hover { filter: brightness(1.07); }
-  .barra__t { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
-              background: var(--ink); color: #fff; font-size: 0.68rem; padding: 0.2rem 0.4rem;
-              border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none;
-              transition: opacity 0.12s ease; }
-  .barra:hover .barra__t { opacity: 1; }
 
   /* ── Buscador de mayoristas ── */
   .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
@@ -524,55 +542,104 @@
       </div>
     </section>
 
-    <!-- TAB: Reportes (ventas del periodo + descarga en Excel) -->
+    <!-- TAB: Reportes (ventas del período, gráficas y descarga) -->
     <section class="tab-panel" data-tab="reportes">
-      <div class="card">
-        <div class="rango">
-          <div class="rango__rapidos" id="rep-rapidos">
-            <button class="chip" data-rango="este-mes">Este mes</button>
-            <button class="chip" data-rango="mes-pasado">Mes pasado</button>
-            <button class="chip" data-rango="30">Últimos 30 días</button>
-            <button class="chip" data-rango="este-ano">Este año</button>
-          </div>
-          <div class="rango__fechas">
-            <label>Desde <input type="date" id="rep-desde" /></label>
-            <label>Hasta <input type="date" id="rep-hasta" /></label>
-            <button class="btn btn--primary" id="rep-ver">Ver</button>
-            <button class="btn" id="rep-excel">Descargar Excel</button>
+
+      <!-- Barra de período: el rango a la izquierda y las descargas a la
+           derecha. Se queda arriba al bajar, que es desde donde se cambia. -->
+      <div class="card rep-barra">
+        <div id="rep-rango"></div>
+        <div class="rep-barra__pie">
+          <p class="rep-estado" id="rep-estado"></p>
+          <div class="rep-bajar">
+            <button class="btn" id="rep-excel" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Excel
+            </button>
+            <button class="btn btn--ghost" id="rep-csv" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              CSV
+            </button>
           </div>
         </div>
-        <p class="rango__nota" id="rep-estado"></p>
       </div>
 
       <div id="rep-contenido" class="hidden">
+
+        <!-- Lo primero: los cuatro números que se miran de un vistazo. -->
         <div class="kpis" id="rep-kpis"></div>
 
-        <div class="card">
-          <h2>Cuánto se vendió cada día</h2>
-          <div class="barras" id="rep-dias"></div>
+        <!-- Cómo viene el mes -->
+        <div class="card rep-card">
+          <div class="rep-card__cab">
+            <h2>Cómo viene el período</h2>
+            <span class="rep-card__sub" id="rep-dias-sub"></span>
+          </div>
+          <div id="rep-g-dias" class="rep-grafica"></div>
         </div>
 
-        <div class="rep-grid">
-          <div class="card">
+        <!-- De dónde viene la venta: dos gráficas que se explican solas -->
+        <div class="rep-fila rep-fila--2">
+          <div class="card rep-card">
+            <div class="rep-card__cab">
+              <h2>Por dónde se vendió</h2>
+              <span class="rep-card__sub">caja, página o a mano en Shopify</span>
+            </div>
+            <div id="rep-g-canal" class="rep-grafica rep-grafica--dona"></div>
+          </div>
+          <div class="card rep-card">
+            <div class="rep-card__cab">
+              <h2>Mayoreo o detalle</h2>
+              <span class="rep-card__sub">cuánto pesa cada uno</span>
+            </div>
+            <div id="rep-g-tipo" class="rep-grafica rep-grafica--dona"></div>
+          </div>
+        </div>
+
+        <!-- Qué se vende -->
+        <div class="card rep-card">
+          <div class="rep-card__cab">
             <h2>Productos más vendidos</h2>
-            <div id="rep-productos"></div>
+            <span class="rep-card__sub">por unidades</span>
           </div>
-          <div class="card">
-            <h2>Por dónde se vendió</h2>
-            <div id="rep-canal"></div>
-            <h2 style="margin-top:1.4rem">Mayoreo o detalle</h2>
-            <div id="rep-tipo"></div>
+          <div id="rep-g-productos" class="rep-grafica"></div>
+        </div>
+
+        <!-- Cómo pagan y quién compra -->
+        <div class="rep-fila rep-fila--2">
+          <div class="card rep-card">
+            <div class="rep-card__cab"><h2>Forma de pago</h2></div>
+            <div id="rep-g-pago" class="rep-grafica rep-grafica--barras"></div>
+            <div class="rep-sub">
+              <h3>Banco de las transferencias</h3>
+              <div id="rep-banco"></div>
+            </div>
           </div>
-          <div class="card">
-            <h2>Forma de pago</h2>
-            <div id="rep-pago"></div>
-            <h2 style="margin-top:1.4rem">Banco de las transferencias</h2>
-            <div id="rep-banco"></div>
-          </div>
-          <div class="card">
-            <h2>Quiénes compraron más</h2>
+          <div class="card rep-card">
+            <div class="rep-card__cab">
+              <h2>Quiénes compraron más</h2>
+              <span class="rep-card__sub">las 15 primeras</span>
+            </div>
             <div id="rep-clientas"></div>
           </div>
+        </div>
+
+        <!-- Lo accesorio, al final y en chiquito -->
+        <div class="card rep-card">
+          <div class="rep-card__cab"><h2>Tipo de entrega</h2></div>
+          <div id="rep-entrega"></div>
+          <p class="rep-nota">Los pedidos que se hacen a mano en Shopify no guardan
+            el tipo de entrega ni la forma de pago: esos salen en blanco.</p>
         </div>
       </div>
     </section>
@@ -776,7 +843,7 @@ function setTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.tab === name));
   // Los reportes se piden al abrirlos, no al entrar al panel: leer un mes
   // entero de Shopify tarda unos segundos y no siempre se van a mirar.
-  if (name === 'reportes' && !repDatos) repCargar();
+  if (name === 'reportes') repIniciar();
 }
 
 // ── Datos ──
@@ -1120,39 +1187,42 @@ document.querySelectorAll('.pwd-eye').forEach(btn => {
 // ── Init ──
 
 // ── Reportes de ventas ──
-// La dueña los pidió para cuadrar el mes: en pantalla los números gruesos y los
-// más vendidos, y en Excel el detalle para filtrar a su gusto. Se piden al
-// abrir la pestaña y no antes: leer un mes entero de Shopify tarda.
+// Se piden al abrir la pestaña y no al entrar al panel: leer un mes entero de
+// Shopify tarda unos segundos y la mayoría de las veces ni se miran.
 const L = (n) => 'L. ' + Number(n || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const Lc = (n) => 'L. ' + Number(n || 0).toLocaleString('es-HN', { maximumFractionDigits: 0 });
 const N = (n) => Number(n || 0).toLocaleString('es-HN');
+
+const ROSA = ['#e8437a', '#f58cb0', '#b8336a', '#f9b8ce', '#7d2048', '#fcdbe6'];
+const GRAFICA_BASE = {
+  chart: { fontFamily: 'inherit', toolbar: { show: false }, animations: { speed: 320 } },
+  dataLabels: { enabled: false },
+  grid: { borderColor: '#f3e3ec', strokeDashArray: 4, padding: { left: 4, right: 4 } },
+  tooltip: { style: { fontFamily: 'inherit' } },
+  noData: { text: 'Sin ventas en este período', style: { color: '#9b8491', fontSize: '13px' } },
+};
 
 let repDatos = null;
 let repCargando = false;
+let repRango = null;
+const repGraficas = {};
 
-function repFecha(d) { return d.toISOString().slice(0, 10); }
-
-function repRango(cual) {
-  const hoy = new Date();
-  const y = hoy.getFullYear(), m = hoy.getMonth();
-  if (cual === 'este-mes') return [new Date(y, m, 1), hoy];
-  if (cual === 'mes-pasado') return [new Date(y, m - 1, 1), new Date(y, m, 0)];
-  if (cual === 'este-ano') return [new Date(y, 0, 1), hoy];
-  const atras = new Date(hoy); atras.setDate(atras.getDate() - 29);
-  return [atras, hoy];
+// Una gráfica por id: se crea la primera vez y después solo se le cambian los
+// datos (volver a crearla en cada consulta deja memoria colgando).
+function repGrafica(id, opciones) {
+  if (!window.ApexCharts) return;
+  if (repGraficas[id]) {
+    repGraficas[id].updateOptions(opciones, true, true);
+    return;
+  }
+  repGraficas[id] = new ApexCharts(document.getElementById(id), opciones);
+  repGraficas[id].render();
 }
 
-function repPonerRango(cual) {
-  const [a, b] = repRango(cual);
-  $('rep-desde').value = repFecha(a);
-  $('rep-hasta').value = repFecha(b);
-  document.querySelectorAll('#rep-rapidos .chip')
-    .forEach((c) => c.classList.toggle('is-active', c.dataset.rango === cual));
-}
-
-// Una lista con barrita de fondo: el ancho muestra el peso de cada fila.
 function repLista(id, filas, opciones = {}) {
   const caja = $(id);
   if (!filas || !filas.length) {
+    caja.className = '';
     caja.innerHTML = '<p class="lista__vacia">Nada en este período.</p>';
     return;
   }
@@ -1167,18 +1237,37 @@ function repLista(id, filas, opciones = {}) {
     </div>`).join('');
 }
 
+function repDona(id, filas) {
+  repGrafica(id, {
+    ...GRAFICA_BASE,
+    chart: { ...GRAFICA_BASE.chart, type: 'donut', height: 260 },
+    series: filas.map((x) => x.monto),
+    labels: filas.map((x) => x.nombre),
+    colors: ROSA,
+    legend: { position: 'bottom', fontSize: '12px', markers: { radius: 4 } },
+    stroke: { width: 2, colors: ['#fff'] },
+    plotOptions: {
+      pie: { donut: { size: '62%', labels: {
+        show: true,
+        value: { fontSize: '17px', fontWeight: 700, formatter: (v) => Lc(v) },
+        total: { show: true, label: 'Total', color: '#9b8491',
+                 formatter: (w) => Lc(w.globals.seriesTotals.reduce((a, b) => a + b, 0)) },
+      } } },
+    },
+    tooltip: { ...GRAFICA_BASE.tooltip, y: { formatter: (v) => L(v) } },
+  });
+}
+
 function repPintar(r) {
   $('rep-contenido').classList.remove('hidden');
 
+  // 1. Los números del período
   const kpis = [
-    { lb: 'Vendido', nm: L(r.vendido), pie: `${N(r.pedidos)} pedidos`, rosa: true },
+    { lb: 'Vendido', nm: L(r.vendido), pie: `en ${N(r.pedidos)} pedidos`, rosa: true },
     { lb: 'Venta promedio', nm: L(r.promedio), pie: 'por pedido' },
     { lb: 'Productos vendidos', nm: N(r.unidades), pie: 'unidades' },
     { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
-    { lb: 'Cobrado por envíos', nm: L(r.envios) },
-    { lb: 'Descuentos dados', nm: L(r.descuentos), pie: 'sobre todo de mayoreo' },
   ];
-  if (r.cancelados) kpis.push({ lb: 'Cancelados', nm: N(r.cancelados), pie: 'no suman al total' });
   $('rep-kpis').innerHTML = kpis.map((k) => `
     <div class="kpi ${k.rosa ? 'kpi--rosa' : ''}">
       <div class="kpi__lb">${k.lb}</div>
@@ -1186,28 +1275,79 @@ function repPintar(r) {
       ${k.pie ? `<div class="kpi__pie">${k.pie}</div>` : ''}
     </div>`).join('');
 
+  // 2. Día a día
   const dias = r.por_dia || [];
-  const tope = Math.max(...dias.map((d) => d.monto), 1);
-  $('rep-dias').innerHTML = dias.length ? dias.map((d) => {
-    const [, mes, dia] = d.dia.split('-');
-    return `<div class="barra" style="height:${Math.max(2, (d.monto / tope) * 100)}%">
-      <span class="barra__t">${dia}/${mes} · ${L(d.monto)} · ${d.cuantos} pedido${d.cuantos === 1 ? '' : 's'}</span>
-    </div>`;
-  }).join('') : '<p class="lista__vacia">Sin ventas en este período.</p>';
+  const mejor = dias.reduce((a, d) => (d.monto > (a ? a.monto : 0) ? d : a), null);
+  $('rep-dias-sub').textContent = mejor
+    ? `el mejor día fue el ${mejor.dia.split('-').reverse().slice(0, 2).join('/')} con ${L(mejor.monto)}`
+    : '';
+  repGrafica('rep-g-dias', {
+    ...GRAFICA_BASE,
+    chart: { ...GRAFICA_BASE.chart, type: 'area', height: 260 },
+    series: [{ name: 'Vendido', data: dias.map((d) => ({ x: d.dia, y: d.monto, pedidos: d.cuantos })) }],
+    colors: ['#e8437a'],
+    stroke: { curve: 'smooth', width: 2.5 },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.42, opacityTo: 0.03, stops: [0, 95] } },
+    markers: { size: 0, hover: { size: 5 } },
+    xaxis: { type: 'datetime', labels: { style: { colors: '#9b8491', fontSize: '11px' } },
+             axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { formatter: (v) => Lc(v), style: { colors: '#9b8491', fontSize: '11px' } } },
+    tooltip: { ...GRAFICA_BASE.tooltip, x: { format: 'dd MMM' },
+               y: { formatter: (v, o) => {
+                 const p = dias[o.dataPointIndex];
+                 return L(v) + (p ? ` · ${p.cuantos} pedido${p.cuantos === 1 ? '' : 's'}` : '');
+               } } },
+  });
 
-  repLista('rep-productos', (r.top_productos || []).map((p) => ({
-    nombre: p.producto + (p.variante ? ' · ' + p.variante : ''),
-    extra: p.unidades + 'u', valor: p.monto })));
-  repLista('rep-canal', (r.por_canal || []).map((x) => ({
-    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
-  repLista('rep-tipo', (r.por_tipo || []).map((x) => ({
-    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
-  repLista('rep-pago', (r.por_pago || []).map((x) => ({
-    nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+  // 3. De dónde viene la venta
+  repDona('rep-g-canal', r.por_canal || []);
+  repDona('rep-g-tipo', r.por_tipo || []);
+
+  // 4. Qué se vende: barras horizontales, que los nombres son largos
+  const top = (r.top_productos || []).slice(0, 12);
+  repGrafica('rep-g-productos', {
+    ...GRAFICA_BASE,
+    chart: { ...GRAFICA_BASE.chart, type: 'bar', height: Math.max(220, top.length * 32 + 40) },
+    series: [{ name: 'Unidades', data: top.map((p) => p.unidades) }],
+    colors: ['#e8437a'],
+    plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: '62%' } },
+    xaxis: { categories: top.map((p) => p.producto + (p.variante ? ' · ' + p.variante : '')),
+             labels: { style: { colors: '#9b8491', fontSize: '11px' } },
+             axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { maxWidth: 270, style: { colors: '#6b5560', fontSize: '11.5px' } } },
+    tooltip: { ...GRAFICA_BASE.tooltip,
+               y: { formatter: (v, o) => {
+                 const p = top[o.dataPointIndex];
+                 return `${v} unidades · ${L(p ? p.monto : 0)}`;
+               } } },
+  });
+
+  // 5. Cómo pagan
+  const pagos = (r.por_pago || []).slice(0, 8);
+  repGrafica('rep-g-pago', {
+    ...GRAFICA_BASE,
+    chart: { ...GRAFICA_BASE.chart, type: 'bar', height: Math.max(180, pagos.length * 34 + 30) },
+    series: [{ name: 'Vendido', data: pagos.map((x) => x.monto) }],
+    colors: ['#f58cb0'],
+    plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: '60%' } },
+    xaxis: { categories: pagos.map((x) => x.nombre),
+             labels: { formatter: (v) => Lc(v), style: { colors: '#9b8491', fontSize: '11px' } },
+             axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { maxWidth: 170, style: { colors: '#6b5560', fontSize: '11.5px' } } },
+    tooltip: { ...GRAFICA_BASE.tooltip,
+               y: { formatter: (v, o) => {
+                 const x = pagos[o.dataPointIndex];
+                 return `${L(v)} · ${x ? x.cuantos : 0} pedidos`;
+               } } },
+  });
+
   repLista('rep-banco', (r.por_banco || []).map((x) => ({
     nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
   repLista('rep-clientas', (r.top_clientas || []).map((x) => ({
     nombre: x.nombre, extra: x.cuantos + ' ped.', valor: x.monto })));
+  repLista('rep-entrega', (r.por_entrega || []).map((x) => ({
+    nombre: x.nombre === '—' ? 'Sin anotar' : x.nombre,
+    extra: x.cuantos + ' ped.', valor: x.monto })));
 }
 
 function repEstado(texto, error) {
@@ -1217,33 +1357,37 @@ function repEstado(texto, error) {
 }
 
 async function repCargar() {
-  if (repCargando) return;
-  const desde = $('rep-desde').value, hasta = $('rep-hasta').value;
+  if (repCargando || !repRango) return;
+  const { desde, hasta } = repRango.valores();
   if (!desde || !hasta) { repEstado('Elija las dos fechas.', true); return; }
   repCargando = true;
+  repRango.ocupado(true);
   repEstado('Leyendo las ventas de Shopify…');
   try {
     const r = await api(`/admin/reportes?desde=${desde}&hasta=${hasta}`);
     repDatos = r;
     repPintar(r);
-    repEstado(`${N(r.pedidos)} pedidos entre el ${desde.split('-').reverse().join('/')} y el ${hasta.split('-').reverse().join('/')}.`);
+    repEstado(`${N(r.pedidos)} pedidos del ${repRango.texto()}`
+      + (r.cancelados ? ` · ${r.cancelados} cancelado${r.cancelados === 1 ? '' : 's'}, que no suman` : ''));
   } catch (ex) {
     repEstado(ex.message, true);
   } finally {
     repCargando = false;
+    repRango.ocupado(false);
   }
 }
 
 // La descarga va por fetch y no por un enlace: el archivo pide la contraseña en
 // la cabecera, y un <a href> no la lleva.
-async function repExcel() {
-  const desde = $('rep-desde').value, hasta = $('rep-hasta').value;
+async function repBajar(formato, boton) {
+  if (!repRango) return;
+  const { desde, hasta } = repRango.valores();
   if (!desde || !hasta) { repEstado('Elija las dos fechas.', true); return; }
-  const boton = $('rep-excel');
-  const antes = boton.textContent;
-  boton.disabled = true; boton.textContent = 'Armando el archivo…';
+  const antes = boton.innerHTML;
+  boton.disabled = true;
+  boton.textContent = 'Armando…';
   try {
-    const res = await fetch(`${API}/admin/reportes/excel?desde=${desde}&hasta=${hasta}`,
+    const res = await fetch(`${API}/admin/reportes/excel?desde=${desde}&hasta=${hasta}&formato=${formato}`,
                             { headers: { 'Authorization': 'Bearer ' + token } });
     if (res.status === 401) { logout(); return; }
     if (!res.ok) throw new Error('No se pudo armar el reporte');
@@ -1251,24 +1395,25 @@ async function repExcel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Ventas Pink Power ${desde} a ${hasta}.xlsx`;
+    a.download = `Ventas Pink Power ${desde} a ${hasta}.${formato === 'csv' ? 'csv' : 'xlsx'}`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     repEstado('Archivo descargado.');
   } catch (ex) {
     repEstado(ex.message, true);
   } finally {
-    boton.disabled = false; boton.textContent = antes;
+    boton.disabled = false;
+    boton.innerHTML = antes;
   }
 }
 
-document.querySelectorAll('#rep-rapidos .chip').forEach((c) =>
-  c.addEventListener('click', () => { repPonerRango(c.dataset.rango); repCargar(); }));
-['rep-desde', 'rep-hasta'].forEach((id) => $(id).addEventListener('change', () =>
-  document.querySelectorAll('#rep-rapidos .chip').forEach((c) => c.classList.remove('is-active'))));
-$('rep-ver').addEventListener('click', repCargar);
-$('rep-excel').addEventListener('click', repExcel);
-repPonerRango('este-mes');
+function repIniciar() {
+  if (repRango) return;
+  repRango = PPRango.crear($('rep-rango'), { inicial: 'este-mes', al: repCargar });
+  $('rep-excel').addEventListener('click', (e) => repBajar('excel', e.currentTarget));
+  $('rep-csv').addEventListener('click', (e) => repBajar('csv', e.currentTarget));
+  repCargar();
+}
 
 pintarCuenta();
 if (token) { show('panel'); loadAll(); } else { show('login'); }

@@ -1,0 +1,51 @@
+/* Componente de rango de fechas del panel — PinkPower
+   Los atajos a la izquierda y las dos fechas a la derecha; en el teléfono las
+   fechas pasan abajo y los atajos se deslizan. */
+
+.pprango {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem 1.4rem; flex-wrap: wrap;
+}
+.pprango.is-ocupado { opacity: 0.55; pointer-events: none; }
+
+.pprango__atajos {
+  display: flex; gap: 0.35rem; flex-wrap: wrap;
+  background: #fdeef5; border-radius: 999px; padding: 0.3rem;
+}
+.pprango__chip {
+  background: none; border: none; cursor: pointer; white-space: nowrap;
+  font-family: inherit; font-weight: 600; font-size: 0.8rem;
+  color: var(--muted); padding: 0.45rem 0.9rem; border-radius: 999px;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.pprango__chip:hover:not(:disabled) { color: var(--pink-dk); }
+.pprango__chip.is-active {
+  background: #fff; color: var(--pink-dk);
+  box-shadow: 0 4px 12px -5px rgba(150,30,80,0.3);
+}
+.pprango__chip:disabled { cursor: default; }
+
+.pprango__fechas { display: flex; align-items: flex-end; gap: 0.5rem; }
+.pprango__campo { display: flex; flex-direction: column; gap: 0.25rem; }
+.pprango__campo span {
+  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted); padding-left: 0.15rem;
+}
+.pprango__campo input {
+  margin: 0; padding: 0.55rem 0.7rem; border: 1.5px solid #f0d6e2;
+  border-radius: 11px; background: #fff; font-family: inherit;
+  font-size: 0.85rem; color: var(--ink); color-scheme: light;
+}
+.pprango__campo input:focus {
+  outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.pprango__guion { color: var(--muted); padding-bottom: 0.65rem; }
+
+@media (max-width: 620px) {
+  .pprango { flex-direction: column; align-items: stretch; }
+  .pprango__atajos { overflow-x: auto; flex-wrap: nowrap; }
+  .pprango__atajos::-webkit-scrollbar { height: 0; }
+  .pprango__fechas { justify-content: space-between; }
+  .pprango__campo { flex: 1; }
+  .pprango__campo input { width: 100%; }
+}

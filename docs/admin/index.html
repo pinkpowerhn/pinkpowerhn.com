@@ -303,7 +303,7 @@
   .rep-grafica { min-height: 60px; }
 
   /* Los numeros grandes del periodo */
-  .kpis { display: grid; gap: 1.4rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .kpis { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); }
   .kpi {
     background: #fff; border-radius: 18px; padding: 1.15rem 1.25rem;
     box-shadow: 0 12px 30px -24px rgba(150,30,80,0.5);
@@ -313,13 +313,22 @@
     font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em;
     color: var(--muted); font-weight: 700;
   }
-  .kpi__nm { font-size: 1.5rem; font-weight: 700; color: var(--ink); margin-top: 0.35rem; line-height: 1.1; }
+  .kpi__nm {
+    font-size: 1.4rem; font-weight: 700; color: var(--ink); margin-top: 0.35rem;
+    line-height: 1.1; white-space: nowrap;
+  }
   .kpi__pie { font-size: 0.73rem; color: var(--muted); margin-top: 0.3rem; }
   .kpi--rosa {
     background: linear-gradient(135deg, #fff, #fff6fa);
     border-color: rgba(232,67,122,0.18);
   }
-  .kpi--rosa .kpi__nm { color: var(--pink-dk); font-size: 1.7rem; }
+  .kpi--rosa .kpi__nm { color: var(--pink-dk); font-size: 1.55rem; }
+  /* Lo que le queda: en verde, que es la respuesta a "como me fue". */
+  .kpi--queda {
+    background: linear-gradient(135deg, #fff, #f1fbf5);
+    border-color: rgba(18,129,63,0.18);
+  }
+  .kpi--queda .kpi__nm { color: #12813f; }
 
   /* Listas llanas: nombre, dato chico y numero, con una barrita de fondo que
      muestra el peso de la fila sin montar un grafico para tres datos. */
@@ -373,6 +382,35 @@
     .kpi--rosa .kpi__nm { font-size: 1.6rem; }
     #rep-contenido, #rep-contenido > * + *, .rep-fila { margin-top: 0.9rem; gap: 0.9rem; }
   }
+
+  /* ── Gastos ── */
+  .gasform { display: flex; flex-direction: column; gap: 0.8rem; text-align: left; }
+  .gasform label {
+    display: flex; flex-direction: column; gap: 0.3rem;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .gasform input, .gasform select { margin: 0; font-size: 0.95rem; }
+  .gasform__op { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+  .gascats { display: flex; flex-direction: column; max-height: 340px; overflow-y: auto; }
+  .gascat {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.3rem;
+    border-bottom: 1px solid #f7e7ef; font-size: 0.86rem; text-align: left;
+  }
+  /* Apagada: ya no sale al registrar, pero sus gastos viejos siguen contando. */
+  .gascat--off { opacity: 0.5; }
+  .gascat--off .gascat__nm { text-decoration: line-through; }
+  .gascat__nm { flex: 1; }
+  .gascat__us { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+  .gascat__b {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 0.95rem; padding: 0.25rem 0.4rem; border-radius: 7px; line-height: 1;
+  }
+  .gascat__b:hover { background: #fdeef5; color: var(--pink-dk); }
+  .gascat__b--q:hover { background: #ffeef2; color: #d61f4a; }
+  .gascat-nueva { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
+  .gascat-nueva input { margin: 0; flex: 1; }
 
   /* ── Buscador de mayoristas ── */
   .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
@@ -514,6 +552,14 @@
         </svg>
         Reportes
       </button>
+      <button class="tab" data-tab="gastos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="6" width="20" height="13" rx="2.5"></rect>
+          <path d="M2 10h20"></path><path d="M6 15h4"></path>
+        </svg>
+        Gastos
+      </button>
       <button class="tab" data-tab="general">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -605,6 +651,15 @@
           <div id="rep-desglose"></div>
         </div>
 
+        <!-- En qué se fue la plata del mismo período -->
+        <div class="card rep-card" id="rep-gastos-card">
+          <div class="rep-card__cab">
+            <h2>En qué se gastó</h2>
+            <span class="rep-card__sub">lo que anotó en Gastos, del mismo período</span>
+          </div>
+          <div id="rep-gastos"></div>
+        </div>
+
         <!-- Cómo viene el mes -->
         <div class="card rep-card">
           <div class="rep-card__cab">
@@ -666,6 +721,55 @@
           <div id="rep-entrega"></div>
           <p class="rep-nota">Los pedidos que se hacen a mano en Shopify no guardan
             el tipo de entrega ni la forma de pago: esos salen en blanco.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Gastos (registrar lo que sale, y sus categorías) -->
+    <section class="tab-panel" data-tab="gastos">
+
+      <div class="card rep-barra">
+        <div class="rep-barra__fila">
+          <div id="gas-rango"></div>
+          <p class="rep-estado" id="gas-estado"></p>
+          <button class="btn btn--primary btn--sm" id="gas-nuevo" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nuevo gasto
+          </button>
+          <button class="ppmenu-btn" id="gas-mas" type="button" aria-label="Más opciones">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="gas-contenido" class="hidden">
+        <div class="kpis" id="gas-kpis"></div>
+
+        <div class="rep-fila rep-fila--2">
+          <div class="card rep-card">
+            <div class="rep-card__cab">
+              <h2>En qué se fue</h2>
+              <span class="rep-card__sub">por categoría</span>
+            </div>
+            <div id="gas-g-categorias" class="rep-grafica rep-grafica--dona"></div>
+          </div>
+          <div class="card rep-card">
+            <div class="rep-card__cab"><h2>Lo más caro</h2></div>
+            <div id="gas-categorias"></div>
+          </div>
+        </div>
+
+        <div class="card rep-card">
+          <div class="rep-card__cab">
+            <h2>Todos los gastos</h2>
+            <span class="rep-card__sub">toque los tres puntos de cada uno para corregirlo o quitarlo</span>
+          </div>
+          <div id="gas-tabla"></div>
         </div>
       </div>
     </section>
@@ -870,6 +974,7 @@ function setTab(name) {
   // Los reportes se piden al abrirlos, no al entrar al panel: leer un mes
   // entero de Shopify tarda unos segundos y no siempre se van a mirar.
   if (name === 'reportes') repIniciar();
+  if (name === 'gastos') gasIniciar();
 }
 
 // ── Datos ──
@@ -1263,9 +1368,10 @@ function repLista(id, filas, opciones = {}) {
     </div>`).join('');
 }
 
-function repDona(id, filas) {
+function repDona(id, filas, vacio) {
   repGrafica(id, {
     ...GRAFICA_BASE,
+    noData: { ...GRAFICA_BASE.noData, text: vacio || GRAFICA_BASE.noData.text },
     chart: { ...GRAFICA_BASE.chart, type: 'donut', height: 260 },
     series: filas.map((x) => x.monto),
     labels: filas.map((x) => x.nombre),
@@ -1290,12 +1396,16 @@ function repPintar(r) {
   // 1. Los números del período
   const kpis = [
     { lb: 'Vendido', nm: L(r.vendido), pie: `solo producto · en ${N(r.pedidos)} pedidos`, rosa: true },
+    { lb: 'Gastado', nm: L(r.gastos || 0),
+      pie: r.gastos_cuantos ? `en ${N(r.gastos_cuantos)} gasto${r.gastos_cuantos === 1 ? '' : 's'}`
+                            : 'sin gastos anotados' },
+    { lb: 'Le quedó', nm: L(r.le_quedo || 0), pie: 'vendido menos gastos', fuerte: true },
+    { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
     { lb: 'Venta promedio', nm: L(r.promedio), pie: 'por pedido' },
     { lb: 'Productos vendidos', nm: N(r.unidades), pie: 'unidades' },
-    { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
   ];
   $('rep-kpis').innerHTML = kpis.map((k) => `
-    <div class="kpi ${k.rosa ? 'kpi--rosa' : ''}">
+    <div class="kpi ${k.rosa ? 'kpi--rosa' : ''}${k.fuerte ? ' kpi--queda' : ''}">
       <div class="kpi__lb">${k.lb}</div>
       <div class="kpi__nm">${k.nm}</div>
       ${k.pie ? `<div class="kpi__pie">${k.pie}</div>` : ''}
@@ -1315,7 +1425,12 @@ function repPintar(r) {
       <span class="desglose__vl">${L(x.valor)}</span>
     </div>`).join('');
 
-  // 3. Día a día
+  // 3. En qué se gastó
+  repLista('rep-gastos', (r.gastos_por_categoria || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + (x.cuantos === 1 ? ' gasto' : ' gastos'),
+    valor: x.monto })));
+
+  // 4. Día a día
   const dias = r.por_dia || [];
   const mejor = dias.reduce((a, d) => (d.monto > (a ? a.monto : 0) ? d : a), null);
   $('rep-dias-sub').textContent = mejor
@@ -1339,11 +1454,11 @@ function repPintar(r) {
                } } },
   });
 
-  // 4. De dónde viene la venta
+  // 5. De dónde viene la venta
   repDona('rep-g-canal', r.por_canal || []);
   repDona('rep-g-tipo', r.por_tipo || []);
 
-  // 5. Qué se vende: barras horizontales, que los nombres son largos
+  // 6. Qué se vende: barras horizontales, que los nombres son largos
   const top = (r.top_productos || []).slice(0, 12);
   repGrafica('rep-g-productos', {
     ...GRAFICA_BASE,
@@ -1362,7 +1477,7 @@ function repPintar(r) {
                } } },
   });
 
-  // 6. Cómo pagan
+  // 7. Cómo pagan
   const pagos = (r.por_pago || []).slice(0, 8);
   repGrafica('rep-g-pago', {
     ...GRAFICA_BASE,
@@ -1455,6 +1570,260 @@ function repIniciar() {
     { texto: 'Bajar en CSV', nota: 'csv', icono: PPMenu.IC_BAJAR, al: () => repBajar('csv') },
   ]);
   repCargar();
+}
+
+// ── Gastos ──
+// Lo que sale: la dueña lo registra a mano y el reporte lo resta de lo vendido.
+let gasRango = null;
+let gasTabla = null;
+let gasDatos = null;
+let gasCats = [];
+let gasCargando = false;
+
+const hoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const diaCorto = (iso) => {
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+};
+
+function gasEstado(texto, error) {
+  const p = $('gas-estado');
+  p.textContent = texto;
+  p.classList.toggle('is-error', !!error);
+}
+
+async function gasCargar() {
+  if (gasCargando || !gasRango) return;
+  const { desde, hasta } = gasRango.valores();
+  gasCargando = true;
+  gasRango.ocupado(true);
+  gasEstado('Buscando los gastos…');
+  if (gasTabla) gasTabla.cargando();
+  try {
+    const [r, cats] = await Promise.all([
+      api(`/admin/gastos?desde=${desde}&hasta=${hasta}`),
+      api('/admin/gastos/categorias'),
+    ]);
+    gasDatos = r;
+    gasCats = cats.categorias || [];
+    gasPintar(r);
+    gasEstado(r.cuantos
+      ? `${N(r.cuantos)} gasto${r.cuantos === 1 ? '' : 's'}`
+      : 'Sin gastos en este período');
+  } catch (ex) {
+    gasEstado(ex.message, true);
+  } finally {
+    gasCargando = false;
+    gasRango.ocupado(false);
+  }
+}
+
+function gasPintar(r) {
+  $('gas-contenido').classList.remove('hidden');
+  const mayor = (r.por_categoria || [])[0];
+
+  $('gas-kpis').innerHTML = [
+    { lb: 'Gastado', nm: L(r.total), pie: `en ${N(r.cuantos)} gasto${r.cuantos === 1 ? '' : 's'}`, rosa: true },
+    { lb: 'En lo que más se fue', nm: mayor ? mayor.nombre : '—',
+      pie: mayor ? L(mayor.monto) : '' },
+    { lb: 'Categorías usadas', nm: N((r.por_categoria || []).length),
+      pie: `de ${N(gasCats.length)} que tiene` },
+  ].map((k) => `
+    <div class="kpi ${k.rosa ? 'kpi--rosa' : ''}">
+      <div class="kpi__lb">${k.lb}</div>
+      <div class="kpi__nm">${esc(k.nm)}</div>
+      ${k.pie ? `<div class="kpi__pie">${esc(k.pie)}</div>` : ''}
+    </div>`).join('');
+
+  repDona('gas-g-categorias', r.por_categoria || [], 'Sin gastos en este período');
+  repLista('gas-categorias', (r.por_categoria || []).map((x) => ({
+    nombre: x.nombre, extra: x.cuantos + (x.cuantos === 1 ? ' gasto' : ' gastos'),
+    valor: x.monto })));
+
+  if (!gasTabla) {
+    gasTabla = PPTabla.crear($('gas-tabla'), {
+      columnas: [
+        { clave: 'fecha', titulo: 'Fecha', html: (f) => diaCorto(f.fecha) },
+        { clave: 'categoria', titulo: 'Categoría', principal: true },
+        { clave: 'descripcion', titulo: 'De qué fue' },
+        { clave: 'monto', titulo: 'Monto', html: (f) => `<b>${L(f.monto)}</b>` },
+      ],
+      filtros: [{ clave: 'categoria', titulo: 'Categoría',
+                  opciones: (r.por_categoria || []).map((c) => ({ v: c.nombre, t: c.nombre })) }],
+      buscar: (f, t) => (f.categoria + ' ' + f.descripcion).toLowerCase().includes(t),
+      acciones: (f) => [
+        { texto: 'Corregir', al: () => gasFormulario(f) },
+        { texto: 'Quitar', peligro: true, al: () => gasQuitar(f) },
+      ],
+      porPagina: 12,
+      vacio: 'Todavía no hay gastos en este período',
+    });
+  }
+  gasTabla.datos(r.gastos || []);
+}
+
+// El formulario: lo justo, que es como se pidió. Sirve para uno nuevo y para
+// corregir uno que ya está.
+async function gasFormulario(gasto) {
+  if (!gasCats.length) {
+    try { gasCats = (await api('/admin/gastos/categorias')).categorias || []; }
+    catch (_) { /* se muestra igual, vacío */ }
+  }
+  const esNuevo = !gasto;
+  const r = await Swal.fire({
+    title: esNuevo ? 'Nuevo gasto' : 'Corregir el gasto',
+    html: `
+      <div class="gasform">
+        <label>Fecha
+          <input type="date" id="gf-fecha" max="${hoyISO()}"
+                 value="${esc(gasto ? gasto.fecha : hoyISO())}" />
+        </label>
+        <label>Categoría
+          <select id="gf-cat">
+            ${gasCats.map((c) => `<option value="${c.id}" ${
+              gasto && gasto.categoria_id === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
+          </select>
+        </label>
+        <label>Monto
+          <input type="number" id="gf-monto" step="0.01" min="0.01" placeholder="0.00"
+                 value="${gasto ? gasto.monto : ''}" />
+        </label>
+        <label>De qué fue <span class="gasform__op">(opcional)</span>
+          <input type="text" id="gf-desc" maxlength="300" placeholder="Bolsas, cajas…"
+                 value="${esc(gasto ? gasto.descripcion : '')}" />
+        </label>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: esNuevo ? 'Guardar' : 'Guardar cambios',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    focusConfirm: false,
+    didOpen: () => { document.getElementById('gf-monto').focus(); },
+    preConfirm: () => {
+      const fecha = document.getElementById('gf-fecha').value;
+      const categoria_id = Number(document.getElementById('gf-cat').value);
+      const monto = Number(document.getElementById('gf-monto').value);
+      const descripcion = document.getElementById('gf-desc').value.trim();
+      if (!fecha) { Swal.showValidationMessage('Ponga la fecha'); return false; }
+      if (!categoria_id) { Swal.showValidationMessage('Elija la categoría'); return false; }
+      if (!(monto > 0)) { Swal.showValidationMessage('Ponga cuánto fue'); return false; }
+      return { fecha, categoria_id, monto, descripcion };
+    },
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api(esNuevo ? '/admin/gastos' : `/admin/gastos/${gasto.id}`,
+              { method: esNuevo ? 'POST' : 'PATCH', body: JSON.stringify(r.value) });
+    await gasCargar();
+    if (repDatos) repCargar();      // el reporte también cambia
+  } catch (ex) {
+    gasEstado(ex.message, true);
+  }
+}
+
+async function gasQuitar(gasto) {
+  const r = await Swal.fire({
+    title: '¿Quitar este gasto?',
+    html: `<b>${esc(gasto.categoria)}</b> · ${L(gasto.monto)}<br>`
+        + `<span class="muted">${esc(gasto.descripcion || diaCorto(gasto.fecha))}</span>`,
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d61f4a', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api(`/admin/gastos/${gasto.id}`, { method: 'DELETE' });
+    await gasCargar();
+    if (repDatos) repCargar();
+  } catch (ex) {
+    gasEstado(ex.message, true);
+  }
+}
+
+// Las categorías: agregar, renombrar y quitar. Las que ya tienen gastos no se
+// borran, se apagan: si no, los meses viejos se quedarían sin categoría.
+async function gasAdministrarCategorias() {
+  try { gasCats = (await api('/admin/gastos/categorias?todas=true')).categorias || []; }
+  catch (ex) { gasEstado(ex.message, true); return; }
+
+  const pinta = () => gasCats.map((c) => `
+    <div class="gascat ${c.activa ? '' : 'gascat--off'}">
+      <span class="gascat__nm">${esc(c.nombre)}</span>
+      <span class="gascat__us">${c.usos ? c.usos + (c.usos === 1 ? ' gasto' : ' gastos') : 'sin usar'}</span>
+      <button type="button" class="gascat__b" data-renombrar="${c.id}" title="Cambiarle el nombre">✎</button>
+      <button type="button" class="gascat__b gascat__b--q" data-quitar="${c.id}"
+        title="${c.activa ? 'Quitar' : 'Volver a usar'}">${c.activa ? '✕' : '↩'}</button>
+    </div>`).join('');
+
+  await Swal.fire({
+    title: 'Categorías de gasto',
+    html: `<div class="gascats" id="gascats">${pinta()}</div>
+      <div class="gascat-nueva">
+        <input type="text" id="gascat-nombre" maxlength="60" placeholder="Agregar una categoría…" />
+        <button type="button" class="btn btn--primary btn--sm" id="gascat-add">Agregar</button>
+      </div>`,
+    width: 520,
+    showConfirmButton: false,
+    showCloseButton: true,
+    didOpen: () => {
+      const caja = document.getElementById('gascats');
+      const refrescar = async () => {
+        gasCats = (await api('/admin/gastos/categorias?todas=true')).categorias || [];
+        caja.innerHTML = pinta();
+      };
+      document.getElementById('gascat-add').addEventListener('click', async () => {
+        const campo = document.getElementById('gascat-nombre');
+        const nombre = campo.value.trim();
+        if (!nombre) return;
+        try {
+          await api('/admin/gastos/categorias', { method: 'POST', body: JSON.stringify({ nombre }) });
+          campo.value = '';
+          await refrescar();
+        } catch (ex) { Swal.showValidationMessage(ex.message); }
+      });
+      caja.addEventListener('click', async (ev) => {
+        const b = ev.target.closest('button');
+        if (!b) return;
+        const id = Number(b.dataset.renombrar || b.dataset.quitar);
+        const cat = gasCats.find((c) => c.id === id);
+        if (!cat) return;
+        try {
+          if (b.dataset.renombrar) {
+            const { value: nombre } = await Swal.fire({
+              title: 'Nuevo nombre', input: 'text', inputValue: cat.nombre,
+              showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
+              confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+              inputValidator: (v) => (!v || !v.trim()) ? 'Escriba el nombre' : undefined,
+            });
+            if (!nombre) return;
+            await api(`/admin/gastos/categorias/${id}`,
+                      { method: 'PATCH', body: JSON.stringify({ nombre: nombre.trim() }) });
+          } else if (!cat.activa) {
+            await api(`/admin/gastos/categorias/${id}`,
+                      { method: 'PATCH', body: JSON.stringify({ activa: true }) });
+          } else {
+            await api(`/admin/gastos/categorias/${id}`, { method: 'DELETE' });
+          }
+          await refrescar();
+        } catch (ex) { gasEstado(ex.message, true); }
+      });
+    },
+  });
+  gasCats = gasCats.filter((c) => c.activa);
+  gasCargar();
+}
+
+function gasIniciar() {
+  if (gasRango) return;
+  gasRango = PPRango.crear($('gas-rango'), { inicial: 'este-mes', al: gasCargar });
+  $('gas-nuevo').addEventListener('click', () => gasFormulario(null));
+  PPMenu.colgar($('gas-mas'), () => [
+    { texto: 'Categorías de gasto', al: gasAdministrarCategorias },
+  ]);
+  gasCargar();
 }
 
 pintarCuenta();

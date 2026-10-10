@@ -419,6 +419,10 @@
   .gascat__b--q:hover { background: #ffeef2; color: #d61f4a; }
   .gascat-nueva { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
   .gascat-nueva input { margin: 0; flex: 1; }
+  .gascat-err {
+    margin: 0.7rem 0 0; padding: 0.5rem 0.7rem; border-radius: 10px;
+    background: #ffeef2; color: #b81540; font-size: 0.85rem; text-align: left;
+  }
 
   /* ── Buscador de mayoristas ── */
   .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
@@ -890,10 +894,17 @@ let token = localStorage.getItem(TOKEN_KEY);
 const $ = (id) => document.getElementById(id);
 
 async function api(path, opts = {}) {
-  const res = await fetch(API + path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) },
-  });
+  let res;
+  try {
+    res = await fetch(API + path, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) },
+    });
+  } catch (_) {
+    // Sin internet o el servidor no contestó. "Failed to fetch" no le dice nada
+    // a nadie, y si se queda chiquito en una esquina parece que sí se guardó.
+    throw new Error('No se pudo conectar con el servidor. Intente de nuevo.');
+  }
   if (res.status === 401) { logout(); throw new Error('Sesión expirada'); }
   if (!res.ok) {
     let d = 'Error'; try { d = (await res.json()).detail || d; } catch (_) {}
@@ -1732,8 +1743,16 @@ async function gasFormulario(gasto) {
     await gasCargar();
     if (repDatos) repCargar();      // el reporte también cambia
   } catch (ex) {
-    gasEstado(ex.message, true);
+    gasFallo(esNuevo ? 'No se pudo guardar el gasto' : 'No se pudo corregir el gasto', ex);
   }
+}
+
+// Si algo falla al guardar hay que decirlo de frente: antes solo se escribía en
+// la línea de estado, arriba, y daba la impresión de que sí se había guardado.
+function gasFallo(titulo, ex) {
+  gasEstado(ex.message, true);
+  Swal.fire({ title: titulo, text: ex.message, icon: 'error',
+              confirmButtonText: 'Entendido', confirmButtonColor: '#e8437a' });
 }
 
 async function gasQuitar(gasto) {
@@ -1751,7 +1770,7 @@ async function gasQuitar(gasto) {
     await gasCargar();
     if (repDatos) repCargar();
   } catch (ex) {
-    gasEstado(ex.message, true);
+    gasFallo('No se pudo quitar el gasto', ex);
   }
 }
 
@@ -1773,6 +1792,7 @@ async function gasAdministrarCategorias() {
   await Swal.fire({
     title: 'Categorías de gasto',
     html: `<div class="gascats" id="gascats">${pinta()}</div>
+      <p class="gascat-err" id="gascat-err" hidden></p>
       <div class="gascat-nueva">
         <input type="text" id="gascat-nombre" maxlength="60" placeholder="Agregar una categoría…" />
         <button type="button" class="btn btn--primary btn--sm" id="gascat-add">Agregar</button>
@@ -1782,9 +1802,17 @@ async function gasAdministrarCategorias() {
     showCloseButton: true,
     didOpen: () => {
       const caja = document.getElementById('gascats');
+      // El aviso va adentro del modal: la línea de estado queda detrás y no se ve.
+      const avisar = (texto) => {
+        const p = document.getElementById('gascat-err');
+        if (!p) return;
+        p.textContent = texto || '';
+        p.hidden = !texto;
+      };
       const refrescar = async () => {
         gasCats = (await api('/admin/gastos/categorias?todas=true')).categorias || [];
         caja.innerHTML = pinta();
+        avisar('');
       };
       document.getElementById('gascat-add').addEventListener('click', async () => {
         const campo = document.getElementById('gascat-nombre');
@@ -1794,7 +1822,7 @@ async function gasAdministrarCategorias() {
           await api('/admin/gastos/categorias', { method: 'POST', body: JSON.stringify({ nombre }) });
           campo.value = '';
           await refrescar();
-        } catch (ex) { Swal.showValidationMessage(ex.message); }
+        } catch (ex) { avisar(ex.message); }
       });
       caja.addEventListener('click', async (ev) => {
         const b = ev.target.closest('button');
@@ -1804,15 +1832,27 @@ async function gasAdministrarCategorias() {
         if (!cat) return;
         try {
           if (b.dataset.renombrar) {
+            // Pedir el nombre abre otro modal encima, y ese se lleva el de las
+            // categorías: al terminar hay que volver a abrirlo a mano.
             const { value: nombre } = await Swal.fire({
               title: 'Nuevo nombre', input: 'text', inputValue: cat.nombre,
               showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
               confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
               inputValidator: (v) => (!v || !v.trim()) ? 'Escriba el nombre' : undefined,
             });
-            if (!nombre) return;
-            await api(`/admin/gastos/categorias/${id}`,
-                      { method: 'PATCH', body: JSON.stringify({ nombre: nombre.trim() }) });
+            if (nombre) {
+              try {
+                await api(`/admin/gastos/categorias/${id}`,
+                          { method: 'PATCH', body: JSON.stringify({ nombre: nombre.trim() }) });
+              } catch (ex) {
+                await Swal.fire({ title: 'No se pudo cambiar el nombre', text: ex.message,
+                                  icon: 'error', confirmButtonText: 'Entendido',
+                                  confirmButtonColor: '#e8437a' });
+              }
+            }
+            Swal.close();
+            gasAdministrarCategorias();
+            return;
           } else if (!cat.activa) {
             await api(`/admin/gastos/categorias/${id}`,
                       { method: 'PATCH', body: JSON.stringify({ activa: true }) });

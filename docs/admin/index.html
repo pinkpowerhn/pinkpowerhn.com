@@ -339,6 +339,24 @@
   .lista__vl { font-weight: 700; white-space: nowrap; }
   .lista__vacia { color: var(--muted); font-size: 0.82rem; padding: 0.4rem 0; }
 
+  /* La cuenta de lo cobrado: producto + envio + impuesto = total. */
+  .desglose__f {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0;
+    font-size: 0.86rem; border-bottom: 1px solid #f7e7ef;
+  }
+  .desglose__sg {
+    width: 14px; text-align: center; color: var(--muted); font-weight: 700;
+    flex: 0 0 auto;
+  }
+  .desglose__nm { flex: 1; color: var(--ink-2); }
+  .desglose__vl { font-weight: 700; white-space: nowrap; }
+  .desglose__f--total {
+    border-bottom: none; border-top: 1.5px solid #f3d3e2; margin-top: 0.2rem;
+    padding-top: 0.75rem; font-size: 0.95rem;
+  }
+  .desglose__f--total .desglose__nm { color: var(--ink); font-weight: 600; }
+  .desglose__f--total .desglose__vl, .desglose__f--total .desglose__sg { color: var(--pink-dk); }
+
   @media (max-width: 680px) {
     /* El período ocupa la fila y los tres puntos van a su lado, no debajo:
        sueltos en otra linea no se sabia de que eran. */
@@ -577,6 +595,15 @@
 
         <!-- Lo primero: los cuatro números que se miran de un vistazo. -->
         <div class="kpis" id="rep-kpis"></div>
+
+        <!-- De dónde sale lo cobrado: el envío y el impuesto no son venta -->
+        <div class="card rep-card rep-cobro">
+          <div class="rep-card__cab">
+            <h2>Qué se le cobró a las clientas</h2>
+            <span class="rep-card__sub">lo vendido de arriba es solo producto</span>
+          </div>
+          <div id="rep-desglose"></div>
+        </div>
 
         <!-- Cómo viene el mes -->
         <div class="card rep-card">
@@ -1262,7 +1289,7 @@ function repPintar(r) {
 
   // 1. Los números del período
   const kpis = [
-    { lb: 'Vendido', nm: L(r.vendido), pie: `en ${N(r.pedidos)} pedidos`, rosa: true },
+    { lb: 'Vendido', nm: L(r.vendido), pie: `solo producto · en ${N(r.pedidos)} pedidos`, rosa: true },
     { lb: 'Venta promedio', nm: L(r.promedio), pie: 'por pedido' },
     { lb: 'Productos vendidos', nm: N(r.unidades), pie: 'unidades' },
     { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
@@ -1274,7 +1301,21 @@ function repPintar(r) {
       ${k.pie ? `<div class="kpi__pie">${k.pie}</div>` : ''}
     </div>`).join('');
 
-  // 2. Día a día
+  // 2. De dónde sale lo cobrado
+  const partes = [
+    { nombre: 'Vendido en productos', valor: r.vendido },
+    { nombre: 'Cobrado por envíos', valor: r.envios, signo: '+' },
+    { nombre: 'Impuestos cobrados', valor: r.impuestos, signo: '+' },
+    { nombre: 'Total cobrado a las clientas', valor: r.cobrado, signo: '=', fuerte: true },
+  ];
+  $('rep-desglose').innerHTML = partes.map((x) => `
+    <div class="desglose__f${x.fuerte ? ' desglose__f--total' : ''}">
+      <span class="desglose__sg">${x.signo || ''}</span>
+      <span class="desglose__nm">${x.nombre}</span>
+      <span class="desglose__vl">${L(x.valor)}</span>
+    </div>`).join('');
+
+  // 3. Día a día
   const dias = r.por_dia || [];
   const mejor = dias.reduce((a, d) => (d.monto > (a ? a.monto : 0) ? d : a), null);
   $('rep-dias-sub').textContent = mejor
@@ -1298,11 +1339,11 @@ function repPintar(r) {
                } } },
   });
 
-  // 3. De dónde viene la venta
+  // 4. De dónde viene la venta
   repDona('rep-g-canal', r.por_canal || []);
   repDona('rep-g-tipo', r.por_tipo || []);
 
-  // 4. Qué se vende: barras horizontales, que los nombres son largos
+  // 5. Qué se vende: barras horizontales, que los nombres son largos
   const top = (r.top_productos || []).slice(0, 12);
   repGrafica('rep-g-productos', {
     ...GRAFICA_BASE,
@@ -1321,7 +1362,7 @@ function repPintar(r) {
                } } },
   });
 
-  // 5. Cómo pagan
+  // 6. Cómo pagan
   const pagos = (r.por_pago || []).slice(0, 8);
   repGrafica('rep-g-pago', {
     ...GRAFICA_BASE,

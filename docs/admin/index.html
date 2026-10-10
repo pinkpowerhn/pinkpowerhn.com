@@ -674,6 +674,11 @@
             <span class="rep-card__sub">lo vendido menos lo que le costó el producto</span>
           </div>
           <div id="rep-ganancia"></div>
+          <div class="rep-sub" id="rep-costoraro-caja" hidden>
+            <h3>Revise el costo de estos</h3>
+            <p class="rep-nota" id="rep-costoraro-nota"></p>
+            <div id="rep-costoraro"></div>
+          </div>
           <div class="rep-sub" id="rep-sincosto-caja" hidden>
             <h3>Les falta ponerles el costo en Shopify</h3>
             <p class="rep-nota" id="rep-sincosto-nota"></p>
@@ -1494,6 +1499,23 @@ function repPintar(r) {
       <span class="desglose__nm">${x.nombre}</span>
       <span class="desglose__vl">${L(x.valor)}</span>
     </div>`).join('');
+
+  // Los que salen vendidos por debajo del costo: casi siempre es que quedó
+  // puesto el costo del paquete en un producto que se vende por unidad.
+  const raros = r.costo_raro || [];
+  $('rep-costoraro-caja').hidden = !raros.length;
+  if (raros.length) {
+    const perdida = raros.reduce((a, x) => a + (x.costo - x.monto), 0);
+    $('rep-costoraro-nota').textContent =
+      `${N(raros.length)} producto${raros.length === 1 ? ' se vendió' : 's se vendieron'} `
+      + `por debajo de su costo, y eso le baja ${L(perdida)} a la ganancia de arriba. `
+      + 'Si no los remató, lo más probable es que en Shopify tengan el costo del '
+      + 'paquete completo en vez del de una unidad.';
+    repLista('rep-costoraro', raros.slice(0, 10).map((x) => ({
+      nombre: x.producto + (x.variante ? ' · ' + x.variante : ''),
+      extra: `se vende a ${L(x.vendido_a)} · costo ${L(x.unitario)}`,
+      valor: x.costo - x.monto })));
+  }
 
   const faltan = r.sin_costo || [];
   $('rep-sincosto-caja').hidden = !faltan.length;

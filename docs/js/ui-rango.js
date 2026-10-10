@@ -76,6 +76,7 @@ window.PPRango = (function () {
     let abierto = false;
     let mesVisible = new Date(hasta.getFullYear(), hasta.getMonth(), 1);
     let provisional = null;      // el primer día tocado, esperando el segundo
+    let asomado = null;          // por encima de cuál está el dedo o el puntero
 
     destino.innerHTML = `
       <div class="pprango">
@@ -134,8 +135,14 @@ window.PPRango = (function () {
       const primero = new Date(mesVisible.getFullYear(), mesVisible.getMonth(), 1);
       const hueco = (primero.getDay() + 6) % 7;              // la semana arranca el lunes
       const cuantos = new Date(mesVisible.getFullYear(), mesVisible.getMonth() + 1, 0).getDate();
-      const ini = provisional || desde;
-      const fin = provisional ? provisional : hasta;
+      // Con un día ya marcado, el rango se pinta hasta donde está el dedo o el
+      // puntero: así se ve lo que se va a elegir antes de soltar el segundo.
+      let ini = desde, fin = hasta;
+      if (provisional) {
+        const otro = asomado || provisional;
+        ini = provisional < otro ? provisional : otro;
+        fin = provisional < otro ? otro : provisional;
+      }
 
       let html = '';
       for (let i = 0; i < hueco; i++) html += '<span class="pprango__hueco"></span>';
@@ -161,6 +168,7 @@ window.PPRango = (function () {
       raiz.classList.toggle('is-abierto', abierto);
       if (abierto) {
         provisional = null;
+        asomado = null;
         mesVisible = new Date(hasta.getFullYear(), hasta.getMonth(), 1);
         pintarCalendario();
       }
@@ -193,6 +201,7 @@ window.PPRango = (function () {
     rejilla.addEventListener('click', (ev) => {
       const b = ev.target.closest('.pprango__dia');
       if (!b || b.disabled) return;
+      ev.stopPropagation();
       const dia = deIso(b.dataset.d);
       if (!provisional) {
         provisional = dia;
@@ -202,13 +211,29 @@ window.PPRango = (function () {
       const a = provisional < dia ? provisional : dia;
       const z = provisional < dia ? dia : provisional;
       provisional = null;
+      asomado = null;
       aplicar(a, z, '');
       abrir(false);
     });
 
+    // Se mira el CAMINO del toque y no `contains`: al elegir el primer día se
+    // repinta el calendario, el botón tocado deja de existir, y `contains` daba
+    // "fue afuera" y cerraba el panel antes de poder marcar el segundo día.
     document.addEventListener('click', (ev) => {
-      if (abierto && !raiz.contains(ev.target)) abrir(false);
+      if (!abierto) return;
+      const camino = typeof ev.composedPath === 'function' ? ev.composedPath() : [];
+      if (!camino.includes(raiz) && !raiz.contains(ev.target)) abrir(false);
     });
+    rejilla.addEventListener('pointerover', (ev) => {
+      if (!provisional) return;
+      const b = ev.target.closest('.pprango__dia');
+      if (!b || b.disabled) return;
+      const dia = deIso(b.dataset.d);
+      if (mismoDia(dia, asomado)) return;
+      asomado = dia;
+      pintarCalendario();
+    });
+
     document.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape' && abierto) abrir(false);
     });

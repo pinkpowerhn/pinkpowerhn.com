@@ -1,51 +1,112 @@
 /* Componente de rango de fechas del panel — PinkPower
-   Los atajos a la izquierda y las dos fechas a la derecha; en el teléfono las
-   fechas pasan abajo y los atajos se deslizan. */
+   Un botón que dice el período y, al tocarlo, abre los atajos y el calendario.
+   En el teléfono el panel se pega abajo y ocupa el ancho: alcanzar la esquina
+   de arriba con el pulgar no es cómodo. */
 
-.pprango {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 1rem 1.4rem; flex-wrap: wrap;
-}
+.pprango { position: relative; display: inline-block; }
 .pprango.is-ocupado { opacity: 0.55; pointer-events: none; }
 
+.pprango__boton {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  background: #fff; border: 1.5px solid #f0d6e2; border-radius: 999px;
+  padding: 0.6rem 1rem; cursor: pointer; font-family: inherit;
+  font-size: 0.88rem; font-weight: 600; color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pprango__boton:hover { border-color: var(--pink); }
+.pprango.is-abierto .pprango__boton {
+  border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.pprango__boton svg { width: 16px; height: 16px; color: var(--pink); flex: 0 0 auto; }
+.pprango__txt { white-space: nowrap; }
+.pprango__flecha { width: 14px !important; height: 14px !important; color: var(--muted) !important; transition: transform 0.18s ease; }
+.pprango.is-abierto .pprango__flecha { transform: rotate(180deg); }
+
+.pprango__panel {
+  position: absolute; top: calc(100% + 0.5rem); left: 0; z-index: 60;
+  display: flex; gap: 0.2rem; background: #fff; border-radius: 18px;
+  border: 1px solid #f6e3ec; box-shadow: 0 24px 50px -24px rgba(120,20,60,0.4);
+  padding: 0.7rem; animation: ppRangoEntra 0.16s ease;
+}
+/* `display:flex` le gana al atributo hidden: sin esto el panel nace abierto. */
+.pprango__panel[hidden] { display: none; }
+@keyframes ppRangoEntra { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+
 .pprango__atajos {
-  display: flex; gap: 0.35rem; flex-wrap: wrap;
-  background: #fdeef5; border-radius: 999px; padding: 0.3rem;
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding-right: 0.7rem; border-right: 1px solid #f7e7ef; min-width: 142px;
 }
-.pprango__chip {
-  background: none; border: none; cursor: pointer; white-space: nowrap;
-  font-family: inherit; font-weight: 600; font-size: 0.8rem;
-  color: var(--muted); padding: 0.45rem 0.9rem; border-radius: 999px;
-  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+.pprango__atajo {
+  background: none; border: none; cursor: pointer; text-align: left;
+  font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--muted);
+  padding: 0.5rem 0.7rem; border-radius: 9px; white-space: nowrap;
+  transition: background 0.14s ease, color 0.14s ease;
 }
-.pprango__chip:hover:not(:disabled) { color: var(--pink-dk); }
-.pprango__chip.is-active {
-  background: #fff; color: var(--pink-dk);
-  box-shadow: 0 4px 12px -5px rgba(150,30,80,0.3);
-}
-.pprango__chip:disabled { cursor: default; }
+.pprango__atajo:hover { background: #fdeef5; color: var(--pink-dk); }
+.pprango__atajo.is-active { background: var(--pink); color: #fff; }
 
-.pprango__fechas { display: flex; align-items: flex-end; gap: 0.5rem; }
-.pprango__campo { display: flex; flex-direction: column; gap: 0.25rem; }
-.pprango__campo span {
-  font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em;
-  text-transform: uppercase; color: var(--muted); padding-left: 0.15rem;
+.pprango__cal { padding: 0 0.35rem; }
+.pprango__cab {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.6rem;
 }
-.pprango__campo input {
-  margin: 0; padding: 0.55rem 0.7rem; border: 1.5px solid #f0d6e2;
-  border-radius: 11px; background: #fff; font-family: inherit;
-  font-size: 0.85rem; color: var(--ink); color-scheme: light;
+.pprango__mes {
+  font-size: 0.85rem; font-weight: 700; color: var(--ink);
+  text-transform: capitalize; letter-spacing: 0.01em;
 }
-.pprango__campo input:focus {
-  outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+.pprango__nav {
+  background: #fdeef5; border: none; border-radius: 9px; cursor: pointer;
+  width: 28px; height: 28px; display: grid; place-items: center; color: var(--pink-dk);
+  transition: background 0.14s ease;
 }
-.pprango__guion { color: var(--muted); padding-bottom: 0.65rem; }
+.pprango__nav:hover { background: #fbdcea; }
+.pprango__nav svg { width: 15px; height: 15px; }
 
-@media (max-width: 620px) {
-  .pprango { flex-direction: column; align-items: stretch; }
-  .pprango__atajos { overflow-x: auto; flex-wrap: nowrap; }
+.pprango__dias, .pprango__rejilla {
+  display: grid; grid-template-columns: repeat(7, 34px); gap: 2px;
+}
+.pprango__dias span {
+  text-align: center; font-size: 0.66rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; padding-bottom: 0.3rem;
+}
+.pprango__dia {
+  height: 32px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 0.8rem; color: var(--ink); border-radius: 8px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pprango__dia:hover:not(:disabled) { background: #fdeef5; }
+.pprango__dia:disabled { color: #d8c6ce; cursor: default; }
+/* El rango pintado: los días de en medio en rosa claro y las dos puntas llenas. */
+.pprango__dia.is-dentro { background: #fdeef5; border-radius: 0; }
+.pprango__dia.is-punta {
+  background: var(--pink); color: #fff; font-weight: 700; border-radius: 8px;
+}
+.pprango__dia.is-hoy:not(.is-punta) { box-shadow: inset 0 0 0 1.5px #f3c3d8; }
+.pprango__hueco { height: 32px; }
+
+.pprango__pie {
+  margin: 0.6rem 0 0.1rem; font-size: 0.74rem; color: var(--muted);
+  text-align: center;
+}
+/* Solo la primera letra: `capitalize` dejaba "1 Al 10 De Octubre". */
+.pprango__pie::first-letter { text-transform: uppercase; }
+
+@media (max-width: 680px) {
+  .pprango { display: block; }
+  .pprango__boton { width: 100%; justify-content: center; }
+  /* Pegado abajo: en el teléfono el pulgar llega ahí, no a la esquina de arriba. */
+  .pprango__panel {
+    position: fixed; inset: auto 0 0 0; top: auto; flex-direction: column;
+    border-radius: 20px 20px 0 0; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    animation: ppRangoSube 0.2s ease;
+  }
+  @keyframes ppRangoSube { from { transform: translateY(100%); } to { transform: none; } }
+  .pprango__atajos {
+    flex-direction: row; overflow-x: auto; border-right: none; padding-right: 0;
+    padding-bottom: 0.7rem; border-bottom: 1px solid #f7e7ef; margin-bottom: 0.7rem;
+  }
   .pprango__atajos::-webkit-scrollbar { height: 0; }
-  .pprango__fechas { justify-content: space-between; }
-  .pprango__campo { flex: 1; }
-  .pprango__campo input { width: 100%; }
+  .pprango__cal { padding: 0; }
+  .pprango__dias, .pprango__rejilla { grid-template-columns: repeat(7, 1fr); }
+  .pprango__dia, .pprango__hueco { height: 40px; }
 }

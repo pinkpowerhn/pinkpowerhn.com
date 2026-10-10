@@ -1,0 +1,38 @@
+/* Menú de tres puntos del panel — PinkPower
+   Va suelto al final del documento, no dentro de la tarjeta: ahí quedaría
+   recortado por el overflow. */
+
+.ppmenu {
+  position: absolute; z-index: 90; min-width: 196px;
+  background: #fff; border: 1px solid #f6e3ec; border-radius: 14px;
+  box-shadow: 0 22px 44px -20px rgba(120,20,60,0.42);
+  padding: 0.35rem; animation: ppMenuEntra 0.14s ease;
+}
+@keyframes ppMenuEntra { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.ppmenu__op {
+  width: 100%; display: flex; align-items: center; gap: 0.6rem;
+  background: none; border: none; cursor: pointer; text-align: left;
+  font-family: inherit; font-size: 0.85rem; font-weight: 600; color: var(--ink);
+  padding: 0.6rem 0.7rem; border-radius: 10px;
+  transition: background 0.13s ease, color 0.13s ease;
+}
+.ppmenu__op:hover { background: #fdeef5; color: var(--pink-dk); }
+.ppmenu__op svg { width: 16px; height: 16px; color: var(--pink); flex: 0 0 auto; }
+.ppmenu__op span { flex: 1; }
+.ppmenu__op em { font-style: normal; font-size: 0.72rem; color: var(--muted); font-weight: 600; }
+.ppmenu__op--peligro { color: #d61f4a; }
+.ppmenu__op--peligro svg { color: #d61f4a; }
+.ppmenu__op--peligro:hover { background: #ffeef2; color: #d61f4a; }
+
+/* El botón que lo abre */
+.ppmenu-btn {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  background: #fff; border: 1.5px solid #f0d6e2; border-radius: 11px;
+  cursor: pointer; color: var(--muted); flex: 0 0 auto;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.ppmenu-btn:hover, .ppmenu-btn[aria-expanded="true"] {
+  border-color: var(--pink); color: var(--pink-dk); background: #fff6fa;
+}
+.ppmenu-btn svg { width: 18px; height: 18px; }

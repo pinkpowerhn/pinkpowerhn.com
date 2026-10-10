@@ -11,8 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link rel="stylesheet" href="/css/ui-tabla.css" />
 <link rel="stylesheet" href="/css/ui-rango.css" />
+<link rel="stylesheet" href="/css/ui-menu.css" />
 <script src="/js/ui-tabla.js" defer></script>
 <script src="/js/ui-rango.js" defer></script>
+<script src="/js/ui-menu.js" defer></script>
 <!-- Las gráficas de los reportes. Se carga diferida: el panel abre en
      Mayoristas y la mayoría de las veces ni se usa. -->
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js" defer></script>
@@ -272,24 +274,19 @@
   /* ── Reportes ──
      Cada bloque en su tarjeta, con aire entre ellas: pegadas no se distinguia
      donde terminaba un dato y empezaba otro. */
-  .rep-barra { position: sticky; top: 0.6rem; z-index: 12; }
-  .rep-barra__pie {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 0.8rem 1rem; flex-wrap: wrap; margin-top: 1rem;
-    padding-top: 0.9rem; border-top: 1px solid #f7e7ef;
+  .rep-barra { position: sticky; top: 0.6rem; z-index: 40; }
+  .rep-barra__fila {
+    display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
   }
-  .rep-estado { margin: 0; font-size: 0.8rem; color: var(--muted); }
+  #rep-rango { flex: 0 1 auto; min-width: 0; }
+  .rep-estado { margin: 0; flex: 1; font-size: 0.8rem; color: var(--muted); }
   .rep-estado.is-error { color: #c0392b; }
-  .rep-bajar { display: flex; gap: 0.5rem; }
-  .rep-bajar .btn {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.55rem 1rem; font-size: 0.82rem;
-  }
-  .rep-bajar svg { width: 15px; height: 15px; }
 
-  /* Entre tarjetas siempre el mismo aire, venga de donde venga. */
-  #rep-contenido > * + * { margin-top: 1.1rem; }
-  .rep-fila { display: grid; gap: 1.1rem; }
+  /* El aire entre tarjetas. Antes el bloque de numeros arrancaba pegado a la
+     barra de arriba y no se veia donde terminaba una cosa y empezaba otra. */
+  #rep-contenido { margin-top: 1.4rem; }
+  #rep-contenido > * + * { margin-top: 1.4rem; }
+  .rep-fila { display: grid; gap: 1.4rem; }
   .rep-fila--2 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
   .rep-card__cab {
     display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
@@ -306,7 +303,7 @@
   .rep-grafica { min-height: 60px; }
 
   /* Los numeros grandes del periodo */
-  .kpis { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .kpis { display: grid; gap: 1.4rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
   .kpi {
     background: #fff; border-radius: 18px; padding: 1.15rem 1.25rem;
     box-shadow: 0 12px 30px -24px rgba(150,30,80,0.5);
@@ -341,6 +338,23 @@
   .lista__ex { color: var(--muted); font-size: 0.76rem; white-space: nowrap; }
   .lista__vl { font-weight: 700; white-space: nowrap; }
   .lista__vacia { color: var(--muted); font-size: 0.82rem; padding: 0.4rem 0; }
+
+  @media (max-width: 680px) {
+    /* El período ocupa la fila y los tres puntos van a su lado, no debajo:
+       sueltos en otra linea no se sabia de que eran. */
+    .rep-barra { position: static; }
+    .rep-barra__fila { gap: 0.6rem; }
+    #rep-rango { flex: 1 1 auto; }
+    .rep-estado { order: 3; flex-basis: 100%; }
+    /* Los cuatro numeros de dos en dos: uno por fila obliga a desplazarse
+       para ver el ultimo. */
+    .kpis { gap: 0.7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi { padding: 0.9rem 0.8rem; border-radius: 15px; }
+    .kpi__nm { font-size: 1.15rem; }
+    .kpi--rosa { grid-column: 1 / -1; }
+    .kpi--rosa .kpi__nm { font-size: 1.6rem; }
+    #rep-contenido, #rep-contenido > * + *, .rep-fila { margin-top: 0.9rem; gap: 0.9rem; }
+  }
 
   /* ── Buscador de mayoristas ── */
   .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
@@ -548,29 +562,14 @@
       <!-- Barra de período: el rango a la izquierda y las descargas a la
            derecha. Se queda arriba al bajar, que es desde donde se cambia. -->
       <div class="card rep-barra">
-        <div id="rep-rango"></div>
-        <div class="rep-barra__pie">
+        <div class="rep-barra__fila">
+          <div id="rep-rango"></div>
           <p class="rep-estado" id="rep-estado"></p>
-          <div class="rep-bajar">
-            <button class="btn" id="rep-excel" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Excel
-            </button>
-            <button class="btn btn--ghost" id="rep-csv" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              CSV
-            </button>
-          </div>
+          <button class="ppmenu-btn" id="rep-mas" type="button" aria-label="Más opciones">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -1367,7 +1366,7 @@ async function repCargar() {
     const r = await api(`/admin/reportes?desde=${desde}&hasta=${hasta}`);
     repDatos = r;
     repPintar(r);
-    repEstado(`${N(r.pedidos)} pedidos del ${repRango.texto()}`
+    repEstado(`${N(r.pedidos)} pedidos`
       + (r.cancelados ? ` · ${r.cancelados} cancelado${r.cancelados === 1 ? '' : 's'}, que no suman` : ''));
   } catch (ex) {
     repEstado(ex.message, true);
@@ -1379,13 +1378,12 @@ async function repCargar() {
 
 // La descarga va por fetch y no por un enlace: el archivo pide la contraseña en
 // la cabecera, y un <a href> no la lleva.
-async function repBajar(formato, boton) {
+async function repBajar(formato) {
   if (!repRango) return;
   const { desde, hasta } = repRango.valores();
-  if (!desde || !hasta) { repEstado('Elija las dos fechas.', true); return; }
-  const antes = boton.innerHTML;
+  const boton = $('rep-mas');
   boton.disabled = true;
-  boton.textContent = 'Armando…';
+  repEstado(formato === 'csv' ? 'Armando el CSV…' : 'Armando el Excel…');
   try {
     const res = await fetch(`${API}/admin/reportes/excel?desde=${desde}&hasta=${hasta}&formato=${formato}`,
                             { headers: { 'Authorization': 'Bearer ' + token } });
@@ -1398,20 +1396,23 @@ async function repBajar(formato, boton) {
     a.download = `Ventas Pink Power ${desde} a ${hasta}.${formato === 'csv' ? 'csv' : 'xlsx'}`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    repEstado('Archivo descargado.');
+    repEstado(`Descargado · ${a.download}`);
   } catch (ex) {
     repEstado(ex.message, true);
   } finally {
     boton.disabled = false;
-    boton.innerHTML = antes;
   }
 }
 
 function repIniciar() {
   if (repRango) return;
+  // El componente avisa con las dos fechas ya hechas; la primera carga la
+  // dispara el propio arranque, no el componente.
   repRango = PPRango.crear($('rep-rango'), { inicial: 'este-mes', al: repCargar });
-  $('rep-excel').addEventListener('click', (e) => repBajar('excel', e.currentTarget));
-  $('rep-csv').addEventListener('click', (e) => repBajar('csv', e.currentTarget));
+  PPMenu.colgar($('rep-mas'), () => [
+    { texto: 'Bajar en Excel', nota: 'xlsx', icono: PPMenu.IC_BAJAR, al: () => repBajar('excel') },
+    { texto: 'Bajar en CSV', nota: 'csv', icono: PPMenu.IC_BAJAR, al: () => repBajar('csv') },
+  ]);
   repCargar();
 }
 

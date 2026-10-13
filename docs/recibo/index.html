@@ -95,12 +95,19 @@
     font-family: inherit; font-size: 0.85rem; font-weight: 700; color: #fff;
     background: linear-gradient(135deg, var(--pink), var(--pink-dk));
   }
+  /* El ticket es cosa de la tienda, no de la clienta: va discreto, debajo. */
+  .ticket {
+    display: block; margin: 0.6rem auto 0; background: none; border: none;
+    cursor: pointer; font-family: inherit; font-size: 0.74rem; font-weight: 600;
+    color: var(--muted); text-decoration: underline; padding: 0.4rem;
+  }
+  .ticket[disabled] { opacity: 0.6; text-decoration: none; }
 
   /* Al imprimir queda solo el papel: sin fondo, sin sombras, sin botón. */
   @media print {
     body { background: #fff; padding: 0; display: block; }
     .hoja { max-width: none; box-shadow: none; border-radius: 0; }
-    .imprimir { display: none; }
+    .imprimir, .ticket { display: none; }
     /* En papel, los botones se vuelven texto: tocarlos no se puede. */
     .redes { display: block; }
     .red { background: none; border: none; color: #000; padding: 0.1rem;
@@ -115,6 +122,7 @@
     <div class="cargando">Abriendo el recibo…</div>
   </div>
   <button class="imprimir" id="imprimir" hidden type="button">Imprimir o guardar en PDF</button>
+  <button class="ticket" id="ticket" hidden type="button">Imprimir en la impresora de tickets</button>
 </div>
 
 <script>
@@ -144,6 +152,7 @@ function textoDePago(r) {
 }
 
 function pintar(r) {
+  recibo = r;
   const items = (r.items || []).map((i) => `
     <div class="item">
       ${i.imagen ? `<img class="item__foto" src="${esc(i.imagen)}" alt="" loading="lazy" />`
@@ -201,6 +210,7 @@ function pintar(r) {
         : 'Este comprobante no sustituye una factura fiscal.'}
     </div>`;
   document.getElementById('imprimir').hidden = false;
+  document.getElementById('ticket').hidden = false;
   document.title = (r.cotizacion ? 'Cotización ' : 'Recibo ')
     + (r.ensayo ? '' : (r.numero || '')) + ' · Pink Power';
 }
@@ -208,6 +218,191 @@ function pintar(r) {
 function sinRecibo(texto) {
   document.getElementById('hoja').innerHTML =
     `<div class="aviso"><b>No encontramos este recibo</b>${esc(texto)}</div>`;
+}
+
+// ── El ticket de la impresora térmica ────────────────────────────────────────
+// La impresora de la tienda es de 58 mm: imprime 384 puntos de ancho y nada
+// más. Mandarle el PDF de esta hoja no sirve —la app lo encoge de tamaño carta
+// a 5 cm y la letra desaparece—, así que aquí se vuelve a dibujar el mismo
+// recibo a 384 px, en blanco y negro puro y sin fotos, y se le entrega como
+// imagen: las apps de impresión térmica imprimen la imagen punto por punto.
+const TICKET = 384;
+const MT = 12;                  // el margen, a cada lado
+let recibo = null;              // lo último que se pintó, para armar el ticket
+
+function cargarImagen(src) {
+  return new Promise((ok) => {
+    const im = new Image();
+    im.onload = () => ok(im);
+    im.onerror = () => ok(null);
+    setTimeout(() => ok(null), 6000);
+    im.src = src;
+  });
+}
+
+// El papel térmico no tiene grises: lo que no es blanco se imprime negro. El
+// logo rosado saldría como una mancha sucia, así que se le pasa un umbral.
+function aNegro(c, y, alto) {
+  const img = c.getImageData(0, y, TICKET, alto);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const claro = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11 > 200;
+    d[i] = d[i + 1] = d[i + 2] = claro ? 255 : 0;
+    d[i + 3] = 255;
+  }
+  c.putImageData(img, 0, y);
+}
+
+function tPartir(c, texto, ancho) {
+  const palabras = String(texto == null ? '' : texto).split(/\s+/).filter(Boolean);
+  const lineas = [];
+  let act = '';
+  for (let p of palabras) {
+    // Una palabra sola más ancha que el papel (un nombre larguísimo) se corta.
+    while (c.measureText(p).width > ancho) {
+      let n = 1;
+      while (n < p.length && c.measureText(p.slice(0, n + 1)).width <= ancho) n++;
+      if (act) { lineas.push(act); act = ''; }
+      lineas.push(p.slice(0, n));
+      p = p.slice(n);
+    }
+    const prueba = act ? act + ' ' + p : p;
+    if (!act || c.measureText(prueba).width <= ancho) act = prueba;
+    else { lineas.push(act); act = p; }
+  }
+  if (act) lineas.push(act);
+  return lineas.length ? lineas : [''];
+}
+
+async function dibujarTicket(r) {
+  const lienzo = document.createElement('canvas');
+  lienzo.width = TICKET; lienzo.height = 4000;
+  const c = lienzo.getContext('2d');
+  c.fillStyle = '#fff'; c.fillRect(0, 0, TICKET, 4000);
+  c.fillStyle = '#000'; c.textBaseline = 'top';
+
+  const F = (px, peso) => { c.font = `${peso || 500} ${px}px Montserrat, sans-serif`; };
+  const util = TICKET - MT * 2;
+  const der = TICKET - MT;
+  let y = 8;
+
+  const centro = (texto, px, peso, salto) => {
+    F(px, peso); c.textAlign = 'center';
+    for (const ln of tPartir(c, texto, util)) { c.fillText(ln, TICKET / 2, y); y += salto; }
+  };
+  const izq = (texto, px, peso, salto, sangria) => {
+    F(px, peso); c.textAlign = 'left';
+    for (const ln of tPartir(c, texto, util - (sangria || 0))) {
+      c.fillText(ln, MT + (sangria || 0), y); y += salto;
+    }
+  };
+  const fila = (etq, val, px, peso, salto) => {
+    F(px, peso); c.textAlign = 'left'; c.fillText(etq, MT, y);
+    c.textAlign = 'right'; c.fillText(val, der, y);
+    y += salto;
+  };
+  const raya = () => {
+    c.fillStyle = '#000';
+    for (let x = MT; x < der; x += 6) c.fillRect(x, y, 3, 1);
+    y += 9;
+  };
+
+  const logo = await cargarImagen('/img/logo.png');
+  if (logo && logo.width) {
+    const w = 168, h = Math.round(logo.height * (w / logo.width));
+    c.drawImage(logo, Math.round((TICKET - w) / 2), y, w, h);
+    aNegro(c, y, h);
+    y += h + 12;
+  }
+
+  const numero = r.numero && r.numero !== '(prueba)' ? ' ' + r.numero : '';
+  centro((r.cotizacion ? 'COTIZACIÓN' : 'RECIBO') + numero, 23, 700, 30);
+  if (r.ensayo) centro('PRUEBA · SIN VALOR', 16, 700, 22);
+  y += 2;
+
+  izq('Fecha: ' + fecha(r.fecha), 16, 500, 21);
+  if (r.cliente) izq('Clienta: ' + r.cliente, 16, 500, 21);
+  if (!r.cotizacion) izq('Pago: ' + textoDePago(r), 16, 500, 21);
+
+  y += 6; raya(); y += 4;
+  for (const it of (r.items || [])) {
+    izq(it.nombre, 18, 700, 22);
+    if (it.variante) izq(it.variante, 16, 500, 20, 10);
+    F(17, 500); c.textAlign = 'left';
+    c.fillText(`${it.cantidad} × ${L(it.precio)}`, MT + 10, y);
+    F(18, 700); c.textAlign = 'right';
+    c.fillText(L(it.importe), der, y);
+    y += 27;
+  }
+  raya(); y += 4;
+
+  const d = r.descuento;
+  const conFlete = r.flete && r.flete.monto > 0;
+  if ((d && d.monto > 0) || conFlete) fila('Subtotal', L(r.subtotal), 17, 500, 23);
+  if (d && d.monto > 0) {
+    fila('Descuento' + (d.tipo === 'porcentaje' ? ` (${d.valor}%)` : ''),
+         '- ' + L(d.monto), 17, 500, 23);
+  }
+  if (conFlete) fila(r.flete.titulo, L(r.flete.monto), 17, 500, 23);
+  y += 2;
+  fila('TOTAL', L(r.total), 23, 700, 32);
+  if (r.recibido) fila('Recibido', L(r.recibido), 17, 500, 23);
+  if (r.cambio) fila('Cambio', L(r.cambio), 17, 500, 23);
+  if (r.pendiente > 0) {
+    fila('Abonado', L(Math.max(0, (Number(r.total) || 0) - Number(r.pendiente))), 17, 500, 23);
+    fila('PENDIENTE', L(r.pendiente), 19, 700, 27);
+  }
+
+  y += 6; raya(); y += 8;
+  centro(r.cotizacion ? '¡Gracias por su interés!' : '¡Gracias por su compra!', 18, 700, 25);
+  centro('@pinkpowerhn · pinkpowerhn.com', 16, 500, 21);
+  centro('Pink Power · Honduras', 16, 500, 21);
+  centro(r.cotizacion
+    ? 'Cotización sujeta a disponibilidad. No es un comprobante de compra.'
+    : 'Este comprobante no sustituye una factura fiscal.', 14, 500, 18);
+  y += 30;                      // papel de sobra, para cortar sin comerse el pie
+
+  // Recortado al alto que se usó: si se manda el lienzo entero, la impresora
+  // escupe los cuatro metros de blanco que sobran.
+  const alto = Math.min(4000, Math.ceil(y));
+  const final = document.createElement('canvas');
+  final.width = TICKET; final.height = alto;
+  const f = final.getContext('2d');
+  f.fillStyle = '#fff'; f.fillRect(0, 0, TICKET, alto);
+  f.drawImage(lienzo, 0, 0);
+  return final;
+}
+
+async function mandarTicket() {
+  const b = document.getElementById('ticket');
+  if (!recibo || !b || b.disabled) return;
+  const antes = b.textContent;
+  b.disabled = true; b.textContent = 'Armando el ticket…';
+  try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const lienzo = await dibujarTicket(recibo);
+    const blob = await new Promise((ok) => lienzo.toBlob(ok, 'image/png'));
+    const nombre = `Ticket ${(recibo.numero || '').replace(/[^\w#-]/g, '')} Pink Power.png`
+      .replace(/\s+/g, ' ');
+    const archivo = new File([blob], nombre, { type: 'image/png' });
+    // En el teléfono se pasa por el menú de compartir, que es por donde se le
+    // entrega a la app de la impresora. En una computadora, se baja y ya.
+    if (navigator.canShare && navigator.share && navigator.canShare({ files: [archivo] })) {
+      await navigator.share({ files: [archivo] });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = nombre;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  } catch (ex) {
+    // Cerrar el menú de compartir no es una falla: solo se avisa de lo demás.
+    if (!ex || ex.name !== 'AbortError') b.textContent = 'No se pudo armar el ticket';
+  }
+  b.disabled = false;
+  if (b.textContent !== 'No se pudo armar el ticket') b.textContent = antes;
+  else setTimeout(() => { b.textContent = antes; }, 3000);
 }
 
 (async () => {
@@ -231,6 +426,7 @@ function sinRecibo(texto) {
 })();
 
 document.getElementById('imprimir').addEventListener('click', () => window.print());
+document.getElementById('ticket').addEventListener('click', mandarTicket);
 </script>
 </body>
 </html>

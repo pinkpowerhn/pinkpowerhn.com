@@ -81,6 +81,11 @@ const estado = {
   descuento: { tipo: '', valor: 0 },
   descAbierto: false,   // desplegable propio del descuento
   flete: '',            // '', 'local' o 'nacional'
+  // Por dónde entró la venta: 'tienda' (vino al mostrador) o 'redes' (pidió por
+  // WhatsApp, Instagram o TikTok, aunque después pase recogiendo).
+  canal: 'tienda',
+  canalTocado: false,
+  cobroAbierto: false,  // la ventana de "cómo se cobra" (solo en computadora)
   preparado: true,      // ¿ya se lo lleva? si no, el pedido queda por preparar
   entregaTocada: false, // la cajera lo decidió a mano: no volver a adivinarlo
   pago: '',
@@ -120,6 +125,7 @@ function loArmado() {
     venta: estado.venta, cliente: estado.cliente,
     mayoreo: estado.mayoreo, descuento: estado.descuento,
     pago: estado.pago, banco: estado.banco, flete: estado.flete,
+    canal: estado.canal, canalTocado: estado.canalTocado,
     preparado: estado.preparado, entregaTocada: estado.entregaTocada,
     varios: estado.varios, montos: estado.montos,
     recibido: estado.recibido, nota: estado.nota,
@@ -135,6 +141,8 @@ function aplicarArmado(d) {
   estado.pago = d.pago || '';
   estado.banco = d.banco || '';
   estado.flete = d.flete || '';
+  estado.canal = d.canal === 'redes' ? 'redes' : (d.flete ? 'redes' : 'tienda');
+  estado.canalTocado = !!d.canalTocado;
   estado.preparado = d.preparado === undefined ? !d.flete : !!d.preparado;
   estado.entregaTocada = !!d.entregaTocada;
   // Lo guardado con los dos interruptores viejos (parcial / mixto) se trae al
@@ -578,6 +586,34 @@ function cambio() {
   return Math.max(0, num(estado.recibido) - efectivoAhora());
 }
 
+const PAGOS_TEXTO_CORTO = {
+  efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia',
+  credito: 'Crédito', contraentrega: 'Contraentrega',
+};
+
+// Lo elegido, en pocas palabras: es lo único que se ve de la configuración
+// mientras la ventana está cerrada, así que tiene que decir lo que importa.
+function resumenDelCobro() {
+  const chips = [];
+  if (estado.varios) {
+    const formas = pagosDeLaVenta().map((x) => PAGOS_TEXTO_CORTO[x.forma] || x.forma);
+    chips.push(formas.length ? formas.join(' + ') : { falta: 'Falta anotar el pago' });
+    if (loQueQueda() > 0 && formas.length) chips.push('Debe ' + L(loQueQueda()));
+  } else if (estado.pago) {
+    chips.push(PAGOS_TEXTO_CORTO[estado.pago] || estado.pago);
+  } else {
+    chips.push({ falta: 'Falta la forma de pago' });
+  }
+  if (estado.pago === 'transferencia' || (estado.varios && num(estado.montos.transferencia) > 0)) {
+    chips.push(estado.banco || { falta: 'Falta el banco' });
+  }
+  if (montoDescuento() > 0) chips.push('Desc. ' + L(montoDescuento()));
+  if (elFlete().monto > 0) chips.push(elFlete().titulo);
+  chips.push(estado.preparado ? 'Se lo lleva' : 'Para entregar');
+  chips.push(estado.canal === 'redes' ? 'Redes' : 'Tienda');
+  return chips;
+}
+
 // Las tres caras del resumen del pago: falta plata, cuadra justo, o se anotó
 // más de lo que vale la venta (que casi siempre es un cero de más).
 function resumenDePagos() {
@@ -649,6 +685,9 @@ function limpiarArmado() {
   estado.banco = '';
   estado.bancoAbierto = false;
   estado.flete = '';
+  estado.canal = 'tienda';
+  estado.canalTocado = false;
+  estado.cobroAbierto = false;
   estado.preparado = true;
   estado.entregaTocada = false;
   estado.recibido = '';
@@ -771,6 +810,9 @@ async function cobrar() {
     banco: formaPrincipal() === 'transferencia' ? estado.banco : '',
     flete: elFlete().monto > 0
       ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
+    // Tienda o redes: las dos entran por la caja, pero ella necesita saber
+    // cuánto genera el mostrador de verdad.
+    canal: estado.canal === 'redes' ? 'redes' : 'tienda',
     comision: comision() > 0 ? { monto: comision() } : null,
     recibido: efectivoAhora() > 0 ? num(estado.recibido) : 0,
     cambio: vuelto,
@@ -930,15 +972,16 @@ async function crearClienta(datos, boton, avisar) {
 const esTactil = window.matchMedia('(hover: none)').matches;
 
 function enfocarBuscador() {
-  if (camara || esTactil) return;
+  if (camara || esTactil || estado.cobroAbierto) return;
   const i = $('q');
   if (i && !estado.resultado) setTimeout(() => i.focus({ preventScroll: true }), 30);
 }
 
-// El desplegable de resultados vuelve al principio cuando pintar() rehace el
-// DOM: con una lista larga, tocar algo te dejaba mirando el primer renglón en vez
-// del que estabas viendo. Se guarda la posición y se devuelve.
-const ZONAS_SCROLL = ['#resultados'];
+// Cada zona con scroll vuelve al principio cuando pintar() rehace el DOM: con
+// quince productos en la venta, cambiar una cantidad te dejaba mirando la primera
+// línea en vez de la que estabas tocando. Se guarda la posición y se devuelve.
+const ZONA_VENTA = '.col-izq > .tarjeta.scroll-lindo';
+const ZONAS_SCROLL = ['#resultados', ZONA_VENTA];
 let lineasPintadas = 0;
 
 function leerScroll(main) {
@@ -949,23 +992,16 @@ function leerScroll(main) {
 }
 
 function devolverScroll(main, tops) {
-  ZONAS_SCROLL.forEach((sel, i) => {
-    if (!tops[i]) return;
-    const el = main.querySelector(sel);
-    if (el) el.scrollTop = tops[i];
-  });
   // Si la venta creció, la línea nueva quedó al final: ahí tiene que mirar la
-  // cajera para confirmar que entró lo que escaneó. En computadora la página es
-  // larga y la línea puede quedar fuera de la pantalla, así que se trae a la
-  // vista; en el teléfono no, que la barra de cobro va fija abajo y la taparía.
-  // En el primer pintado tampoco: al abrir la caja con una venta a medias
-  // arrancaría con la pantalla ya corrida hacia abajo.
-  const crecio = lineasPintadas > 0 && estado.venta.length > lineasPintadas;
+  // cajera para confirmar que entró lo que escaneó.
+  const crecio = estado.venta.length > lineasPintadas;
   lineasPintadas = estado.venta.length;
-  if (!crecio || !window.matchMedia('(min-width:900px)').matches) return;
-  const lineas = main.querySelectorAll('.col-izq .li');
-  const ultima = lineas[lineas.length - 1];
-  if (ultima) ultima.scrollIntoView({ block: 'nearest' });
+  ZONAS_SCROLL.forEach((sel, i) => {
+    const alFinal = crecio && sel === ZONA_VENTA;
+    if (!tops[i] && !alFinal) return;
+    const el = main.querySelector(sel);
+    if (el) el.scrollTop = alFinal ? el.scrollHeight : tops[i];
+  });
 }
 
 function pintar() {
@@ -1009,9 +1045,10 @@ function pintar() {
   `;
 
   // El foco se devuelve donde estaba: repintar no puede sacar a la cajera del
-  // campo en el que estaba escribiendo.
-  // preventScroll: en computadora la página se desplaza, y devolver el foco al
-  // buscador arrastraba la pantalla de vuelta arriba en cada repintado.
+  // campo en el que estaba escribiendo. Con la ventana del cobro abierta, el
+  // buscador queda detrás: devolverle el foco ahí movía la pantalla por debajo
+  // cada vez que ella tocaba algo de la ventana.
+  if (estado.cobroAbierto) { devolverScroll(main, tops); return; }
   if (activo === 'q-cliente' && $('q-cliente')) {
     const i = $('q-cliente');
     i.focus({ preventScroll: true }); i.setSelectionRange(i.value.length, i.value.length);
@@ -1363,7 +1400,27 @@ function bloqueResumen() {
         <span>Comisión (5%)</span><span>${L(comision())}</span></div>` : ''}
       <div class="total-grande"><span>Total</span><b>${L(total())}</b></div>
     </div>
-    <div class="tarjeta__cuerpo scroll-lindo">
+    <!-- En computadora esto es lo unico que se ve de la configuracion: el boton
+         que abre la ventana y el resumen de lo elegido. En telefono el boton se
+         esconde y los controles van aqui mismo, uno tras otro, como siempre. -->
+    <button class="btn cobro-boton solo-escritorio" data-accion="abrir-cobro" type="button">
+      <span>Cómo se cobra</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    <div class="resumen-cobro solo-escritorio">
+      ${resumenDelCobro().map((c) => (typeof c === 'string'
+        ? `<span>${esc(c)}</span>`
+        : `<span class="falta">${esc(c.falta)}</span>`)).join('')}
+    </div>
+
+    <div class="config-cobro${estado.cobroAbierto ? ' config-cobro--abierta' : ''}">
+      <div class="config-cobro__caja scroll-lindo">
+        <div class="config-cobro__cab solo-escritorio">
+          <b>Cómo se cobra</b>
+          <button class="modal__x" data-accion="cerrar-cobro" type="button"
+                  aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="tarjeta__cuerpo">
       <div style="display:flex; gap:0.6rem; align-items:flex-start;">
         <div class="pp-select" style="flex:1.3">
           <button class="pp-select__btn" type="button" data-select="desc"
@@ -1389,6 +1446,20 @@ function bloqueResumen() {
           ${FLETES.map((f) => `<button class="flete-btn" data-flete="${f.v}" type="button"
             aria-pressed="${estado.flete === f.v}">${f.t}${
               f.monto ? `<b>${L(f.monto)}</b>` : ''}</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Las dos cosas entran por la caja, pero no son lo mismo: ella necesita
+           saber cuanto genera el mostrador de verdad. Con flete siempre es de
+           redes (nadie llega a la tienda y pide envio), sin flete puede ser
+           cualquiera de las dos, por eso el boton. -->
+      <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
+        <label>¿De dónde vino la venta?</label>
+        <div class="canales">
+          <button class="canal-btn" data-canal="tienda" type="button"
+            aria-pressed="${estado.canal !== 'redes'}">Tienda<small>vino al mostrador</small></button>
+          <button class="canal-btn" data-canal="redes" type="button"
+            aria-pressed="${estado.canal === 'redes'}">Redes<small>WhatsApp, Insta, TikTok</small></button>
         </div>
       </div>
 
@@ -1472,6 +1543,13 @@ function bloqueResumen() {
           : ' La comisión del 5% solo aplica con flete nacional.'}</div>` : ''}
       ${estado.error ? `<div class="aviso-caja aviso-caja--roja">${esc(estado.error)}</div>` : ''}
 
+        </div>
+        <div class="config-cobro__pie solo-escritorio">
+          <button class="btn btn--pink btn--ancho" data-accion="cerrar-cobro" type="button">
+            Listo
+          </button>
+        </div>
+      </div>
     </div>
     <!-- Fuera del cuerpo: ahi adentro, pegado abajo, tapaba el selector de banco
          y el campo "Recibí" justo cuando la cajera acababa de activarlos. -->
@@ -2331,12 +2409,20 @@ $('caja-main').addEventListener('keydown', (e) => {
     estado.resClientes = null;
     estado.verRecientes = false;
     estado.descAbierto = false;
+    estado.cobroAbierto = false;
     pintar();
     enfocarBuscador();
   }
 });
 
 $('caja-main').addEventListener('click', (e) => {
+  // El fondo oscuro de la ventana del cobro: tocarlo fuera de la caja la cierra.
+  if (e.target.classList && e.target.classList.contains('config-cobro--abierta')) {
+    estado.cobroAbierto = false;
+    pintar();
+    enfocarBuscador();
+    return;
+  }
   const btn = e.target.closest('button');
 
   // Tocar el campo para escribir el nombre saca la camara del medio. Va tambien
@@ -2417,6 +2503,14 @@ $('caja-main').addEventListener('click', (e) => {
     // clienta está enfrente y se lo lleva. Se adivina, pero manda lo que marque
     // la cajera: si ya lo tocó a mano en esta venta, no se le cambia.
     if (!estado.entregaTocada) estado.preparado = !estado.flete;
+    // Y con flete la venta vino de redes: nadie llega a la tienda a pedir envío.
+    if (!estado.canalTocado && estado.flete) estado.canal = 'redes';
+    pintar();
+    return;
+  }
+  if (d.canal !== undefined) {
+    estado.canal = d.canal;
+    estado.canalTocado = true;   // ya lo decidió ella: no volver a adivinar
     pintar();
     return;
   }
@@ -2445,6 +2539,14 @@ $('caja-main').addEventListener('click', (e) => {
     case 'recargar': cargarCatalogo(); break;
     case 'quitar-cliente':
       estado.cliente = null; recalcularPrecios(); pintar(); enfocarBuscador(); break;
+    case 'abrir-cobro': estado.cobroAbierto = true; pintar(); break;
+    case 'cerrar-cobro':
+      estado.cobroAbierto = false;
+      estado.descAbierto = false;
+      estado.bancoAbierto = false;
+      pintar();
+      enfocarBuscador();
+      break;
     case 'cobrar': cobrar(); break;
     case 'nueva': nuevaVenta(); break;
     case 'manual': pedirManual(); break;
@@ -3648,11 +3750,27 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') guardarVenta();
 });
 
+// El alto real de la barra de arriba y de la cinta de prueba. Escritos a mano en
+// el CSS se desincronizan en cuanto se agrega un boton, y la pantalla deja de
+// cuadrar por unos pixeles: aparece scroll donde no deberia haberlo.
+function medirBarras() {
+  const raiz = document.documentElement;
+  const top = document.querySelector('.top');
+  const cinta = document.querySelector('.cinta-prueba');
+  if (top) raiz.style.setProperty('--alto-top',
+    Math.ceil(top.getBoundingClientRect().height) + 'px');
+  const alto = (cinta && cinta.offsetParent !== null)
+    ? Math.ceil(cinta.getBoundingClientRect().height) : 0;
+  raiz.style.setProperty('--alto-cinta', alto + 'px');
+}
+
 function arrancar() {
   mostrarCaja();
   const recuperada = recuperarVenta();
   if (MODO_PRUEBA) document.body.classList.add('es-prueba');
   pintar();
+  medirBarras();
+  window.addEventListener('resize', medirBarras);
   cargarCatalogo();
   cargarRecientes();
   detectarCamara();

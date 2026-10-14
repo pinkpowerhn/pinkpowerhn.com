@@ -162,24 +162,43 @@
   /* ── Estructura ──────────────────────────────────────────────────────── */
   .caja { padding:1rem; padding-bottom:10rem; max-width:1500px; margin:0 auto; }
   @media (min-width:900px) {
-    /* En computadora: dos columnas, la venta a la izquierda y el cobro a la
-       derecha, y la pagina se desplaza como cualquier otra. Antes la caja se
-       encajaba a la fuerza en el alto de la pantalla y cada bloque llevaba su
-       propio desplazamiento: en un monitor normal el cobro salia cortado y habia
-       contenido que no se alcanzaba a ver. */
+    /* En computadora la caja ocupa exactamente la pantalla: la cajera no tiene
+       que bajar para ver el total ni el boton de cobrar. Lo unico que se
+       desplaza es la lista de productos; todo lo que se configura del cobro vive
+       en una ventana aparte (.config-cobro), que es justo lo que antes no cabia
+       y dejaba la columna con un scroll interno escondiendo lo que habia que
+       tocar. */
+    body { overflow:hidden; }
     .caja { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:1.1rem;
-            align-items:start; padding:1rem 1.3rem 3rem; }
-    /* Para que los nombres largos se recorten en vez de ensanchar la columna. */
-    .col-izq, .col-der { min-width:0; }
+            align-items:stretch; padding:1rem 1.3rem;
+            height:calc(100dvh - var(--alto-top) - var(--alto-cinta, 0px));
+            overflow:hidden; }
+    .col-izq, .col-der { display:flex; flex-direction:column; min-width:0; min-height:0; }
     .col-izq > .tarjeta:last-child, .col-der > .tarjeta:last-child { margin-bottom:0; }
-    /* Cobrar y cotizar, al pie de su tarjeta y separados del cuerpo con una
-       linea: son las dos acciones que cierran la venta. */
+    /* La lista de la venta lleva su propio scroll y llega hasta abajo, para que
+       termine a la misma altura que la columna de la derecha. */
+    .col-izq > .tarjeta:last-child { overflow-y:auto; flex:1 1 auto; }
+    /* Con la tarjeta estirada, el mensaje de "sin productos" se centra en ella. */
+    .col-izq > .tarjeta:last-child.vacio-caja {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+    }
+    /* La tarjeta de la clienta no se encoge: apretada por la de cobro, cortaba
+       el interruptor de mayoreo por la mitad. */
+    .col-der > .tarjeta:first-child { flex:0 0 auto; }
+    /* La de cobro llega hasta abajo y el boton de cobrar queda pegado al pie. */
+    .col-der > .tarjeta--cobro { flex:1 1 auto; display:flex; flex-direction:column;
+                                 overflow:hidden; }
+    .caja .cobro-totales { flex:0 0 auto; }
     .caja .cierre-cobro {
-      padding:0.2rem 1.1rem 1.1rem;
+      margin-top:auto; flex:0 0 auto; padding:0.2rem 1.1rem 1.1rem;
       border-top:1px solid rgba(26,10,18,0.06);
     }
     .caja .cierre-cobro .btn--cobrar { box-shadow:var(--sombra-sm); }
   }
+  /* Los mide el JS al arrancar: escritos a mano se desincronizan en cuanto
+     cambia algo de la barra de arriba, y entonces la pantalla no cuadra por unos
+     pixeles y aparece scroll donde no debe haberlo. */
+  :root { --alto-top: 60px; --alto-cinta: 0px; }
 
   /* ── Barra de desplazamiento propia ──────────────────────────────────────
      Va con CSS y no con una librería (SimpleBar, OverlayScrollbars,
@@ -664,6 +683,73 @@
     border-color:transparent; box-shadow:var(--sombra-sm);
   }
   .pago-btn[aria-pressed="true"] svg { color:#fff; }
+
+  /* ── Como se cobra ───────────────────────────────────────────────────────
+     En telefono estos controles van en la tarjeta, uno tras otro, como siempre.
+     En computadora no caben en la columna, asi que se abren como ventana: el
+     mismo HTML, cambiando solo donde se pinta. */
+  .cobro-boton {
+    margin:0.9rem 1.1rem 0; width:calc(100% - 2.2rem); justify-content:space-between;
+    background:#fff0f6; border-color:transparent; color:var(--pink-dk); font-weight:600;
+  }
+  .cobro-boton:hover { background:#ffe3ee; }
+  .cobro-boton svg { width:16px; height:16px; }
+  .resumen-cobro {
+    margin:0.55rem 1.1rem 0; display:flex; flex-wrap:wrap; gap:0.35rem;
+  }
+  .resumen-cobro span {
+    background:#f7f1f4; border-radius:999px; padding:0.25rem 0.6rem;
+    font-size:0.72rem; font-weight:600; color:var(--ink-2);
+  }
+  .resumen-cobro span.falta { background:#fff6e2; color:#8a6410; }
+  .config-cobro__cab {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1.1rem 1.1rem 0;
+  }
+  .config-cobro__cab b { font-family:var(--serif); font-size:1.4rem; font-weight:600;
+                         color:var(--ink); }
+  .config-cobro__pie { padding:0 1.1rem 1.1rem; }
+  @media (min-width:900px) {
+    .config-cobro { display:none; }
+    .config-cobro--abierta {
+      display:flex; position:fixed; inset:0; z-index:70; padding:1.5rem;
+      background:rgba(26,10,18,0.5); backdrop-filter:blur(3px);
+      align-items:center; justify-content:center; animation:fondoIn .2s ease;
+    }
+    .config-cobro--abierta .config-cobro__caja {
+      width:100%; max-width:430px; background:#fff; border-radius:26px;
+      max-height:88dvh; overflow-y:auto; box-shadow:var(--sombra);
+      animation:modalIn .24s cubic-bezier(.22,1,.36,1);
+    }
+    /* En una pantalla de portatil el contenido no entra entero y la ventana se
+       desplaza: el titulo y el boton de Listo se quedan pegados, para que la
+       salida nunca se pierda de vista. */
+    .config-cobro--abierta .config-cobro__cab {
+      position:sticky; top:0; z-index:2; background:#fff; padding-bottom:0.5rem;
+      border-radius:26px 26px 0 0;
+    }
+    .config-cobro--abierta .config-cobro__pie {
+      position:sticky; bottom:0; z-index:2; background:#fff; padding-top:0.7rem;
+      box-shadow:0 -10px 14px -12px rgba(26,10,18,0.35);
+    }
+  }
+
+  /* Por donde entro la venta: el mostrador o las redes. */
+  .canales { display:flex; gap:0.45rem; }
+  .canal-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:0.1rem;
+    min-height:48px; justify-content:center; border:1.5px solid var(--linea);
+    background:#fff; border-radius:14px; font-family:inherit; font-size:0.78rem;
+    font-weight:600; color:var(--ink-2); cursor:pointer; padding:0.4rem 0.3rem;
+    transition:all .18s ease; text-align:center;
+  }
+  .canal-btn small { font-size:0.64rem; font-weight:500; color:var(--muted); }
+  .canal-btn:hover { border-color:var(--pink); }
+  .canal-btn[aria-pressed="true"] {
+    background:linear-gradient(135deg, #f0568a, var(--pink-dk)); color:#fff;
+    border-color:transparent; box-shadow:var(--sombra-sm);
+  }
+  .canal-btn[aria-pressed="true"] small { color:rgba(255,255,255,0.85); }
 
   /* Pago parcial o con varias formas: cada una con su campo. Lo que no se cubra
      queda debiendo, asi que no hace falta elegir una forma "principal". */

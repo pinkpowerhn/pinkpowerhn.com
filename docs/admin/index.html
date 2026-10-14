@@ -304,6 +304,11 @@
   }
   .rep-nota { margin: 1rem 0 0; font-size: 0.74rem; color: var(--muted); line-height: 1.6; }
   .rep-grafica { min-height: 60px; }
+  /* El globito de la gráfica de marcas dice más de una cosa. */
+  .tip { padding: 0.5rem 0.65rem; font-size: 12px; line-height: 1.55; color: var(--ink);
+         max-width: 15rem; white-space: normal; }
+  .tip b { display: block; font-size: 12.5px; margin-bottom: 0.1rem; }
+  .tip small { color: var(--muted); }
 
   /* Los numeros grandes del periodo */
   .kpis { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); }
@@ -720,6 +725,16 @@
             </div>
             <div id="rep-g-tipo" class="rep-grafica rep-grafica--dona"></div>
           </div>
+        </div>
+
+        <!-- Ella compra por marca, y pidió verlo vendido por marca -->
+        <div class="card rep-card">
+          <div class="rep-card__cab">
+            <h2>Ventas por marca</h2>
+            <span class="rep-card__sub" id="rep-marcas-sub"></span>
+          </div>
+          <div id="rep-g-marcas" class="rep-grafica"></div>
+          <p class="rep-nota" id="rep-marcas-nota" hidden></p>
         </div>
 
         <!-- Qué se vende -->
@@ -1564,7 +1579,61 @@ function repPintar(r) {
   repDona('rep-g-canal', r.por_canal || []);
   repDona('rep-g-tipo', r.por_tipo || []);
 
-  // 7. Qué se vende: barras horizontales, que los nombres son largos
+  // 7. Qué marcas dejan la plata. Barras y no dona: son treinta y pico y de la
+  // mitad para abajo los pedazos ya no se distinguen.
+  const marcas = r.por_marca || [];
+  const TOPE_MARCAS = 12;
+  const marcasTop = marcas.slice(0, TOPE_MARCAS);
+  const marcasResto = marcas.slice(TOPE_MARCAS);
+  const marcasTotal = marcas.reduce((a, x) => a + x.monto, 0) || 1;
+  $('rep-marcas-sub').textContent = marcas.length
+    ? `${N(marcas.length)} marca${marcas.length === 1 ? '' : 's'} en el período`
+    : '';
+  const marcasNota = $('rep-marcas-nota');
+  marcasNota.hidden = !marcasResto.length;
+  if (marcasResto.length) {
+    marcasNota.textContent = `Se ven las ${TOPE_MARCAS} que más vendieron; las otras `
+      + `${N(marcasResto.length)} suman `
+      + `${L(marcasResto.reduce((a, x) => a + x.monto, 0))}.`;
+  }
+  const angosto = window.innerWidth < 760;
+  repGrafica('rep-g-marcas', {
+    ...GRAFICA_BASE,
+    chart: { ...GRAFICA_BASE.chart, type: 'bar',
+             height: Math.max(220, marcasTop.length * 32 + 40) },
+    series: [{ name: 'Vendido', data: marcasTop.map((m) => m.monto) }],
+    colors: ['#e8437a'],
+    plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: '62%' } },
+    // En el teléfono los montos del eje se encimaban unos con otros: van en
+    // miles y de cuatro en cuatro, que el número exacto está en el globito.
+    xaxis: { categories: marcasTop.map((m) => m.nombre),
+             tickAmount: angosto ? 4 : 6,
+             labels: { formatter: (v) => (angosto && v >= 1000
+                         ? 'L. ' + Math.round(v / 1000) + 'k' : Lc(v)),
+                       style: { colors: '#9b8491', fontSize: '11px' } },
+             axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { minWidth: 118, maxWidth: 170,
+                       style: { colors: '#6b5560', fontSize: '11.5px' } } },
+    // El globito dice lo vendido, cuánto pesa, las unidades y la ganancia. La
+    // ganancia sale solo de lo que tiene costo puesto en Shopify: si no cubre
+    // casi todo, se dice, porque si no un margen sacado de dos productos parece
+    // el de la marca entera.
+    tooltip: { ...GRAFICA_BASE.tooltip, custom: ({ dataPointIndex }) => {
+      const m = marcasTop[dataPointIndex];
+      if (!m) return '';
+      const peso = Math.round((m.monto / marcasTotal) * 100);
+      const gan = m.ganancia == null ? '<div><small>sin costo puesto en Shopify</small></div>'
+        : `<div>Ganancia ${L(m.ganancia)} · margen ${N(m.margen)}%`
+          + (m.cobertura < 95 ? ` <small>(del ${N(m.cobertura)}% que tiene costo)</small>` : '')
+          + '</div>';
+      return `<div class="tip"><b>${esc(m.nombre)}</b>`
+        + `<div>${L(m.monto)} · ${peso}% de lo vendido</div>`
+        + `<div>${N(m.unidades)} unidad${m.unidades === 1 ? '' : 'es'} · `
+        + `${N(m.cuantos)} pedido${m.cuantos === 1 ? '' : 's'}</div>${gan}</div>`;
+    } },
+  });
+
+  // 8. Qué se vende: barras horizontales, que los nombres son largos
   const top = (r.top_productos || []).slice(0, 12);
   repGrafica('rep-g-productos', {
     ...GRAFICA_BASE,
@@ -1583,7 +1652,7 @@ function repPintar(r) {
                } } },
   });
 
-  // 8. Cómo pagan
+  // 9. Cómo pagan
   const pagos = (r.por_pago || []).slice(0, 8);
   repGrafica('rep-g-pago', {
     ...GRAFICA_BASE,

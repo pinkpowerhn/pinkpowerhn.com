@@ -87,13 +87,11 @@ const estado = {
   banco: '',            // a qué banco entró la transferencia
   bancoAbierto: false,  // su desplegable
   recibido: '',
-  parcial: false,       // la clienta abona una parte y queda debiendo el resto
-  abono: '',            // cuánto entrega ahora
-  mixto: false,         // pagó con dos métodos (400 en tarjeta y 600 en transferencia)
-  monto1: '',           // cuánto con el primer método
-  pago2: '',            // el segundo método
-  banco2: '',
-  monto2: '',
+  // Un solo modo para lo que antes eran dos interruptores que no se podían usar
+  // juntos (parcial y mixto): cada forma de pago lleva su campo, y lo que no
+  // alcance a cubrir el total queda debiendo.
+  varios: false,
+  montos: { efectivo: '', tarjeta: '', transferencia: '' },
   nota: '',
   cobrando: false,
   cotizando: false,     // armando el prerecibo, que no cobra nada
@@ -123,9 +121,7 @@ function loArmado() {
     mayoreo: estado.mayoreo, descuento: estado.descuento,
     pago: estado.pago, banco: estado.banco, flete: estado.flete,
     preparado: estado.preparado, entregaTocada: estado.entregaTocada,
-    parcial: estado.parcial, abono: estado.abono,
-    mixto: estado.mixto, monto1: estado.monto1,
-    pago2: estado.pago2, banco2: estado.banco2, monto2: estado.monto2,
+    varios: estado.varios, montos: estado.montos,
     recibido: estado.recibido, nota: estado.nota,
   };
 }
@@ -141,13 +137,19 @@ function aplicarArmado(d) {
   estado.flete = d.flete || '';
   estado.preparado = d.preparado === undefined ? !d.flete : !!d.preparado;
   estado.entregaTocada = !!d.entregaTocada;
-  estado.parcial = !!d.parcial;
-  estado.abono = d.abono || '';
-  estado.mixto = !!d.mixto;
-  estado.monto1 = d.monto1 || '';
-  estado.pago2 = d.pago2 || '';
-  estado.banco2 = d.banco2 || '';
-  estado.monto2 = d.monto2 || '';
+  // Lo guardado con los dos interruptores viejos (parcial / mixto) se trae al
+  // modo nuevo: una venta a medias no se puede perder por un cambio nuestro.
+  const vacios = { efectivo: '', tarjeta: '', transferencia: '' };
+  estado.varios = !!(d.varios || d.parcial || d.mixto);
+  estado.montos = { ...vacios };
+  if (d.montos) {
+    Object.keys(vacios).forEach((v) => { estado.montos[v] = d.montos[v] || ''; });
+  } else if (d.mixto) {
+    if (d.pago in vacios) estado.montos[d.pago] = d.monto1 || '';
+    if (d.pago2 in vacios) estado.montos[d.pago2] = d.monto2 || '';
+  } else if (d.parcial && d.pago in vacios) {
+    estado.montos[d.pago] = d.abono || '';
+  }
   estado.recibido = d.recibido || '';
   estado.nota = d.nota || '';
   return true;
@@ -511,41 +513,87 @@ function actualizarTotales() {
     linea.remove();
   }
   const btn = document.querySelector('.btn--cobrar.solo-escritorio');
-  if (btn && !estado.cobrando) btn.textContent = verboDeCobro() + ' ' + L(montoDelBoton());
+  if (btn && !estado.cobrando) {
+    btn.textContent = verboDeCobro() + ' ' + L(montoDelBoton());
+    // Lo anotado puede pasarse del total mientras escribe: el botón se apaga en
+    // el momento, sin esperar un repintado.
+    btn.disabled = !sePuedeCobrar();
+  }
+  // Y el aviso de lo que falta dice por qué se apagó.
+  const falta = faltaParaCobrar();
+  document.querySelectorAll('.barra__falta').forEach((el) => {
+    el.textContent = falta;
+    el.hidden = !falta;
+  });
 }
 
-// Lo que la clienta entrega ahora, por método. Con un solo método es todo (o lo
-// que diga el pago parcial); con dos, lo que se puso en cada uno.
+// Mientras la cajera escribe en los campos de pago no se repinta (se le iría el
+// foco), así que los dos números que cambian se actualizan a mano.
+function pintarResumenPagos() {
+  const caja = document.querySelector('.cambio--debe, .cambio--resumen');
+  if (caja) {
+    const r = resumenDePagos();
+    caja.classList.toggle('cambio--debe', r.debe);
+    caja.classList.toggle('cambio--resumen', !r.debe);
+    caja.querySelector('span').textContent = r.etiqueta;
+    caja.querySelector('b').textContent = L(r.monto);
+  }
+  const vuelto = document.querySelector('.cambio--vuelto b');
+  if (vuelto) vuelto.textContent = L(cambio());
+}
+
+// Lo que la clienta entrega ahora, por método: solo las formas que llevan monto.
+// Con una sola forma que paga todo no hay detalle que anotar.
 function pagosDeLaVenta() {
-  if (estado.mixto) {
-    return [
-      { forma: estado.pago, monto: num(estado.monto1), banco: estado.banco },
-      { forma: estado.pago2, monto: num(estado.monto2), banco: estado.banco2 },
-    ].filter((x) => x.forma && x.monto > 0);
-  }
-  if (estado.parcial) {
-    return [{ forma: estado.pago, monto: montoAbono(), banco: estado.banco }];
-  }
-  return [];
+  if (!estado.varios) return [];
+  return PAGOS_VARIOS
+    .map(([v]) => ({ forma: v, monto: num(estado.montos[v]),
+                     banco: v === 'transferencia' ? estado.banco : '' }))
+    .filter((x) => x.monto > 0);
+}
+
+// Lo anotado tal cual, sin recortar: sirve para avisar cuando pasa del total.
+function sumaPagos() {
+  return pagosDeLaVenta().reduce((s, x) => s + x.monto, 0);
 }
 
 function montoAbono() {
-  if (estado.mixto) {
-    return Math.min(total(), pagosDeLaVenta().reduce((s, x) => s + x.monto, 0));
-  }
-  if (!estado.parcial) return total();
-  return Math.min(total(), Math.max(0, num(estado.abono)));
+  if (!estado.varios) return total();
+  return Math.min(total(), sumaPagos());
 }
 
 function loQueQueda() {
   return Math.max(0, total() - montoAbono());
 }
 
+// Cuánto de la venta entra en efectivo: es contra eso que se calcula el vuelto.
+function efectivoAhora() {
+  if (estado.varios) return num(estado.montos.efectivo);
+  return estado.pago === 'efectivo' ? total() : 0;
+}
+
 function cambio() {
-  // Con pago parcial el vuelto se calcula contra lo que abona, no contra el
-  // total: si abona 1.570 y entrega 1.600, el cambio es 30.
-  const rec = num(estado.recibido);
-  return Math.max(0, rec - montoAbono());
+  // El vuelto se calcula contra lo que se paga en efectivo, no contra el total:
+  // si lo que entra en efectivo son 1.570 y entrega 1.600, el cambio es 30.
+  return Math.max(0, num(estado.recibido) - efectivoAhora());
+}
+
+// Las tres caras del resumen del pago: falta plata, cuadra justo, o se anotó
+// más de lo que vale la venta (que casi siempre es un cero de más).
+function resumenDePagos() {
+  const sobra = sumaPagos() - total();
+  if (sobra > 0.009) return { debe: true, etiqueta: 'Se pasó del total por', monto: sobra };
+  if (loQueQueda() > 0) return { debe: true, etiqueta: 'Queda debiendo', monto: loQueQueda() };
+  return { debe: false, etiqueta: 'Pagado completo', monto: montoAbono() };
+}
+
+// Con varios métodos el pedido se marca con el que trajo más plata: es el que
+// Shopify muestra en la ficha, y la nota lista igual todos los pagos.
+function formaPrincipal() {
+  if (!estado.varios) return estado.pago;
+  const ps = pagosDeLaVenta();
+  if (!ps.length) return '';
+  return ps.reduce((a, b) => (b.monto > a.monto ? b : a)).forma;
 }
 
 // Al crédito y contraentrega no entra plata ahora: el pedido queda pendiente.
@@ -560,23 +608,28 @@ function quedaPendiente() {
 // como un aviso aparte, encima.
 function faltaParaCobrar() {
   if (!estado.venta.length) return '';
+  if (estado.varios) {
+    if (sumaPagos() <= 0) return 'Falta anotar cuánto entrega';
+    if (sumaPagos() > total() + 0.009) return 'Lo anotado pasa del total de la venta';
+    if (num(estado.montos.transferencia) > 0 && !estado.banco) return 'Falta elegir el banco';
+    return '';
+  }
   if (!estado.pago) return 'Falta elegir la forma de pago';
   if (estado.pago === 'transferencia' && !estado.banco) return 'Falta elegir el banco';
   return '';
 }
 
 function verboDeCobro() {
+  if (estado.varios) return loQueQueda() > 0 ? 'Registrar abono de' : 'Cobrar';
   if (estado.pago === 'credito') return 'Registrar al crédito';
   if (estado.pago === 'contraentrega') return 'Registrar contraentrega';
-  if (estado.parcial) return 'Registrar abono de';
-  if (estado.mixto) return loQueQueda() > 0 ? 'Registrar pagos de' : 'Cobrar';
   return 'Cobrar';
 }
 
 // Con pago parcial, el botón muestra lo que entra ahora, no el total: es lo que
 // la cajera tiene que recibir en la mano.
 function montoDelBoton() {
-  return (estado.parcial || estado.mixto) ? montoAbono() : total();
+  return estado.varios ? montoAbono() : total();
 }
 
 // Todo lo que se arma para una venta. Se vacía apenas el pedido queda creado:
@@ -599,13 +652,8 @@ function limpiarArmado() {
   estado.preparado = true;
   estado.entregaTocada = false;
   estado.recibido = '';
-  estado.parcial = false;
-  estado.abono = '';
-  estado.mixto = false;
-  estado.monto1 = '';
-  estado.pago2 = '';
-  estado.banco2 = '';
-  estado.monto2 = '';
+  estado.varios = false;
+  estado.montos = { efectivo: '', tarjeta: '', transferencia: '' };
   estado.nota = '';
   estado.error = '';
   estado.resultados = [];
@@ -624,17 +672,14 @@ function nuevaVenta() {
 // Una transferencia sin banco no sirve: es justo el dato que hace falta para
 // cuadrar despues con el estado de cuenta.
 function sePuedeCobrar() {
-  if (!estado.venta.length || !estado.pago || estado.cobrando) return false;
-  if (estado.pago === 'transferencia' && !estado.banco) return false;
-  // Un abono tiene que ser algo y menos que el total: si cubre todo, no es
-  // abono, es el cobro normal.
-  if (estado.parcial && !(montoAbono() > 0 && montoAbono() < total())) return false;
-  if (estado.mixto) {
-    const ps = pagosDeLaVenta();
-    if (ps.length < 2) return false;                       // falta el segundo
-    if (ps.some((x) => x.forma === 'transferencia' && !x.banco)) return false;
-    if (montoAbono() <= 0 || montoAbono() > total() + 0.009) return false;
+  if (!estado.venta.length || estado.cobrando) return false;
+  if (estado.varios) {
+    // Algo tiene que entrar, y no puede entrar más que el total de la venta.
+    if (sumaPagos() <= 0 || sumaPagos() > total() + 0.009) return false;
+    return !(num(estado.montos.transferencia) > 0 && !estado.banco);
   }
+  if (!estado.pago) return false;
+  if (estado.pago === 'transferencia' && !estado.banco) return false;
   return true;
 }
 
@@ -706,7 +751,7 @@ async function cobrar() {
   estado.cobrando = true;
   estado.error = '';
   pintar();
-  const vuelto = estado.pago === 'efectivo' ? cambio() : 0;
+  const vuelto = efectivoAhora() > 0 ? cambio() : 0;
   const cuerpo = {
     // El nombre viaja solo para el recibo: el backend arma el pedido con el id.
     items: estado.venta.filter((l) => !l.manual).map((l) => ({
@@ -720,16 +765,18 @@ async function cobrar() {
     cliente_id: estado.cliente ? estado.cliente.id : '',
     cliente_nombre: estado.cliente ? estado.cliente.nombre : '',
     mayoreo: hayMayoreo(),
-    pago: estado.pago,
-    banco: estado.pago === 'transferencia' ? estado.banco : '',
+    // Con varios métodos, el pedido se marca con el que trajo más plata; el
+    // detalle completo viaja en `pagos`.
+    pago: formaPrincipal(),
+    banco: formaPrincipal() === 'transferencia' ? estado.banco : '',
     flete: elFlete().monto > 0
       ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
     comision: comision() > 0 ? { monto: comision() } : null,
-    recibido: estado.pago === 'efectivo' ? num(estado.recibido) : 0,
+    recibido: efectivoAhora() > 0 ? num(estado.recibido) : 0,
     cambio: vuelto,
-    // Cómo paga: un método, dos (mixto), o menos que el total (parcial). El
-    // backend anota una transacción por cada uno.
-    abono: estado.parcial ? montoAbono() : 0,
+    // Cómo paga: cuando lleva varias formas (o entrega menos que el total), el
+    // backend anota una transacción por cada una.
+    abono: estado.varios ? montoAbono() : 0,
     pagos: pagosDeLaVenta(),
     // Si la clienta ya se lo lleva, el pedido sale preparado; un encargo queda
     // pendiente para que lo arme después quien lo prepara.
@@ -1281,9 +1328,10 @@ function interruptorMayoreo() {
   </label>`;
 }
 
-// El segundo método de un pago mixto: solo los que hacen entrar plata ahora
-// (al crédito y contraentrega no se paga en el momento).
-const PAGOS_SEGUNDO = [
+// Las formas que hacen entrar plata ahora, cada una con su campo cuando el pago
+// es parcial o con varios métodos. Al crédito y contraentrega no se paga en el
+// momento, así que no llevan campo.
+const PAGOS_VARIOS = [
   ['efectivo', 'Efectivo', IC.efectivo],
   ['tarjeta', 'Tarjeta', IC.tarjeta],
   ['transferencia', 'Transferencia', IC.transferencia],
@@ -1348,89 +1396,36 @@ function bloqueResumen() {
            después, no. Si no, hay que ir a Shopify a despreparar el pedido. -->
       <label class="entrega">
         <input type="checkbox" data-entrega ${estado.preparado ? 'checked' : ''} />
-        <span>
-          <b>${estado.preparado ? 'Ya se lo lleva' : 'Queda para preparar'}</b>
-          <small>${estado.preparado
-            ? 'El pedido sale marcado como preparado en Shopify.'
-            : 'Queda pendiente en Shopify, para armarlo después.'}</small>
-        </span>
+        <span><b>Ya se lo lleva</b></span>
       </label>
 
-      <div class="pagos">
-        ${pagos.map(([v, t, ic]) => `<button class="pago-btn${
-            v === 'contraentrega' ? ' pago-btn--ancho' : ''}" data-pago="${v}" type="button"
-          aria-pressed="${estado.pago === v}">${svg(ic, 1.8)}<span>${t}</span></button>`).join('')}
-      </div>
-
-      <!-- Pago parcial: la clienta encarga, transfiere una parte y paga el resto
-           al recoger. Sin esto, la venta se registraba como cobrada completa y
-           Shopify quedaba creyendo que entró más plata de la que entró. -->
-      ${estado.pago && !quedaPendiente() ? `
-        ${!estado.mixto ? `
-          <label class="switch" style="margin-top:0.8rem">
-            <input type="checkbox" data-parcial ${estado.parcial ? 'checked' : ''} />
-            Pago parcial (queda debiendo)
-          </label>
-          ${estado.parcial ? `
-            <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
-              <label for="abono">¿Cuánto entrega ahora?</label>
-              <input id="abono" type="text" inputmode="decimal"
-                     value="${estado.abono}" data-abono placeholder="0.00" />
-            </div>
-          ` : ''}
-        ` : ''}
-        ${!estado.parcial ? `
-          <label class="switch" style="margin-top:0.6rem">
-            <input type="checkbox" data-mixto ${estado.mixto ? 'checked' : ''} />
-            Pagó con dos métodos
-          </label>
-          ${estado.mixto ? `
-            <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
-              <label for="monto1">Con ${esc(PAGOS_TEXTO[estado.pago] || estado.pago)}</label>
-              <input id="monto1" type="text" inputmode="decimal"
-                     value="${estado.monto1}" data-monto1 placeholder="0.00" />
-            </div>
-            <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
-              <label>El otro método</label>
-              <div class="pagos pagos--segundo">
-                ${PAGOS_SEGUNDO.filter(([v]) => v !== estado.pago).map(([v, t, ic]) => `
-                  <button class="pago-btn" data-pago2="${v}" type="button"
-                    aria-pressed="${estado.pago2 === v}">${svg(ic, 1.6)}<span>${t}</span></button>`).join('')}
-              </div>
-            </div>
-            ${estado.pago2 === 'transferencia' ? `
-              <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
-                <label for="banco2">¿A qué banco?</label>
-                <select id="banco2" data-banco2 class="pp-select__btn" style="width:100%">
-                  <option value="">Elija el banco</option>
-                  ${BANCOS.map((b) => `<option value="${esc(b)}" ${
-                    estado.banco2 === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}
-                </select>
-              </div>` : ''}
-            ${estado.pago2 ? `
-              <div class="campo" style="margin-top:0.6rem; margin-bottom:0">
-                <label for="monto2">Con ${esc(PAGOS_TEXTO[estado.pago2] || estado.pago2)}</label>
-                <input id="monto2" type="text" inputmode="decimal"
-                       value="${estado.monto2}" data-monto2 placeholder="0.00" />
-              </div>` : ''}
-          ` : ''}
-        ` : ''}
-        ${(estado.parcial || estado.mixto) && loQueQueda() > 0
-          ? `<div class="cambio cambio--debe"><span>Queda debiendo</span><b>${L(loQueQueda())}</b></div>`
-          : ''}
-        ${estado.mixto && pagosDeLaVenta().length > 1 && loQueQueda() === 0
-          ? `<div class="cambio cambio--resumen"><span>Pagado completo</span><b>${L(montoAbono())}</b></div>` : ''}
-      ` : ''}
-
-      ${estado.pago === 'efectivo' ? `
-        <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
-          <label for="recibido">Recibí</label>
-          <input id="recibido" type="text" inputmode="decimal"
-                 value="${estado.recibido}" data-recibido placeholder="0.00" />
+      ${estado.varios ? `
+        <!-- Cada forma con su campo: lo que no alcance a cubrir el total queda
+             debiendo. Antes esto eran dos interruptores (pago parcial y pago
+             con dos metodos) que no se podian usar juntos. -->
+        <div class="pagos-varios">
+          ${PAGOS_VARIOS.map(([v, t, ic]) => `
+            <div class="pago-campo">
+              <label for="m-${v}">${svg(ic, 1.8)}<span>${t}</span></label>
+              <input id="m-${v}" type="text" inputmode="decimal" data-monto="${v}"
+                     value="${esc(estado.montos[v])}" placeholder="0.00" />
+            </div>`).join('')}
         </div>
-        ${num(estado.recibido) > 0 ? `<div class="cambio"><span>Cambio</span><b>${L(cambio())}</b></div>` : ''}
-      ` : ''}
-      ${estado.pago === 'transferencia' ? `
+      ` : `
+        <div class="pagos">
+          ${pagos.map(([v, t, ic]) => `<button class="pago-btn${
+              v === 'contraentrega' ? ' pago-btn--ancho' : ''}" data-pago="${v}" type="button"
+            aria-pressed="${estado.pago === v}">${svg(ic, 1.8)}<span>${t}</span></button>`).join('')}
+        </div>
+      `}
+
+      ${estado.venta.length && (estado.varios || !quedaPendiente()) ? `
+        <label class="switch">
+          <input type="checkbox" data-varios ${estado.varios ? 'checked' : ''} />
+          Pago parcial o con varios métodos
+        </label>` : ''}
+
+      ${(estado.varios ? num(estado.montos.transferencia) > 0 : estado.pago === 'transferencia') ? `
         <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
           <label>¿A qué banco?</label>
           <div class="pp-select">
@@ -1449,6 +1444,22 @@ function bloqueResumen() {
           </div>
         </div>
       ` : ''}
+
+      ${efectivoAhora() > 0 ? `
+        <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
+          <label for="recibido">Recibí</label>
+          <input id="recibido" type="text" inputmode="decimal"
+                 value="${estado.recibido}" data-recibido placeholder="0.00" />
+        </div>
+        ${num(estado.recibido) > 0
+          ? `<div class="cambio cambio--vuelto"><span>Cambio</span><b>${L(cambio())}</b></div>` : ''}
+      ` : ''}
+
+      ${estado.varios ? (() => { const r = resumenDePagos(); return `
+        <div class="cambio ${r.debe ? 'cambio--debe' : 'cambio--resumen'}">
+          <span>${r.etiqueta}</span><b>${L(r.monto)}</b>
+        </div>`; })() : ''}
+
       ${cuantasSinMayoreo() ? `<div class="aviso-caja aviso-caja--ojo">
         ${cuantasSinMayoreo() === 1
           ? 'Hay 1 producto sin precio de mayoreo: va al precio de la tienda. Está marcado en la lista.'
@@ -1465,10 +1476,10 @@ function bloqueResumen() {
     <!-- Fuera del cuerpo: ahi adentro, pegado abajo, tapaba el selector de banco
          y el campo "Recibí" justo cuando la cajera acababa de activarlos. -->
     <div class="cierre-cobro">
-      ${faltaParaCobrar() ? `<div class="barra__falta solo-escritorio">${faltaParaCobrar()}</div>` : ''}
+      <div class="barra__falta solo-escritorio"${faltaParaCobrar() ? '' : ' hidden'}>${faltaParaCobrar()}</div>
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
-        ${estado.cobrando ? (quedaPendiente() || estado.parcial || estado.mixto ? 'Registrando…' : 'Cobrando…')
+        ${estado.cobrando ? (quedaPendiente() || estado.varios ? 'Registrando…' : 'Cobrando…')
                           : verboDeCobro() + ' ' + L(montoDelBoton())}
       </button>
       <button class="btn btn--ancho btn--cotiza" data-accion="cotizar" type="button"
@@ -1482,12 +1493,12 @@ function bloqueResumen() {
 function barraMovil() {
   const falta = faltaParaCobrar();
   return `<div class="barra">
-    ${falta ? `<div class="barra__falta">${falta}</div>` : ''}
+    <div class="barra__falta"${falta ? '' : ' hidden'}>${falta}</div>
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${!sePuedeCobrar() ? 'disabled' : ''}>
-      ${estado.cobrando ? (quedaPendiente() || estado.parcial || estado.mixto ? 'Registrando…' : 'Cobrando…')
-        : verboDeCobro() + ((estado.parcial || estado.mixto) ? ' ' + L(montoDelBoton()) : '')}
+      ${estado.cobrando ? (quedaPendiente() || estado.varios ? 'Registrando…' : 'Cobrando…')
+        : verboDeCobro() + (estado.varios ? ' ' + L(montoDelBoton()) : '')}
     </button>
   </div>`;
 }
@@ -1508,7 +1519,7 @@ function vistaExito() {
       r.pago === 'contraentrega' ? 'Queda pendiente: se cobra al entregar.'
                                  : 'Queda pendiente de pago (crédito).'}</div>` : ''}
     ${!r.ensayo && !r.preparado ? `<div class="aviso-caja aviso-caja--amarilla">
-      Queda pendiente de preparar en Shopify.</div>` : ''}
+      El pedido queda pendiente de entregar.</div>` : ''}
     ${r.aviso ? `<div class="aviso-caja aviso-caja--amarilla">${esc(r.aviso)}</div>` : ''}
     ${r.recibo ? `
       <div class="recibo-previa" id="recibo-previa">
@@ -2220,7 +2231,7 @@ $('caja-main').addEventListener('input', (e) => {
   }
   if (t.dataset.recibido !== undefined) {
     estado.recibido = t.value;
-    const c = document.querySelector('.cambio b');
+    const c = document.querySelector('.cambio--vuelto b');
     if (c) c.textContent = L(cambio());
     else pintar();
     return;
@@ -2236,36 +2247,36 @@ $('caja-main').addEventListener('input', (e) => {
     pintar();
     return;
   }
-  if (t.dataset.parcial !== undefined) {
-    estado.parcial = !!t.checked;
-    if (!estado.parcial) estado.abono = '';
+  if (t.dataset.varios !== undefined) {
+    estado.varios = !!t.checked;
+    estado.montos = { efectivo: '', tarjeta: '', transferencia: '' };
+    estado.recibido = '';
+    // Al crédito y contraentrega no entra plata ahora, así que no conviven con
+    // los campos: la forma que estuviera elegida se suelta.
+    if (estado.varios) { estado.pago = ''; estado.banco = ''; }
     pintar();
-    if (estado.parcial) setTimeout(() => $('abono')?.focus(), 40);
+    if (estado.varios) setTimeout(() => $('m-efectivo')?.focus(), 40);
     return;
   }
-  if (t.dataset.mixto !== undefined) {
-    estado.mixto = !!t.checked;
-    if (!estado.mixto) { estado.pago2 = ''; estado.banco2 = ''; estado.monto1 = ''; estado.monto2 = ''; }
-    pintar();
-    return;
-  }
-  if (t.dataset.banco2 !== undefined) { estado.banco2 = t.value; pintar(); return; }
-  if (t.dataset.monto1 !== undefined || t.dataset.monto2 !== undefined) {
-    if (t.dataset.monto1 !== undefined) estado.monto1 = t.value;
-    else estado.monto2 = t.value;
-    // Como con el precio: repintar entero sacaría el foco del campo.
-    const debe = document.querySelector('.cambio--debe b');
-    if (debe) debe.textContent = L(loQueQueda());
-    actualizarTotales();
-    return;
-  }
-  if (t.dataset.abono !== undefined) {
-    estado.abono = t.value;
+  if (t.dataset.monto !== undefined) {
+    const forma = t.dataset.monto;
+    const habia = num(estado.montos[forma]) > 0;
+    estado.montos[forma] = t.value;
+    // El banco de la transferencia y el "Recibí" del efectivo aparecen (o se
+    // van) con el monto de su forma: ahí sí hay que repintar, y se devuelve el
+    // cursor donde estaba para no cortarle la escritura a la cajera.
+    if ((forma === 'efectivo' || forma === 'transferencia') && (num(t.value) > 0) !== habia) {
+      const donde = t.selectionStart;
+      pintar();
+      const campo = document.querySelector(`[data-monto="${forma}"]`);
+      if (campo) {
+        campo.focus({ preventScroll: true });
+        try { campo.setSelectionRange(donde, donde); } catch (_) { /* da igual */ }
+      }
+      return;
+    }
     // Como con el precio: repintar en cada tecla sacaría el foco del campo.
-    const debe = document.querySelector('.cambio--debe b');
-    if (debe) debe.textContent = L(loQueQueda());
-    const vuelto = document.querySelector('.cambio:not(.cambio--debe) b');
-    if (vuelto) vuelto.textContent = L(cambio());
+    pintarResumenPagos();
     actualizarTotales();
   }
 });
@@ -2406,17 +2417,6 @@ $('caja-main').addEventListener('click', (e) => {
     // clienta está enfrente y se lo lleva. Se adivina, pero manda lo que marque
     // la cajera: si ya lo tocó a mano en esta venta, no se le cambia.
     if (!estado.entregaTocada) estado.preparado = !estado.flete;
-    pintar();
-    return;
-  }
-  if (d.pago2 !== undefined) {
-    estado.pago2 = estado.pago2 === d.pago2 ? '' : d.pago2;
-    if (estado.pago2 !== 'transferencia') estado.banco2 = '';
-    // Lo que falta para el total, que es lo que casi siempre va en el segundo.
-    if (estado.pago2 && !estado.monto2) {
-      const resto = Math.max(0, total() - num(estado.monto1));
-      estado.monto2 = resto ? String(resto.toFixed(2)) : '';
-    }
     pintar();
     return;
   }

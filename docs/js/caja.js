@@ -888,11 +888,10 @@ function enfocarBuscador() {
   if (i && !estado.resultado) setTimeout(() => i.focus({ preventScroll: true }), 30);
 }
 
-// Cada zona con scroll vuelve al principio cuando pintar() rehace el DOM: con
-// quince productos en la venta, cambiar una cantidad te dejaba mirando la primera
-// línea en vez de la que estabas tocando. Se guarda la posición y se devuelve.
-const ZONA_VENTA = '.col-izq > .tarjeta.scroll-lindo';
-const ZONAS_SCROLL = ['#resultados', ZONA_VENTA, '.col-der .tarjeta__cuerpo.scroll-lindo'];
+// El desplegable de resultados vuelve al principio cuando pintar() rehace el
+// DOM: con una lista larga, tocar algo te dejaba mirando el primer renglón en vez
+// del que estabas viendo. Se guarda la posición y se devuelve.
+const ZONAS_SCROLL = ['#resultados'];
 let lineasPintadas = 0;
 
 function leerScroll(main) {
@@ -903,16 +902,23 @@ function leerScroll(main) {
 }
 
 function devolverScroll(main, tops) {
-  // Si la venta creció, la línea nueva quedó al final: ahí tiene que mirar la
-  // cajera para confirmar que entró lo que escaneó.
-  const crecio = estado.venta.length > lineasPintadas;
-  lineasPintadas = estado.venta.length;
   ZONAS_SCROLL.forEach((sel, i) => {
-    const alFinal = crecio && sel === ZONA_VENTA;
-    if (!tops[i] && !alFinal) return;
+    if (!tops[i]) return;
     const el = main.querySelector(sel);
-    if (el) el.scrollTop = alFinal ? el.scrollHeight : tops[i];
+    if (el) el.scrollTop = tops[i];
   });
+  // Si la venta creció, la línea nueva quedó al final: ahí tiene que mirar la
+  // cajera para confirmar que entró lo que escaneó. En computadora la página es
+  // larga y la línea puede quedar fuera de la pantalla, así que se trae a la
+  // vista; en el teléfono no, que la barra de cobro va fija abajo y la taparía.
+  // En el primer pintado tampoco: al abrir la caja con una venta a medias
+  // arrancaría con la pantalla ya corrida hacia abajo.
+  const crecio = lineasPintadas > 0 && estado.venta.length > lineasPintadas;
+  lineasPintadas = estado.venta.length;
+  if (!crecio || !window.matchMedia('(min-width:900px)').matches) return;
+  const lineas = main.querySelectorAll('.col-izq .li');
+  const ultima = lineas[lineas.length - 1];
+  if (ultima) ultima.scrollIntoView({ block: 'nearest' });
 }
 
 function pintar() {
@@ -957,13 +963,18 @@ function pintar() {
 
   // El foco se devuelve donde estaba: repintar no puede sacar a la cajera del
   // campo en el que estaba escribiendo.
+  // preventScroll: en computadora la página se desplaza, y devolver el foco al
+  // buscador arrastraba la pantalla de vuelta arriba en cada repintado.
   if (activo === 'q-cliente' && $('q-cliente')) {
-    const i = $('q-cliente'); i.focus(); i.setSelectionRange(i.value.length, i.value.length);
+    const i = $('q-cliente');
+    i.focus({ preventScroll: true }); i.setSelectionRange(i.value.length, i.value.length);
   } else if (!camara && (activo === 'q' || (!esTactil && (!activo || activo === 'body')))) {
     // Con la cámara abierta no se devuelve el foco (abriría el teclado encima), y
     // en el teléfono solo se devuelve si la cajera estaba escribiendo de verdad.
     const i = $('q');
-    if (i && !estado.cargandoCatalogo) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+    if (i && !estado.cargandoCatalogo) {
+      i.focus({ preventScroll: true }); i.setSelectionRange(i.value.length, i.value.length);
+    }
   }
 
   // Después de devolver el foco: enfocar un campo puede arrastrar su contenedor.
@@ -3637,27 +3648,11 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') guardarVenta();
 });
 
-// El alto real de la barra de arriba y de la cinta de prueba. Escritos a mano en
-// el CSS se desincronizan en cuanto se agrega un boton, y la pantalla deja de
-// cuadrar por unos pixeles: aparece scroll donde no deberia haberlo.
-function medirBarras() {
-  const raiz = document.documentElement;
-  const top = document.querySelector('.top');
-  const cinta = document.querySelector('.cinta-prueba');
-  if (top) raiz.style.setProperty('--alto-top',
-    Math.ceil(top.getBoundingClientRect().height) + 'px');
-  const alto = (cinta && cinta.offsetParent !== null)
-    ? Math.ceil(cinta.getBoundingClientRect().height) : 0;
-  raiz.style.setProperty('--alto-cinta', alto + 'px');
-}
-
 function arrancar() {
   mostrarCaja();
   const recuperada = recuperarVenta();
   if (MODO_PRUEBA) document.body.classList.add('es-prueba');
   pintar();
-  medirBarras();
-  window.addEventListener('resize', medirBarras);
   cargarCatalogo();
   cargarRecientes();
   detectarCamara();

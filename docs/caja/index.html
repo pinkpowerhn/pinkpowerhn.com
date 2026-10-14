@@ -78,8 +78,8 @@
   }
   .btn--ancho { width:100%; }
   .btn--cobrar { min-height:60px; font-size:1.05rem; font-weight:700; letter-spacing:0.04em; }
-  /* En computadora se pega al pie de su tarjeta (margin-top:auto mas abajo); el
-     margen de arriba es solo el respiro minimo cuando el bloque va lleno. */
+  /* En computadora va al pie de su tarjeta: el margen de arriba es el respiro
+     con el cuerpo del cobro. */
   .btn--cobrar.solo-escritorio { margin-top:1rem; }
   .btn--sm { min-height:40px; padding:0 0.9rem; font-size:0.72rem; }
 
@@ -162,99 +162,32 @@
   /* ── Estructura ──────────────────────────────────────────────────────── */
   .caja { padding:1rem; padding-bottom:10rem; max-width:1500px; margin:0 auto; }
   @media (min-width:900px) {
-    /* En computadora la caja ocupa exactamente la pantalla: la cajera no debe
-       tener que bajar para ver el cambio ni el boton de cobrar. Lo unico que se
-       desplaza (y solo si hace falta) es la lista de productos de la venta. */
-    body { overflow:hidden; }
+    /* En computadora: dos columnas, la venta a la izquierda y el cobro a la
+       derecha, y la pagina se desplaza como cualquier otra. Antes la caja se
+       encajaba a la fuerza en el alto de la pantalla y cada bloque llevaba su
+       propio desplazamiento: en un monitor normal el cobro salia cortado y habia
+       contenido que no se alcanzaba a ver. */
     .caja { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:1.1rem;
-            align-items:stretch; padding:1rem 1.3rem;
-            height:calc(100dvh - var(--alto-top) - var(--alto-cinta, 0px));
-            overflow:hidden; }
-    .col-izq, .col-der { display:flex; flex-direction:column; min-height:0; }
+            align-items:start; padding:1rem 1.3rem 3rem; }
+    /* Para que los nombres largos se recorten en vez de ensanchar la columna. */
+    .col-izq, .col-der { min-width:0; }
     .col-izq > .tarjeta:last-child, .col-der > .tarjeta:last-child { margin-bottom:0; }
-    /* La lista de la venta y el buscador de clientas llevan su propio scroll. */
-    /* flex:1 -> la tarjeta llega hasta abajo aunque este vacia, para que termine
-       a la misma altura que la columna de la derecha (clienta + cobro). */
-    .col-izq > .tarjeta:last-child { overflow-y:auto; flex:1 1 auto; }
-    /* Con la tarjeta estirada, el mensaje de "sin productos" se centra en ella. */
-    .col-izq > .tarjeta:last-child.vacio-caja {
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-    }
-    /* El bloque de cobro tambien llega hasta abajo: asi las dos columnas se ven
-       parejas y el boton de cobrar queda siempre al pie. */
-    .col-der > .tarjeta:last-child { overflow-y:auto; flex:1 1 auto; }
-
-    /* Compactado para que el bloque de cobro entre entero, incluso con el campo
-       "Recibi" y el cambio a la vista. */
-    .caja .tarjeta__cab { padding:0.6rem 1rem; }
-    .caja .tarjeta__cuerpo { padding:0.9rem 1rem; }
-    .caja .tarjeta { margin-bottom:0.8rem; }
-    .caja .pago-btn { min-height:48px; font-size:0.8rem; gap:0.15rem; }
-    .caja .pagos { gap:0.5rem; margin:0.7rem 0 0.2rem; }
-    .caja .buscador { margin-bottom:0.6rem; }
-    .caja .switch { margin-top:0.65rem; }
-    .caja .btn--cobrar { min-height:54px; }
-    .caja .cambio { padding:0.7rem 0.9rem; margin-top:0.6rem; }
-    /* El bloque de cobro se desplaza por dentro si hace falta, pero el boton de
-       cobrar queda SIEMPRE pegado abajo: con una venta larga se salia de la vista. */
-    .col-der > .tarjeta:last-child { display:flex; flex-direction:column; overflow:hidden; }
-    .col-der > .tarjeta:last-child .tarjeta__cuerpo {
-      overflow-y:auto; min-height:0; display:flex; flex-direction:column; flex:1 1 auto;
-    }
-    /* La tarjeta de la clienta no se encoge: apretada por la de cobro, cortaba
-       el interruptor de mayoreo por la mitad. */
-    .col-der > .tarjeta:first-child { flex:0 0 auto; }
-
-    /* En una pantalla de portatil el bloque de cobro va justo: el desglose se
-       compacta para que quepan los controles sin tanto desplazamiento. */
-    .caja .cobro-totales { padding:0.6rem 1rem 0.1rem; }
-    .caja .total-fila { padding:0.12rem 0; font-size:0.82rem; }
-    .caja .total-grande { padding:0.35rem 0 0.2rem; }
-    .caja .total-grande b { font-size:1.45rem; }
-    .caja .fletes { gap:0.4rem; }
-    .caja .flete-btn { min-height:44px; padding:0.35rem 0.25rem; font-size:0.72rem; }
-    .caja .campo label { margin-bottom:0.25rem; }
-    .caja .pagos { margin:0.55rem 0 0.15rem; gap:0.45rem; }
-    .caja .pago-btn { min-height:44px; }
-    /* Los campos que aparecen con la forma de pago van pegados: son los ultimos
-       y cada milimetro cuenta para que el bloque entre sin desplazarse. */
-    .caja .tarjeta__cuerpo > .campo { margin-top:0.6rem !important; }
-
-    /* Cobrar y cotizar, al pie de la tarjeta y fuera de lo que se desplaza: asi
-       nunca tapan el selector de banco ni el campo "Recibi". */
+    /* Cobrar y cotizar, al pie de su tarjeta y separados del cuerpo con una
+       linea: son las dos acciones que cierran la venta. */
     .caja .cierre-cobro {
-      flex:0 0 auto; padding:0.2rem 1rem 0.9rem;
+      padding:0.2rem 1.1rem 1.1rem;
       border-top:1px solid rgba(26,10,18,0.06);
     }
     .caja .cierre-cobro .btn--cobrar { box-shadow:var(--sombra-sm); }
-    .caja .btn--cotiza { margin-top:0.4rem; min-height:42px; font-size:0.78rem; }
-    /* El cambio queda pegado al pie del bloque que se desplaza: es el dato que
-       la cajera necesita a la vista, y el boton de cobrar ya no vive aca dentro
-       (esta abajo, fijo), asi que ahora se pega a cero. */
-    .caja .cambio { position:sticky; bottom:0; z-index:2; flex:0 0 auto;
-                    box-shadow:0 -8px 12px -10px rgba(26,10,18,0.25); }
-    /* El "queda debiendo" va en su sitio, entre el monto del abono y el banco:
-       pegado abajo tapaba justo los campos que la cajera esta llenando. */
-    .caja .cambio--debe,
-    .caja .cambio--resumen { position:static; box-shadow:none; }
   }
-  /* Los mide el JS al arrancar: escritos a mano se desincronizan en cuanto
-     cambia algo de la barra, y entonces la pantalla no cuadra por unos pixeles
-     y aparece scroll donde no debe haberlo. */
-  :root { --alto-top: 60px; --alto-cinta: 0px; }
 
   /* ── Barra de desplazamiento propia ──────────────────────────────────────
      Va con CSS y no con una librería (SimpleBar, OverlayScrollbars,
-     PerfectScrollbar) a propósito, por dos razones de esta pantalla:
-     · Todas envuelven el contenido en divs nuevos, y el botón de cobrar depende
-       de ser hijo flex DIRECTO de .tarjeta__cuerpo (margin-top:auto) y de que ese
-       mismo nodo sea su bloque contenedor para el position:sticky. Con wrapper de
-       por medio el botón y el cambio se despegan del fondo.
-     · pintar() rehace todo el DOM en cada acción, así que habría que reinicializar
-       la librería constantemente, con su parpadeo y sus nodos huérfanos.
-     El CSS no tiene ninguno de los dos problemas y sobrevive al repintado.
-     La clase se pone donde hay scroll real; en teléfono esas zonas no desbordan,
-     así que estas reglas no pintan nada. */
+     PerfectScrollbar) a propósito: pintar() rehace todo el DOM en cada acción,
+     así que habría que reinicializar la librería constantemente, con su parpadeo
+     y sus nodos huérfanos. El CSS sobrevive al repintado.
+     La clase se pone donde hay scroll real: el desplegable del buscador, la
+     previa del recibo y los modales. */
   .scroll-lindo::-webkit-scrollbar { width:12px; height:12px; }
   .scroll-lindo::-webkit-scrollbar-track { background:transparent; }
   /* El borde transparente recorta el pulgar a ~6px: el resto del ancho queda como
@@ -271,10 +204,6 @@
      Chrome 121+ descarta ::-webkit-scrollbar si el elemento declara scrollbar-color. */
   @supports not selector(::-webkit-scrollbar) {
     .scroll-lindo { scrollbar-width:thin; scrollbar-color:var(--barra) transparent; }
-  }
-  @media (min-width:900px) {
-    /* El pulgar no llega a las esquinas redondeadas de la tarjeta. */
-    .col-izq > .tarjeta.scroll-lindo::-webkit-scrollbar-track { margin:0.7rem 0; }
   }
 
   .tarjeta {

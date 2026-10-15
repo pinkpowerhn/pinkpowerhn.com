@@ -1767,6 +1767,11 @@ async function verVentas() {
 // más, y hasta ahora había que anular la venta y rehacerla con el inventario ya
 // descontado. Shopify deja corregir el pedido, con un límite: lo que ya salió de
 // la tienda no se quita desde aquí (eso es una devolución, no una corrección).
+
+// Apagado hasta que la app tenga el permiso `write_order_edits` de Shopify: sin
+// él la pantalla abre y deja armar el cambio, pero al guardar Shopify lo rechaza.
+// Se enciende poniendo true, apenas se renueven los permisos.
+const EDITAR_PEDIDOS = false;
 async function cambiarPedido(v, cerrarRecibo) {
   flash('Buscando el pedido…');
   let ped;
@@ -2049,7 +2054,7 @@ function accionesDeRecibo(v, cotizacion = null) {
             <button class="btn" data-accion="recibo-ver" type="button">Ver ${QUE}</button>
             <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
           </div>
-          ${!esCot && !v.ensayo && v.order_id ? `
+          ${EDITAR_PEDIDOS && !esCot && !v.ensayo && v.order_id ? `
             <button class="btn btn--ancho" data-accion="cambiar-pedido" type="button"
               style="margin-top:0.7rem">Cambiar lo que lleva</button>
             <p class="recibo-nota">Para cuando la clienta se arrepiente o se lleva

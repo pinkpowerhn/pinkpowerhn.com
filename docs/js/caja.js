@@ -1762,6 +1762,225 @@ async function verVentas() {
   mostrar('ventas');
 }
 
+// ── Cambiar lo que lleva un pedido ya hecho ─────────────────────────────────
+// Lo que más ha pedido la dueña: la clienta se arrepiente de algo o se lleva uno
+// más, y hasta ahora había que anular la venta y rehacerla con el inventario ya
+// descontado. Shopify deja corregir el pedido, con un límite: lo que ya salió de
+// la tienda no se quita desde aquí (eso es una devolución, no una corrección).
+async function cambiarPedido(v, cerrarRecibo) {
+  flash('Buscando el pedido…');
+  let ped;
+  try {
+    ped = await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/editable`);
+  } catch (err) {
+    flash(err.message || 'No se pudo abrir el pedido', 'mal');
+    return;
+  }
+  if (!ped.se_puede) {
+    flash('Ese pedido está anulado: ya no se puede cambiar', 'mal');
+    return;
+  }
+
+  // Lo que ya estaba (con la cantidad que va quedando) y lo que se suma ahora.
+  const lineas = (ped.lineas || []).map((l) => ({ ...l, queda: l.cantidad }));
+  const nuevos = [];
+  const totalAntes = ped.total || 0;
+  const sumaOriginal = lineas.reduce((s, l) => s + l.precio * l.cantidad, 0);
+
+  const diferencia = () => {
+    const ahora = lineas.reduce((s, l) => s + l.precio * l.queda, 0)
+      + nuevos.reduce((s, x) => s + x.precio * x.cantidad, 0);
+    return Math.round((ahora - sumaOriginal) * 100) / 100;
+  };
+  const hayCambios = () => lineas.some((l) => l.queda !== l.cantidad) || nuevos.length > 0;
+
+  const filaLinea = (l, i) => {
+    // Lo ya entregado no se puede quitar: el menos se para ahí.
+    const piso = l.cantidad - l.quitables;
+    return `
+      <div class="ed-li">
+        ${l.imagen ? `<img src="${esc(l.imagen)}" alt="" class="ed-li__img" />`
+                   : '<div class="ed-li__img ed-li__img--no"></div>'}
+        <div class="ed-li__txt">
+          <b>${esc(l.nombre)}</b>
+          ${l.variante ? `<span class="ed-li__var">${esc(l.variante)}</span>` : ''}
+          <span class="ed-li__pre">${L(l.precio)} c/u</span>
+          ${piso > 0 ? `<span class="ed-li__fijo">${piso} ya ${piso === 1 ? 'entregada' : 'entregadas'}:
+            ${piso === 1 ? 'esa no' : 'esas no'} se puede${piso === 1 ? '' : 'n'} quitar desde aquí</span>` : ''}
+          ${l.queda !== l.cantidad ? `<span class="ed-li__cambio">antes ${l.cantidad}</span>` : ''}
+        </div>
+        <div class="ed-cant">
+          <button type="button" data-menos="${i}" ${l.queda <= piso ? 'disabled' : ''}>−</button>
+          <b>${l.queda}</b>
+          <button type="button" data-mas="${i}">+</button>
+        </div>
+      </div>`;
+  };
+
+  const filaNueva = (x, i) => `
+    <div class="ed-li ed-li--nuevo">
+      ${x.imagen ? `<img src="${esc(x.imagen)}" alt="" class="ed-li__img" />`
+                 : '<div class="ed-li__img ed-li__img--no"></div>'}
+      <div class="ed-li__txt">
+        <b>${esc(x.nombre)}</b>
+        ${x.variante ? `<span class="ed-li__var">${esc(x.variante)}</span>` : ''}
+        <span class="ed-li__pre">${L(x.precio)} c/u</span>
+        <span class="ed-li__nuevo">se agrega ahora</span>
+      </div>
+      <div class="ed-cant">
+        <button type="button" data-nmenos="${i}">−</button>
+        <b>${x.cantidad}</b>
+        <button type="button" data-nmas="${i}">+</button>
+      </div>
+    </div>`;
+
+  const pie = () => {
+    const d = diferencia();
+    const nuevoTotal = Math.round((totalAntes + d) * 100) / 100;
+    if (!hayCambios()) {
+      return `<div class="ed-tot"><span>Total</span><b>${L(totalAntes)}</b></div>`;
+    }
+    // Si ya estaba pagado, el cambio deja saldo o deja plata a favor, y eso se
+    // dice antes de guardar: nadie se entera después.
+    let aviso = '';
+    if (d > 0.009) {
+      aviso = ped.pagado
+        ? `<p class="ed-aviso">Queda debiendo ${L(d)} más.</p>`
+        : `<p class="ed-aviso">El pedido sube ${L(d)}.</p>`;
+    } else if (d < -0.009) {
+      aviso = ped.pagado
+        ? `<p class="ed-aviso ed-aviso--ojo">Quedan ${L(-d)} a favor de la clienta.
+           Esa plata se le devuelve desde Shopify: aquí no se reembolsa sola.</p>`
+        : `<p class="ed-aviso">El pedido baja ${L(-d)}.</p>`;
+    }
+    return `
+      <div class="ed-tot"><span>Antes</span><span>${L(totalAntes)}</span></div>
+      <div class="ed-tot ed-tot--fuerte"><span>Queda en</span><b>${L(nuevoTotal)}</b></div>
+      ${aviso}`;
+  };
+
+  const cuerpo = () => `
+    <div class="ed-lista">
+      ${lineas.map(filaLinea).join('')}
+      ${nuevos.map(filaNueva).join('')}
+    </div>
+    ${ped.mayoreo ? `
+      <p class="ed-aviso">Este pedido es de mayoreo, con precio de mayorista: desde
+      aquí solo se puede quitar. Para agregarle algo hay que hacerlo en Shopify,
+      para que lleve el precio que le toca.</p>` : `
+      <div class="campo ed-buscar">
+        <label for="ed-q">Agregar un producto</label>
+        <input id="ed-q" placeholder="Nombre del producto" autocomplete="off" />
+        <div class="ed-res" id="ed-res"></div>
+      </div>`}
+    ${pie()}`;
+
+  const { el, cerrar } = modal({
+    titulo: 'Cambiar lo que lleva',
+    sub: `${ped.numero}${ped.cliente ? ' · ' + ped.cliente : ''}`,
+    ok: 'Guardar los cambios',
+    cuerpo: `<div class="modal__lista" id="ed-cuerpo">${cuerpo()}</div>`,
+  });
+
+  // Mientras se escribe en el buscador no se repinta todo: se perdería el foco.
+  const repintar = () => {
+    const q = el.querySelector('#ed-q');
+    const texto = q ? q.value : '';
+    el.querySelector('#ed-cuerpo').innerHTML = cuerpo();
+    const nuevoQ = el.querySelector('#ed-q');
+    if (texto) { nuevoQ.value = texto; mostrarResultados(texto); }
+    el.querySelector('[data-ok]').disabled = !hayCambios();
+  };
+  el.querySelector('[data-ok]').disabled = true;
+
+  function mostrarResultados(texto) {
+    const caja = el.querySelector('#ed-res');
+    if (!caja) return;
+    const q = (texto || '').trim();
+    if (q.length < 2) { caja.innerHTML = ''; return; }
+    const hallados = buscarProductos(q).slice(0, 8);
+    caja.innerHTML = hallados.length
+      ? hallados.map((p, i) => `
+        <button type="button" class="ed-res__it" data-res="${i}">
+          <span class="ed-res__nm">${esc(p.producto)}${
+            p.variante ? ` <span class="ed-li__var">${esc(p.variante)}</span>` : ''}</span>
+          <span class="ed-res__pr">${L(p.precio)}${
+            p.disponible ? '' : ' · agotado'}</span>
+        </button>`).join('')
+      : '<p class="ed-res__no">No se encontró nada con eso.</p>';
+    caja._hallados = hallados;
+  }
+
+  el.addEventListener('input', (ev) => {
+    if (ev.target.id === 'ed-q') mostrarResultados(ev.target.value);
+  });
+
+  el.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    if (b.dataset.menos !== undefined) {
+      const l = lineas[+b.dataset.menos];
+      const piso = l.cantidad - l.quitables;
+      if (l.queda > piso) { l.queda -= 1; repintar(); }
+    } else if (b.dataset.mas !== undefined) {
+      const l = lineas[+b.dataset.mas];
+      l.queda += 1; repintar();
+    } else if (b.dataset.nmenos !== undefined) {
+      const i = +b.dataset.nmenos;
+      nuevos[i].cantidad -= 1;
+      if (nuevos[i].cantidad <= 0) nuevos.splice(i, 1);
+      repintar();
+    } else if (b.dataset.nmas !== undefined) {
+      nuevos[+b.dataset.nmas].cantidad += 1; repintar();
+    } else if (b.dataset.res !== undefined) {
+      const p = (el.querySelector('#ed-res')._hallados || [])[+b.dataset.res];
+      if (!p) return;
+      const ya = nuevos.find((x) => x.variant_id === p.variant_id);
+      if (ya) ya.cantidad += 1;
+      else {
+        nuevos.push({ variant_id: p.variant_id, nombre: p.producto,
+                      variante: p.variante || '', imagen: p.imagen || '',
+                      precio: Number(p.precio) || 0, cantidad: 1 });
+      }
+      el.querySelector('#ed-q').value = '';
+      repintar();
+    }
+  });
+
+  el.querySelector('[data-ok]').addEventListener('click', async () => {
+    if (!hayCambios()) return;
+    const boton = el.querySelector('[data-ok]');
+    boton.disabled = true;
+    boton.textContent = 'Guardando…';
+    const cuerpoEnvio = {
+      cambios: lineas.filter((l) => l.queda !== l.cantidad)
+        .map((l) => ({ line_item_id: l.id, cantidad: l.queda })),
+      agregar: nuevos.map((x) => ({ variant_id: x.variant_id, cantidad: x.cantidad })),
+    };
+    try {
+      const r = await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/editar`,
+                          { method: 'POST', body: JSON.stringify(cuerpoEnvio) });
+      cerrar();
+      if (cerrarRecibo) cerrarRecibo();
+      let dice = `${r.numero || ped.numero} quedó en ${L(r.total)}`;
+      if (r.pendiente > 0) dice += ` · queda debiendo ${L(r.pendiente)}`;
+      else if (r.a_favor > 0) dice += ` · ${L(r.a_favor)} a favor de la clienta`;
+      flash(dice, 'ok');
+    } catch (err) {
+      boton.disabled = false;
+      boton.textContent = 'Guardar los cambios';
+      // Si algo se agotó mientras tanto, se dice cuál y cuánto queda, igual
+      // que al cobrar.
+      const falto = (err.status === 409 && err.detalle && err.detalle.agotados) || [];
+      flash(falto.length
+        ? 'Se agotaron: ' + falto.map((a) => `${a.title} (quedan ${a.disponible})`).join(', ')
+        : (err.message || 'No se pudo cambiar el pedido'), 'mal');
+    }
+  });
+
+  setTimeout(() => { const q = el.querySelector('#ed-q'); if (q) q.focus(); }, 80);
+}
+
 // Vuelve a poner en la caja una cotización: los mismos productos, la misma
 // clienta y el mismo descuento o flete, listos para cambiar lo que haga falta y
 // cobrar. Es lo que pidió la dueña: le confirman el presupuesto y lo cobra sin
@@ -1830,6 +2049,11 @@ function accionesDeRecibo(v, cotizacion = null) {
             <button class="btn" data-accion="recibo-ver" type="button">Ver ${QUE}</button>
             <button class="btn" data-accion="recibo-copiar" type="button">Copiar el enlace</button>
           </div>
+          ${!esCot && !v.ensayo && v.order_id ? `
+            <button class="btn btn--ancho" data-accion="cambiar-pedido" type="button"
+              style="margin-top:0.7rem">Cambiar lo que lleva</button>
+            <p class="recibo-nota">Para cuando la clienta se arrepiente o se lleva
+            algo más. Lo que se quita vuelve al inventario.</p>` : ''}
         </div>
       </div>
     </div>`;
@@ -1843,6 +2067,7 @@ function accionesDeRecibo(v, cotizacion = null) {
     if (!b) return;
     switch (b.dataset.accion) {
       case 'recibo-img': mandarReciboEnImagen(); break;
+      case 'cambiar-pedido': cambiarPedido(v, cerrar); break;
       case 'guardar-contacto': guardarContacto(); break;
       case 'retomar': retomarCotizacion(cotizacion, cerrar); break;
       case 'recibo-ver': window.open(urlRecibo(), '_blank', 'noopener'); break;

@@ -78,6 +78,55 @@
   }
   .btn--ancho { width:100%; }
   .btn--cobrar { min-height:60px; font-size:1.05rem; font-weight:700; letter-spacing:0.04em; }
+
+  /* ── Cambiar lo que lleva un pedido ── */
+  .ed-lista { display:flex; flex-direction:column; }
+  .ed-li {
+    display:flex; align-items:center; gap:0.7rem; padding:0.65rem 0;
+    border-bottom:1px solid var(--linea);
+  }
+  .ed-li--nuevo { background:#fff6fa; }
+  .ed-li__img { width:44px; height:44px; border-radius:10px; object-fit:cover; flex:none; }
+  .ed-li__img--no { background:#f6eaf1; }
+  .ed-li__txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:0.1rem; }
+  .ed-li__txt b { font-size:0.92rem; line-height:1.25; }
+  .ed-li__var { font-size:0.78rem; color:var(--muted); }
+  .ed-li__pre { font-size:0.78rem; color:var(--muted); }
+  /* Lo que ya salió de la tienda no se puede quitar desde aquí. */
+  .ed-li__fijo { font-size:0.74rem; color:#a8742a; }
+  .ed-li__cambio { font-size:0.74rem; color:var(--pink-dk); font-weight:600; }
+  .ed-li__nuevo { font-size:0.74rem; color:var(--pink-dk); font-weight:600; }
+  .ed-cant { display:flex; align-items:center; gap:0.5rem; flex:none; }
+  .ed-cant button {
+    width:34px; height:34px; border-radius:50%; border:1px solid var(--linea);
+    background:#fff; color:var(--pink-dk); font-size:1.1rem; line-height:1;
+    cursor:pointer; display:grid; place-items:center;
+  }
+  .ed-cant button:disabled { opacity:0.35; cursor:default; }
+  .ed-cant b { min-width:1.4rem; text-align:center; font-size:1rem; }
+  .ed-buscar { margin-top:1rem; }
+  .ed-res { margin-top:0.4rem; display:flex; flex-direction:column; }
+  .ed-res__it {
+    display:flex; justify-content:space-between; align-items:center; gap:0.7rem;
+    padding:0.55rem 0.2rem; background:none; border:none; cursor:pointer;
+    border-bottom:1px solid var(--linea); text-align:left; font:inherit;
+  }
+  .ed-res__it:hover { background:#fdf4f8; }
+  .ed-res__nm { flex:1; font-size:0.88rem; }
+  .ed-res__pr { font-size:0.82rem; color:var(--muted); white-space:nowrap; }
+  .ed-res__no { font-size:0.85rem; color:var(--muted); margin:0.5rem 0 0; }
+  .ed-tot {
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-top:0.9rem; font-size:0.9rem; color:var(--muted);
+  }
+  .ed-tot--fuerte { color:var(--ink); font-size:1.05rem; }
+  .ed-tot--fuerte b { color:var(--pink-dk); font-size:1.25rem; }
+  .ed-aviso {
+    margin:0.7rem 0 0; padding:0.6rem 0.75rem; border-radius:12px;
+    background:#fdf4f8; font-size:0.85rem; line-height:1.45;
+  }
+  /* Plata a favor de la clienta: Shopify no la devuelve sola. */
+  .ed-aviso--ojo { background:#fff6e8; color:#8a5a12; }
   /* En computadora va al pie de su tarjeta: el margen de arriba es el respiro
      con el cuerpo del cobro. */
   .btn--cobrar.solo-escritorio { margin-top:1rem; }

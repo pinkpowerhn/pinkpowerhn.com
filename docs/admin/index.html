@@ -429,6 +429,31 @@
     background: #ffeef2; color: #b81540; font-size: 0.85rem; text-align: left;
   }
 
+  /* Créditos del proveedor sobre un gasto ya pagado. */
+  .gcred-pie { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin-top: 0.1rem; }
+  .gcred-cab {
+    text-align: left; background: #fdf4f8; border-radius: 12px;
+    padding: 0.7rem 0.85rem; margin-bottom: 0.9rem; font-size: 0.88rem;
+  }
+  .gcred-cab__q { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+  .gcred-cab b.gcred-cab__n { color: var(--pink-dk); }
+  .gcreds { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; }
+  .gcred {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.3rem;
+    border-bottom: 1px solid #f7e7ef; font-size: 0.86rem; text-align: left;
+  }
+  .gcred__f { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+  .gcred__m { font-weight: 700; color: #1f9d55; white-space: nowrap; }
+  .gcred__t { flex: 1; color: var(--ink); overflow-wrap: break-word; }
+  .gcred-vacio { color: var(--muted); font-size: 0.88rem; margin: 0.4rem 0 0; }
+  /* En el teléfono no cabe todo en una línea y el motivo se partía a media
+     palabra: la fecha, el monto y los botones arriba, el motivo debajo. */
+  @media (max-width: 540px) {
+    .gcred { flex-wrap: wrap; row-gap: 0.15rem; }
+    .gcred__m { flex: 1; }
+    .gcred__t { order: 9; flex: 1 0 100%; font-size: 0.82rem; }
+  }
+
   /* ── Buscador de mayoristas ── */
   .search { position: relative; flex: 1 1 auto; min-width: 200px; max-width: 400px; }
   .search__ic { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9rem; pointer-events: none; }
@@ -1473,8 +1498,9 @@ function repPintar(r) {
         ? `margen ${N(r.margen)}% · sobre el ${N(r.cobertura)}% que tiene costo`
         : 'falta ponerle costo a los productos' },
     { lb: 'Gastado', nm: L(r.gastos || 0),
-      pie: r.gastos_cuantos ? `en ${N(r.gastos_cuantos)} gasto${r.gastos_cuantos === 1 ? '' : 's'}`
-                            : 'sin gastos anotados' },
+      pie: (r.gastos_cuantos ? `en ${N(r.gastos_cuantos)} gasto${r.gastos_cuantos === 1 ? '' : 's'}`
+                             : 'sin gastos anotados')
+         + (r.gastos_creditos ? ` · ya menos ${L(r.gastos_creditos)} de créditos` : '') },
     { lb: 'Le quedó', nm: L(r.le_quedo || 0), pie: 'vendido menos gastos', fuerte: true },
     { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
     { lb: 'Venta promedio', nm: L(r.promedio), pie: 'por pedido' },
@@ -1801,7 +1827,9 @@ function gasPintar(r) {
   const mayor = (r.por_categoria || [])[0];
 
   $('gas-kpis').innerHTML = [
-    { lb: 'Gastado', nm: L(r.total), pie: `en ${N(r.cuantos)} gasto${r.cuantos === 1 ? '' : 's'}`, rosa: true },
+    { lb: 'Gastado', nm: L(r.total), rosa: true,
+      pie: `en ${N(r.cuantos)} gasto${r.cuantos === 1 ? '' : 's'}`
+         + (r.creditos ? ` · ya menos ${L(r.creditos)} de créditos` : '') },
     { lb: 'En lo que más se fue', nm: mayor ? mayor.nombre : '—',
       pie: mayor ? L(mayor.monto) : '' },
     { lb: 'Categorías usadas', nm: N((r.por_categoria || []).length),
@@ -1824,13 +1852,20 @@ function gasPintar(r) {
         { clave: 'fecha', titulo: 'Fecha', html: (f) => diaCorto(f.fecha) },
         { clave: 'categoria', titulo: 'Categoría', principal: true },
         { clave: 'descripcion', titulo: 'De qué fue' },
-        { clave: 'monto', titulo: 'Monto', html: (f) => `<b>${L(f.monto)}</b>` },
+        // Lo que de verdad salió: si hubo crédito, el pagado queda abajo en
+        // chiquito, que es como ella lo cuenta ("pagué 300, me costó 290").
+        { clave: 'neto', titulo: 'Monto', html: (f) => (f.credito
+            ? `<b>${L(f.neto)}</b><div class="gcred-pie">pagó ${L(f.monto)} · `
+              + `crédito ${L(f.credito)}</div>`
+            : `<b>${L(f.monto)}</b>`) },
       ],
       filtros: [{ clave: 'categoria', titulo: 'Categoría',
                   opciones: (r.por_categoria || []).map((c) => ({ v: c.nombre, t: c.nombre })) }],
       buscar: (f, t) => (f.categoria + ' ' + f.descripcion).toLowerCase().includes(t),
       acciones: (f) => [
         { texto: 'Corregir', al: () => gasFormulario(f) },
+        { texto: f.credito ? 'Ver créditos' : 'Anotar un crédito',
+          al: () => gasCreditos(f) },
         { texto: 'Quitar', peligro: true, al: () => gasQuitar(f) },
       ],
       porPagina: 12,
@@ -1923,6 +1958,147 @@ async function gasQuitar(gasto) {
     if (repDatos) repCargar();
   } catch (ex) {
     gasFallo('No se pudo quitar el gasto', ex);
+  }
+}
+
+// ── Créditos del proveedor ──
+// Compró 300 de producto, le llegó algo derramado, reclamó y le devolvieron 10.
+// Eso no es un gasto nuevo al revés: es menos gasto. El gasto sigue diciendo
+// que pagó 300, pero al final le costó 290, y es el 290 el que cuenta en los
+// reportes. El crédito resta donde está el gasto, aunque el reclamo se lo hayan
+// pagado otro mes: lo que ella quiere saber es cuánto le costó esa compra.
+async function gasCreditos(gasto) {
+  const cab = (g) => `
+    <div class="gcred-cab">
+      <div><b>${esc(g.categoria)}</b> · ${diaCorto(g.fecha)}</div>
+      ${g.descripcion ? `<div class="gcred-cab__q">${esc(g.descripcion)}</div>` : ''}
+      <div class="gcred-cab__q">Pagó ${L(g.monto)}${g.credito
+        ? ` · le devolvieron ${L(g.credito)} · <b class="gcred-cab__n">le costó ${L(g.neto)}</b>`
+        : ''}</div>
+    </div>`;
+  const lista = (g) => ((g.creditos || []).length
+    ? g.creditos.map((c) => `
+      <div class="gcred">
+        <span class="gcred__f">${diaCorto(c.fecha)}</span>
+        <span class="gcred__m">− ${L(c.monto)}</span>
+        <span class="gcred__t">${esc(c.motivo || 'sin motivo anotado')}</span>
+        <button type="button" class="gascat__b" data-corregir="${c.id}" title="Corregir">✎</button>
+        <button type="button" class="gascat__b gascat__b--q" data-quitar="${c.id}" title="Quitar">✕</button>
+      </div>`).join('')
+    : '<p class="gcred-vacio">Todavía no le han devuelto nada de este gasto.</p>');
+
+  await Swal.fire({
+    title: 'Créditos de este gasto',
+    html: cab(gasto)
+      + `<div class="gcreds" id="gcreds">${lista(gasto)}</div>`
+      + '<p class="gascat-err" id="gcred-err" hidden></p>'
+      + '<div class="gascat-nueva"><button type="button" class="btn btn--primary btn--sm"'
+      + ' id="gcred-add" style="flex:1">Anotar un crédito</button></div>',
+    width: 520,
+    showConfirmButton: false,
+    showCloseButton: true,
+    didOpen: () => {
+      const caja = document.getElementById('gcreds');
+      const avisar = (texto) => {
+        const p = document.getElementById('gcred-err');
+        if (!p) return;
+        p.textContent = texto || '';
+        p.hidden = !texto;
+      };
+      // Después de tocar algo hay que volver a leer el gasto: el modal muestra
+      // lo que quedó, y lo de atrás (la tabla y el reporte) también cambia.
+      const alDia = async () => {
+        await gasCargar();
+        if (repDatos) repCargar();
+        return (gasDatos.gastos || []).find((x) => x.id === gasto.id);
+      };
+      // Quitar no abre nada encima, así que el modal sigue ahí y se repinta.
+      const refrescar = async () => {
+        const g = await alDia();
+        if (!g) { Swal.close(); return null; }
+        const dentro = Swal.getHtmlContainer();
+        dentro.querySelector('.gcred-cab').outerHTML = cab(g);
+        caja.innerHTML = lista(g);
+        avisar('');
+        return g;
+      };
+      // El formulario, en cambio, se abre encima y SweetAlert cierra este: al
+      // terminar hay que volver a abrirlo, ya con lo nuevo adentro.
+      const conFormulario = async (cred) => {
+        const hecho = await gasCreditoFormulario(gasto, cred);
+        if (!hecho) { Swal.close(); gasCreditos(gasto); return; }
+        const g = await alDia();
+        Swal.close();
+        if (g) gasCreditos(g);
+      };
+      document.getElementById('gcred-add').addEventListener('click',
+        () => conFormulario(null));
+      caja.addEventListener('click', async (ev) => {
+        const b = ev.target.closest('button');
+        if (!b) return;
+        const id = Number(b.dataset.corregir || b.dataset.quitar);
+        const g = (gasDatos.gastos || []).find((x) => x.id === gasto.id) || gasto;
+        const cred = (g.creditos || []).find((c) => c.id === id);
+        if (!cred) return;
+        if (b.dataset.corregir) { await conFormulario(cred); return; }
+        try {
+          await api(`/admin/gastos/creditos/${id}`, { method: 'DELETE' });
+          await refrescar();
+        } catch (ex) { avisar(ex.message); }
+      });
+    },
+  });
+}
+
+// El formulario del crédito: cuándo se lo dieron, cuánto y por qué. Se abre
+// encima del listado, así que devuelve si hubo cambio para refrescarlo.
+async function gasCreditoFormulario(gasto, credito) {
+  const esNuevo = !credito;
+  const r = await Swal.fire({
+    title: esNuevo ? 'Anotar un crédito' : 'Corregir el crédito',
+    html: `
+      <div class="gasform">
+        <label>Fecha <span class="gasform__op">(cuándo se lo dieron)</span>
+          <input type="date" id="gc-fecha" max="${hoyISO()}"
+                 value="${esc(credito ? credito.fecha : hoyISO())}" />
+        </label>
+        <label>Cuánto le devolvieron
+          <input type="number" id="gc-monto" step="0.01" min="0.01" placeholder="0.00"
+                 value="${credito ? credito.monto : ''}" />
+        </label>
+        <label>Por qué <span class="gasform__op">(opcional)</span>
+          <input type="text" id="gc-motivo" maxlength="300"
+                 placeholder="Llegó derramado, faltaron dos…"
+                 value="${esc(credito ? credito.motivo : '')}" />
+        </label>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: esNuevo ? 'Guardar' : 'Guardar cambios',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    focusConfirm: false,
+    didOpen: () => { document.getElementById('gc-monto').focus(); },
+    preConfirm: () => {
+      const fecha = document.getElementById('gc-fecha').value;
+      const monto = Number(document.getElementById('gc-monto').value);
+      const motivo = document.getElementById('gc-motivo').value.trim();
+      if (!fecha) { Swal.showValidationMessage('Ponga la fecha'); return false; }
+      if (!(monto > 0)) { Swal.showValidationMessage('Ponga cuánto le devolvieron'); return false; }
+      return { fecha, monto, motivo };
+    },
+  });
+  if (!r.isConfirmed) return false;
+  try {
+    await api(esNuevo ? `/admin/gastos/${gasto.id}/creditos`
+                      : `/admin/gastos/creditos/${credito.id}`,
+              { method: esNuevo ? 'POST' : 'PATCH', body: JSON.stringify(r.value) });
+    return true;
+  } catch (ex) {
+    await Swal.fire({ title: esNuevo ? 'No se pudo anotar el crédito'
+                                     : 'No se pudo corregir el crédito',
+                      text: ex.message, icon: 'error',
+                      confirmButtonText: 'Entendido', confirmButtonColor: '#e8437a' });
+    return false;
   }
 }
 

@@ -82,7 +82,7 @@ const SUBCAT_ORDER = {
   ],
   'perfumes': ['Perfumes', 'Mini Perfumes', 'Decants'],
   'sets-y-regalos': ['Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
-  'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro'],
+  'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro', 'Jabón de Manos'],
   'lenceria': ['Panties', 'Brassieres', 'Set de Lencería'],
   'hombres': ['Perfumes', 'Body Spray', 'Cremas', 'Jabones', 'Antibacteriales', 'Mini Body Care', 'Mini Perfumes'],
   // Nota: la última etiqueta es "Candelabro para Velas" en Shopify (la clienta la

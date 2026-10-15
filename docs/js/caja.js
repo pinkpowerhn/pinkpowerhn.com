@@ -520,13 +520,16 @@ function actualizarTotales() {
   } else if (linea) {
     linea.remove();
   }
-  const btn = document.querySelector('.btn--cobrar.solo-escritorio');
-  if (btn && !estado.cobrando) {
-    btn.textContent = verboDeCobro() + ' ' + L(montoDelBoton());
+  // Los dos: el de la ventana de cobro y el de la barra del teléfono. Por
+  // acción y no por clase: el botón de entrar y el de "otra venta" llevan la
+  // misma clase solo para verse igual, y se les borraba su propio texto.
+  document.querySelectorAll('.btn--cobrar[data-accion="cobrar"]').forEach((btn) => {
+    if (estado.cobrando) return;
+    btn.textContent = textoDeCobrar(btn.classList.contains('solo-escritorio') || estado.varios);
     // Lo anotado puede pasarse del total mientras escribe: el botón se apaga en
     // el momento, sin esperar un repintado.
     btn.disabled = !sePuedeCobrar();
-  }
+  });
   // Y el aviso de lo que falta dice por qué se apagó.
   const falta = faltaParaCobrar();
   document.querySelectorAll('.barra__falta').forEach((el) => {
@@ -666,6 +669,16 @@ function verboDeCobro() {
 // la cajera tiene que recibir en la mano.
 function montoDelBoton() {
   return estado.varios ? montoAbono() : total();
+}
+
+// Lo que dice el botón de cobrar. Lo arman la plantilla y el refresco a mano de
+// cada tecla, así que vive en una sola función: separados, el del teléfono se
+// quedaba con el monto de la primera tecla ("abono de L. 5.00" con 500 puestos).
+// En la barra del teléfono el monto solo se pone con pago parcial, porque ahí
+// arriba ya está el total de la venta.
+function textoDeCobrar(conMonto) {
+  if (estado.cobrando) return quedaPendiente() || estado.varios ? 'Registrando…' : 'Cobrando…';
+  return verboDeCobro() + (conMonto ? ' ' + L(montoDelBoton()) : '');
 }
 
 // Todo lo que se arma para una venta. Se vacía apenas el pedido queda creado:
@@ -1557,8 +1570,7 @@ function bloqueResumen() {
       <div class="barra__falta solo-escritorio"${faltaParaCobrar() ? '' : ' hidden'}>${faltaParaCobrar()}</div>
       <button class="btn btn--pink btn--ancho btn--cobrar solo-escritorio" data-accion="cobrar"
         ${!sePuedeCobrar() ? 'disabled' : ''}>
-        ${estado.cobrando ? (quedaPendiente() || estado.varios ? 'Registrando…' : 'Cobrando…')
-                          : verboDeCobro() + ' ' + L(montoDelBoton())}
+        ${textoDeCobrar(true)}
       </button>
       <button class="btn btn--ancho btn--cotiza" data-accion="cotizar" type="button"
         ${(!estado.venta.length || estado.cobrando) ? 'disabled' : ''}>
@@ -1575,8 +1587,7 @@ function barraMovil() {
     <div class="barra__tot"><span>Total</span><b>${L(total())}</b></div>
     <button class="btn btn--pink btn--ancho btn--cobrar" data-accion="cobrar"
       ${!sePuedeCobrar() ? 'disabled' : ''}>
-      ${estado.cobrando ? (quedaPendiente() || estado.varios ? 'Registrando…' : 'Cobrando…')
-        : verboDeCobro() + (estado.varios ? ' ' + L(montoDelBoton()) : '')}
+      ${textoDeCobrar(estado.varios)}
     </button>
   </div>`;
 }

@@ -1463,12 +1463,16 @@ async function aplicarRuta() {
   if (tab !== 'compras') { irA([tab], true); return; }
 
   comIniciar();
-  const cual = ['ordenes', 'envios', 'cajas'].includes(vista) ? vista : 'ordenes';
+  const cual = ['buscar', 'ordenes', 'envios', 'cajas'].includes(vista)
+    ? vista : 'ordenes';
   if (cual !== vista) irA(['compras', cual], true);
   if (comVista) comVista.poner(cual);
   // Las fichas se abren solas si la dirección trae un número.
   comOrdenAbierta = null; comTrkAbierto = null; comCajAbierta = null;
   comMostrarVista(cual, true);
+  // El buscador no tiene fichas: un número ahí no abre nada, y se quita de la
+  // barra para que recargar no termine diciendo "esa orden ya no existe".
+  if (cual === 'buscar') { if (id) irA(['compras', 'buscar'], true); return; }
   if (!id) return;
   if (cual === 'ordenes') await comAbrir(Number(id), true);
   else if (cual === 'envios') await comTrkAbrir(Number(id), true);
@@ -2374,14 +2378,31 @@ function comIniciar() {
   comCargar();
 }
 
+// El contador es siempre de la vista que se está mirando. Lo escribía quien
+// terminaba de cargar, así que en "¿Dónde está?" aparecía "1 orden".
+function comContador() {
+  const cual = comVista ? comVista.valor() : 'ordenes';
+  const cuantos = cual === 'ordenes' ? comOrdenes.length
+    : cual === 'envios' ? comTrks.length
+    : cual === 'cajas' ? comCajas.length : 0;
+  const nombre = cual === 'ordenes' ? ['orden', 'órdenes']
+    : cual === 'envios' ? ['envío', 'envíos'] : ['caja', 'cajas'];
+  $('com-estado').textContent = cuantos
+    ? `${N(cuantos)} ${cuantos === 1 ? nombre[0] : nombre[1]}` : '';
+}
+
+function comCargando(vista) {
+  if (!comVista || comVista.valor() === vista) {
+    $('com-estado').textContent = 'Cargando…';
+  }
+}
+
 async function comCargar() {
-  $('com-estado').textContent = 'Cargando…';
+  comCargando('ordenes');
   if (comTabla) comTabla.cargando();
   try {
     comOrdenes = (await api('/admin/compras/ordenes')).ordenes || [];
-    $('com-estado').textContent = comOrdenes.length
-      ? `${N(comOrdenes.length)} ${comOrdenes.length === 1 ? 'orden' : 'órdenes'}`
-      : '';
+    comContador();
     comPintar();
   } catch (ex) {
     $('com-estado').textContent = ex.message;
@@ -2875,8 +2896,11 @@ function yaEstabaEnFicha() {
 
 function comMostrarVista(cual, desdeRuta) {
   if (!desdeRuta) {
+    // El buscador no tiene ficha: sin este caso se llevaba el id de la caja
+    // abierta y la dirección quedaba en #compras/buscar/9.
     const abierta = cual === 'ordenes' ? comOrdenAbierta
-      : cual === 'envios' ? comTrkAbierto : comCajAbierta;
+      : cual === 'envios' ? comTrkAbierto
+      : cual === 'cajas' ? comCajAbierta : null;
     // Cerrar una ficha reemplaza (ya es un paso atrás); cambiar de vista apila.
     irA(['compras', cual, abierta || null], !abierta && yaEstabaEnFicha());
   }
@@ -2891,15 +2915,7 @@ function comMostrarVista(cual, desdeRuta) {
   $('com-nueva').classList.toggle('hidden', cual === 'buscar');
   $('com-nueva-txt').textContent = cual === 'ordenes' ? 'Nueva orden'
     : cual === 'envios' ? 'Nuevo envío' : 'Nueva caja';
-  // El contador es de la vista que se está mirando: al cambiar quedaba el de
-  // la anterior ("1 caja" estando en Órdenes).
-  const cuantos = cual === 'ordenes' ? comOrdenes.length
-    : cual === 'envios' ? comTrks.length
-    : cual === 'cajas' ? comCajas.length : 0;
-  const nombre = cual === 'ordenes' ? ['orden', 'órdenes']
-    : cual === 'envios' ? ['envío', 'envíos'] : ['caja', 'cajas'];
-  $('com-estado').textContent = cuantos
-    ? `${N(cuantos)} ${cuantos === 1 ? nombre[0] : nombre[1]}` : '';
+  comContador();
   if (cual === 'buscar') setTimeout(() => $('bus-q') && $('bus-q').focus(), 50);
   if (cual === 'buscar' && !busArmado) busArmar();
   if (cual === 'envios' && !comTrks.length) comTrkCargar();
@@ -2907,12 +2923,11 @@ function comMostrarVista(cual, desdeRuta) {
 }
 
 async function comTrkCargar() {
-  $('com-estado').textContent = 'Cargando…';
+  comCargando('envios');
   if (comTrkTabla) comTrkTabla.cargando();
   try {
     comTrks = (await api('/admin/compras/trackings')).trackings || [];
-    $('com-estado').textContent = comTrks.length
-      ? `${N(comTrks.length)} ${comTrks.length === 1 ? 'envío' : 'envíos'}` : '';
+    comContador();
     if (comVista) comVista.cuenta('envios', comTrks.length || null);
     comTrkPintar();
   } catch (ex) { $('com-estado').textContent = ex.message; }
@@ -3101,6 +3116,10 @@ async function comTrkAbrir(tid, desdeRuta) {
              <div class="com-dato__vl">${t.caja_id ? 'Asignada' : 'Todavía ninguna'}</div></div>
       </div>
       ${t.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(t.notas)}</p>` : ''}
+      ${!t.llegada_miami ? `<button class="btn btn--primary btn--sm" type="button"
+        id="com-trk-miami" style="margin-top:0.8rem">Ya llegó a Miami</button>
+        <p class="com-pie" style="margin-top:0.4rem">Es el paso siguiente: hasta
+        que no llegue a Miami no se puede meter en una caja.</p>` : ''}
     </div>
 
     <div class="card rep-card">
@@ -3114,6 +3133,8 @@ async function comTrkAbrir(tid, desdeRuta) {
     </div>`;
 
   $('com-trk-atras').onclick = comTrkVolver;
+  const bMiami = $('com-trk-miami');
+  if (bMiami) bMiami.onclick = () => comTrkMiami(t);
   $('com-trk-add').onclick = () => comTrkMeter(tid);
 
   PPTabla.crear($('com-trk-items'), {
@@ -3258,6 +3279,7 @@ async function gasNuevaCategoria() {
 // Miami y arma UNA caja, con su peso y su flete. De ahí va a salir después el
 // costo real de cada producto, así que una caja cerrada ya no se toca.
 let comCajTabla = null;
+let comCajAdentro = null;      // la tabla de "lo que viene adentro", para refrescarla
 let comCajas = [];
 let comCajAbierta = null;
 let comCajSiguiente = 1;
@@ -3266,14 +3288,13 @@ const COM_CAJA_ESTADOS = { abierta: 'Armándose', en_camino: 'En camino',
                            recibida: 'Recibida' };
 
 async function comCajCargar() {
-  $('com-estado').textContent = 'Cargando…';
+  comCargando('cajas');
   if (comCajTabla) comCajTabla.cargando();
   try {
     const r = await api('/admin/compras/cajas');
     comCajas = r.cajas || [];
     comCajSiguiente = r.siguiente || 1;
-    $('com-estado').textContent = comCajas.length
-      ? `${N(comCajas.length)} ${comCajas.length === 1 ? 'caja' : 'cajas'}` : '';
+    comContador();
     if (comVista) comVista.cuenta('cajas', comCajas.length || null);
     comCajPintar();
   } catch (ex) { $('com-estado').textContent = ex.message; }
@@ -3564,7 +3585,7 @@ async function comCajAbrir(cid, desdeRuta) {
                    : 'Esta caja no lleva envíos.',
   }).datos(trk);
 
-  PPTabla.crear($('com-caj-items'), {
+  comCajAdentro = PPTabla.crear($('com-caj-items'), {
     columnas: [
       { clave: 'titulo', titulo: 'Producto', principal: true,
         html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
@@ -3577,7 +3598,9 @@ async function comCajAbrir(cid, desdeRuta) {
     buscar: (f, t) => (f.titulo + ' ' + f.tienda).toLowerCase().includes(t),
     porPagina: 20,
     vacio: 'Todavía no hay productos en esta caja.',
-  }).datos(items);
+  });
+  comCajAdentro.datos(items);
+  comCajAdentroItems = items;
 }
 
 async function comCajSacar(cid, trk) {
@@ -3769,6 +3792,7 @@ function busParada(x) {
 // Lo raro (dañado, faltante, de más) pide la cantidad y el motivo.
 let recCaja = null;
 let recItems = [];
+let comCajAdentroItems = [];
 let recMarcado = null;
 
 async function comCajRecibirAbrir(cid) {
@@ -3781,7 +3805,24 @@ async function recCargar() {
   try {
     recItems = (await api(`/admin/compras/cajas/${recCaja}/recibir`)).items || [];
   } catch (ex) { comError('No se pudo ver lo que trae la caja', ex); return; }
+  recAdentro();
   recPintar();
+}
+
+// La tabla de abajo tiene que decir lo mismo que la de arriba: ver "0 de 4"
+// debajo de "ya anotadas 4" hace dudar de si se guardó. Se actualiza con lo
+// que ya se trajo —todo lo anotado cuenta, bueno o malo, igual que en la ficha
+// de la caja— en vez de pedir la caja otra vez en cada escaneo.
+function recAdentro() {
+  if (!comCajAdentro || !comCajAdentroItems.length) return;
+  const anotadas = {};
+  recItems.forEach((f) => {
+    anotadas[f.tracking_item_id] = Number(f.recibidas) + Number(f.danadas)
+      + Number(f.faltantes) + Number(f.sobrantes);
+  });
+  comCajAdentroItems = comCajAdentroItems.map((f) => (
+    f.id in anotadas ? Object.assign({}, f, { recibidas: anotadas[f.id] }) : f));
+  comCajAdentro.datos(comCajAdentroItems);
 }
 
 const recFalta = (f) => Math.max(0, Number(f.cantidad) - Number(f.recibidas)

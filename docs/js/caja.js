@@ -1768,10 +1768,10 @@ async function verVentas() {
 // descontado. Shopify deja corregir el pedido, con un límite: lo que ya salió de
 // la tienda no se quita desde aquí (eso es una devolución, no una corrección).
 
-// Apagado hasta que la app tenga el permiso `write_order_edits` de Shopify: sin
-// él la pantalla abre y deja armar el cambio, pero al guardar Shopify lo rechaza.
-// Se enciende poniendo true, apenas se renueven los permisos.
-const EDITAR_PEDIDOS = false;
+// Encendido el 16/10/2026, cuando la app tomó el permiso `write_order_edits`.
+// Probado contra Shopify de punta a punta: quitar devuelve la unidad al
+// inventario, agregar la descuenta, y el total del pedido se recalcula.
+const EDITAR_PEDIDOS = true;
 async function cambiarPedido(v, cerrarRecibo) {
   flash('Buscando el pedido…');
   let ped;

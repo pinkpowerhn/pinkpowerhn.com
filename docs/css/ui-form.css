@@ -13,15 +13,16 @@
 .ppform__check span, .ppform__nota { text-transform: none; letter-spacing: normal; }
 .ppform__op { color: #b9a7b2; font-weight: 400; }
 
+/* Sin margen propio en NINGÚN campo: el aire entre ellos lo pone el gap del
+   formulario. El panel le da margin-bottom a todo <input>, y eso ya rompió dos
+   cosas: la caja del monto quedaba quince píxeles más alta que las demás, y la
+   casilla de "sí/no" subía seis píxeles respecto a su texto. */
+.ppform input, .ppform select, .ppform textarea { margin: 0; }
+
 .ppform input[type="text"],
 .ppform input[type="number"],
 .ppform select,
 .ppform textarea {
-  /* Sin margen propio: el aire entre campos lo pone el gap del formulario. El
-     panel les da margin-bottom a todos los input, y dentro de un grupo en
-     línea (el del monto) ese margen se sumaba a la altura y la caja quedaba
-     quince píxeles más alta que los demás campos. */
-  margin: 0;
   width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--linea, #f0d6e2);
   border-radius: 9px; font-family: inherit; font-size: 0.92rem; color: var(--ink, #3a1424);
   background: #fff;

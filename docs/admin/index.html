@@ -313,6 +313,14 @@
      (.rep-fila) no entran: ahí el aire lo pone el gap. */
   .tab-panel > * + *,
   .tab-panel > div > * + * { margin-top: 1.4rem; }
+  /* …salvo dentro de una rejilla, donde el aire lo pone el gap. Un margin-top
+     ahí empuja la segunda columna hacia abajo y las tarjetas de la fila dejan
+     de estar a la misma altura. */
+  .tab-panel > .settings-grid > * + *,
+  .tab-panel .kpis > * + * { margin-top: 0; }
+  /* Y que las tarjetas de una misma fila midan lo mismo, aunque una tenga más
+     texto: el grid las estira si no se le dice lo contrario. */
+  .settings-grid { align-items: stretch; }
   #rep-contenido, #gas-contenido { margin-top: 1.4rem; }
   .rep-fila { display: grid; gap: 1.4rem; }
   .rep-fila--2 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
@@ -422,6 +430,7 @@
     .kpi--rosa .kpi__nm { font-size: 1.6rem; }
     #rep-contenido, #gas-contenido, .rep-fila { margin-top: 0.9rem; gap: 0.9rem; }
     .tab-panel > * + *, .tab-panel > div > * + * { margin-top: 0.9rem; }
+    .tab-panel > .settings-grid > * + *, .tab-panel .kpis > * + * { margin-top: 0; }
   }
 
   /* ── Gastos ── */
@@ -1390,14 +1399,13 @@ $('mm-form').addEventListener('submit', async (e) => {
     } else {
       const cambiaUsuario = usuario.toLowerCase() !== mmOrigUser.toLowerCase();
       if (cambiaUsuario) {
-        const r = await Swal.fire({
-          title: '¿Cambiar el usuario de acceso?',
-          html: `Iniciará sesión como <b>${esc(usuario)}</b> en vez de <b>${esc(mmOrigUser)}</b>. La contraseña y sus catálogos se conservan.`,
-          icon: 'warning', showCancelButton: true,
-          confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar',
-          confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+        const si = await PPModal.confirmar({
+          titulo: '¿Cambiar el usuario de acceso?',
+          cuerpo: `<p class="ppform__nota">Iniciará sesión como <b>${esc(usuario)}</b> `
+            + `en vez de <b>${esc(mmOrigUser)}</b>. La contraseña y sus catálogos se conservan.</p>`,
+          confirmar: 'Sí, cambiar',
         });
-        if (!r.isConfirmed) { btn.disabled = false; return; }
+        if (!si) { btn.disabled = false; return; }
       }
       await api('/admin/cuentas', { method: 'PUT', body: JSON.stringify({ usuario: mmOrigUser, nuevo_usuario: usuario, nombre, emprendimiento, telefono }) });
       panelMsg(`Datos de "${usuario}" actualizados.`);
@@ -1411,20 +1419,20 @@ $('mm-form').addEventListener('submit', async (e) => {
 // ── Cambiar contraseña de una mayorista ──
 async function cambiarPassword(e) {
   const usuario = e.currentTarget.dataset.user;
-  const { value: pass } = await Swal.fire({
-    title: `Nueva contraseña`,
-    html: `<p class="muted" style="margin:0 0 .6rem">Para <b>${esc(usuario)}</b></p>`,
-    input: 'text',
-    inputPlaceholder: 'Mínimo 4 caracteres',
-    inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
-    showCancelButton: true,
-    confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    inputValidator: (v) => (!v || v.trim().length < 4) ? 'Debe tener al menos 4 caracteres' : undefined,
+  const datos = await PPForm.abrir({
+    titulo: 'Nueva contraseña',
+    sub: `Para ${usuario}`,
+    ancho: 420,
+    campos: [
+      { id: 'clave', tipo: 'texto', etiqueta: 'Contraseña', max: 80,
+        placeholder: 'Mínimo 4 caracteres', obligatorio: 'Escriba la contraseña' },
+    ],
+    validar: (v) => (v.clave.trim().length < 4
+      ? 'Debe tener al menos 4 caracteres' : null),
   });
-  if (!pass) return;
+  if (!datos) return;
   try {
-    await api('/admin/cuentas/password', { method: 'POST', body: JSON.stringify({ usuario, password: pass.trim() }) });
+    await api('/admin/cuentas/password', { method: 'POST', body: JSON.stringify({ usuario, password: datos.clave.trim() }) });
     panelMsg(`Contraseña de "${usuario}" actualizada.`);
   } catch (ex) { panelMsg(ex.message, false); }
 }
@@ -1433,14 +1441,12 @@ async function toggleEstado(e) {
   const b = e.currentTarget;
   const usuario = b.dataset.user, nuevo = b.dataset.activo !== '1';
   if (!nuevo) {
-    const r = await Swal.fire({
-      title: `¿Desactivar a "${usuario}"?`,
-      text: 'No podrá iniciar sesión hasta que la reactives.',
-      icon: 'warning', showCancelButton: true,
-      confirmButtonText: 'Sí, desactivar', cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    const si = await PPModal.confirmar({
+      titulo: `¿Desactivar a "${usuario}"?`,
+      cuerpo: '<p class="ppform__nota">No podrá iniciar sesión hasta que la reactives.</p>',
+      confirmar: 'Sí, desactivar',
     });
-    if (!r.isConfirmed) return;
+    if (!si) return;
   }
   b.disabled = true;
   try {
@@ -1467,14 +1473,13 @@ async function borrarCatalogos(e) {
   const b = e.currentTarget;
   const usuario = b.dataset.user, n = +b.dataset.n || 0;
   if (!n) return;
-  const r = await Swal.fire({
-    title: `¿Borrar los catálogos de "${usuario}"?`,
-    html: `Se eliminarán <b>${n}</b> catálogo${n === 1 ? '' : 's'} por completo y sus links dejarán de funcionar. Esta acción no se puede deshacer.`,
-    icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d61f4a', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: `¿Borrar los catálogos de "${usuario}"?`,
+    cuerpo: `<p class="ppform__nota">Se eliminarán <b>${n}</b> catálogo${n === 1 ? '' : 's'} `
+      + 'por completo y sus links dejarán de funcionar. Esto no se puede deshacer.</p>',
+    confirmar: 'Sí, borrar', peligro: true,
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   b.disabled = true;
   try {
     const res = await api(`/admin/cuentas/${encodeURIComponent(usuario)}/catalogos`, { method: 'DELETE' });
@@ -1546,14 +1551,14 @@ $('ocultar-agotados').addEventListener('change', async (e) => {
 
 // ── Sincronizar mayoristas con Shopify (enlaza las que existen, crea las que faltan) ──
 $('sync-shopify').addEventListener('click', async () => {
-  const r = await Swal.fire({
-    title: '¿Sincronizar con Shopify?',
-    html: 'Se va a enlazar a cada mayorista con su ficha de clienta en Shopify y se crearán las que falten.<br><br>No se duplican clientas: si ya existe una con ese teléfono, se reutiliza.',
-    icon: 'question', showCancelButton: true,
-    confirmButtonText: 'Sí, sincronizar', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: '¿Sincronizar con Shopify?',
+    cuerpo: '<p class="ppform__nota">Se va a enlazar a cada mayorista con su ficha de '
+      + 'clienta en Shopify y se crearán las que falten. No se duplican clientas: '
+      + 'si ya existe una con ese teléfono, se reutiliza.</p>',
+    confirmar: 'Sí, sincronizar',
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   const btn = $('sync-shopify');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Sincronizando…';
@@ -2991,20 +2996,18 @@ async function gasFormulario(gasto) {
 // la línea de estado, arriba, y daba la impresión de que sí se había guardado.
 function gasFallo(titulo, ex) {
   gasEstado(ex.message, true);
-  Swal.fire({ title: titulo, text: ex.message, icon: 'error',
-              confirmButtonText: 'Entendido', confirmButtonColor: '#e8437a' });
+  PPModal.abrir({ titulo, cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+                  confirmar: 'Entendido', cancelar: null, ancho: 420 });
 }
 
 async function gasQuitar(gasto) {
-  const r = await Swal.fire({
-    title: '¿Quitar este gasto?',
-    html: `<b>${esc(gasto.categoria)}</b> · ${L(gasto.monto)}<br>`
-        + `<span class="muted">${esc(gasto.descripcion || diaCorto(gasto.fecha))}</span>`,
-    icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Sí, quitar', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d61f4a', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: '¿Quitar este gasto?',
+    cuerpo: `<p class="ppform__nota"><b>${esc(gasto.categoria)}</b> · ${L(gasto.monto)}<br>`
+      + `${esc(gasto.descripcion || diaCorto(gasto.fecha))}</p>`,
+    confirmar: 'Sí, quitarlo', peligro: true,
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   try {
     await api(`/admin/gastos/${gasto.id}`, { method: 'DELETE' });
     await gasCargar();
@@ -3040,49 +3043,37 @@ async function gasCreditos(gasto) {
       </div>`).join('')
     : '<p class="gcred-vacio">Todavía no le han devuelto nada de este gasto.</p>');
 
-  await Swal.fire({
-    title: 'Créditos de este gasto',
-    html: cab(gasto)
+  await PPModal.abrir({
+    titulo: 'Créditos de este gasto',
+    ancho: 520,
+    confirmar: null,
+    cancelar: 'Cerrar',
+    cuerpo: cab(gasto)
       + `<div class="gcreds" id="gcreds">${lista(gasto)}</div>`
-      + '<p class="gascat-err" id="gcred-err" hidden></p>'
       + '<div class="gascat-nueva"><button type="button" class="btn btn--primary btn--sm"'
       + ' id="gcred-add" style="flex:1">Anotar un crédito</button></div>',
-    width: 520,
-    showConfirmButton: false,
-    showCloseButton: true,
-    didOpen: () => {
+    alAbrir: (dentro, modal) => {
       const caja = document.getElementById('gcreds');
-      const avisar = (texto) => {
-        const p = document.getElementById('gcred-err');
-        if (!p) return;
-        p.textContent = texto || '';
-        p.hidden = !texto;
-      };
-      // Después de tocar algo hay que volver a leer el gasto: el modal muestra
-      // lo que quedó, y lo de atrás (la tabla y el reporte) también cambia.
+      // Después de tocar algo hay que volver a leer el gasto: la ventana
+      // muestra lo que quedó, y lo de atrás (la tabla y el reporte) también
+      // cambia.
       const alDia = async () => {
         await gasCargar();
         if (repDatos) repCargar();
         return (gasDatos.gastos || []).find((x) => x.id === gasto.id);
       };
-      // Quitar no abre nada encima, así que el modal sigue ahí y se repinta.
       const refrescar = async () => {
         const g = await alDia();
-        if (!g) { Swal.close(); return null; }
-        const dentro = Swal.getHtmlContainer();
+        if (!g) { modal.cerrar(); return null; }
         dentro.querySelector('.gcred-cab').outerHTML = cab(g);
         caja.innerHTML = lista(g);
-        avisar('');
+        modal.avisar('');
         return g;
       };
-      // El formulario, en cambio, se abre encima y SweetAlert cierra este: al
-      // terminar hay que volver a abrirlo, ya con lo nuevo adentro.
+      // El formulario se abre ENCIMA de esta ventana y esta se queda donde
+      // estaba: al volver solo hay que repintar lo que cambió.
       const conFormulario = async (cred) => {
-        const hecho = await gasCreditoFormulario(gasto, cred);
-        if (!hecho) { Swal.close(); gasCreditos(gasto); return; }
-        const g = await alDia();
-        Swal.close();
-        if (g) gasCreditos(g);
+        if (await gasCreditoFormulario(gasto, cred)) await refrescar();
       };
       document.getElementById('gcred-add').addEventListener('click',
         () => conFormulario(null));
@@ -3097,7 +3088,7 @@ async function gasCreditos(gasto) {
         try {
           await api(`/admin/gastos/creditos/${id}`, { method: 'DELETE' });
           await refrescar();
-        } catch (ex) { avisar(ex.message); }
+        } catch (ex) { modal.avisar(ex.message); }
       });
     },
   });
@@ -3131,10 +3122,10 @@ async function gasCreditoFormulario(gasto, credito) {
               { method: esNuevo ? 'POST' : 'PATCH', body: JSON.stringify(datos) });
     return true;
   } catch (ex) {
-    await Swal.fire({ title: esNuevo ? 'No se pudo anotar el crédito'
-                                     : 'No se pudo corregir el crédito',
-                      text: ex.message, icon: 'error',
-                      confirmButtonText: 'Entendido', confirmButtonColor: '#e8437a' });
+    await PPModal.abrir({
+      titulo: esNuevo ? 'No se pudo anotar el crédito' : 'No se pudo corregir el crédito',
+      cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+      confirmar: 'Entendido', cancelar: null, ancho: 420 });
     return false;
   }
 }
@@ -3154,26 +3145,20 @@ async function gasAdministrarCategorias() {
         title="${c.activa ? 'Quitar' : 'Volver a usar'}">${c.activa ? '✕' : '↩'}</button>
     </div>`).join('');
 
-  await Swal.fire({
-    title: 'Categorías de gasto',
-    html: `<div class="gascats" id="gascats">${pinta()}</div>
-      <p class="gascat-err" id="gascat-err" hidden></p>
+  await PPModal.abrir({
+    titulo: 'Categorías de gasto',
+    ancho: 520,
+    confirmar: null,
+    cancelar: 'Cerrar',
+    cuerpo: `<div class="gascats" id="gascats">${pinta()}</div>
       <div class="gascat-nueva">
         <input type="text" id="gascat-nombre" maxlength="60" placeholder="Agregar una categoría…" />
         <button type="button" class="btn btn--primary btn--sm" id="gascat-add">Agregar</button>
       </div>`,
-    width: 520,
-    showConfirmButton: false,
-    showCloseButton: true,
-    didOpen: () => {
+    alAbrir: (_dentro, modal) => {
       const caja = document.getElementById('gascats');
-      // El aviso va adentro del modal: la línea de estado queda detrás y no se ve.
-      const avisar = (texto) => {
-        const p = document.getElementById('gascat-err');
-        if (!p) return;
-        p.textContent = texto || '';
-        p.hidden = !texto;
-      };
+      // El aviso va adentro de la ventana: la línea de estado queda detrás.
+      const avisar = (texto) => modal.avisar(texto);
       const refrescar = async () => {
         gasCats = (await api('/admin/gastos/categorias?todas=true')).categorias || [];
         caja.innerHTML = pinta();
@@ -3197,26 +3182,24 @@ async function gasAdministrarCategorias() {
         if (!cat) return;
         try {
           if (b.dataset.renombrar) {
-            // Pedir el nombre abre otro modal encima, y ese se lleva el de las
-            // categorías: al terminar hay que volver a abrirlo a mano.
-            const { value: nombre } = await Swal.fire({
-              title: 'Nuevo nombre', input: 'text', inputValue: cat.nombre,
-              showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
-              confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-              inputValidator: (v) => (!v || !v.trim()) ? 'Escriba el nombre' : undefined,
+            // El formulario se abre encima y esta ventana se queda: al
+            // volver basta con repintar la lista.
+            const datos = await PPForm.abrir({
+              titulo: 'Nuevo nombre', ancho: 420,
+              campos: [{ id: 'nombre', tipo: 'texto', etiqueta: 'Nombre de la categoría',
+                         max: 60, valor: cat.nombre, obligatorio: 'Escriba el nombre' }],
             });
-            if (nombre) {
+            if (datos) {
               try {
                 await api(`/admin/gastos/categorias/${id}`,
-                          { method: 'PATCH', body: JSON.stringify({ nombre: nombre.trim() }) });
+                          { method: 'PATCH', body: JSON.stringify({ nombre: datos.nombre.trim() }) });
               } catch (ex) {
-                await Swal.fire({ title: 'No se pudo cambiar el nombre', text: ex.message,
-                                  icon: 'error', confirmButtonText: 'Entendido',
-                                  confirmButtonColor: '#e8437a' });
+                await PPModal.abrir({ titulo: 'No se pudo cambiar el nombre',
+                  cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+                  confirmar: 'Entendido', cancelar: null, ancho: 420 });
               }
             }
-            Swal.close();
-            gasAdministrarCategorias();
+            await refrescar();
             return;
           } else if (!cat.activa) {
             await api(`/admin/gastos/categorias/${id}`,
@@ -3225,7 +3208,7 @@ async function gasAdministrarCategorias() {
             await api(`/admin/gastos/categorias/${id}`, { method: 'DELETE' });
           }
           await refrescar();
-        } catch (ex) { gasEstado(ex.message, true); }
+        } catch (ex) { avisar(ex.message); }
       });
     },
   });

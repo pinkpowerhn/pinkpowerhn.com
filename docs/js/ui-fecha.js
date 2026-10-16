@@ -53,6 +53,7 @@ window.PPFecha = (function () {
 
   function crear(destino, opciones) {
     const cfg = Object.assign({ valor: '', min: '', max: '', al: null }, opciones || {});
+    const avisos = [];
     let elegida = deIso(cfg.valor);
     const tope = deIso(cfg.max);
     const piso = deIso(cfg.min);
@@ -160,6 +161,7 @@ window.PPFecha = (function () {
       pintarBoton();
       abrir(false);
       if (cfg.al) cfg.al(elegida ? iso(elegida) : '');
+      avisos.forEach((f) => f(elegida ? iso(elegida) : ''));
     }
 
     boton.addEventListener('click', (e) => { e.preventDefault(); abrir(); });
@@ -197,6 +199,9 @@ window.PPFecha = (function () {
       valor: () => (elegida ? iso(elegida) : ''),
       poner: (t) => { elegida = deIso(t); pintarBoton(); },
       enfocar: () => boton.focus(),
+      // Igual que el select: el calendario no es un <input> y hay que avisar
+      // a mano a quien nos tenga adentro.
+      alCambiar: (fn) => { if (fn) avisos.push(fn); },
       abrir: () => abrir(true),
       // Para cuando el formulario que lo contiene se cierra: si no, estos dos
       // oyentes quedan vivos para siempre.

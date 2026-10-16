@@ -36,6 +36,7 @@ window.PPSelect = (function () {
       { opciones: [], valor: null, vacio: 'Elegir…', al: null, accion: null },
       opciones || {});
     let lista = cfg.opciones.slice();
+    const avisos = [];
     let actual = cfg.valor;
     let abierto = false;
 
@@ -112,6 +113,7 @@ window.PPSelect = (function () {
         actual = nueva.v;
         pintar();
         if (cfg.al) cfg.al(actual);
+        avisos.forEach((f) => f(actual));
         return;
       }
       const b = e.target.closest('[data-v]');
@@ -121,6 +123,7 @@ window.PPSelect = (function () {
       pintar();
       abrir(false);
       if (cfg.al) cfg.al(actual);
+      avisos.forEach((f) => f(actual));
     });
 
     const alDocumento = (e) => {
@@ -137,6 +140,9 @@ window.PPSelect = (function () {
       poner: (v) => { actual = v; pintar(); },
       opciones: (nuevas) => { lista = nuevas.slice(); pintar(); },
       enfocar: () => boton.focus(),
+      // Quien nos monta adentro (PPForm) necesita enterarse de los cambios: el
+      // select no es un <input>, así que no suelta eventos que burbujeen.
+      alCambiar: (fn) => { if (fn) avisos.push(fn); },
       soltar: () => {
         abrir(false);
         document.removeEventListener('click', alDocumento);

@@ -522,8 +522,11 @@
   }
   .com-ficha__tienda { margin:0; font-size:1.25rem; font-weight:800; }
   .com-ficha__sub { margin:0.15rem 0 0; color:var(--muted); font-size:0.88rem; }
+  /* Los datos de la ficha repartidos a lo ancho: antes se amontonaban a la
+     izquierda y dejaban media tarjeta vacía en computadora. */
   .com-datos {
-    display:flex; flex-wrap:wrap; gap:0.6rem 1.6rem; margin:0.9rem 0 0;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(118px, 1fr));
+    gap:0.9rem 1.2rem; margin:0.9rem 0 0;
     padding:0.8rem 0 0; border-top:1px solid var(--linea);
   }
   .com-dato__nm { font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
@@ -590,7 +593,7 @@
   .com-form__op { color:#b9a7b2; font-weight:400; }
   @media (max-width: 540px) {
     .com-form__dos { grid-template-columns:1fr; }
-    .com-datos { gap:0.6rem 1rem; }
+    .com-datos { grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:0.7rem 0.9rem; }
     /* El conmutador de vistas ocupa el ancho: su CSS ya lo estira, pero el
        hueco donde vive se encogía al tamaño del contenido. */
     #com-vista { width:100%; }
@@ -2699,6 +2702,14 @@ function comMostrarVista(cual) {
   ver('com-caj-ficha', cual === 'cajas' && !!comCajAbierta);
   $('com-nueva-txt').textContent = cual === 'ordenes' ? 'Nueva orden'
     : cual === 'envios' ? 'Nuevo envío' : 'Nueva caja';
+  // El contador es de la vista que se está mirando: al cambiar quedaba el de
+  // la anterior ("1 caja" estando en Órdenes).
+  const cuantos = cual === 'ordenes' ? comOrdenes.length
+    : cual === 'envios' ? comTrks.length : comCajas.length;
+  const nombre = cual === 'ordenes' ? ['orden', 'órdenes']
+    : cual === 'envios' ? ['envío', 'envíos'] : ['caja', 'cajas'];
+  $('com-estado').textContent = cuantos
+    ? `${N(cuantos)} ${cuantos === 1 ? nombre[0] : nombre[1]}` : '';
   if (cual === 'envios' && !comTrks.length) comTrkCargar();
   if (cual === 'cajas' && !comCajas.length) comCajCargar();
 }
@@ -2749,15 +2760,26 @@ function comTrkPintar() {
   comTrkTabla.datos(comTrks);
 }
 
-// Dónde va el envío, dicho como se cuenta: "en camino" o "en Miami desde el 9".
+// Dónde va el envío, dicho como se cuenta. Manda la caja: si ya va dentro de
+// una que salió, el envío no sigue "en Miami" aunque ahí diga que llegó.
 function comTrkDonde(f) {
+  if (f.caja_estado === 'recibida') {
+    return comEtiq('recibido', 'Ya llegó')
+      + `<div class="com-pie">en la caja ${N(f.caja_numero)}</div>`;
+  }
+  if (f.caja_estado === 'en_camino') {
+    return comEtiq('en_caja', 'En camino')
+      + `<div class="com-pie">${f.caja_eta ? 'llega ~' + esc(diaCorto(f.caja_eta))
+         : 'en la caja ' + N(f.caja_numero)}</div>`;
+  }
   if (f.llegada_miami) {
     return comEtiq('en_miami', 'En Miami')
-      + `<div class="com-pie">desde el ${esc(diaCorto(f.llegada_miami))}</div>`;
+      + `<div class="com-pie">${f.caja_numero ? 'esperando en la caja ' + N(f.caja_numero)
+         : 'desde el ' + esc(diaCorto(f.llegada_miami))}</div>`;
   }
   const pie = f.eta_miami
     ? `<div class="com-pie">llega ~${esc(diaCorto(f.eta_miami))}</div>` : '';
-  return comEtiq('despachado', 'En camino') + pie;
+  return comEtiq('despachado', 'En camino a Miami') + pie;
 }
 
 // ── Nuevo envío / corregir ───────────────────────────────────────────────
@@ -3065,12 +3087,13 @@ async function comCajCargar() {
 }
 
 // El flete, dicho como ella lo cuenta: el total y cuánto sale la libra.
-function comCajFlete(c) {
+function comCajFlete(c, conPeso) {
   if (!c.flete_total) return '—';
   const porLibra = c.peso_total ? Number(c.flete_total) / Number(c.peso_total) : 0;
+  const pie = [porLibra ? `${comPlata(porLibra, c.moneda)} la libra` : '',
+               conPeso && c.peso_total ? `${N(c.peso_total)} lb` : ''].filter(Boolean);
   return `${comPlata(c.flete_total, c.moneda)}`
-    + (porLibra ? `<div class="com-pie">${comPlata(porLibra, c.moneda)} la libra`
-                  + ` · ${N(c.peso_total)} lb</div>` : '');
+    + (pie.length ? `<div class="com-pie">${pie.join(' · ')}</div>` : '');
 }
 
 function comCajPintar() {
@@ -3085,7 +3108,7 @@ function comCajPintar() {
             ? `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
               + `<div class="com-pie">${N(f.trackings)} ${f.trackings === 1 ? 'envío' : 'envíos'}</div>`
             : '<span class="com-pie">vacía</span>') },
-        { clave: 'flete_total', titulo: 'Flete', html: comCajFlete },
+        { clave: 'flete_total', titulo: 'Flete', html: (f) => comCajFlete(f, true) },
         { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(
             f.estado === 'recibida' ? 'recibido'
               : f.estado === 'en_camino' ? 'en_caja' : 'pedido',
@@ -3270,8 +3293,10 @@ async function comCajAbrir(cid) {
       <div class="com-ficha__cab">
         <div>
           <h2 class="com-ficha__tienda">Caja ${N(c.correlativo)}</h2>
-          <p class="com-ficha__sub">${esc(COM_CAJA_ESTADOS[c.estado] || c.estado)}${
-            c.cerrada_en ? ' · cerrada el ' + esc(diaCorto(c.cerrada_en)) : ''}</p>
+          <p class="com-ficha__sub">${c.cerrada_en
+            ? 'Cerrada el ' + esc(diaCorto(c.cerrada_en))
+            : 'Todavía se le pueden meter envíos'}${
+            c.recibida_en ? ' · llegó el ' + esc(diaCorto(c.recibida_en)) : ''}</p>
         </div>
         <div>${comEtiq(c.estado === 'recibida' ? 'recibido'
           : c.estado === 'en_camino' ? 'en_caja' : 'pedido',

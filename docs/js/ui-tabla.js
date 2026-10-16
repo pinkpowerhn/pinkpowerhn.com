@@ -43,6 +43,7 @@ window.PPTabla = (function () {
     const cfg = Object.assign({
       columnas: [], filtros: [], acciones: null, buscar: null,
       porPagina: 12, vacio: 'No hay nada para mostrar', buscarTexto: 'Buscar…',
+      minimoParaBuscar: 8,
       accionPrincipal: null,
     }, opciones || {});
 
@@ -88,6 +89,14 @@ window.PPTabla = (function () {
           </div>
         </div>`;
       }).join('');
+
+      // Con pocas filas, la barra estorba: un buscador y un filtro encima de
+      // tres renglones no ayudan a nadie y ocupan la mitad de la tarjeta. Si
+      // ya se está buscando o filtrando, se queda (si no, desaparecería justo
+      // cuando quedan pocos resultados y no habria como volver atras).
+      const pocas = estado.filas.length < cfg.minimoParaBuscar;
+      const usando = estado.texto || Object.values(estado.filtros).some(Boolean);
+      if (pocas && !usando && !cfg.accionPrincipal) return '';
 
       return `<div class="pp-tabla__barra">
         <div class="pp-tabla__buscar">
@@ -147,7 +156,8 @@ window.PPTabla = (function () {
     function paginacionHTML() {
       const total = filtradas().length;
       const paginas = Math.max(1, Math.ceil(total / cfg.porPagina));
-      if (total === 0) return '';
+      // "1–3 de 3" y "Anterior 1/1 Siguiente" debajo de tres filas es ruido.
+      if (total === 0 || paginas <= 1) return '';
       const desde = (estado.pagina - 1) * cfg.porPagina + 1;
       const hasta = Math.min(total, estado.pagina * cfg.porPagina);
       return `<div class="pp-tabla__pies">

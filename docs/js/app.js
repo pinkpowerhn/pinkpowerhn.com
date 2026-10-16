@@ -1534,10 +1534,24 @@ async function submitCheckout(name, phone, email, checkout = null) {
   const phoneDigits = String(phone).replace(/\D/g, '');
   const customerEmail = email || (phoneDigits ? `${phoneDigits}@pinkpowerhn.com` : undefined);
 
+  // Si el carrito se armó con precios de mayoreo, el pedido TIENE que salir con
+  // la sesión de mayorista. Sin token, el backend lo cobraría a precio de tienda
+  // y la clienta pagaría de más (pasó con el #1555). Mejor que vuelva a entrar.
+  const enMayoreo = !!getState().mayoreo;
+  const mayoreoToken = enMayoreo ? localStorage.getItem('pinkpower_mayoreo_token') : null;
+  if (enMayoreo && !mayoreoToken) {
+    showCoError('Tu sesión de mayorista venció. Entra de nuevo para que se apliquen tus precios.');
+    if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
+    return;
+  }
+
   const orderPayload = {
     customer_name: name,
     phone,
     email: customerEmail,
+    // Se lo decimos también al backend: si la sesión no sirve, que rechace el
+    // pedido en vez de crearlo a precio de tienda.
+    mayoreo: enMayoreo,
     // Tipo de envío y de pago van a las notas del pedido en Shopify, para que
     // Aylin los tenga aunque la clienta no llegue a mandar el mensaje de WhatsApp.
     envio: checkout?.deliveryLabel || null,
@@ -1556,7 +1570,6 @@ async function submitCheckout(name, phone, email, checkout = null) {
   try {
     // En mayoreo, se manda el token para que el pedido use precios de mayoreo y
     // la etiqueta "mayoreo" en Shopify.
-    const mayoreoToken = getState().mayoreo ? localStorage.getItem('pinkpower_mayoreo_token') : null;
     const orderData = await postOrder(orderPayload, mayoreoToken);
 
     const orderName = orderData?.order?.name || null; // e.g. "#1011"
@@ -1579,6 +1592,10 @@ async function submitCheckout(name, phone, email, checkout = null) {
     // quitan esos productos del carrito y se le explica a la clienta.
     if (err?.status === 409 && detail?.error === 'stock' && Array.isArray(detail.agotados)) {
       quitarAgotados(detail.agotados);
+    } else if (err?.status === 401 && detail?.error === 'sesion_mayoreo') {
+      // La sesión de mayorista venció mientras armaba el pedido. No se creó nada:
+      // vuelve a entrar y el pedido sale con sus precios.
+      showCoError(detail.mensaje || 'Tu sesión de mayorista venció. Entra de nuevo.');
     } else {
       showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
     }

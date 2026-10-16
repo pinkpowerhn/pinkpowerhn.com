@@ -145,6 +145,9 @@
   .btn--danger:hover { background: #ffeef2; color: #d61f4a; border-color: #d61f4a; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn--sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+  /* En la barra van pegados a los tres puntitos (.ppmenu-btn, 38px): sin esto
+     el botón de acción se ve un escalón más bajo que su vecino. */
+  .rep-barra__acciones .btn--sm { min-height: 38px; }
   .acts { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
   .row { display: flex; gap: 0.7rem; align-items: flex-end; flex-wrap: wrap; }
   .row > div { flex: 1; min-width: 140px; }
@@ -291,10 +294,15 @@
 
   /* El aire entre tarjetas. Antes el bloque de numeros arrancaba pegado a la
      barra de arriba y no se veia donde terminaba una cosa y empezaba otra. */
-  /* El mismo aire en los dos modulos. Estaba escrito solo para #rep-contenido
-     y en Gastos el contenedor es otro: ahi las tarjetas salian pegadas. */
+  /* ── Aire entre tarjetas ──
+     Regla general, a propósito. Antes esto estaba escrito para #rep-contenido,
+     después se copió a #gas-contenido, y cada pantalla nueva volvía a nacer con
+     las tarjetas pegadas. Vale para los hijos directos de una pestaña y para
+     los de cualquier contenedor suyo (una ficha, una lista); los de una rejilla
+     (.rep-fila) no entran: ahí el aire lo pone el gap. */
+  .tab-panel > * + *,
+  .tab-panel > div > * + * { margin-top: 1.4rem; }
   #rep-contenido, #gas-contenido { margin-top: 1.4rem; }
-  #rep-contenido > * + *, #gas-contenido > * + * { margin-top: 1.4rem; }
   .rep-fila { display: grid; gap: 1.4rem; }
   .rep-fila--2 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
   .rep-card__cab {
@@ -399,7 +407,7 @@
     .kpi--rosa { grid-column: 1 / -1; }
     .kpi--rosa .kpi__nm { font-size: 1.6rem; }
     #rep-contenido, #gas-contenido, .rep-fila { margin-top: 0.9rem; gap: 0.9rem; }
-    #rep-contenido > * + *, #gas-contenido > * + * { margin-top: 0.9rem; }
+    .tab-panel > * + *, .tab-panel > div > * + * { margin-top: 0.9rem; }
   }
 
   /* ── Gastos ── */
@@ -2912,50 +2920,38 @@ async function gasFormulario(gasto) {
     catch (_) { /* se muestra igual, vacío */ }
   }
   const esNuevo = !gasto;
-  const r = await Swal.fire({
-    title: esNuevo ? 'Nuevo gasto' : 'Corregir el gasto',
-    html: `
-      <div class="gasform">
-        <label>Fecha
-          <input type="date" id="gf-fecha" max="${hoyISO()}"
-                 value="${esc(gasto ? gasto.fecha : hoyISO())}" />
-        </label>
-        <label>Categoría
-          <select id="gf-cat">
-            ${gasCats.map((c) => `<option value="${c.id}" ${
-              gasto && gasto.categoria_id === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
-          </select>
-        </label>
-        <label>Monto
-          <input type="number" id="gf-monto" step="0.01" min="0.01" placeholder="0.00"
-                 value="${gasto ? gasto.monto : ''}" />
-        </label>
-        <label>De qué fue <span class="gasform__op">(opcional)</span>
-          <input type="text" id="gf-desc" maxlength="300" placeholder="Bolsas, cajas…"
-                 value="${esc(gasto ? gasto.descripcion : '')}" />
-        </label>
-      </div>`,
-    showCancelButton: true,
-    confirmButtonText: esNuevo ? 'Guardar' : 'Guardar cambios',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    focusConfirm: false,
-    didOpen: () => { document.getElementById('gf-monto').focus(); },
-    preConfirm: () => {
-      const fecha = document.getElementById('gf-fecha').value;
-      const categoria_id = Number(document.getElementById('gf-cat').value);
-      const monto = Number(document.getElementById('gf-monto').value);
-      const descripcion = document.getElementById('gf-desc').value.trim();
-      if (!fecha) { Swal.showValidationMessage('Ponga la fecha'); return false; }
-      if (!categoria_id) { Swal.showValidationMessage('Elija la categoría'); return false; }
-      if (!(monto > 0)) { Swal.showValidationMessage('Ponga cuánto fue'); return false; }
-      return { fecha, categoria_id, monto, descripcion };
-    },
+  const datos = await PPForm.abrir({
+    titulo: esNuevo ? 'Nuevo gasto' : 'Corregir el gasto',
+    confirmar: esNuevo ? 'Guardar' : 'Guardar cambios',
+    ancho: 460,
+    enfocar: 'monto',
+    campos: [
+      { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha', mitad: true,
+        valor: gasto ? gasto.fecha : hoyISO(), max: hoyISO(),
+        obligatorio: 'Ponga la fecha' },
+      { id: 'categoria_id', tipo: 'select', etiqueta: 'Categoría', mitad: true,
+        valor: gasto ? gasto.categoria_id : (gasCats[0] || {}).id,
+        opciones: gasCats.map((c) => ({ v: c.id, t: c.nombre })),
+        obligatorio: 'Elija la categoría' },
+      { id: 'monto', tipo: 'dinero', etiqueta: 'Monto', prefijo: 'L.',
+        min: 0.01, placeholder: '0.00', valor: gasto ? gasto.monto : null,
+        obligatorio: 'Ponga cuánto fue' },
+      { id: 'descripcion', tipo: 'texto', etiqueta: 'De qué fue', ayuda: 'opcional',
+        max: 300, placeholder: 'Bolsas, cajas…',
+        valor: gasto ? (gasto.descripcion || '') : '' },
+    ],
   });
-  if (!r.isConfirmed) return;
+  if (!datos) return;
   try {
-    await api(esNuevo ? '/admin/gastos' : `/admin/gastos/${gasto.id}`,
-              { method: esNuevo ? 'POST' : 'PATCH', body: JSON.stringify(r.value) });
+    await api(esNuevo ? '/admin/gastos' : `/admin/gastos/${gasto.id}`, {
+      method: esNuevo ? 'POST' : 'PATCH',
+      body: JSON.stringify({
+        fecha: datos.fecha,
+        categoria_id: Number(datos.categoria_id),
+        monto: datos.monto,
+        descripcion: datos.descripcion,
+      }),
+    });
     await gasCargar();
     if (repDatos) repCargar();      // el reporte también cambia
   } catch (ex) {
@@ -3083,44 +3079,28 @@ async function gasCreditos(gasto) {
 // encima del listado, así que devuelve si hubo cambio para refrescarlo.
 async function gasCreditoFormulario(gasto, credito) {
   const esNuevo = !credito;
-  const r = await Swal.fire({
-    title: esNuevo ? 'Anotar un crédito' : 'Corregir el crédito',
-    html: `
-      <div class="gasform">
-        <label>Fecha <span class="gasform__op">(cuándo se lo dieron)</span>
-          <input type="date" id="gc-fecha" max="${hoyISO()}"
-                 value="${esc(credito ? credito.fecha : hoyISO())}" />
-        </label>
-        <label>Cuánto le devolvieron
-          <input type="number" id="gc-monto" step="0.01" min="0.01" placeholder="0.00"
-                 value="${credito ? credito.monto : ''}" />
-        </label>
-        <label>Por qué <span class="gasform__op">(opcional)</span>
-          <input type="text" id="gc-motivo" maxlength="300"
-                 placeholder="Llegó derramado, faltaron dos…"
-                 value="${esc(credito ? credito.motivo : '')}" />
-        </label>
-      </div>`,
-    showCancelButton: true,
-    confirmButtonText: esNuevo ? 'Guardar' : 'Guardar cambios',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    focusConfirm: false,
-    didOpen: () => { document.getElementById('gc-monto').focus(); },
-    preConfirm: () => {
-      const fecha = document.getElementById('gc-fecha').value;
-      const monto = Number(document.getElementById('gc-monto').value);
-      const motivo = document.getElementById('gc-motivo').value.trim();
-      if (!fecha) { Swal.showValidationMessage('Ponga la fecha'); return false; }
-      if (!(monto > 0)) { Swal.showValidationMessage('Ponga cuánto le devolvieron'); return false; }
-      return { fecha, monto, motivo };
-    },
+  const datos = await PPForm.abrir({
+    titulo: esNuevo ? 'Anotar un crédito' : 'Corregir el crédito',
+    confirmar: esNuevo ? 'Guardar' : 'Guardar cambios',
+    ancho: 440,
+    enfocar: 'monto',
+    campos: [
+      { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha', ayuda: 'cuándo se lo dieron',
+        valor: credito ? credito.fecha : hoyISO(), max: hoyISO(),
+        obligatorio: 'Ponga la fecha' },
+      { id: 'monto', tipo: 'dinero', etiqueta: 'Cuánto le devolvieron', prefijo: 'L.',
+        min: 0.01, placeholder: '0.00', valor: credito ? credito.monto : null,
+        obligatorio: 'Ponga cuánto le devolvieron' },
+      { id: 'motivo', tipo: 'texto', etiqueta: 'Por qué', ayuda: 'opcional',
+        max: 300, placeholder: 'Llegó derramado, faltaron dos…',
+        valor: credito ? (credito.motivo || '') : '' },
+    ],
   });
-  if (!r.isConfirmed) return false;
+  if (!datos) return false;
   try {
     await api(esNuevo ? `/admin/gastos/${gasto.id}/creditos`
                       : `/admin/gastos/creditos/${credito.id}`,
-              { method: esNuevo ? 'POST' : 'PATCH', body: JSON.stringify(r.value) });
+              { method: esNuevo ? 'POST' : 'PATCH', body: JSON.stringify(datos) });
     return true;
   } catch (ex) {
     await Swal.fire({ title: esNuevo ? 'No se pudo anotar el crédito'

@@ -430,6 +430,83 @@
   }
 
   /* Créditos del proveedor sobre un gasto ya pagado. */
+  /* ── Compras ── */
+  .com-titulo { margin:0; font-size:1.05rem; font-weight:700; }
+  /* Cuánto de la orden ya llegó. Un número solo no dice nada; la barrita sí. */
+  .com-avance { display:flex; align-items:center; gap:0.5rem; }
+  .com-avance__barra {
+    width:58px; height:7px; border-radius:99px; background:#f1e2ea; overflow:hidden; flex:none;
+  }
+  .com-avance__lleno { height:100%; background:var(--pink); border-radius:99px; }
+  .com-avance__txt { font-size:0.8rem; color:var(--muted); white-space:nowrap; }
+  .com-pie { font-size:0.76rem; color:var(--muted); margin-top:0.1rem; }
+
+  .com-etiq {
+    display:inline-block; padding:0.12rem 0.5rem; border-radius:99px;
+    font-size:0.74rem; font-weight:700; letter-spacing:0.02em;
+  }
+  .com-etiq--pedido     { background:#f2eef6; color:#6b5b7a; }
+  .com-etiq--despachado { background:#e8f0fb; color:#2f5d93; }
+  .com-etiq--en_miami   { background:#e6f4ef; color:#226b52; }
+  .com-etiq--en_caja    { background:#fdf0e3; color:#8a5a12; }
+  .com-etiq--recibido   { background:#e9f6ec; color:#2c6e3f; }
+  .com-etiq--no_suplido { background:#fbe9ec; color:#9b2f43; }
+  .com-etiq--cancelado  { background:#eee; color:#777; }
+  .com-etiq--abierta    { background:#fdf0f5; color:var(--pink-dk); }
+  .com-etiq--cerrada    { background:#e9f6ec; color:#2c6e3f; }
+
+  /* La ficha de una orden */
+  .com-ficha__cab {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:1rem; flex-wrap:wrap; margin-bottom:0.2rem;
+  }
+  .com-ficha__tienda { margin:0; font-size:1.25rem; font-weight:800; }
+  .com-ficha__sub { margin:0.15rem 0 0; color:var(--muted); font-size:0.88rem; }
+  .com-datos {
+    display:flex; flex-wrap:wrap; gap:0.6rem 1.6rem; margin:0.9rem 0 0;
+    padding:0.8rem 0 0; border-top:1px solid var(--linea);
+  }
+  .com-dato__nm { font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+  .com-dato__vl { font-size:0.95rem; font-weight:700; }
+  .com-volver {
+    background:none; border:none; color:var(--pink-dk); cursor:pointer;
+    font:inherit; font-size:0.88rem; padding:0; margin-bottom:0.7rem;
+  }
+
+  /* Agregar un producto: buscar uno que ya existe, o crearlo */
+  .com-tabs { display:flex; gap:0.4rem; margin-bottom:0.8rem; }
+  .com-tabs button {
+    flex:1; padding:0.5rem; border:1px solid var(--linea); background:#fff;
+    border-radius:10px; cursor:pointer; font:inherit; font-size:0.86rem; color:var(--muted);
+  }
+  .com-tabs button.is-active { background:#fdf0f5; border-color:var(--pink); color:var(--pink-dk); font-weight:700; }
+  .com-res { max-height:230px; overflow:auto; margin-top:0.5rem; text-align:left; }
+  .com-res__it {
+    display:flex; justify-content:space-between; align-items:center; gap:0.6rem;
+    width:100%; padding:0.5rem 0.3rem; background:none; border:none; cursor:pointer;
+    border-bottom:1px solid var(--linea); text-align:left; font:inherit;
+  }
+  .com-res__it:hover { background:#fdf4f8; }
+  .com-res__nm { font-size:0.87rem; }
+  .com-res__pr { font-size:0.8rem; color:var(--muted); white-space:nowrap; }
+  .com-res__bor {
+    font-size:0.68rem; background:#f2eef6; color:#6b5b7a; border-radius:99px;
+    padding:0.05rem 0.4rem; margin-left:0.35rem;
+  }
+  .com-form { display:grid; gap:0.6rem; text-align:left; }
+  .com-form label { display:grid; gap:0.2rem; font-size:0.82rem; color:var(--muted); }
+  .com-form input, .com-form select, .com-form textarea {
+    width:100%; padding:0.5rem 0.6rem; border:1px solid var(--linea);
+    border-radius:9px; font:inherit; font-size:0.92rem; color:var(--ink);
+  }
+  .com-form textarea { min-height:56px; resize:vertical; }
+  .com-form__dos { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
+  .com-form__op { color:#b9a7b2; font-weight:400; }
+  @media (max-width: 540px) {
+    .com-form__dos { grid-template-columns:1fr; }
+    .com-datos { gap:0.6rem 1rem; }
+  }
+
   .gcred-pie { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin-top: 0.1rem; }
   .gcred-cab {
     text-align: left; background: #fdf4f8; border-radius: 12px;
@@ -601,6 +678,14 @@
           <path d="M2 10h20"></path><path d="M6 15h4"></path>
         </svg>
         Gastos
+      </button>
+      <button class="tab" data-tab="compras">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"></path>
+          <path d="M3 7.5 12 12l9-4.5"></path><path d="M12 12v9"></path>
+        </svg>
+        Compras
       </button>
       <button class="tab" data-tab="general">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
@@ -851,6 +936,41 @@
       </div>
     </section>
 
+    <!-- TAB: Compras (ordenes de compra; los trackings y las cajas vienen despues) -->
+    <section class="tab-panel" data-tab="compras">
+
+      <div class="card rep-barra">
+        <div class="rep-barra__fila">
+          <h2 class="com-titulo">Órdenes de compra</h2>
+          <p class="rep-estado" id="com-estado"></p>
+          <div class="rep-barra__acciones rep-barra__acciones--dos">
+            <button class="btn btn--primary btn--sm" id="com-nueva" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Nueva orden
+            </button>
+            <button class="ppmenu-btn" id="com-mas" type="button" aria-label="Más opciones">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- La lista de órdenes -->
+      <div id="com-lista">
+        <div class="card rep-card">
+          <div id="com-tabla"></div>
+        </div>
+      </div>
+
+      <!-- La ficha de una orden (se arma sola al abrirla) -->
+      <div id="com-ficha" class="hidden"></div>
+    </section>
+
     <!-- TAB: General -->
     <section class="tab-panel" data-tab="general">
       <div class="settings-grid">
@@ -1059,6 +1179,7 @@ function setTab(name) {
   // entero de Shopify tarda unos segundos y no siempre se van a mirar.
   if (name === 'reportes') repIniciar();
   if (name === 'gastos') gasIniciar();
+  if (name === 'compras') comIniciar();
 }
 
 // ── Datos ──
@@ -1875,6 +1996,600 @@ function gasPintar(r) {
   gasTabla.datos(r.gastos || []);
 }
 
+
+// ══ Compras ═══════════════════════════════════════════════════════════════
+// Las órdenes de compra: lo que se compró, a quién y en qué moneda. Los
+// trackings y las cajas vienen después; esta pantalla es el primer momento del
+// proceso, que es donde todo empieza.
+let comTabla = null;
+let comArrancada = false;
+let comOrdenes = [];
+
+const COM_ESTADOS = {
+  pedido: 'Pedido', despachado: 'Despachado', en_miami: 'En Miami',
+  en_caja: 'En la caja', recibido: 'Recibido',
+  no_suplido: 'No lo van a enviar', cancelado: 'Cancelado',
+};
+
+const comEtiq = (estado, texto) =>
+  `<span class="com-etiq com-etiq--${esc(estado)}">${esc(texto || COM_ESTADOS[estado] || estado)}</span>`;
+
+// Cuánto de la orden ya llegó, de un vistazo.
+function comAvance(recibidas, unidades) {
+  const u = Number(unidades || 0), r = Number(recibidas || 0);
+  const pct = u ? Math.min(100, Math.round((r / u) * 100)) : 0;
+  return `<div class="com-avance">
+      <span class="com-avance__barra"><span class="com-avance__lleno" style="width:${pct}%"></span></span>
+      <span class="com-avance__txt">${N(r)} de ${N(u)}</span>
+    </div>`;
+}
+
+// El dinero de una orden va en SU moneda: casi todo se compra en dólares y
+// ponerle "L." a 9.50 confunde más de lo que ayuda.
+const comPlata = (n, moneda) => (moneda === 'HNL' ? 'L. ' : '$ ')
+  + Number(n || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function comIniciar() {
+  if (comArrancada) return;
+  comArrancada = true;
+  comIniciarBotones();
+  comCargar();
+}
+
+async function comCargar() {
+  $('com-estado').textContent = 'Cargando…';
+  if (comTabla) comTabla.cargando();
+  try {
+    comOrdenes = (await api('/admin/compras/ordenes')).ordenes || [];
+    $('com-estado').textContent = comOrdenes.length
+      ? `${N(comOrdenes.length)} ${comOrdenes.length === 1 ? 'orden' : 'órdenes'}`
+      : '';
+    comPintar();
+  } catch (ex) {
+    $('com-estado').textContent = ex.message;
+  }
+}
+
+function comPintar() {
+  if (!comTabla) {
+    comTabla = PPTabla.crear($('com-tabla'), {
+      columnas: [
+        { clave: 'fecha', titulo: 'Fecha', html: (f) => diaCorto(f.fecha) },
+        { clave: 'tienda', titulo: 'Tienda', principal: true,
+          html: (f) => `${esc(f.tienda)}${f.es_local
+            ? '<div class="com-pie">compra local</div>' : ''}` },
+        { clave: 'unidades', titulo: 'Productos',
+          html: (f) => `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
+            + `<div class="com-pie">${N(f.items)} ${f.items === 1 ? 'producto' : 'productos'}</div>` },
+        { clave: 'unidades_recibidas', titulo: 'Llegó',
+          html: (f) => comAvance(f.unidades_recibidas, f.unidades) },
+        { clave: 'total_compra', titulo: 'Compra',
+          html: (f) => `<b>${comPlata(f.total_compra, f.moneda)}</b>` },
+        { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado,
+            f.estado === 'abierta' ? 'Abierta' : f.estado === 'cerrada' ? 'Cerrada' : 'Cancelada') },
+      ],
+      filtros: [{ clave: 'estado', titulo: 'Estado', opciones: [
+        { v: 'abierta', t: 'Abiertas' }, { v: 'cerrada', t: 'Cerradas' },
+        { v: 'cancelada', t: 'Canceladas' }] }],
+      buscar: (f, t) => (f.tienda + ' ' + (f.tarjeta || '')).toLowerCase().includes(t),
+      acciones: (f) => [
+        { texto: 'Ver la orden', al: () => comAbrir(f.id) },
+        { texto: 'Corregir los datos', al: () => comFormOrden(f) },
+        { texto: 'Quitar', peligro: true, al: () => comQuitarOrden(f) },
+      ],
+      porPagina: 12,
+      vacio: 'Todavía no hay órdenes de compra',
+    });
+  }
+  comTabla.datos(comOrdenes);
+}
+
+// ── Nueva orden / corregir ───────────────────────────────────────────────
+async function comFormOrden(orden) {
+  const esNueva = !orden;
+  // La tasa del mes se propone sola; en la orden queda congelada.
+  let tasaMes = null;
+  if (esNueva) {
+    try { tasaMes = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
+  }
+  const r = await Swal.fire({
+    title: esNueva ? 'Nueva orden de compra' : 'Corregir la orden',
+    html: `
+      <div class="com-form">
+        <label>Tienda
+          <input type="text" id="co-tienda" maxlength="200" placeholder="Victoria's Secret, Target…"
+                 value="${esc(orden ? orden.tienda : '')}" />
+        </label>
+        <div class="com-form__dos">
+          <label>Fecha
+            <input type="date" id="co-fecha" max="${hoyISO()}"
+                   value="${esc(orden ? orden.fecha : hoyISO())}" />
+          </label>
+          <label>Con qué tarjeta <span class="com-form__op">(opcional)</span>
+            <input type="text" id="co-tarjeta" maxlength="60" placeholder="BAC …4417"
+                   value="${esc(orden ? (orden.tarjeta || '') : '')}" />
+          </label>
+        </div>
+        <div class="com-form__dos">
+          <label>Moneda
+            <select id="co-moneda">
+              <option value="USD" ${orden && orden.moneda === 'HNL' ? '' : 'selected'}>Dólares (USD)</option>
+              <option value="HNL" ${orden && orden.moneda === 'HNL' ? 'selected' : ''}>Lempiras (HNL)</option>
+            </select>
+          </label>
+          <label>Tipo de cambio
+            <input type="number" id="co-tasa" step="0.0001" min="0" placeholder="26.30"
+                   value="${orden && orden.tasa != null ? orden.tasa : (tasaMes != null ? tasaMes : '')}" />
+          </label>
+        </div>
+        <label style="display:flex;align-items:center;gap:0.5rem;flex-direction:row">
+          <input type="checkbox" id="co-local" style="width:auto"
+                 ${orden && orden.es_local ? 'checked' : ''} />
+          Es compra local (no pasa por Miami)
+        </label>
+        <label>Notas <span class="com-form__op">(opcional)</span>
+          <textarea id="co-notas" maxlength="2000">${esc(orden ? (orden.notas || '') : '')}</textarea>
+        </label>
+      </div>`,
+    width: 520,
+    showCancelButton: true,
+    confirmButtonText: esNueva ? 'Crear la orden' : 'Guardar cambios',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    focusConfirm: false,
+    didOpen: () => { document.getElementById('co-tienda').focus(); },
+    preConfirm: () => {
+      const tienda = document.getElementById('co-tienda').value.trim();
+      const fecha = document.getElementById('co-fecha').value;
+      const moneda = document.getElementById('co-moneda').value;
+      const tasaTxt = document.getElementById('co-tasa').value;
+      if (!tienda) { Swal.showValidationMessage('¿En qué tienda se compró?'); return false; }
+      if (!fecha) { Swal.showValidationMessage('Ponga la fecha de la compra'); return false; }
+      if (moneda === 'USD' && !(Number(tasaTxt) > 0)) {
+        Swal.showValidationMessage('Ponga el tipo de cambio para poder convertir a lempiras');
+        return false;
+      }
+      return {
+        tienda, fecha, moneda,
+        tasa: tasaTxt === '' ? null : Number(tasaTxt),
+        tarjeta: document.getElementById('co-tarjeta').value.trim(),
+        es_local: document.getElementById('co-local').checked,
+        notas: document.getElementById('co-notas').value.trim(),
+      };
+    },
+  });
+  if (!r.isConfirmed) return;
+  try {
+    if (esNueva) {
+      const creada = await api('/admin/compras/ordenes',
+        { method: 'POST', body: JSON.stringify(r.value) });
+      await comCargar();
+      comAbrir(creada.orden.id);          // se abre para empezar a meterle productos
+    } else {
+      await api('/admin/compras/ordenes/' + orden.id,
+        { method: 'PATCH', body: JSON.stringify(r.value) });
+      await comCargar();
+      if (comOrdenAbierta === orden.id) comAbrir(orden.id);
+    }
+  } catch (ex) { comError('No se pudo guardar la orden', ex); }
+}
+
+async function comQuitarOrden(orden) {
+  const r = await Swal.fire({
+    title: '¿Quitar esta orden?',
+    html: `La compra en <b>${esc(orden.tienda)}</b> del ${esc(diaCorto(orden.fecha))}`
+      + ' se borra junto con sus productos. Esto no se puede deshacer.',
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Sí, quitarla', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api('/admin/compras/ordenes/' + orden.id, { method: 'DELETE' });
+    comVolver();
+    await comCargar();
+  } catch (ex) { comError('No se pudo quitar', ex); }
+}
+
+// ── La ficha de una orden ────────────────────────────────────────────────
+let comOrdenAbierta = null;
+
+function comVolver() {
+  comOrdenAbierta = null;
+  $('com-ficha').classList.add('hidden');
+  $('com-lista').classList.remove('hidden');
+}
+
+async function comAbrir(oid) {
+  comOrdenAbierta = oid;
+  $('com-lista').classList.add('hidden');
+  const caja = $('com-ficha');
+  caja.classList.remove('hidden');
+  caja.innerHTML = '<div class="card rep-card">Cargando…</div>';
+  let datos;
+  try {
+    datos = await api('/admin/compras/ordenes/' + oid);
+  } catch (ex) {
+    caja.innerHTML = `<div class="card rep-card">${esc(ex.message)}</div>`;
+    return;
+  }
+  const o = datos.orden, items = datos.items || [];
+  const unidades = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
+  const recibidas = items.reduce((s, i) => s + Number(i.recibidas || 0), 0);
+  const total = items.reduce((s, i) => s + Number(i.cantidad || 0) * Number(i.precio_compra || 0), 0);
+
+  caja.innerHTML = `
+    <button class="com-volver" type="button" id="com-atras">← Todas las órdenes</button>
+    <div class="card rep-card">
+      <div class="com-ficha__cab">
+        <div>
+          <h2 class="com-ficha__tienda">${esc(o.tienda)}</h2>
+          <p class="com-ficha__sub">${esc(diaCorto(o.fecha))}${
+            o.tarjeta ? ' · ' + esc(o.tarjeta) : ''}${o.es_local ? ' · compra local' : ''}</p>
+        </div>
+        <div>${comEtiq(o.estado, o.estado === 'abierta' ? 'Abierta'
+          : o.estado === 'cerrada' ? 'Cerrada' : 'Cancelada')}</div>
+      </div>
+      <div class="com-datos">
+        <div><div class="com-dato__nm">Productos</div>
+             <div class="com-dato__vl">${N(items.length)}</div></div>
+        <div><div class="com-dato__nm">Unidades</div>
+             <div class="com-dato__vl">${N(unidades)}</div></div>
+        <div><div class="com-dato__nm">Han llegado</div>
+             <div class="com-dato__vl">${N(recibidas)} de ${N(unidades)}</div></div>
+        <div><div class="com-dato__nm">Costo de la compra</div>
+             <div class="com-dato__vl">${comPlata(total, o.moneda)}${
+               o.moneda !== 'HNL' && o.tasa
+                 ? `<div class="com-pie">${L(total * Number(o.tasa))} a ${o.tasa}</div>` : ''}</div></div>
+      </div>
+      ${o.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(o.notas)}</p>` : ''}
+    </div>
+
+    <div class="card rep-card">
+      <div class="rep-card__cab">
+        <h2>Lo que se compró</h2>
+        <button class="btn btn--primary btn--sm" type="button" id="com-add">
+          Agregar producto
+        </button>
+      </div>
+      <div id="com-items"></div>
+    </div>`;
+
+  $('com-atras').onclick = comVolver;
+  $('com-add').onclick = () => comAgregar(oid, o);
+
+  PPTabla.crear($('com-items'), {
+    columnas: [
+      { clave: 'titulo', titulo: 'Producto', principal: true,
+        html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
+          + (f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : '') },
+      { clave: 'cantidad', titulo: 'Cantidad', html: (f) => N(f.cantidad) },
+      { clave: 'precio_compra', titulo: 'Precio',
+        html: (f) => (f.precio_compra == null ? '—' : comPlata(f.precio_compra, o.moneda)) },
+      { clave: 'asignadas', titulo: 'En camino',
+        html: (f) => (f.asignadas ? `${N(f.asignadas)} en trackings` : '—') },
+      { clave: 'recibidas', titulo: 'Llegó', html: (f) => comAvance(f.recibidas, f.cantidad) },
+      { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado) },
+    ],
+    acciones: (f) => [
+      { texto: 'Corregir', al: () => comFormItem(oid, o, f) },
+      { texto: f.estado === 'no_suplido' ? 'Ya lo van a enviar' : 'La tienda no lo va a enviar',
+        al: () => comNoSuplido(oid, f) },
+      { texto: 'Quitar', peligro: true, al: () => comQuitarItem(oid, f) },
+    ],
+    porPagina: 20,
+    vacio: 'Esta orden todavía no tiene productos. Toque "Agregar producto".',
+  }).datos(items);
+}
+
+function comError(titulo, ex) {
+  Swal.fire({ title: titulo, text: ex.message, icon: 'error',
+              confirmButtonColor: '#e8437a' });
+}
+
+
+// ── Agregar un producto a la orden ───────────────────────────────────────
+// Dos caminos: buscarlo (si ya existe en Shopify) o crearlo. El que se crea
+// nace como BORRADOR: no se vende hasta que la caja llegue y se reciba.
+async function comAgregar(oid, orden) {
+  let modo = 'buscar';
+  let elegido = null;
+  let buscando = null;
+
+  const pintarModo = () => {
+    document.getElementById('cp-t-buscar').classList.toggle('is-active', modo === 'buscar');
+    document.getElementById('cp-t-nuevo').classList.toggle('is-active', modo === 'nuevo');
+    document.getElementById('cp-buscar').hidden = modo !== 'buscar';
+    document.getElementById('cp-nuevo').hidden = modo !== 'nuevo';
+  };
+
+  const pintarElegido = () => {
+    const caja = document.getElementById('cp-elegido');
+    caja.innerHTML = elegido
+      ? `<b>${esc(elegido.titulo)}</b>${elegido.variante ? ' · ' + esc(elegido.variante) : ''}`
+        + (elegido.borrador ? '<span class="com-res__bor">borrador</span>' : '')
+      : '<span class="com-form__op">Ninguno elegido todavía</span>';
+  };
+
+  const buscar = async (texto) => {
+    const caja = document.getElementById('cp-res');
+    if (texto.trim().length < 2) { caja.innerHTML = ''; return; }
+    caja.innerHTML = '<p class="com-pie">Buscando…</p>';
+    try {
+      const r = await api('/admin/compras/productos?q=' + encodeURIComponent(texto));
+      const lista = r.productos || [];
+      if (!lista.length) {
+        caja.innerHTML = '<p class="com-pie">No se encontró nada. '
+          + 'Si es un producto nuevo, use la otra pestaña.</p>';
+        return;
+      }
+      caja.innerHTML = lista.map((p, i) => `
+        <button type="button" class="com-res__it" data-i="${i}">
+          <span class="com-res__nm">${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}
+            ${p.borrador ? '<span class="com-res__bor">borrador</span>' : ''}</span>
+          <span class="com-res__pr">${p.precio ? L(p.precio) : ''}</span>
+        </button>`).join('');
+      caja.querySelectorAll('.com-res__it').forEach((b) => {
+        b.onclick = () => { elegido = lista[Number(b.dataset.i)]; pintarElegido(); };
+      });
+    } catch (ex) {
+      caja.innerHTML = `<p class="com-pie">${esc(ex.message)}</p>`;
+    }
+  };
+
+  const r = await Swal.fire({
+    title: 'Agregar producto',
+    width: 560,
+    html: `
+      <div class="com-tabs">
+        <button type="button" id="cp-t-buscar" class="is-active">Ya existe</button>
+        <button type="button" id="cp-t-nuevo">Es nuevo</button>
+      </div>
+
+      <div id="cp-buscar">
+        <div class="com-form">
+          <label>Buscar en Shopify
+            <input type="text" id="cp-q" placeholder="Nombre del producto…" autocomplete="off" />
+          </label>
+        </div>
+        <div class="com-res" id="cp-res"></div>
+        <p class="com-pie" style="margin-top:0.5rem">Elegido: <span id="cp-elegido"></span></p>
+      </div>
+
+      <div id="cp-nuevo" hidden>
+        <div class="com-form">
+          <label>Nombre del producto
+            <input type="text" id="cn-titulo" maxlength="300" placeholder="Vela Navideña…" />
+          </label>
+          <div class="com-form__dos">
+            <label>Precio de venta <span class="com-form__op">(L.)</span>
+              <input type="number" id="cn-precio" step="0.01" min="0" placeholder="450.00" />
+            </label>
+            <label>Precio de mayoreo <span class="com-form__op">(L.)</span>
+              <input type="number" id="cn-mayoreo" step="0.01" min="0" placeholder="355.00" />
+            </label>
+          </div>
+          <div class="com-form__dos">
+            <label>Marca <span class="com-form__op">(tipo)</span>
+              <input type="text" id="cn-marca" maxlength="120" placeholder="Bath & Body Works" />
+            </label>
+            <label>Proveedor
+              <input type="text" id="cn-prov" maxlength="120" placeholder="Pink Power" />
+            </label>
+          </div>
+          <div class="com-form__dos">
+            <label>Etiquetas <span class="com-form__op">(separadas por coma)</span>
+              <input type="text" id="cn-tags" maxlength="300" placeholder="Vela, Navidad" />
+            </label>
+            <label>Código de barras <span class="com-form__op">(opcional)</span>
+              <input type="text" id="cn-barcode" maxlength="60" />
+            </label>
+          </div>
+          <label>Descripción <span class="com-form__op">(opcional)</span>
+            <textarea id="cn-desc" maxlength="4000"></textarea>
+          </label>
+        </div>
+        <p class="com-pie" style="margin-top:0.5rem">Se crea en Shopify como
+          <b>borrador</b>: no se pone a la venta hasta que llegue y se reciba.</p>
+      </div>
+
+      <div class="com-form" style="margin-top:0.9rem;border-top:1px solid var(--linea);padding-top:0.8rem">
+        <div class="com-form__dos">
+          <label>Cuántas unidades
+            <input type="number" id="cp-cant" step="1" min="1" value="1" />
+          </label>
+          <label>Precio de compra <span class="com-form__op">(${orden.moneda === 'HNL' ? 'L.' : 'US$'} c/u)</span>
+            <input type="number" id="cp-costo" step="0.01" min="0" placeholder="0.00" />
+          </label>
+        </div>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Agregar a la orden',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    focusConfirm: false,
+    didOpen: () => {
+      pintarModo();
+      pintarElegido();
+      document.getElementById('cp-t-buscar').onclick = () => { modo = 'buscar'; pintarModo(); };
+      document.getElementById('cp-t-nuevo').onclick = () => { modo = 'nuevo'; pintarModo(); };
+      const q = document.getElementById('cp-q');
+      q.focus();
+      // Se espera a que deje de teclear: si no, son cinco llamadas por palabra.
+      q.oninput = () => {
+        clearTimeout(buscando);
+        buscando = setTimeout(() => buscar(q.value), 350);
+      };
+    },
+    preConfirm: () => {
+      const cantidad = Number(document.getElementById('cp-cant').value);
+      const costoTxt = document.getElementById('cp-costo').value;
+      if (!(cantidad >= 1) || cantidad !== Math.floor(cantidad)) {
+        Swal.showValidationMessage('¿Cuántas unidades se compraron?'); return false;
+      }
+      const base = {
+        cantidad,
+        precio_compra: costoTxt === '' ? null : Number(costoTxt),
+      };
+      if (modo === 'buscar') {
+        if (!elegido) { Swal.showValidationMessage('Elija el producto de la lista'); return false; }
+        return Object.assign(base, {
+          titulo: elegido.titulo, variante: elegido.variante,
+          product_id: elegido.product_id, variant_id: elegido.variant_id,
+        });
+      }
+      const titulo = document.getElementById('cn-titulo').value.trim();
+      if (!titulo) { Swal.showValidationMessage('¿Cómo se llama el producto?'); return false; }
+      return Object.assign(base, {
+        producto_nuevo: {
+          titulo,
+          precio: document.getElementById('cn-precio').value || null,
+          precio_mayoreo: document.getElementById('cn-mayoreo').value || null,
+          marca: document.getElementById('cn-marca').value.trim(),
+          proveedor: document.getElementById('cn-prov').value.trim(),
+          etiquetas: document.getElementById('cn-tags').value.trim(),
+          descripcion: document.getElementById('cn-desc').value.trim(),
+          barcode: document.getElementById('cn-barcode').value.trim(),
+        },
+      });
+    },
+  });
+  if (!r.isConfirmed) return;
+  try {
+    const hecho = await api(`/admin/compras/ordenes/${oid}/items`,
+      { method: 'POST', body: JSON.stringify(r.value) });
+    await comCargar();
+    await comAbrir(oid);
+    if (hecho.producto_creado) {
+      Swal.fire({
+        title: 'Producto creado', icon: 'success',
+        html: `<b>${esc(hecho.producto_creado.titulo)}</b> quedó en Shopify como borrador.`
+          + ' Se pone a la venta solo cuando lo reciba.',
+        confirmButtonColor: '#e8437a',
+      });
+    }
+  } catch (ex) { comError('No se pudo agregar', ex); }
+}
+
+// ── Corregir un producto de la orden ─────────────────────────────────────
+async function comFormItem(oid, orden, item) {
+  const r = await Swal.fire({
+    title: 'Corregir el producto',
+    html: `
+      <div class="com-form">
+        <label>Nombre
+          <input type="text" id="ci-titulo" maxlength="300" value="${esc(item.titulo)}" />
+        </label>
+        <div class="com-form__dos">
+          <label>Cuántas unidades
+            <input type="number" id="ci-cant" step="1" min="1" value="${item.cantidad}" />
+          </label>
+          <label>Precio de compra <span class="com-form__op">(${orden.moneda === 'HNL' ? 'L.' : 'US$'} c/u)</span>
+            <input type="number" id="ci-costo" step="0.01" min="0"
+                   value="${item.precio_compra != null ? item.precio_compra : ''}" />
+          </label>
+        </div>
+        <label>Nota <span class="com-form__op">(opcional)</span>
+          <input type="text" id="ci-nota" maxlength="500" value="${esc(item.nota || '')}" />
+        </label>
+      </div>
+      ${item.asignadas ? `<p class="com-pie" style="margin-top:0.6rem">Ya hay
+        <b>${N(item.asignadas)}</b> unidades repartidas en trackings: no puede
+        quedar en menos de eso.</p>` : ''}`,
+    width: 480,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar cambios', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    focusConfirm: false,
+    preConfirm: () => {
+      const titulo = document.getElementById('ci-titulo').value.trim();
+      const cantidad = Number(document.getElementById('ci-cant').value);
+      const costoTxt = document.getElementById('ci-costo').value;
+      if (!titulo) { Swal.showValidationMessage('Ponga el nombre'); return false; }
+      if (!(cantidad >= 1) || cantidad !== Math.floor(cantidad)) {
+        Swal.showValidationMessage('La cantidad tiene que ser un número entero'); return false;
+      }
+      return { titulo, cantidad,
+               precio_compra: costoTxt === '' ? null : Number(costoTxt),
+               nota: document.getElementById('ci-nota').value.trim() };
+    },
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api('/admin/compras/items/' + item.id,
+      { method: 'PATCH', body: JSON.stringify(r.value) });
+    await comCargar();
+    await comAbrir(oid);
+  } catch (ex) { comError('No se pudo guardar', ex); }
+}
+
+// La tienda avisa por correo que no va a poder suplir algo: deja de contar como
+// que viene en camino, pero no se borra (la compra existió).
+async function comNoSuplido(oid, item) {
+  const vuelve = item.estado === 'no_suplido';
+  try {
+    await api('/admin/compras/items/' + item.id, {
+      method: 'PATCH',
+      body: JSON.stringify({ estado: vuelve ? 'pedido' : 'no_suplido' }),
+    });
+    await comCargar();
+    await comAbrir(oid);
+  } catch (ex) { comError('No se pudo cambiar', ex); }
+}
+
+async function comQuitarItem(oid, item) {
+  const r = await Swal.fire({
+    title: '¿Quitar este producto?',
+    html: `<b>${esc(item.titulo)}</b> se quita de la orden.`,
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Sí, quitarlo', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api('/admin/compras/items/' + item.id, { method: 'DELETE' });
+    await comCargar();
+    await comAbrir(oid);
+  } catch (ex) { comError('No se pudo quitar', ex); }
+}
+
+// ── El tipo de cambio del mes ────────────────────────────────────────────
+// Se propone solo al crear una orden en dólares y queda congelado en ella, así
+// que corregirlo aquí no mueve lo que ya se compró.
+async function comTipoDeCambio() {
+  let actual = null;
+  try { actual = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
+  const mes = new Date().toLocaleDateString('es-HN', { month: 'long', year: 'numeric' });
+  const r = await Swal.fire({
+    title: 'Tipo de cambio del mes',
+    html: `
+      <div class="com-form">
+        <label>Lempiras por dólar — ${esc(mes)}
+          <input type="number" id="ct-tasa" step="0.0001" min="0" placeholder="26.30"
+                 value="${actual != null ? actual : ''}" />
+        </label>
+      </div>
+      <p class="com-pie" style="margin-top:0.6rem">Se propone solo al crear una
+        orden en dólares y queda guardado en esa orden. Cambiarlo aquí no mueve
+        las compras que ya hizo.</p>`,
+    width: 420,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
+    focusConfirm: false,
+    didOpen: () => { document.getElementById('ct-tasa').focus(); },
+    preConfirm: () => {
+      const tasa = Number(document.getElementById('ct-tasa').value);
+      if (!(tasa > 0)) { Swal.showValidationMessage('Ponga a cómo está el dólar'); return false; }
+      return { tasa };
+    },
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api('/admin/compras/tasa', { method: 'PUT', body: JSON.stringify(r.value) });
+  } catch (ex) { comError('No se pudo guardar', ex); }
+}
+
 // El formulario: lo justo, que es como se pidió. Sirve para uno nuevo y para
 // corregir uno que ya está.
 async function gasFormulario(gasto) {
@@ -2194,6 +2909,13 @@ async function gasAdministrarCategorias() {
   });
   gasCats = gasCats.filter((c) => c.activa);
   gasCargar();
+}
+
+function comIniciarBotones() {
+  $('com-nueva').addEventListener('click', () => comFormOrden(null));
+  PPMenu.colgar($('com-mas'), () => [
+    { texto: 'Tipo de cambio del mes', al: comTipoDeCambio },
+  ]);
 }
 
 function gasIniciar() {

@@ -12,9 +12,15 @@
 <link rel="stylesheet" href="/css/ui-tabla.css" />
 <link rel="stylesheet" href="/css/ui-rango.css" />
 <link rel="stylesheet" href="/css/ui-menu.css" />
+<link rel="stylesheet" href="/css/ui-fecha.css" />
+<link rel="stylesheet" href="/css/ui-form.css" />
+<link rel="stylesheet" href="/css/ui-segmento.css" />
 <script src="/js/ui-tabla.js" defer></script>
 <script src="/js/ui-rango.js" defer></script>
 <script src="/js/ui-menu.js" defer></script>
+<script src="/js/ui-fecha.js" defer></script>
+<script src="/js/ui-form.js" defer></script>
+<script src="/js/ui-segmento.js" defer></script>
 <!-- Las gráficas de los reportes. Se carga diferida: el panel abre en
      Mayoristas y la mayoría de las veces ni se usa. -->
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js" defer></script>
@@ -444,6 +450,9 @@
   .com-etiq {
     display:inline-block; padding:0.12rem 0.5rem; border-radius:99px;
     font-size:0.74rem; font-weight:700; letter-spacing:0.02em;
+    /* En la tarjeta del teléfono la columna es angosta y "En Miami" se partía
+       en dos renglones dentro de la pastilla. */
+    white-space:nowrap;
   }
   .com-etiq--pedido     { background:#f2eef6; color:#6b5b7a; }
   .com-etiq--despachado { background:#e8f0fb; color:#2f5d93; }
@@ -471,6 +480,32 @@
   .com-volver {
     background:none; border:none; color:var(--pink-dk); cursor:pointer;
     font:inherit; font-size:0.88rem; padding:0; margin-bottom:0.7rem;
+  }
+
+  /* Elegir qué productos van dentro de un envío */
+  .com-elegir { max-height: 320px; overflow:auto; text-align:left; }
+  .com-elegir__it {
+    display:flex; align-items:center; gap:0.6rem; padding:0.55rem 0.2rem;
+    border-bottom:1px solid var(--linea);
+  }
+  .com-elegir__ch { width:auto; accent-color:var(--pink); flex:none; }
+  .com-elegir__txt { flex:1; min-width:0; }
+  /* Van dentro de un <label>, y el panel pone los labels en mayúsculas: un
+     nombre de producto así no hay quien lo lea. */
+  .com-elegir__nm { font-size:0.88rem; display:block; text-transform:none;
+                    letter-spacing:normal; font-weight:600; color:var(--ink); }
+  .com-elegir__sub { font-size:0.75rem; color:var(--muted); text-transform:none;
+                     letter-spacing:normal; font-weight:400; }
+  .com-elegir__cant { width:68px; flex:none; }
+  .com-elegir__cant input {
+    width:100%; padding:0.35rem 0.4rem; border:1px solid var(--linea);
+    border-radius:8px; font:inherit; font-size:0.9rem; text-align:center;
+  }
+  .com-elegir__cant input:disabled { background:#f7f2f5; color:var(--muted); }
+  @media (max-width: 540px) {
+    .com-elegir__nm { font-size:0.92rem; }
+    .com-elegir__cant { width:76px; }
+    .com-elegir__cant input { padding:0.5rem 0.4rem; font-size:1rem; }
   }
 
   /* Agregar un producto: buscar uno que ya existe, o crearlo */
@@ -505,6 +540,9 @@
   @media (max-width: 540px) {
     .com-form__dos { grid-template-columns:1fr; }
     .com-datos { gap:0.6rem 1rem; }
+    /* El conmutador de vistas ocupa el ancho: su CSS ya lo estira, pero el
+       hueco donde vive se encogía al tamaño del contenido. */
+    #com-vista { width:100%; }
   }
 
   .gcred-pie { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin-top: 0.1rem; }
@@ -941,7 +979,7 @@
 
       <div class="card rep-barra">
         <div class="rep-barra__fila">
-          <h2 class="com-titulo">Órdenes de compra</h2>
+          <div id="com-vista"></div>
           <p class="rep-estado" id="com-estado"></p>
           <div class="rep-barra__acciones rep-barra__acciones--dos">
             <button class="btn btn--primary btn--sm" id="com-nueva" type="button">
@@ -949,7 +987,7 @@
                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              Nueva orden
+              <span id="com-nueva-txt">Nueva orden</span>
             </button>
             <button class="ppmenu-btn" id="com-mas" type="button" aria-label="Más opciones">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -969,6 +1007,14 @@
 
       <!-- La ficha de una orden (se arma sola al abrirla) -->
       <div id="com-ficha" class="hidden"></div>
+
+      <!-- Vista de envíos: la lista y la ficha de un tracking -->
+      <div id="com-trk" class="hidden">
+        <div class="card rep-card">
+          <div id="com-trk-tabla"></div>
+        </div>
+      </div>
+      <div id="com-trk-ficha" class="hidden"></div>
     </section>
 
     <!-- TAB: General -->
@@ -2092,82 +2138,44 @@ async function comFormOrden(orden) {
   if (esNueva) {
     try { tasaMes = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
   }
-  const r = await Swal.fire({
-    title: esNueva ? 'Nueva orden de compra' : 'Corregir la orden',
-    html: `
-      <div class="com-form">
-        <label>Tienda
-          <input type="text" id="co-tienda" maxlength="200" placeholder="Victoria's Secret, Target…"
-                 value="${esc(orden ? orden.tienda : '')}" />
-        </label>
-        <div class="com-form__dos">
-          <label>Fecha
-            <input type="date" id="co-fecha" max="${hoyISO()}"
-                   value="${esc(orden ? orden.fecha : hoyISO())}" />
-          </label>
-          <label>Con qué tarjeta <span class="com-form__op">(opcional)</span>
-            <input type="text" id="co-tarjeta" maxlength="60" placeholder="BAC …4417"
-                   value="${esc(orden ? (orden.tarjeta || '') : '')}" />
-          </label>
-        </div>
-        <div class="com-form__dos">
-          <label>Moneda
-            <select id="co-moneda">
-              <option value="USD" ${orden && orden.moneda === 'HNL' ? '' : 'selected'}>Dólares (USD)</option>
-              <option value="HNL" ${orden && orden.moneda === 'HNL' ? 'selected' : ''}>Lempiras (HNL)</option>
-            </select>
-          </label>
-          <label>Tipo de cambio
-            <input type="number" id="co-tasa" step="0.0001" min="0" placeholder="26.30"
-                   value="${orden && orden.tasa != null ? orden.tasa : (tasaMes != null ? tasaMes : '')}" />
-          </label>
-        </div>
-        <label style="display:flex;align-items:center;gap:0.5rem;flex-direction:row">
-          <input type="checkbox" id="co-local" style="width:auto"
-                 ${orden && orden.es_local ? 'checked' : ''} />
-          Es compra local (no pasa por Miami)
-        </label>
-        <label>Notas <span class="com-form__op">(opcional)</span>
-          <textarea id="co-notas" maxlength="2000">${esc(orden ? (orden.notas || '') : '')}</textarea>
-        </label>
-      </div>`,
-    width: 520,
-    showCancelButton: true,
-    confirmButtonText: esNueva ? 'Crear la orden' : 'Guardar cambios',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    focusConfirm: false,
-    didOpen: () => { document.getElementById('co-tienda').focus(); },
-    preConfirm: () => {
-      const tienda = document.getElementById('co-tienda').value.trim();
-      const fecha = document.getElementById('co-fecha').value;
-      const moneda = document.getElementById('co-moneda').value;
-      const tasaTxt = document.getElementById('co-tasa').value;
-      if (!tienda) { Swal.showValidationMessage('¿En qué tienda se compró?'); return false; }
-      if (!fecha) { Swal.showValidationMessage('Ponga la fecha de la compra'); return false; }
-      if (moneda === 'USD' && !(Number(tasaTxt) > 0)) {
-        Swal.showValidationMessage('Ponga el tipo de cambio para poder convertir a lempiras');
-        return false;
-      }
-      return {
-        tienda, fecha, moneda,
-        tasa: tasaTxt === '' ? null : Number(tasaTxt),
-        tarjeta: document.getElementById('co-tarjeta').value.trim(),
-        es_local: document.getElementById('co-local').checked,
-        notas: document.getElementById('co-notas').value.trim(),
-      };
-    },
+  const datos = await PPForm.abrir({
+    titulo: esNueva ? 'Nueva orden de compra' : 'Corregir la orden',
+    confirmar: esNueva ? 'Crear la orden' : 'Guardar cambios',
+    campos: [
+      { id: 'tienda', tipo: 'texto', etiqueta: 'Tienda', max: 200,
+        placeholder: "Victoria's Secret, Target…",
+        valor: orden ? orden.tienda : '',
+        obligatorio: '¿En qué tienda se compró?' },
+      { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha', mitad: true,
+        valor: orden ? orden.fecha : hoyISO(), max: hoyISO(),
+        obligatorio: 'Ponga la fecha de la compra' },
+      { id: 'tarjeta', tipo: 'texto', etiqueta: 'Con qué tarjeta', ayuda: 'opcional',
+        mitad: true, max: 60, placeholder: 'BAC …4417',
+        valor: orden ? (orden.tarjeta || '') : '' },
+      { id: 'moneda', tipo: 'select', etiqueta: 'Moneda', mitad: true,
+        valor: orden ? orden.moneda : 'USD',
+        opciones: [{ v: 'USD', t: 'Dólares (USD)' }, { v: 'HNL', t: 'Lempiras (HNL)' }] },
+      { id: 'tasa', tipo: 'numero', etiqueta: 'Tipo de cambio', mitad: true,
+        paso: 0.0001, min: 0.0001, placeholder: '26.30',
+        valor: orden && orden.tasa != null ? orden.tasa : tasaMes,
+        obligatorioSi: (v) => v.moneda === 'USD',
+        mensaje: 'Ponga el tipo de cambio para poder convertir a lempiras' },
+      { id: 'es_local', tipo: 'si-no', etiqueta: 'Es compra local (no pasa por Miami)',
+        valor: orden ? orden.es_local : false },
+      { id: 'notas', tipo: 'texto-largo', etiqueta: 'Notas', ayuda: 'opcional',
+        max: 2000, valor: orden ? (orden.notas || '') : '' },
+    ],
   });
-  if (!r.isConfirmed) return;
+  if (!datos) return;
   try {
     if (esNueva) {
       const creada = await api('/admin/compras/ordenes',
-        { method: 'POST', body: JSON.stringify(r.value) });
+        { method: 'POST', body: JSON.stringify(datos) });
       await comCargar();
       comAbrir(creada.orden.id);          // se abre para empezar a meterle productos
     } else {
       await api('/admin/compras/ordenes/' + orden.id,
-        { method: 'PATCH', body: JSON.stringify(r.value) });
+        { method: 'PATCH', body: JSON.stringify(datos) });
       await comCargar();
       if (comOrdenAbierta === orden.id) comAbrir(orden.id);
     }
@@ -2198,6 +2206,7 @@ function comVolver() {
   comOrdenAbierta = null;
   $('com-ficha').classList.add('hidden');
   $('com-lista').classList.remove('hidden');
+  if (comVista) comVista.poner('ordenes');
 }
 
 async function comAbrir(oid) {
@@ -2473,51 +2482,32 @@ async function comAgregar(oid, orden) {
 
 // ── Corregir un producto de la orden ─────────────────────────────────────
 async function comFormItem(oid, orden, item) {
-  const r = await Swal.fire({
-    title: 'Corregir el producto',
-    html: `
-      <div class="com-form">
-        <label>Nombre
-          <input type="text" id="ci-titulo" maxlength="300" value="${esc(item.titulo)}" />
-        </label>
-        <div class="com-form__dos">
-          <label>Cuántas unidades
-            <input type="number" id="ci-cant" step="1" min="1" value="${item.cantidad}" />
-          </label>
-          <label>Precio de compra <span class="com-form__op">(${orden.moneda === 'HNL' ? 'L.' : 'US$'} c/u)</span>
-            <input type="number" id="ci-costo" step="0.01" min="0"
-                   value="${item.precio_compra != null ? item.precio_compra : ''}" />
-          </label>
-        </div>
-        <label>Nota <span class="com-form__op">(opcional)</span>
-          <input type="text" id="ci-nota" maxlength="500" value="${esc(item.nota || '')}" />
-        </label>
-      </div>
-      ${item.asignadas ? `<p class="com-pie" style="margin-top:0.6rem">Ya hay
-        <b>${N(item.asignadas)}</b> unidades repartidas en trackings: no puede
-        quedar en menos de eso.</p>` : ''}`,
-    width: 480,
-    showCancelButton: true,
-    confirmButtonText: 'Guardar cambios', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    focusConfirm: false,
-    preConfirm: () => {
-      const titulo = document.getElementById('ci-titulo').value.trim();
-      const cantidad = Number(document.getElementById('ci-cant').value);
-      const costoTxt = document.getElementById('ci-costo').value;
-      if (!titulo) { Swal.showValidationMessage('Ponga el nombre'); return false; }
-      if (!(cantidad >= 1) || cantidad !== Math.floor(cantidad)) {
-        Swal.showValidationMessage('La cantidad tiene que ser un número entero'); return false;
-      }
-      return { titulo, cantidad,
-               precio_compra: costoTxt === '' ? null : Number(costoTxt),
-               nota: document.getElementById('ci-nota').value.trim() };
-    },
+  const datos = await PPForm.abrir({
+    titulo: 'Corregir el producto',
+    ancho: 480,
+    campos: [
+      { id: 'titulo', tipo: 'texto', etiqueta: 'Nombre', max: 300,
+        valor: item.titulo, obligatorio: 'Ponga el nombre' },
+      { id: 'cantidad', tipo: 'numero', etiqueta: 'Cuántas unidades', mitad: true,
+        paso: 1, min: 1, entero: true, valor: item.cantidad,
+        obligatorio: '¿Cuántas unidades se compraron?' },
+      { id: 'precio_compra', tipo: 'dinero', etiqueta: 'Precio de compra',
+        ayuda: 'cada una', mitad: true,
+        prefijo: orden.moneda === 'HNL' ? 'L.' : 'US$',
+        min: 0, valor: item.precio_compra },
+      { id: 'nota', tipo: 'texto', etiqueta: 'Nota', ayuda: 'opcional', max: 500,
+        valor: item.nota || '' },
+      item.asignadas
+        ? { id: 'aviso', tipo: 'nota',
+            html: `Ya hay <b>${N(item.asignadas)}</b> unidades repartidas en `
+              + 'trackings: no puede quedar en menos de eso.' }
+        : null,
+    ],
   });
-  if (!r.isConfirmed) return;
+  if (!datos) return;
   try {
     await api('/admin/compras/items/' + item.id,
-      { method: 'PATCH', body: JSON.stringify(r.value) });
+      { method: 'PATCH', body: JSON.stringify(datos) });
     await comCargar();
     await comAbrir(oid);
   } catch (ex) { comError('No se pudo guardar', ex); }
@@ -2560,34 +2550,358 @@ async function comTipoDeCambio() {
   let actual = null;
   try { actual = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
   const mes = new Date().toLocaleDateString('es-HN', { month: 'long', year: 'numeric' });
+  const datos = await PPForm.abrir({
+    titulo: 'Tipo de cambio del mes',
+    ancho: 420,
+    campos: [
+      { id: 'tasa', tipo: 'numero', etiqueta: `Lempiras por dólar — ${mes}`,
+        paso: 0.0001, min: 0.0001, placeholder: '26.30', valor: actual,
+        obligatorio: 'Ponga a cómo está el dólar' },
+      { id: 'nota', tipo: 'nota',
+        texto: 'Se propone solo al crear una orden en dólares y queda guardado '
+          + 'en esa orden. Cambiarlo aquí no mueve las compras que ya hizo.' },
+    ],
+  });
+  if (!datos) return;
+  try {
+    await api('/admin/compras/tasa',
+      { method: 'PUT', body: JSON.stringify({ tasa: datos.tasa }) });
+  } catch (ex) { comError('No se pudo guardar', ex); }
+}
+
+// ── Envíos (trackings) ───────────────────────────────────────────────────
+// El segundo momento: la tienda despacha, y lo que mandó viaja a Miami. Un
+// envío puede traer pedazos de varias órdenes, así que lo que se mete aquí son
+// (producto, cantidad), no órdenes enteras.
+let comVista = null;          // el conmutador Órdenes · Envíos
+let comTrkTabla = null;
+let comTrks = [];
+let comTrkAbierto = null;
+
+function comMostrarVista(cual) {
+  const esOrdenes = cual === 'ordenes';
+  $('com-lista').classList.toggle('hidden', !esOrdenes || !!comOrdenAbierta);
+  $('com-ficha').classList.toggle('hidden', !esOrdenes || !comOrdenAbierta);
+  $('com-trk').classList.toggle('hidden', esOrdenes || !!comTrkAbierto);
+  $('com-trk-ficha').classList.toggle('hidden', esOrdenes || !comTrkAbierto);
+  $('com-nueva-txt').textContent = esOrdenes ? 'Nueva orden' : 'Nuevo envío';
+  if (!esOrdenes && !comTrks.length) comTrkCargar();
+}
+
+async function comTrkCargar() {
+  $('com-estado').textContent = 'Cargando…';
+  if (comTrkTabla) comTrkTabla.cargando();
+  try {
+    comTrks = (await api('/admin/compras/trackings')).trackings || [];
+    $('com-estado').textContent = comTrks.length
+      ? `${N(comTrks.length)} ${comTrks.length === 1 ? 'envío' : 'envíos'}` : '';
+    if (comVista) comVista.cuenta('envios', comTrks.length || null);
+    comTrkPintar();
+  } catch (ex) { $('com-estado').textContent = ex.message; }
+}
+
+function comTrkPintar() {
+  if (!comTrkTabla) {
+    comTrkTabla = PPTabla.crear($('com-trk-tabla'), {
+      columnas: [
+        { clave: 'numero', titulo: 'Tracking', principal: true,
+          html: (f) => `${esc(f.numero)}${f.empresa
+            ? `<div class="com-pie">${esc(f.empresa)}</div>` : ''}` },
+        { clave: 'unidades', titulo: 'Trae',
+          html: (f) => (f.unidades
+            ? `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
+              + `<div class="com-pie">${N(f.renglones)} ${f.renglones === 1 ? 'producto' : 'productos'}</div>`
+            : '<span class="com-pie">vacío</span>') },
+        { clave: 'estado', titulo: 'Dónde va', html: (f) => comTrkDonde(f) },
+        { clave: 'caja_numero', titulo: 'Caja',
+          html: (f) => (f.caja_numero ? `Caja ${N(f.caja_numero)}` : '—') },
+      ],
+      filtros: [{ clave: 'llegada_miami', titulo: 'Dónde va', opciones: [
+        { v: 'camino', t: 'En camino a Miami' }, { v: 'miami', t: 'Ya en Miami' }],
+        aplica: (f, v) => (v === 'miami' ? !!f.llegada_miami : !f.llegada_miami) }],
+      buscar: (f, t) => (f.numero + ' ' + (f.empresa || '')).toLowerCase().includes(t),
+      acciones: (f) => [
+        { texto: 'Ver lo que trae', al: () => comTrkAbrir(f.id) },
+        { texto: f.llegada_miami ? 'Todavía no llega a Miami' : 'Ya llegó a Miami',
+          al: () => comTrkMiami(f) },
+        { texto: 'Corregir', al: () => comTrkForm(f) },
+        { texto: 'Quitar', peligro: true, al: () => comTrkQuitar(f) },
+      ],
+      porPagina: 12,
+      vacio: 'Todavía no hay envíos. Cuando la tienda despache, anote el tracking aquí.',
+    });
+  }
+  comTrkTabla.datos(comTrks);
+}
+
+// Dónde va el envío, dicho como se cuenta: "en camino" o "en Miami desde el 9".
+function comTrkDonde(f) {
+  if (f.llegada_miami) {
+    return comEtiq('en_miami', 'En Miami')
+      + `<div class="com-pie">desde el ${esc(diaCorto(f.llegada_miami))}</div>`;
+  }
+  const pie = f.eta_miami
+    ? `<div class="com-pie">llega ~${esc(diaCorto(f.eta_miami))}</div>` : '';
+  return comEtiq('despachado', 'En camino') + pie;
+}
+
+// ── Nuevo envío / corregir ───────────────────────────────────────────────
+async function comTrkForm(trk) {
+  const esNuevo = !trk;
+  const datos = await PPForm.abrir({
+    titulo: esNuevo ? 'Nuevo envío' : 'Corregir el envío',
+    confirmar: esNuevo ? 'Guardar el envío' : 'Guardar cambios',
+    ancho: 480,
+    campos: [
+      { id: 'numero', tipo: 'texto', etiqueta: 'Número de tracking', max: 120,
+        placeholder: '1Z999AA10123456784',
+        valor: trk ? trk.numero : '', obligatorio: 'Ponga el número del tracking' },
+      { id: 'empresa', tipo: 'texto', etiqueta: 'Empresa', ayuda: 'opcional',
+        mitad: true, max: 80, placeholder: 'UPS, FedEx…',
+        valor: trk ? (trk.empresa || '') : '' },
+      { id: 'eta_miami', tipo: 'fecha', etiqueta: 'Llega a Miami', ayuda: 'estimado',
+        mitad: true, valor: trk ? (trk.eta_miami || '') : '' },
+      { id: 'notas', tipo: 'texto', etiqueta: 'Nota', ayuda: 'opcional', max: 1000,
+        valor: trk ? (trk.notas || '') : '' },
+    ],
+  });
+  if (!datos) return;
+  try {
+    if (esNuevo) {
+      const creado = await api('/admin/compras/trackings',
+        { method: 'POST', body: JSON.stringify(datos) });
+      await comTrkCargar();
+      comTrkAbrir(creado.tracking.id);      // se abre para meterle lo que trae
+    } else {
+      await api('/admin/compras/trackings/' + trk.id,
+        { method: 'PATCH', body: JSON.stringify(datos) });
+      await comTrkCargar();
+      if (comTrkAbierto === trk.id) comTrkAbrir(trk.id);
+    }
+  } catch (ex) { comError('No se pudo guardar el envío', ex); }
+}
+
+// Llegó a Miami: con la fecha de verdad, porque de ahí arranca la cuenta de las
+// cuatro semanas hasta Honduras.
+async function comTrkMiami(trk) {
+  if (trk.llegada_miami) {
+    try {
+      await api('/admin/compras/trackings/' + trk.id,
+        { method: 'PATCH', body: JSON.stringify({ llegada_miami: null }) });
+      await comTrkCargar();
+      if (comTrkAbierto === trk.id) comTrkAbrir(trk.id);
+    } catch (ex) { comError('No se pudo cambiar', ex); }
+    return;
+  }
+  const datos = await PPForm.abrir({
+    titulo: 'Llegó a Miami',
+    confirmar: 'Marcar que llegó',
+    ancho: 420,
+    campos: [
+      { id: 'llegada_miami', tipo: 'fecha', etiqueta: '¿Qué día llegó?',
+        valor: hoyISO(), max: hoyISO(), obligatorio: 'Ponga el día que llegó' },
+      { id: 'nota', tipo: 'nota',
+        texto: 'Todo lo que trae este envío pasa a "En Miami" de una vez.' },
+    ],
+  });
+  if (!datos) return;
+  try {
+    await api('/admin/compras/trackings/' + trk.id,
+      { method: 'PATCH', body: JSON.stringify({ llegada_miami: datos.llegada_miami }) });
+    await comTrkCargar();
+    if (comTrkAbierto === trk.id) comTrkAbrir(trk.id);
+  } catch (ex) { comError('No se pudo marcar', ex); }
+}
+
+async function comTrkQuitar(trk) {
   const r = await Swal.fire({
-    title: 'Tipo de cambio del mes',
-    html: `
-      <div class="com-form">
-        <label>Lempiras por dólar — ${esc(mes)}
-          <input type="number" id="ct-tasa" step="0.0001" min="0" placeholder="26.30"
-                 value="${actual != null ? actual : ''}" />
-        </label>
+    title: '¿Quitar este envío?',
+    html: `El tracking <b>${esc(trk.numero)}</b> se borra. Lo que traía vuelve a `
+      + 'quedar pendiente de repartir, no se pierde.',
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Sí, quitarlo', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api('/admin/compras/trackings/' + trk.id, { method: 'DELETE' });
+    comTrkVolver();
+    await comTrkCargar();
+  } catch (ex) { comError('No se pudo quitar', ex); }
+}
+
+// ── La ficha de un envío ─────────────────────────────────────────────────
+function comTrkVolver() {
+  comTrkAbierto = null;
+  $('com-trk-ficha').classList.add('hidden');
+  $('com-trk').classList.remove('hidden');
+}
+
+async function comTrkAbrir(tid) {
+  comTrkAbierto = tid;
+  $('com-trk').classList.add('hidden');
+  const caja = $('com-trk-ficha');
+  caja.classList.remove('hidden');
+  caja.innerHTML = '<div class="card rep-card">Cargando…</div>';
+  let datos;
+  try { datos = await api('/admin/compras/trackings/' + tid); }
+  catch (ex) {
+    caja.innerHTML = `<div class="card rep-card">${esc(ex.message)}</div>`;
+    return;
+  }
+  const t = datos.tracking, items = datos.items || [];
+  const unidades = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
+
+  caja.innerHTML = `
+    <button class="com-volver" type="button" id="com-trk-atras">← Todos los envíos</button>
+    <div class="card rep-card">
+      <div class="com-ficha__cab">
+        <div>
+          <h2 class="com-ficha__tienda">${esc(t.numero)}</h2>
+          <p class="com-ficha__sub">${t.empresa ? esc(t.empresa) : 'Sin empresa anotada'}</p>
+        </div>
+        <div>${comTrkDonde(t)}</div>
       </div>
-      <p class="com-pie" style="margin-top:0.6rem">Se propone solo al crear una
-        orden en dólares y queda guardado en esa orden. Cambiarlo aquí no mueve
-        las compras que ya hizo.</p>`,
-    width: 420,
+      <div class="com-datos">
+        <div><div class="com-dato__nm">Productos</div>
+             <div class="com-dato__vl">${N(items.length)}</div></div>
+        <div><div class="com-dato__nm">Unidades</div>
+             <div class="com-dato__vl">${N(unidades)}</div></div>
+        <div><div class="com-dato__nm">Llega a Miami</div>
+             <div class="com-dato__vl">${t.eta_miami ? esc(diaCorto(t.eta_miami)) : '—'}</div></div>
+        <div><div class="com-dato__nm">Caja</div>
+             <div class="com-dato__vl">${t.caja_id ? 'Asignada' : 'Todavía ninguna'}</div></div>
+      </div>
+      ${t.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(t.notas)}</p>` : ''}
+    </div>
+
+    <div class="card rep-card">
+      <div class="rep-card__cab">
+        <h2>Qué trae</h2>
+        <button class="btn btn--primary btn--sm" type="button" id="com-trk-add">
+          Meter productos
+        </button>
+      </div>
+      <div id="com-trk-items"></div>
+    </div>`;
+
+  $('com-trk-atras').onclick = comTrkVolver;
+  $('com-trk-add').onclick = () => comTrkMeter(tid);
+
+  PPTabla.crear($('com-trk-items'), {
+    columnas: [
+      { clave: 'titulo', titulo: 'Producto', principal: true,
+        html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}` },
+      { clave: 'tienda', titulo: 'De qué orden',
+        html: (f) => `${esc(f.tienda)}<div class="com-pie">${esc(diaCorto(f.orden_fecha))}</div>` },
+      { clave: 'cantidad', titulo: 'Cuántas', html: (f) => N(f.cantidad) },
+      { clave: 'recibidas', titulo: 'Recibidas',
+        html: (f) => comAvance(f.recibidas, f.cantidad) },
+    ],
+    acciones: (f) => [
+      { texto: 'Ver la orden', al: () => { comVista.poner('ordenes'); comMostrarVista('ordenes'); comAbrir(f.orden_id); } },
+      { texto: 'Sacar de este envío', peligro: true, al: () => comTrkSacar(tid, f) },
+    ],
+    porPagina: 20,
+    vacio: 'Este envío todavía no trae nada. Toque "Meter productos".',
+  }).datos(items);
+}
+
+async function comTrkSacar(tid, item) {
+  const r = await Swal.fire({
+    title: '¿Sacarlo de este envío?',
+    html: `<b>${esc(item.titulo)}</b> vuelve a quedar pendiente de repartir.`,
+    icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Sí, sacarlo', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  });
+  if (!r.isConfirmed) return;
+  try {
+    await api('/admin/compras/tracking-items/' + item.id, { method: 'DELETE' });
+    await comTrkCargar();
+    await comTrkAbrir(tid);
+  } catch (ex) { comError('No se pudo sacar', ex); }
+}
+
+// ── Meter productos en un envío ──────────────────────────────────────────
+// Se ofrece lo que todavía no va en ningún envío. La cantidad arranca en todo
+// lo que falta, que es el caso normal, y se baja cuando la tienda mandó parte.
+async function comTrkMeter(tid) {
+  let pendientes = [];
+  try {
+    pendientes = (await api('/admin/compras/pendientes')).pendientes || [];
+  } catch (ex) { comError('No se pudo ver qué hay pendiente', ex); return; }
+
+  if (!pendientes.length) {
+    Swal.fire({ title: 'No hay nada pendiente', icon: 'info',
+      text: 'Todo lo comprado ya está repartido en envíos.',
+      confirmButtonColor: '#e8437a' });
+    return;
+  }
+
+  const filas = pendientes.map((p, i) => `
+    <label class="com-elegir__it">
+      <input type="checkbox" class="com-elegir__ch" data-i="${i}" />
+      <span class="com-elegir__txt">
+        <span class="com-elegir__nm">${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}</span>
+        <span class="com-elegir__sub">${esc(p.tienda)} · ${esc(diaCorto(p.orden_fecha))}
+          · faltan ${N(p.libres)} de ${N(p.cantidad)}</span>
+      </span>
+      <span class="com-elegir__cant">
+        <input type="number" data-c="${i}" min="1" max="${p.libres}"
+               value="${p.libres}" disabled />
+      </span>
+    </label>`).join('');
+
+  const r = await Swal.fire({
+    title: 'Qué trae este envío',
+    width: 560,
+    html: `<p class="ppform__nota" style="margin-bottom:0.6rem">Marque lo que viene
+             en este tracking. Si la tienda mandó solo una parte, cambie la cantidad.</p>
+           <div class="com-elegir">${filas}</div>`,
     showCancelButton: true,
-    confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
+    confirmButtonText: 'Meterlos al envío',
+    cancelButtonText: 'Cancelar',
     confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
     focusConfirm: false,
-    didOpen: () => { document.getElementById('ct-tasa').focus(); },
+    didOpen: () => {
+      // La cantidad solo se puede tocar en lo que está marcado.
+      document.querySelectorAll('.com-elegir__ch').forEach((ch) => {
+        ch.onchange = () => {
+          const inp = document.querySelector(`[data-c="${ch.dataset.i}"]`);
+          inp.disabled = !ch.checked;
+          if (ch.checked) inp.focus();
+        };
+      });
+    },
     preConfirm: () => {
-      const tasa = Number(document.getElementById('ct-tasa').value);
-      if (!(tasa > 0)) { Swal.showValidationMessage('Ponga a cómo está el dólar'); return false; }
-      return { tasa };
+      const items = [];
+      // `problema` y no un return dentro del forEach: ese return solo sale de
+      // la vuelta, y el aviso bueno ("puede meter entre 1 y N") terminaba
+      // pisado por el genérico de abajo.
+      let problema = null;
+      document.querySelectorAll('.com-elegir__ch').forEach((ch) => {
+        if (!ch.checked || problema) return;
+        const p = pendientes[Number(ch.dataset.i)];
+        const n = Number(document.querySelector(`[data-c="${ch.dataset.i}"]`).value);
+        if (!(n >= 1) || n !== Math.floor(n) || n > p.libres) {
+          problema = `De "${p.titulo}" puede meter entre 1 y ${p.libres}`;
+          return;
+        }
+        items.push({ orden_item_id: p.id, cantidad: n });
+      });
+      if (!problema && !items.length) problema = 'Marque al menos un producto';
+      if (problema) { Swal.showValidationMessage(problema); return false; }
+      return { items };
     },
   });
   if (!r.isConfirmed) return;
   try {
-    await api('/admin/compras/tasa', { method: 'PUT', body: JSON.stringify(r.value) });
-  } catch (ex) { comError('No se pudo guardar', ex); }
+    await api(`/admin/compras/trackings/${tid}/items`,
+      { method: 'POST', body: JSON.stringify(r.value) });
+    await comTrkCargar();
+    await comTrkAbrir(tid);
+  } catch (ex) { comError('No se pudieron meter', ex); }
 }
 
 // El formulario: lo justo, que es como se pidió. Sirve para uno nuevo y para
@@ -2912,7 +3226,13 @@ async function gasAdministrarCategorias() {
 }
 
 function comIniciarBotones() {
-  $('com-nueva').addEventListener('click', () => comFormOrden(null));
+  comVista = PPSegmento.crear($('com-vista'), {
+    opciones: [{ v: 'ordenes', t: 'Órdenes' }, { v: 'envios', t: 'Envíos' }],
+    valor: 'ordenes',
+    al: comMostrarVista,
+  });
+  $('com-nueva').addEventListener('click', () => (
+    comVista.valor() === 'ordenes' ? comFormOrden(null) : comTrkForm(null)));
   PPMenu.colgar($('com-mas'), () => [
     { texto: 'Tipo de cambio del mes', al: comTipoDeCambio },
   ]);

@@ -1,0 +1,90 @@
+/* Campo de una fecha del panel — PinkPower
+   Mismo aire que el de rango (ui-rango.css), pero de un solo día. En el
+   teléfono el calendario se pega abajo y ocupa el ancho: dentro de un
+   formulario, un panel flotante se sale de la pantalla. */
+
+.ppfecha { position: relative; display: block; }
+
+.ppfecha__boton {
+  display: flex; align-items: center; gap: 0.55rem; width: 100%;
+  background: #fff; border: 1px solid var(--linea); border-radius: 9px;
+  padding: 0.5rem 0.6rem; cursor: pointer; font-family: inherit;
+  font-size: 0.92rem; font-weight: 600; color: var(--ink); text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ppfecha__boton:hover { border-color: var(--pink); }
+.ppfecha.is-abierto .ppfecha__boton {
+  border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.ppfecha.is-vacio .ppfecha__boton { color: var(--muted); font-weight: 400; }
+.ppfecha__boton svg { width: 16px; height: 16px; color: var(--pink); flex: 0 0 auto; }
+.ppfecha__txt { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ppfecha__flecha {
+  width: 14px !important; height: 14px !important; color: var(--muted) !important;
+  transition: transform 0.18s ease;
+}
+.ppfecha.is-abierto .ppfecha__flecha { transform: rotate(180deg); }
+
+.ppfecha__panel {
+  position: absolute; top: calc(100% + 0.4rem); left: 0; z-index: 70;
+  width: 268px; background: #fff; border-radius: 16px;
+  border: 1px solid #f6e3ec; box-shadow: 0 24px 50px -24px rgba(120,20,60,0.4);
+  padding: 0.7rem; animation: ppFechaEntra 0.16s ease;
+}
+/* `display` explícito le gana al atributo hidden; sin esto nace abierto. */
+.ppfecha__panel[hidden] { display: none; }
+
+/* Mientras está abierto cuelga del <body> y se coloca por JS, para que no lo
+   recorte el contenedor de una ventana con scroll. */
+.ppfecha__panel--suelto { position: fixed; z-index: 2000; }
+@keyframes ppFechaEntra { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+
+.ppfecha__cab {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.ppfecha__mes {
+  font-size: 0.85rem; font-weight: 700; text-transform: capitalize; color: var(--ink);
+}
+.ppfecha__nav {
+  width: 28px; height: 28px; border: none; background: none; cursor: pointer;
+  border-radius: 8px; color: var(--muted); font-size: 1.15rem; line-height: 1;
+}
+.ppfecha__nav:hover { background: #fdeef5; color: var(--pink-dk); }
+
+.ppfecha__dias, .ppfecha__rejilla {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.ppfecha__dias span {
+  text-align: center; font-size: 0.68rem; font-weight: 700; color: var(--muted);
+  padding-bottom: 0.25rem;
+}
+.ppfecha__dia {
+  aspect-ratio: 1; border: none; background: none; cursor: pointer;
+  border-radius: 9px; font-family: inherit; font-size: 0.82rem; color: var(--ink);
+}
+.ppfecha__dia:hover:not(:disabled) { background: #fdeef5; }
+.ppfecha__dia:disabled { opacity: 0.3; cursor: default; }
+.ppfecha__dia.is-hoy { font-weight: 700; color: var(--pink-dk); }
+.ppfecha__dia.is-elegido { background: var(--pink); color: #fff; font-weight: 700; }
+.ppfecha__hueco { aspect-ratio: 1; }
+
+.ppfecha__hoy {
+  width: 100%; margin-top: 0.5rem; padding: 0.45rem; border: none;
+  background: #fdf0f5; color: var(--pink-dk); border-radius: 9px;
+  font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+}
+.ppfecha__hoy:hover { background: #fbe3ed; }
+
+/* En el teléfono: pegado abajo, ancho completo y dedos cómodos. */
+@media (max-width: 540px) {
+  .ppfecha__panel, .ppfecha__panel--suelto {
+    position: fixed; inset: auto 0 0 0 !important; width: auto; top: auto !important;
+    left: 0 !important;
+    border-radius: 18px 18px 0 0; padding: 0.9rem 0.8rem 1.2rem;
+    animation: ppFechaSube 0.18s ease;
+  }
+  @keyframes ppFechaSube { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .ppfecha__dia { font-size: 0.95rem; border-radius: 11px; }
+  .ppfecha__nav { width: 36px; height: 36px; font-size: 1.3rem; }
+}

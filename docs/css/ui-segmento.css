@@ -1,0 +1,32 @@
+/* Conmutador de vistas del panel — PinkPower
+   Pastilla con dos o tres opciones. En el teléfono ocupa el ancho y reparte el
+   espacio en partes iguales: con el pulgar hay que apuntar a algo grande. */
+
+.ppseg {
+  display: inline-flex; gap: 0.2rem; padding: 0.22rem;
+  background: #fbeef4; border-radius: 999px;
+}
+
+.ppseg__op {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border: none; background: none; cursor: pointer; font-family: inherit;
+  font-size: 0.86rem; font-weight: 600; color: var(--muted);
+  padding: 0.45rem 0.95rem; border-radius: 999px; white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ppseg__op:hover { color: var(--pink-dk); }
+.ppseg__op.is-activo {
+  background: #fff; color: var(--pink-dk);
+  box-shadow: 0 2px 6px -2px rgba(120,20,60,0.25);
+}
+
+.ppseg__cuenta {
+  font-size: 0.72rem; font-weight: 700; color: var(--muted);
+  background: #f3e7ee; border-radius: 999px; padding: 0.05rem 0.4rem;
+}
+.ppseg__op.is-activo .ppseg__cuenta { background: #fdeef5; color: var(--pink-dk); }
+
+@media (max-width: 540px) {
+  .ppseg { display: flex; width: 100%; }
+  .ppseg__op { flex: 1; justify-content: center; padding: 0.55rem 0.5rem; }
+}

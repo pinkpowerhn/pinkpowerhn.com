@@ -274,6 +274,15 @@
     width: fit-content; max-width: 100%;
   }
   .tabs::-webkit-scrollbar { height: 0; }
+  /* Las sombritas de los lados avisan que la barra sigue. Se encienden desde
+     JS según dónde esté el desplazamiento. */
+  .tabs { position: relative; }
+  .tabs--izq { -webkit-mask-image: linear-gradient(to right, transparent, #000 22px); mask-image: linear-gradient(to right, transparent, #000 22px); }
+  .tabs--der { -webkit-mask-image: linear-gradient(to left, transparent, #000 22px); mask-image: linear-gradient(to left, transparent, #000 22px); }
+  .tabs--izq.tabs--der {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 22px, #000 calc(100% - 22px), transparent);
+            mask-image: linear-gradient(to right, transparent, #000 22px, #000 calc(100% - 22px), transparent);
+  }
   .tab {
     background: none; border: none; cursor: pointer; white-space: nowrap;
     padding: 0.6rem 1.1rem; font-family: inherit; font-weight: 600; font-size: 0.85rem;
@@ -636,8 +645,10 @@
     .top .btn { padding: 0.5rem 0.65rem; }
     .cuenta__nom { display: none; }
     .cuenta__btn { padding: 0.3rem; gap: 0.25rem; }
-    .tabs { width: 100%; justify-content: space-between; }
-    .tab { padding: 0.55rem 0.7rem; font-size: 0.76rem; flex: 1; justify-content: center; }
+    .tabs { width: 100%; justify-content: flex-start; }
+    /* flex:1 las apretaba para que entraran todas y el texto quedaba ilegible;
+       mejor que conserven su tamaño y la barra se desplace. */
+    .tab { padding: 0.55rem 0.75rem; font-size: 0.78rem; flex: 0 0 auto; }
     .tab svg { width: 15px; height: 15px; }
     /* Textos un poco más pequeños en móvil */
     .card h2 { font-size: 0.9rem; }
@@ -1260,9 +1271,40 @@ $('logout').addEventListener('click', logout);
 
 // ── Tabs ──
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+// En el teléfono las seis pestañas no caben: la barra se desplaza. Hay que
+// traer la elegida a la vista, o uno queda parado en "Compras" viendo
+// "Mayoristas · Catálogos · Reportes" y sin saber dónde está.
+function centrarTab(name) {
+  const barra = document.querySelector('.tabs');
+  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  if (!barra || !tab) return;
+  if (barra.scrollWidth > barra.clientWidth + 1) {
+    // A mano y no con scrollIntoView: ese desplazaba la página entera en vez
+    // de la barra cuando el panel va dentro de otro contenedor.
+    const centrada = tab.offsetLeft - (barra.clientWidth - tab.offsetWidth) / 2;
+    const tope = barra.scrollWidth - barra.clientWidth;
+    // Sin animación: en una barra de pestañas no aporta nada y el desplazamiento
+    // suave llegaba a destiempo cuando se cambia de pestaña dos veces seguidas.
+    barra.scrollLeft = Math.max(0, Math.min(centrada, tope));
+  }
+  setTimeout(bordesTabs, 320);
+}
+
+// Sombrita en los lados cuando queda barra por ver: sin eso parece que las
+// pestañas son solo las tres que se alcanzan a ver.
+function bordesTabs() {
+  const barra = document.querySelector('.tabs');
+  if (!barra) return;
+  const hayMas = barra.scrollWidth > barra.clientWidth + 1;
+  barra.classList.toggle('tabs--izq', hayMas && barra.scrollLeft > 4);
+  barra.classList.toggle('tabs--der',
+    hayMas && barra.scrollLeft + barra.clientWidth < barra.scrollWidth - 4);
+}
+
 function setTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.tab === name));
+  centrarTab(name);
   // Los reportes se piden al abrirlos, no al entrar al panel: leer un mes
   // entero de Shopify tarda unos segundos y no siempre se van a mirar.
   if (name === 'reportes') repIniciar();
@@ -3299,6 +3341,13 @@ function gasIniciar() {
 }
 
 pintarCuenta();
+(() => {
+  const barra = document.querySelector('.tabs');
+  if (!barra) return;
+  barra.addEventListener('scroll', bordesTabs, { passive: true });
+  window.addEventListener('resize', bordesTabs);
+  bordesTabs();
+})();
 if (token) { show('panel'); loadAll(); } else { show('login'); }
 </script>
 </body>

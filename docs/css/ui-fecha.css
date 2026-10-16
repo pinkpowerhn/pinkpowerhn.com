@@ -7,20 +7,20 @@
 
 .ppfecha__boton {
   display: flex; align-items: center; gap: 0.55rem; width: 100%;
-  background: #fff; border: 1px solid var(--linea); border-radius: 9px;
+  background: #fff; border: 1px solid var(--linea, #f0d6e2); border-radius: 9px;
   padding: 0.5rem 0.6rem; cursor: pointer; font-family: inherit;
-  font-size: 0.92rem; font-weight: 600; color: var(--ink); text-align: left;
+  font-size: 0.92rem; font-weight: 600; color: var(--ink, #3a1424); text-align: left;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.ppfecha__boton:hover { border-color: var(--pink); }
+.ppfecha__boton:hover { border-color: var(--pink, #e8437a); }
 .ppfecha.is-abierto .ppfecha__boton {
-  border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+  border-color: var(--pink, #e8437a); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
 }
-.ppfecha.is-vacio .ppfecha__boton { color: var(--muted); font-weight: 400; }
-.ppfecha__boton svg { width: 16px; height: 16px; color: var(--pink); flex: 0 0 auto; }
+.ppfecha.is-vacio .ppfecha__boton { color: var(--muted, #9a7385); font-weight: 400; }
+.ppfecha__boton svg { width: 16px; height: 16px; color: var(--pink, #e8437a); flex: 0 0 auto; }
 .ppfecha__txt { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ppfecha__flecha {
-  width: 14px !important; height: 14px !important; color: var(--muted) !important;
+  width: 14px !important; height: 14px !important; color: var(--muted, #9a7385) !important;
   transition: transform 0.18s ease;
 }
 .ppfecha.is-abierto .ppfecha__flecha { transform: rotate(180deg); }
@@ -44,34 +44,34 @@
   margin-bottom: 0.4rem;
 }
 .ppfecha__mes {
-  font-size: 0.85rem; font-weight: 700; text-transform: capitalize; color: var(--ink);
+  font-size: 0.85rem; font-weight: 700; text-transform: capitalize; color: var(--ink, #3a1424);
 }
 .ppfecha__nav {
   width: 28px; height: 28px; border: none; background: none; cursor: pointer;
-  border-radius: 8px; color: var(--muted); font-size: 1.15rem; line-height: 1;
+  border-radius: 8px; color: var(--muted, #9a7385); font-size: 1.15rem; line-height: 1;
 }
-.ppfecha__nav:hover { background: #fdeef5; color: var(--pink-dk); }
+.ppfecha__nav:hover { background: #fdeef5; color: var(--pink-dk, #c01f6b); }
 
 .ppfecha__dias, .ppfecha__rejilla {
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
 }
 .ppfecha__dias span {
-  text-align: center; font-size: 0.68rem; font-weight: 700; color: var(--muted);
+  text-align: center; font-size: 0.68rem; font-weight: 700; color: var(--muted, #9a7385);
   padding-bottom: 0.25rem;
 }
 .ppfecha__dia {
   aspect-ratio: 1; border: none; background: none; cursor: pointer;
-  border-radius: 9px; font-family: inherit; font-size: 0.82rem; color: var(--ink);
+  border-radius: 9px; font-family: inherit; font-size: 0.82rem; color: var(--ink, #3a1424);
 }
 .ppfecha__dia:hover:not(:disabled) { background: #fdeef5; }
 .ppfecha__dia:disabled { opacity: 0.3; cursor: default; }
-.ppfecha__dia.is-hoy { font-weight: 700; color: var(--pink-dk); }
-.ppfecha__dia.is-elegido { background: var(--pink); color: #fff; font-weight: 700; }
+.ppfecha__dia.is-hoy { font-weight: 700; color: var(--pink-dk, #c01f6b); }
+.ppfecha__dia.is-elegido { background: var(--pink, #e8437a); color: #fff; font-weight: 700; }
 .ppfecha__hueco { aspect-ratio: 1; }
 
 .ppfecha__hoy {
   width: 100%; margin-top: 0.5rem; padding: 0.45rem; border: none;
-  background: #fdf0f5; color: var(--pink-dk); border-radius: 9px;
+  background: #fdf0f5; color: var(--pink-dk, #c01f6b); border-radius: 9px;
   font-family: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
 }
 .ppfecha__hoy:hover { background: #fbe3ed; }

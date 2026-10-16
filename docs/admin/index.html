@@ -15,17 +15,24 @@
 <link rel="stylesheet" href="/css/ui-fecha.css" />
 <link rel="stylesheet" href="/css/ui-form.css" />
 <link rel="stylesheet" href="/css/ui-segmento.css" />
+<link rel="stylesheet" href="/css/ui-esqueleto.css" />
 <script src="/js/ui-tabla.js" defer></script>
 <script src="/js/ui-rango.js" defer></script>
 <script src="/js/ui-menu.js" defer></script>
 <script src="/js/ui-fecha.js" defer></script>
 <script src="/js/ui-form.js" defer></script>
 <script src="/js/ui-segmento.js" defer></script>
+<script src="/js/ui-esqueleto.js" defer></script>
 <!-- Las gráficas de los reportes. Se carga diferida: el panel abre en
      Mayoristas y la mayoría de las veces ni se usa. -->
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js" defer></script>
 <style>
-  :root { --pink:#e8437a; --pink-dk:#c01f6b; --ink:#3a1424; --muted:#9a7385; }
+  :root { --pink:#e8437a; --pink-dk:#c01f6b; --ink:#3a1424; --muted:#9a7385;
+          /* El color de los bordes andaba suelto como #f0d6e2 por todo el
+             archivo; los componentes lo pedían como --linea y, al no existir,
+             la regla entera del borde se descartaba y los campos salían sin
+             borde hasta que se los enfocaba. */
+          --linea:#f0d6e2; }
   * { box-sizing: border-box; }
   body {
     margin: 0; font-family: 'Montserrat', system-ui, sans-serif;
@@ -325,7 +332,7 @@
   .tip small { color: var(--muted); }
 
   /* Los numeros grandes del periodo */
-  .kpis { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); }
+  .kpis { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
   .kpi {
     background: #fff; border-radius: 18px; padding: 1.15rem 1.25rem;
     box-shadow: 0 12px 30px -24px rgba(150,30,80,0.5);
@@ -336,7 +343,10 @@
     color: var(--muted); font-weight: 700;
   }
   .kpi__nm {
-    font-size: 1.4rem; font-weight: 700; color: var(--ink); margin-top: 0.35rem;
+    /* Se achica solo cuando la columna es angosta: con tamaño fijo, un
+       "L. 164,000.00" se salía por el borde de la tarjeta. */
+    font-size: clamp(1.05rem, 1.15vw + 0.55rem, 1.4rem);
+    font-weight: 700; color: var(--ink); margin-top: 0.35rem;
     line-height: 1.1; white-space: nowrap;
   }
   .kpi__pie { font-size: 0.73rem; color: var(--muted); margin-top: 0.3rem; }
@@ -344,7 +354,7 @@
     background: linear-gradient(135deg, #fff, #fff6fa);
     border-color: rgba(232,67,122,0.18);
   }
-  .kpi--rosa .kpi__nm { color: var(--pink-dk); font-size: 1.55rem; }
+  .kpi--rosa .kpi__nm { color: var(--pink-dk); font-size: clamp(1.15rem, 1.3vw + 0.6rem, 1.55rem); }
   /* Lo que le queda: en verde, que es la respuesta a "como me fue". */
   .kpi--queda {
     background: linear-gradient(135deg, #fff, #f1fbf5);
@@ -1605,12 +1615,16 @@ function repGrafica(id, opciones) {
     repGraficas[id].updateOptions(opciones, true, true);
     return;
   }
+  // La gráfica se monta DENTRO del contenedor, no lo reemplaza: si quedaba el
+  // esqueleto de carga, se veían las dos, una encima de la otra.
+  PPEsqueleto.quitar(id);
   repGraficas[id] = new ApexCharts(document.getElementById(id), opciones);
   repGraficas[id].render();
 }
 
 function repLista(id, filas, opciones = {}) {
   const caja = $(id);
+  PPEsqueleto.quitar(id);
   if (!filas || !filas.length) {
     caja.className = '';
     caja.innerHTML = '<p class="lista__vacia">Nada en este período.</p>';
@@ -1639,22 +1653,20 @@ function repDona(id, filas, vacio) {
     series: filas.map((x) => x.monto),
     labels: filas.map((x) => x.nombre),
     colors: ROSA,
-    // Los pedazos muy chiquitos se quedan sin número: no cabe y se encima con
-    // el de al lado. Ese dato igual sale en la leyenda y al pasar encima.
-    dataLabels: {
-      enabled: true,
-      formatter: (p) => (p >= 6 ? Math.round(p) + '%' : ''),
-      style: { fontSize: '12.5px', fontWeight: 700, fontFamily: 'inherit', colors: ['#fff'] },
-      dropShadow: { enabled: true, top: 0, left: 0, blur: 2, opacity: 0.25 },
-    },
+    // Sin porcentajes encima del anillo: con el agujero grande (para que el
+    // total quepa adentro) el anillo queda fino y los números se montaban en
+    // el borde, cortados. La leyenda de abajo ya dice el % de cada pedazo.
+    dataLabels: { enabled: false },
     legend: { position: 'bottom', fontSize: '12px', markers: { radius: 4 },
               formatter: (nombre, o) => `${nombre} · ${pct(o.w.globals.series[o.seriesIndex])}` },
     stroke: { width: 2, colors: ['#fff'] },
     plotOptions: {
-      pie: { donut: { size: '62%', labels: {
+      // El agujero tiene que dar para el total escrito adentro. Con 62% un
+      // "L. 138,410" se montaba sobre el anillo por los dos lados.
+      pie: { donut: { size: '73%', labels: {
         show: true,
-        value: { fontSize: '17px', fontWeight: 700, formatter: (v) => Lc(v) },
-        total: { show: true, label: 'Total', color: '#9b8491',
+        value: { fontSize: '15px', fontWeight: 700, offsetY: 2, formatter: (v) => Lc(v) },
+        total: { show: true, label: 'Total', color: '#9b8491', fontSize: '11px',
                  formatter: (w) => Lc(w.globals.seriesTotals.reduce((a, b) => a + b, 0)) },
       } } },
     },
@@ -1678,7 +1690,6 @@ function repPintar(r) {
          + (r.gastos_creditos ? ` · ya menos ${L(r.gastos_creditos)} de créditos` : '') },
     { lb: 'Le quedó', nm: L(r.le_quedo || 0), pie: 'vendido menos gastos', fuerte: true },
     { lb: 'Pendiente de cobro', nm: L(r.por_cobrar), pie: 'lo que le deben' },
-    { lb: 'Venta promedio', nm: L(r.promedio), pie: 'por pedido' },
     { lb: 'Productos vendidos', nm: N(r.unidades), pie: 'unidades' },
   ];
   $('rep-kpis').innerHTML = kpis.map((k) => `
@@ -1887,6 +1898,21 @@ function repEstado(texto, error) {
   p.classList.toggle('is-error', !!error);
 }
 
+// La forma de lo que va a llegar, mientras llega. Son varios segundos: sin
+// esto la pestana se quedaba vacia con un "cargando" chiquito arriba.
+function repEsqueleto() {
+  $('rep-contenido').classList.remove('hidden');
+  PPEsqueleto.pintar('rep-kpis', 'kpis', { cuantos: 6 });
+  PPEsqueleto.pintar('rep-desglose', 'lista', { filas: 3 });
+  ['rep-g-dias', 'rep-g-marcas', 'rep-g-productos'].forEach(
+    (id) => PPEsqueleto.pintar(id, 'barras'));
+  ['rep-g-canal', 'rep-g-tipo'].forEach((id) => PPEsqueleto.pintar(id, 'dona'));
+  PPEsqueleto.pintar('rep-g-pago', 'barras');
+  ['rep-ganancia', 'rep-gastos', 'rep-banco', 'rep-clientas', 'rep-entrega']
+    .forEach((id) => PPEsqueleto.pintar(id, 'lista', { filas: 4 }));
+}
+
+
 async function repCargar() {
   if (repCargando || !repRango) return;
   const { desde, hasta } = repRango.valores();
@@ -1894,6 +1920,7 @@ async function repCargar() {
   repCargando = true;
   repRango.ocupado(true);
   repEstado('Leyendo las ventas de Shopify…');
+  repEsqueleto();
   try {
     const r = await api(`/admin/reportes?desde=${desde}&hasta=${hasta}`);
     repDatos = r;
@@ -1971,13 +1998,22 @@ function gasEstado(texto, error) {
   p.classList.toggle('is-error', !!error);
 }
 
+function gasEsqueleto() {
+  $('gas-contenido').classList.remove('hidden');
+  PPEsqueleto.pintar('gas-kpis', 'kpis', { cuantos: 3 });
+  PPEsqueleto.pintar('gas-g-categorias', 'dona');
+  PPEsqueleto.pintar('gas-categorias', 'lista', { filas: 5 });
+  if (gasTabla) gasTabla.cargando();
+}
+
+
 async function gasCargar() {
   if (gasCargando || !gasRango) return;
   const { desde, hasta } = gasRango.valores();
   gasCargando = true;
   gasRango.ocupado(true);
   gasEstado('Buscando los gastos…');
-  if (gasTabla) gasTabla.cargando();
+  gasEsqueleto();
   try {
     const [r, cats] = await Promise.all([
       api(`/admin/gastos?desde=${desde}&hasta=${hasta}`),
@@ -2222,7 +2258,8 @@ async function comAbrir(oid) {
   $('com-lista').classList.add('hidden');
   const caja = $('com-ficha');
   caja.classList.remove('hidden');
-  caja.innerHTML = '<div class="card rep-card">Cargando…</div>';
+  caja.innerHTML = '<div class="card rep-card" id="com-cargando"></div>';
+  PPEsqueleto.pintar('com-cargando', 'ficha');
   let datos;
   try {
     datos = await api('/admin/compras/ordenes/' + oid);
@@ -2750,7 +2787,8 @@ async function comTrkAbrir(tid) {
   $('com-trk').classList.add('hidden');
   const caja = $('com-trk-ficha');
   caja.classList.remove('hidden');
-  caja.innerHTML = '<div class="card rep-card">Cargando…</div>';
+  caja.innerHTML = '<div class="card rep-card" id="com-trk-cargando"></div>';
+  PPEsqueleto.pintar('com-trk-cargando', 'ficha');
   let datos;
   try { datos = await api('/admin/compras/trackings/' + tid); }
   catch (ex) {

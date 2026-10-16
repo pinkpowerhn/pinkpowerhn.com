@@ -8,7 +8,7 @@
 .ppform__campo { display: grid; gap: 0.2rem; }
 /* El panel pone TODOS los <label> en mayúsculas. A una etiqueta corta le sienta
    bien, pero a una frase o al nombre de un producto no: se vuelve ilegible. */
-.ppform__nm { font-size: 0.82rem; color: var(--muted); text-transform: uppercase;
+.ppform__nm { font-size: 0.82rem; color: var(--muted, #9a7385); text-transform: uppercase;
               letter-spacing: 0.05em; font-weight: 600; }
 .ppform__check span, .ppform__nota { text-transform: none; letter-spacing: normal; }
 .ppform__op { color: #b9a7b2; font-weight: 400; }
@@ -17,12 +17,12 @@
 .ppform input[type="number"],
 .ppform select,
 .ppform textarea {
-  width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--linea);
-  border-radius: 9px; font-family: inherit; font-size: 0.92rem; color: var(--ink);
+  width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--linea, #f0d6e2);
+  border-radius: 9px; font-family: inherit; font-size: 0.92rem; color: var(--ink, #3a1424);
   background: #fff;
 }
 .ppform input:focus, .ppform select:focus, .ppform textarea:focus {
-  outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+  outline: none; border-color: var(--pink, #e8437a); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
 }
 .ppform textarea { min-height: 56px; resize: vertical; }
 
@@ -30,18 +30,18 @@
 .ppform__conpre { position: relative; display: block; }
 .ppform__conpre i {
   position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);
-  font-style: normal; font-size: 0.86rem; color: var(--muted); pointer-events: none;
+  font-style: normal; font-size: 0.86rem; color: var(--muted, #9a7385); pointer-events: none;
 }
 .ppform__conpre input { padding-left: 2.1rem; }
 
 .ppform__check {
   display: flex; align-items: center; gap: 0.55rem;
-  font-size: 0.9rem; color: var(--ink); cursor: pointer;
+  font-size: 0.9rem; color: var(--ink, #3a1424); cursor: pointer;
 }
-.ppform__check input { width: auto; accent-color: var(--pink); }
+.ppform__check input { width: auto; accent-color: var(--pink, #e8437a); }
 
 .ppform__nota {
-  margin: 0; font-size: 0.8rem; color: var(--muted); line-height: 1.45;
+  margin: 0; font-size: 0.8rem; color: var(--muted, #9a7385); line-height: 1.45;
   background: #fdf4f8; border-radius: 10px; padding: 0.55rem 0.7rem;
 }
 

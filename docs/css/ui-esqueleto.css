@@ -1,0 +1,60 @@
+/* Esqueletos de carga — PinkPower
+   El brillo es el mismo de PPTabla (.pp-sk, en ui-tabla.css). Aquí van las
+   formas: tarjetas de números, dona, barras, listas y fichas. */
+
+.ppesq { display: block; }
+
+/* ── Tarjetas de números ── */
+.ppesq-kpis {
+  display: grid; gap: 1.1rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.ppesq-kpi {
+  background: #fff; border-radius: 18px; padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(232,67,122,0.07);
+  box-shadow: 0 12px 30px -24px rgba(150,30,80,0.5);
+  display: grid; gap: 0.5rem;
+}
+
+/* ── Dona ── */
+.ppesq-dona { display: grid; justify-items: center; gap: 1.1rem; padding: 0.6rem 0; }
+.ppesq-circulo {
+  width: 168px; height: 168px; border-radius: 50%;
+  background: conic-gradient(#f7e6ee 0 100%);
+  -webkit-mask: radial-gradient(circle, transparent 0 60px, #000 61px);
+          mask: radial-gradient(circle, transparent 0 60px, #000 61px);
+  animation: ppSk 1.3s linear infinite;
+  background-size: 220% 100%;
+}
+.ppesq-leyenda { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; justify-content: center; }
+
+/* ── Barras ── */
+.ppesq-barras {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 0.8rem; align-items: end; height: 190px; padding: 0.5rem 0;
+}
+.ppesq-barras .pp-sk { border-radius: 8px 8px 3px 3px; }
+
+/* ── Listas ── */
+.ppesq-lista { display: grid; gap: 0.1rem; }
+.ppesq-fila {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.7rem 0.2rem; border-bottom: 1px solid #f7eaf1;
+}
+
+/* ── Ficha ── */
+.ppesq-ficha { display: grid; gap: 0.5rem; }
+.ppesq-datos {
+  display: flex; flex-wrap: wrap; gap: 0.7rem 1.8rem;
+  margin-top: 0.7rem; padding-top: 0.8rem; border-top: 1px solid #f7eaf1;
+}
+.ppesq-datos > div { display: grid; gap: 0.35rem; min-width: 90px; }
+
+@media (max-width: 720px) {
+  .ppesq-kpis { gap: 0.7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ppesq-kpi { padding: 0.9rem 0.8rem; border-radius: 15px; }
+  .ppesq-circulo { width: 140px; height: 140px; }
+  .ppesq-circulo { -webkit-mask: radial-gradient(circle, transparent 0 50px, #000 51px);
+                           mask: radial-gradient(circle, transparent 0 50px, #000 51px); }
+  .ppesq-barras { height: 150px; gap: 0.5rem; }
+}

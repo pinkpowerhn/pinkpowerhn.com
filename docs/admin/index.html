@@ -536,6 +536,44 @@
     font:inherit; font-size:0.88rem; padding:0; margin-bottom:0.7rem;
   }
 
+  /* ── ¿Dónde está este producto? ── */
+  .bus-campo { display:flex; gap:0.5rem; align-items:center; }
+  .bus-campo input {
+    flex:1; min-width:0; margin:0; padding:0.8rem 0.95rem;
+    border:1.5px solid var(--pink); border-radius:12px;
+    font:inherit; font-size:1rem; color:var(--ink);
+  }
+  .bus-campo input::placeholder { color:#c9aebc; }
+  .bus-ayuda { margin:0.6rem 0 0; font-size:0.8rem; color:var(--muted); }
+  .bus-vacio { margin:0; font-size:0.92rem; color:var(--muted); line-height:1.5; }
+
+  .bus-prod__cab { margin-bottom:0.9rem; }
+  .bus-prod__cab h2 { margin:0 0 0.25rem; }
+  .bus-prod__cuenta { margin:0; font-size:0.95rem; color:var(--muted); }
+  .bus-prod__cuenta b { color:var(--ink); }
+
+  .bus-paradas { display:flex; flex-direction:column; gap:0.45rem; }
+  .bus-parada {
+    display:flex; align-items:flex-start; gap:0.75rem;
+    padding:0.6rem 0.8rem; border-radius:11px; background:#fdf6f9;
+  }
+  .bus-parada__n {
+    flex:none; min-width:1.9rem; text-align:center; font-weight:700;
+    font-size:0.95rem; color:var(--ink);
+  }
+  .bus-parada__txt { flex:1; min-width:0; font-size:0.9rem; line-height:1.45; }
+  .bus-parada__de { display:block; font-size:0.78rem; color:var(--muted); }
+  .bus-parada--aqui   { background:#e9f6ec; }
+  .bus-parada--ojo    { background:#fff6e8; }
+  .bus-parada--no     { background:#f4f2f3; }
+  .bus-parada--quieto { background:#f7f4f6; }
+
+  @media (max-width: 540px) {
+    .bus-campo { flex-wrap:wrap; }
+    .bus-campo input { flex:1 1 100%; }
+    .bus-campo .btn { flex:1; }
+  }
+
   /* ── Recibir la caja ── */
   .rec-escaner { display:flex; gap:0.5rem; align-items:center; margin-bottom:0.9rem; }
   .rec-escaner input {
@@ -1117,6 +1155,18 @@
       </div>
 
       <!-- La lista de órdenes -->
+      <div id="com-buscar" class="hidden">
+        <div class="card rep-card">
+          <div class="bus-campo">
+            <input type="search" id="bus-q" autocomplete="off"
+                   placeholder="¿Qué producto anda buscando?" />
+            <button class="btn btn--primary btn--sm" type="button" id="bus-ir">Buscar</button>
+          </div>
+          <p class="bus-ayuda">Escriba parte del nombre, o escanee el código de barras.</p>
+        </div>
+        <div id="bus-res"></div>
+      </div>
+
       <div id="com-lista">
         <div class="card rep-card">
           <div id="com-tabla"></div>
@@ -2831,22 +2881,27 @@ function comMostrarVista(cual, desdeRuta) {
     irA(['compras', cual, abierta || null], !abierta && yaEstabaEnFicha());
   }
   const ver = (id, siEsta) => $(id).classList.toggle('hidden', !siEsta);
+  ver('com-buscar', cual === 'buscar');
   ver('com-lista', cual === 'ordenes' && !comOrdenAbierta);
   ver('com-ficha', cual === 'ordenes' && !!comOrdenAbierta);
   ver('com-trk', cual === 'envios' && !comTrkAbierto);
   ver('com-trk-ficha', cual === 'envios' && !!comTrkAbierto);
   ver('com-caj', cual === 'cajas' && !comCajAbierta);
   ver('com-caj-ficha', cual === 'cajas' && !!comCajAbierta);
+  $('com-nueva').classList.toggle('hidden', cual === 'buscar');
   $('com-nueva-txt').textContent = cual === 'ordenes' ? 'Nueva orden'
     : cual === 'envios' ? 'Nuevo envío' : 'Nueva caja';
   // El contador es de la vista que se está mirando: al cambiar quedaba el de
   // la anterior ("1 caja" estando en Órdenes).
   const cuantos = cual === 'ordenes' ? comOrdenes.length
-    : cual === 'envios' ? comTrks.length : comCajas.length;
+    : cual === 'envios' ? comTrks.length
+    : cual === 'cajas' ? comCajas.length : 0;
   const nombre = cual === 'ordenes' ? ['orden', 'órdenes']
     : cual === 'envios' ? ['envío', 'envíos'] : ['caja', 'cajas'];
   $('com-estado').textContent = cuantos
     ? `${N(cuantos)} ${cuantos === 1 ? nombre[0] : nombre[1]}` : '';
+  if (cual === 'buscar') setTimeout(() => $('bus-q') && $('bus-q').focus(), 50);
+  if (cual === 'buscar' && !busArmado) busArmar();
   if (cual === 'envios' && !comTrks.length) comTrkCargar();
   if (cual === 'cajas' && !comCajas.length) comCajCargar();
 }
@@ -3590,6 +3645,124 @@ async function comCajMeter(cid) {
 }
 
 
+
+// ── ¿Dónde está este producto? ───────────────────────────────────────────
+// La pregunta que más se repite: una clienta pide algo, no está en la tienda,
+// y hoy hay que irse a buscar entre las fotos de la consolidadora en WhatsApp.
+// Contesta con la cuenta primero —cuántas hay, cuántas vienen— y el detalle
+// de cada parada debajo.
+let busArmado = false;
+let busUltima = '';
+
+function busArmar() {
+  busArmado = true;
+  $('bus-ir').onclick = busIr;
+  const campo = $('bus-q');
+  campo.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); busIr(); } };
+  campo.focus();
+}
+
+async function busIr() {
+  const q = $('bus-q').value.trim();
+  if (q.length < 2) return;
+  busUltima = q;
+  $('bus-res').innerHTML = `<div class="card rep-card"><p class="bus-vacio">Buscando…</p></div>`;
+  let datos;
+  try {
+    datos = await api(`/admin/compras/donde?q=${encodeURIComponent(q)}`);
+  } catch (ex) {
+    $('bus-res').innerHTML =
+      `<div class="card rep-card"><p class="bus-vacio">${esc(ex.message)}</p></div>`;
+    return;
+  }
+  if (busUltima !== q) return;    // llegó tarde: ya se buscó otra cosa
+  busPintar(datos);
+}
+
+function busPintar(datos) {
+  const prods = datos.productos || [];
+  if (!prods.length) {
+    $('bus-res').innerHTML = `<div class="card rep-card">
+      <p class="bus-vacio">No hay ninguna compra de <b>${esc(busUltima)}</b>.
+      Si lo compró, puede que todavía no esté registrada la orden.</p></div>`;
+    return;
+  }
+  $('bus-res').innerHTML = prods.map(busProducto).join('');
+}
+
+function busProducto(p) {
+  // El titular: lo que contesta la pregunta sin leer el detalle.
+  const trozos = [];
+  if (p.aqui) trozos.push(`<b>${N(p.aqui)}</b> ya ${p.aqui === 1 ? 'está' : 'están'} en la tienda`);
+  if (p.en_camino) trozos.push(`<b>${N(p.en_camino)}</b> ${p.en_camino === 1 ? 'viene' : 'vienen'} en camino`);
+  if (p.por_anotar) trozos.push(`<b>${N(p.por_anotar)}</b> sin anotar de una caja que ya llegó`);
+  if (p.sin_salir) trozos.push(`<b>${N(p.sin_salir)}</b> sin despachar`);
+  if (p.no_viene) trozos.push(`<b>${N(p.no_viene)}</b> que no ${p.no_viene === 1 ? 'viene' : 'vienen'}`);
+
+  return `
+    <div class="card rep-card bus-prod">
+      <div class="bus-prod__cab">
+        <h2>${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}</h2>
+        <p class="bus-prod__cuenta">${trozos.join(' · ') || 'Sin unidades'}</p>
+      </div>
+      <div class="bus-paradas">${p.paradas.map(busParada).join('')}</div>
+    </div>`;
+}
+
+// Cada parada, dicha como se la contaría a alguien por teléfono.
+function busParada(x) {
+  const cuantas = `${N(x.cantidad)}`;
+  const deDonde = x.es_local ? esc(x.tienda)
+    : `${esc(x.tienda)}${x.fecha ? ', ' + diaCorto(x.fecha) : ''}`;
+  let frase;
+  let color = 'camino';
+  switch (x.donde) {
+    case 'aqui':
+      frase = 'ya están en la tienda';
+      color = 'aqui';
+      break;
+    case 'por_anotar':
+      frase = `la caja ${N(x.caja)} ya llegó, pero esto no se ha anotado`;
+      color = 'ojo';
+      break;
+    case 'a_honduras':
+      frase = `vienen en la caja ${N(x.caja)}`
+        + (x.caja_eta ? `, se espera el ${diaCorto(x.caja_eta)}` : '');
+      break;
+    case 'en_caja':
+      frase = `en Miami, metidas en la caja ${N(x.caja)} que se está armando`;
+      break;
+    case 'en_miami':
+      frase = `en Miami desde el ${diaCorto(x.llegada_miami)}, esperando caja`;
+      break;
+    case 'a_miami':
+      frase = `despachadas${x.empresa ? ' por ' + esc(x.empresa) : ''}, van para Miami`
+        + (x.eta_miami ? `, llegan el ${diaCorto(x.eta_miami)}` : '');
+      break;
+    case 'en_tienda_eu':
+      frase = x.es_local ? 'compradas, sin recibir todavía'
+        : 'la tienda todavía no las despacha';
+      color = 'quieto';
+      break;
+    case 'no_suplido':
+      frase = 'la tienda avisó que no las va a mandar';
+      color = 'no';
+      break;
+    default:
+      frase = 'canceladas';
+      color = 'no';
+  }
+  return `
+    <div class="bus-parada bus-parada--${color}">
+      <span class="bus-parada__n">${cuantas}</span>
+      <span class="bus-parada__txt">
+        ${frase}
+        <span class="bus-parada__de">${deDonde}${
+          x.tracking ? ' · ' + esc(x.tracking) : ''}</span>
+      </span>
+    </div>`;
+}
+
 // ── Recibir la caja ──────────────────────────────────────────────────────
 // Se usa con la caja abierta enfrente: primero el escáner (que es lo que más
 // se repite), botones grandes y un toque para el caso normal —llegó completo—.
@@ -4136,7 +4309,8 @@ async function gasAdministrarCategorias() {
 
 function comIniciarBotones() {
   comVista = PPSegmento.crear($('com-vista'), {
-    opciones: [{ v: 'ordenes', t: 'Órdenes' }, { v: 'envios', t: 'Envíos' },
+    opciones: [{ v: 'buscar', t: '¿Dónde está?' },
+               { v: 'ordenes', t: 'Órdenes' }, { v: 'envios', t: 'Envíos' },
                { v: 'cajas', t: 'Cajas' }],
     valor: 'ordenes',
     al: comMostrarVista,

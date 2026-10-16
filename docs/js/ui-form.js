@@ -40,7 +40,7 @@ window.PPForm = (function () {
     const valor = c.valor == null ? '' : c.valor;
     switch (c.tipo) {
       case 'nota':
-        return `<p class="ppform__nota">${c.html || esc(c.texto || '')}</p>`;
+        return `<p class="ppform__nota" id="${id}">${c.html || esc(c.texto || '')}</p>`;
 
       case 'texto-largo':
         return `<label class="ppform__campo">${etiquetaHTML(c)}
@@ -150,6 +150,10 @@ window.PPForm = (function () {
     const cfg = Object.assign({
       titulo: '', sub: '', confirmar: 'Guardar', cancelar: 'Cancelar',
       ancho: 520, campos: [], validar: null, enfocar: null,
+      // alCambiar(valores, api) corre con cada tecla. `api.nota(id, html)`
+      // reescribe un campo de tipo nota: sirve para ir enseñando una cuenta
+      // mientras se llena (el flete de la caja, por ejemplo).
+      alCambiar: null,
     }, opciones || {});
     const campos = cfg.campos.filter(Boolean);
     const montados = {};
@@ -161,7 +165,7 @@ window.PPForm = (function () {
       confirmar: cfg.confirmar,
       cancelar: cfg.cancelar,
       cuerpo: cuerpoHTML(campos),
-      alAbrir: () => {
+      alAbrir: (caja) => {
         for (const c of campos) {
           if (c.oculto) continue;
           const hueco = document.getElementById(`ppf-${c.id}`);
@@ -174,6 +178,19 @@ window.PPForm = (function () {
               vacio: c.placeholder || 'Elegir…',
               accion: c.accion || null });
           }
+        }
+        if (cfg.alCambiar) {
+          const ayuda = {
+            nota: (id, html) => {
+              const p = document.getElementById(`ppf-${id}`);
+              if (p) p.innerHTML = html;
+            },
+          };
+          const correr = () => cfg.alCambiar(leer(campos, montados), ayuda);
+          caja.addEventListener('input', correr);
+          caja.addEventListener('change', correr);
+          Object.values(montados).forEach((m) => { if (m.alCambiar) m.alCambiar(correr); });
+          correr();
         }
         const primero = cfg.enfocar
           || (campos.find((c) => !c.oculto && c.tipo !== 'nota') || {}).id;

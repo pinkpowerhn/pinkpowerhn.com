@@ -1068,6 +1068,14 @@
         </div>
       </div>
       <div id="com-trk-ficha" class="hidden"></div>
+
+      <!-- Vista de cajas consolidadas -->
+      <div id="com-caj" class="hidden">
+        <div class="card rep-card">
+          <div id="com-caj-tabla"></div>
+        </div>
+      </div>
+      <div id="com-caj-ficha" class="hidden"></div>
     </section>
 
     <!-- TAB: General -->
@@ -2050,8 +2058,11 @@ const hoyISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const diaCorto = (iso) => {
-  const [a, m, d] = iso.split('-');
-  return `${d}/${m}/${a}`;
+  if (!iso) return '';
+  // Aguanta una fecha suelta (2026-10-16) y una marca de tiempo completa
+  // (2026-10-16T16:47:59Z): antes la segunda salía como "16T16:47:59/10/2026".
+  const [a, m, d] = String(iso).slice(0, 10).split('-');
+  return d ? `${d}/${m}/${a}` : String(iso);
 };
 
 function gasEstado(texto, error) {
@@ -2679,13 +2690,17 @@ let comTrks = [];
 let comTrkAbierto = null;
 
 function comMostrarVista(cual) {
-  const esOrdenes = cual === 'ordenes';
-  $('com-lista').classList.toggle('hidden', !esOrdenes || !!comOrdenAbierta);
-  $('com-ficha').classList.toggle('hidden', !esOrdenes || !comOrdenAbierta);
-  $('com-trk').classList.toggle('hidden', esOrdenes || !!comTrkAbierto);
-  $('com-trk-ficha').classList.toggle('hidden', esOrdenes || !comTrkAbierto);
-  $('com-nueva-txt').textContent = esOrdenes ? 'Nueva orden' : 'Nuevo envío';
-  if (!esOrdenes && !comTrks.length) comTrkCargar();
+  const ver = (id, siEsta) => $(id).classList.toggle('hidden', !siEsta);
+  ver('com-lista', cual === 'ordenes' && !comOrdenAbierta);
+  ver('com-ficha', cual === 'ordenes' && !!comOrdenAbierta);
+  ver('com-trk', cual === 'envios' && !comTrkAbierto);
+  ver('com-trk-ficha', cual === 'envios' && !!comTrkAbierto);
+  ver('com-caj', cual === 'cajas' && !comCajAbierta);
+  ver('com-caj-ficha', cual === 'cajas' && !!comCajAbierta);
+  $('com-nueva-txt').textContent = cual === 'ordenes' ? 'Nueva orden'
+    : cual === 'envios' ? 'Nuevo envío' : 'Nueva caja';
+  if (cual === 'envios' && !comTrks.length) comTrkCargar();
+  if (cual === 'cajas' && !comCajas.length) comCajCargar();
 }
 
 async function comTrkCargar() {
@@ -2831,8 +2846,7 @@ async function comTrkQuitar(trk) {
 // ── La ficha de un envío ─────────────────────────────────────────────────
 function comTrkVolver() {
   comTrkAbierto = null;
-  $('com-trk-ficha').classList.add('hidden');
-  $('com-trk').classList.remove('hidden');
+  comMostrarVista('envios');
 }
 
 async function comTrkAbrir(tid) {
@@ -3021,6 +3035,384 @@ async function gasNuevaCategoria() {
       confirmar: 'Entendido', cancelar: null, ancho: 420 });
     return null;
   }
+}
+
+
+// ── Cajas consolidadas ───────────────────────────────────────────────────
+// El cuarto momento: una vez por semana la consolidadora junta lo que llegó a
+// Miami y arma UNA caja, con su peso y su flete. De ahí va a salir después el
+// costo real de cada producto, así que una caja cerrada ya no se toca.
+let comCajTabla = null;
+let comCajas = [];
+let comCajAbierta = null;
+let comCajSiguiente = 1;
+
+const COM_CAJA_ESTADOS = { abierta: 'Armándose', en_camino: 'En camino',
+                           recibida: 'Recibida' };
+
+async function comCajCargar() {
+  $('com-estado').textContent = 'Cargando…';
+  if (comCajTabla) comCajTabla.cargando();
+  try {
+    const r = await api('/admin/compras/cajas');
+    comCajas = r.cajas || [];
+    comCajSiguiente = r.siguiente || 1;
+    $('com-estado').textContent = comCajas.length
+      ? `${N(comCajas.length)} ${comCajas.length === 1 ? 'caja' : 'cajas'}` : '';
+    if (comVista) comVista.cuenta('cajas', comCajas.length || null);
+    comCajPintar();
+  } catch (ex) { $('com-estado').textContent = ex.message; }
+}
+
+// El flete, dicho como ella lo cuenta: el total y cuánto sale la libra.
+function comCajFlete(c) {
+  if (!c.flete_total) return '—';
+  const porLibra = c.peso_total ? Number(c.flete_total) / Number(c.peso_total) : 0;
+  return `${comPlata(c.flete_total, c.moneda)}`
+    + (porLibra ? `<div class="com-pie">${comPlata(porLibra, c.moneda)} la libra`
+                  + ` · ${N(c.peso_total)} lb</div>` : '');
+}
+
+function comCajPintar() {
+  if (!comCajTabla) {
+    comCajTabla = PPTabla.crear($('com-caj-tabla'), {
+      columnas: [
+        { clave: 'correlativo', titulo: 'Caja', principal: true,
+          html: (f) => `Caja ${N(f.correlativo)}`
+            + (f.notas ? `<div class="com-pie">${esc(f.notas)}</div>` : '') },
+        { clave: 'unidades', titulo: 'Lleva',
+          html: (f) => (f.trackings
+            ? `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
+              + `<div class="com-pie">${N(f.trackings)} ${f.trackings === 1 ? 'envío' : 'envíos'}</div>`
+            : '<span class="com-pie">vacía</span>') },
+        { clave: 'flete_total', titulo: 'Flete', html: comCajFlete },
+        { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(
+            f.estado === 'recibida' ? 'recibido'
+              : f.estado === 'en_camino' ? 'en_caja' : 'pedido',
+            COM_CAJA_ESTADOS[f.estado] || f.estado)
+          + (f.estado === 'en_camino' && f.eta
+              ? `<div class="com-pie">llega ~${esc(diaCorto(f.eta))}</div>` : '') },
+      ],
+      filtros: [{ clave: 'estado', titulo: 'Estado', opciones: [
+        { v: 'abierta', t: 'Armándose' }, { v: 'en_camino', t: 'En camino' },
+        { v: 'recibida', t: 'Recibidas' }] }],
+      buscar: (f, t) => (`caja ${f.correlativo} ${f.notas || ''}`).toLowerCase().includes(t),
+      acciones: (f) => [
+        { texto: 'Ver la caja', al: () => comCajAbrir(f.id) },
+        ...(f.estado === 'abierta'
+          ? [{ texto: 'Cerrarla y mandarla', al: () => comCajCerrar(f) }]
+          : []),
+        ...(f.estado === 'en_camino'
+          ? [{ texto: 'Ya llegó a Pink Power', al: () => comCajRecibir(f) },
+             { texto: 'Volver a abrirla', al: () => comCajReabrir(f) }]
+          : []),
+        { texto: 'Quitar', peligro: true, al: () => comCajQuitar(f) },
+      ],
+      porPagina: 12,
+      vacio: 'Todavía no hay cajas. Cuando la consolidadora arme una, anótela aquí.',
+    });
+  }
+  comCajTabla.datos(comCajas);
+}
+
+// ── Nueva caja ───────────────────────────────────────────────────────────
+async function comCajForm(caja) {
+  const esNueva = !caja;
+  const datos = await PPForm.abrir({
+    titulo: esNueva ? 'Nueva caja' : `Corregir la caja ${caja.correlativo}`,
+    confirmar: esNueva ? 'Crear la caja' : 'Guardar cambios',
+    ancho: 460,
+    campos: [
+      esNueva
+        ? { id: 'correlativo', tipo: 'numero', etiqueta: 'Número de caja',
+            paso: 1, min: 1, entero: true, valor: comCajSiguiente,
+            obligatorio: 'Póngale número a la caja' }
+        : null,
+      { id: 'notas', tipo: 'texto', etiqueta: 'Nota', ayuda: 'opcional', max: 1000,
+        placeholder: 'Lo que convenga recordar de esta caja',
+        valor: caja ? (caja.notas || '') : '' },
+    ],
+  });
+  if (!datos) return;
+  try {
+    if (esNueva) {
+      const creada = await api('/admin/compras/cajas',
+        { method: 'POST', body: JSON.stringify(datos) });
+      await comCajCargar();
+      comCajAbrir(creada.caja.id);     // se abre para meterle los envíos
+    } else {
+      await api('/admin/compras/cajas/' + caja.id,
+        { method: 'PATCH', body: JSON.stringify(datos) });
+      await comCajCargar();
+      if (comCajAbierta === caja.id) comCajAbrir(caja.id);
+    }
+  } catch (ex) { comError('No se pudo guardar la caja', ex); }
+}
+
+// ── Cerrarla: el peso y el flete ─────────────────────────────────────────
+async function comCajCerrar(caja) {
+  const moneda = caja.moneda || 'USD';
+  const cuenta = (v) => {
+    const peso = Number(v.peso_total) || 0;
+    const tarifa = Number(v.tarifa_libra) || 0;
+    const fijo = Number(v.cargo_fijo) || 0;
+    if (!peso || !tarifa) return 'Ponga el peso y la tarifa para ver la cuenta.';
+    const total = peso * tarifa + fijo;
+    return `${N(peso)} lb × ${comPlata(tarifa, moneda)} + ${comPlata(fijo, moneda)} = `
+      + `<b>${comPlata(total, moneda)}</b><br>Sale a <b>${comPlata(total / peso, moneda)}`
+      + '</b> la libra.';
+  };
+  const datos = await PPForm.abrir({
+    titulo: `Cerrar la caja ${caja.correlativo}`,
+    sub: 'Con el peso y la tarifa que le pasó la consolidadora',
+    ancho: 480,
+    confirmar: 'Cerrarla y mandarla',
+    campos: [
+      { id: 'peso_total', tipo: 'numero', etiqueta: 'Peso total', ayuda: 'libras',
+        mitad: true, paso: 0.01, min: 0.001, placeholder: '50',
+        obligatorio: 'Ponga cuánto pesó la caja' },
+      { id: 'tarifa_libra', tipo: 'dinero', etiqueta: 'Tarifa por libra',
+        prefijo: moneda === 'HNL' ? 'L.' : 'US$', mitad: true, min: 0,
+        placeholder: '2.20', obligatorio: 'Ponga cuánto cobran por libra' },
+      { id: 'cargo_fijo', tipo: 'dinero', etiqueta: 'Cargo fijo de la caja',
+        prefijo: moneda === 'HNL' ? 'L.' : 'US$', mitad: true, min: 0, valor: 10 },
+      { id: 'eta', tipo: 'fecha', etiqueta: 'Cuándo llega', ayuda: 'estimado',
+        mitad: true, valor: comCajEnCuatroSemanas() },
+      { id: 'cuenta', tipo: 'nota', texto: '' },
+    ],
+    alCambiar: (v, api) => api.nota('cuenta', cuenta(v)),
+  });
+  if (!datos) return;
+  try {
+    await api(`/admin/compras/cajas/${caja.id}/cerrar`,
+      { method: 'POST', body: JSON.stringify(datos) });
+    await comCajCargar();
+    if (comCajAbierta === caja.id) await comCajAbrir(caja.id);
+  } catch (ex) { comError('No se pudo cerrar la caja', ex); }
+}
+
+function comCajEnCuatroSemanas() {
+  const d = new Date();
+  d.setDate(d.getDate() + 28);
+  return d.toISOString().slice(0, 10);
+}
+
+async function comCajReabrir(caja) {
+  const si = await PPModal.confirmar({
+    titulo: `¿Abrir otra vez la caja ${caja.correlativo}?`,
+    cuerpo: '<p class="ppform__nota">Se podrá volver a cambiar lo que lleva. '
+      + 'Lo de adentro vuelve a quedar "en Miami" hasta que la cierre de nuevo.</p>',
+    confirmar: 'Sí, abrirla',
+  });
+  if (!si) return;
+  try {
+    await api(`/admin/compras/cajas/${caja.id}/reabrir`, { method: 'POST' });
+    await comCajCargar();
+    if (comCajAbierta === caja.id) await comCajAbrir(caja.id);
+  } catch (ex) { comError('No se pudo abrir', ex); }
+}
+
+async function comCajRecibir(caja) {
+  const si = await PPModal.confirmar({
+    titulo: `¿La caja ${caja.correlativo} ya llegó?`,
+    cuerpo: '<p class="ppform__nota">Queda marcada como recibida. Lo que trae se '
+      + 'va recibiendo producto por producto al abrirla.</p>',
+    confirmar: 'Sí, ya llegó',
+  });
+  if (!si) return;
+  try {
+    await api(`/admin/compras/cajas/${caja.id}/recibir`, { method: 'POST' });
+    await comCajCargar();
+    if (comCajAbierta === caja.id) await comCajAbrir(caja.id);
+  } catch (ex) { comError('No se pudo marcar', ex); }
+}
+
+async function comCajQuitar(caja) {
+  const si = await PPModal.confirmar({
+    titulo: `¿Quitar la caja ${caja.correlativo}?`,
+    cuerpo: '<p class="ppform__nota">Los envíos que llevaba no se borran: salen '
+      + 'de la caja y quedan esperando otra.</p>',
+    confirmar: 'Sí, quitarla', peligro: true,
+  });
+  if (!si) return;
+  try {
+    await api('/admin/compras/cajas/' + caja.id, { method: 'DELETE' });
+    comCajVolver();
+    await comCajCargar();
+  } catch (ex) { comError('No se pudo quitar', ex); }
+}
+
+// ── La ficha de una caja ─────────────────────────────────────────────────
+function comCajVolver() {
+  comCajAbierta = null;
+  comMostrarVista('cajas');
+}
+
+async function comCajAbrir(cid) {
+  comCajAbierta = cid;
+  comMostrarVista('cajas');
+  const caja = $('com-caj-ficha');
+  caja.innerHTML = '<div class="card rep-card" id="com-caj-cargando"></div>';
+  PPEsqueleto.pintar('com-caj-cargando', 'ficha');
+  let datos;
+  try { datos = await api('/admin/compras/cajas/' + cid); }
+  catch (ex) {
+    caja.innerHTML = `<div class="card rep-card">${esc(ex.message)}</div>`;
+    return;
+  }
+  const c = datos.caja, trk = datos.trackings || [], items = datos.items || [];
+  const unidades = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
+  const abierta = c.estado === 'abierta';
+
+  caja.innerHTML = `
+    <button class="com-volver" type="button" id="com-caj-atras">← Todas las cajas</button>
+    <div class="card rep-card">
+      <div class="com-ficha__cab">
+        <div>
+          <h2 class="com-ficha__tienda">Caja ${N(c.correlativo)}</h2>
+          <p class="com-ficha__sub">${esc(COM_CAJA_ESTADOS[c.estado] || c.estado)}${
+            c.cerrada_en ? ' · cerrada el ' + esc(diaCorto(c.cerrada_en)) : ''}</p>
+        </div>
+        <div>${comEtiq(c.estado === 'recibida' ? 'recibido'
+          : c.estado === 'en_camino' ? 'en_caja' : 'pedido',
+          COM_CAJA_ESTADOS[c.estado] || c.estado)}</div>
+      </div>
+      <div class="com-datos">
+        <div><div class="com-dato__nm">Envíos</div>
+             <div class="com-dato__vl">${N(trk.length)}</div></div>
+        <div><div class="com-dato__nm">Unidades</div>
+             <div class="com-dato__vl">${N(unidades)}</div></div>
+        <div><div class="com-dato__nm">Peso</div>
+             <div class="com-dato__vl">${c.peso_total ? N(c.peso_total) + ' lb' : '—'}</div></div>
+        <div><div class="com-dato__nm">Flete</div>
+             <div class="com-dato__vl">${comCajFlete(c)}</div></div>
+        <div><div class="com-dato__nm">Llega</div>
+             <div class="com-dato__vl">${c.eta ? esc(diaCorto(c.eta)) : '—'}</div></div>
+      </div>
+      ${c.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(c.notas)}</p>` : ''}
+      ${abierta && trk.length ? `<div style="margin-top:1rem">
+        <button class="btn btn--primary btn--sm" type="button" id="com-caj-cerrar">
+          Cerrarla y mandarla</button></div>` : ''}
+    </div>
+
+    <div class="card rep-card">
+      <div class="rep-card__cab">
+        <h2>Qué envíos lleva</h2>
+        ${abierta ? `<button class="btn btn--primary btn--sm" type="button"
+          id="com-caj-add">Meter envíos</button>` : ''}
+      </div>
+      <div id="com-caj-trk"></div>
+    </div>
+
+    <div class="card rep-card">
+      <div class="rep-card__cab">
+        <h2>Lo que viene adentro</h2>
+        <span class="rep-card__sub">${N(items.length)} ${items.length === 1 ? 'producto' : 'productos'}</span>
+      </div>
+      <div id="com-caj-items"></div>
+    </div>`;
+
+  $('com-caj-atras').onclick = comCajVolver;
+  const bCerrar = $('com-caj-cerrar');
+  if (bCerrar) bCerrar.onclick = () => comCajCerrar(c);
+  const bAdd = $('com-caj-add');
+  if (bAdd) bAdd.onclick = () => comCajMeter(cid);
+
+  PPTabla.crear($('com-caj-trk'), {
+    columnas: [
+      { clave: 'numero', titulo: 'Tracking', principal: true,
+        html: (f) => `${esc(f.numero)}${f.empresa ? `<div class="com-pie">${esc(f.empresa)}</div>` : ''}` },
+      { clave: 'unidades', titulo: 'Trae',
+        html: (f) => `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}` },
+      { clave: 'llegada_miami', titulo: 'Llegó a Miami',
+        html: (f) => (f.llegada_miami ? esc(diaCorto(f.llegada_miami)) : '—') },
+    ],
+    acciones: (f) => (abierta
+      ? [{ texto: 'Sacar de la caja', peligro: true, al: () => comCajSacar(cid, f) }]
+      : []),
+    porPagina: 20,
+    vacio: abierta ? 'Esta caja está vacía. Toque "Meter envíos".'
+                   : 'Esta caja no lleva envíos.',
+  }).datos(trk);
+
+  PPTabla.crear($('com-caj-items'), {
+    columnas: [
+      { clave: 'titulo', titulo: 'Producto', principal: true,
+        html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
+          + `<div class="com-pie">${esc(f.tienda)}</div>` },
+      { clave: 'tracking', titulo: 'En qué envío' },
+      { clave: 'cantidad', titulo: 'Cuántas', html: (f) => N(f.cantidad) },
+      { clave: 'recibidas', titulo: 'Recibidas',
+        html: (f) => comAvance(f.recibidas, f.cantidad) },
+    ],
+    buscar: (f, t) => (f.titulo + ' ' + f.tienda).toLowerCase().includes(t),
+    porPagina: 20,
+    vacio: 'Todavía no hay productos en esta caja.',
+  }).datos(items);
+}
+
+async function comCajSacar(cid, trk) {
+  const si = await PPModal.confirmar({
+    titulo: '¿Sacarlo de la caja?',
+    cuerpo: `<p class="ppform__nota">El envío <b>${esc(trk.numero)}</b> vuelve a `
+      + 'quedar esperando caja.</p>',
+    confirmar: 'Sí, sacarlo', peligro: true,
+  });
+  if (!si) return;
+  try {
+    await api('/admin/compras/cajas/trackings/' + trk.id, { method: 'DELETE' });
+    await comCajCargar();
+    await comCajAbrir(cid);
+  } catch (ex) { comError('No se pudo sacar', ex); }
+}
+
+// ── Meter envíos en la caja ──────────────────────────────────────────────
+async function comCajMeter(cid) {
+  let libres = [];
+  try {
+    libres = (await api(`/admin/compras/cajas/${cid}/disponibles`)).trackings || [];
+  } catch (ex) { comError('No se pudo ver qué envíos hay', ex); return; }
+
+  if (!libres.length) {
+    PPModal.abrir({ titulo: 'No hay envíos esperando', ancho: 440, cancelar: null,
+      cuerpo: '<p class="ppform__nota">Para meter un envío en la caja, primero '
+        + 'tiene que estar marcado como llegado a Miami.</p>',
+      confirmar: 'Entendido' });
+    return;
+  }
+
+  const filas = libres.map((t, i) => `
+    <label class="com-elegir__it">
+      <input type="checkbox" class="com-elegir__ch" data-i="${i}" />
+      <span class="com-elegir__txt">
+        <span class="com-elegir__nm">${esc(t.numero)}${t.empresa ? ' · ' + esc(t.empresa) : ''}</span>
+        <span class="com-elegir__sub">${N(t.unidades)} ${t.unidades === 1 ? 'unidad' : 'unidades'}
+          · en Miami desde el ${esc(diaCorto(t.llegada_miami))}</span>
+      </span>
+    </label>`).join('');
+
+  const datos = await PPModal.abrir({
+    titulo: 'Qué envíos van en esta caja',
+    ancho: 540,
+    confirmar: 'Meterlos a la caja',
+    cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Solo salen los
+             que ya están en Miami y todavía no van en ninguna caja.</p>
+           <div class="com-elegir">${filas}</div>`,
+    alConfirmar: (_caja, modal) => {
+      const ids = [...document.querySelectorAll('.com-elegir__ch')]
+        .filter((ch) => ch.checked)
+        .map((ch) => libres[Number(ch.dataset.i)].id);
+      if (!ids.length) { modal.avisar('Marque al menos un envío'); return false; }
+      return { trackings: ids };
+    },
+  });
+  if (!datos) return;
+  try {
+    await api(`/admin/compras/cajas/${cid}/trackings`,
+      { method: 'POST', body: JSON.stringify(datos) });
+    await comCajCargar();
+    await comCajAbrir(cid);
+  } catch (ex) { comError('No se pudieron meter', ex); }
 }
 
 // El formulario: lo justo, que es como se pidió. Sirve para uno nuevo y para
@@ -3319,12 +3711,17 @@ async function gasAdministrarCategorias() {
 
 function comIniciarBotones() {
   comVista = PPSegmento.crear($('com-vista'), {
-    opciones: [{ v: 'ordenes', t: 'Órdenes' }, { v: 'envios', t: 'Envíos' }],
+    opciones: [{ v: 'ordenes', t: 'Órdenes' }, { v: 'envios', t: 'Envíos' },
+               { v: 'cajas', t: 'Cajas' }],
     valor: 'ordenes',
     al: comMostrarVista,
   });
-  $('com-nueva').addEventListener('click', () => (
-    comVista.valor() === 'ordenes' ? comFormOrden(null) : comTrkForm(null)));
+  $('com-nueva').addEventListener('click', () => {
+    const v = comVista.valor();
+    if (v === 'ordenes') comFormOrden(null);
+    else if (v === 'envios') comTrkForm(null);
+    else comCajForm(null);
+  });
   PPMenu.colgar($('com-mas'), () => [
     { texto: 'Tipo de cambio del mes', al: comTipoDeCambio },
   ]);

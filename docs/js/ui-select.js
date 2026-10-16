@@ -29,7 +29,12 @@ window.PPSelect = (function () {
 
   function crear(destino, opciones) {
     const cfg = Object.assign(
-      { opciones: [], valor: null, vacio: 'Elegir…', al: null }, opciones || {});
+      // `accion`: { texto, al } pone un renglón al pie del menú para crear algo
+      // que no está en la lista. `al` devuelve la opción nueva ({v, t}) o null.
+      // Sirve para el momento en que uno descubre que le falta la categoría
+      // justo mientras está llenando el formulario.
+      { opciones: [], valor: null, vacio: 'Elegir…', al: null, accion: null },
+      opciones || {});
     let lista = cfg.opciones.slice();
     let actual = cfg.valor;
     let abierto = false;
@@ -58,7 +63,9 @@ window.PPSelect = (function () {
         <button type="button" role="option" class="ppsel__opt${
           String(x.v) === String(actual) ? ' is-activo' : ''}"
           data-v="${esc(x.v)}" aria-selected="${String(x.v) === String(actual)}"
-        >${esc(x.t)}</button>`).join('');
+        >${esc(x.t)}</button>`).join('')
+        + (cfg.accion ? `<button type="button" class="ppsel__accion"
+             data-accion="1">${esc(cfg.accion.texto)}</button>` : '');
     }
 
     // Igual que el calendario: mientras está abierto cuelga del body, porque
@@ -95,7 +102,18 @@ window.PPSelect = (function () {
 
     boton.addEventListener('click', (e) => { e.preventDefault(); abrir(); });
 
-    menu.addEventListener('click', (e) => {
+    menu.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-accion]')) {
+        e.preventDefault();
+        abrir(false);
+        const nueva = await cfg.accion.al();
+        if (!nueva) return;
+        lista = lista.concat([nueva]);
+        actual = nueva.v;
+        pintar();
+        if (cfg.al) cfg.al(actual);
+        return;
+      }
       const b = e.target.closest('[data-v]');
       if (!b) return;
       e.preventDefault();

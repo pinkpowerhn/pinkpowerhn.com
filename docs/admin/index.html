@@ -452,6 +452,17 @@
   .gascat--off { opacity: 0.5; }
   .gascat--off .gascat__nm { text-decoration: line-through; }
   .gascat__nm { flex: 1; }
+  /* El campo para renombrar ocupa el lugar del nombre, en la misma fila. */
+  .gascat-edit {
+    flex: 1; min-width: 0; margin: 0 !important;
+    padding: 0.35rem 0.5rem !important; border: 1.5px solid var(--pink) !important;
+    border-radius: 8px !important; font: inherit; font-size: 0.86rem !important;
+    color: var(--ink); background: #fff;
+  }
+  @media (max-width: 540px) {
+    /* Dedo y teclado: el campo más alto y la letra sin zoom automático. */
+    .gascat-edit { padding: 0.5rem !important; font-size: 1rem !important; }
+  }
   .gascat__us { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
   .gascat__b {
     background: none; border: none; cursor: pointer; color: var(--muted);
@@ -2945,6 +2956,31 @@ async function comTrkMeter(tid) {
   } catch (ex) { comError('No se pudieron meter', ex); }
 }
 
+// Crear una categoría desde el desplegable del formulario. Devuelve la opción
+// nueva para que el desplegable la agregue y la deje elegida.
+async function gasNuevaCategoria() {
+  const datos = await PPForm.abrir({
+    titulo: 'Nueva categoría', ancho: 420,
+    campos: [{ id: 'nombre', tipo: 'texto', etiqueta: 'Cómo se llama', max: 60,
+               placeholder: 'Fletes, empaque…', obligatorio: 'Escriba el nombre' }],
+  });
+  if (!datos) return null;
+  try {
+    const r = await api('/admin/gastos/categorias',
+      { method: 'POST', body: JSON.stringify({ nombre: datos.nombre.trim() }) });
+    const id = r.id || (r.categoria && r.categoria.id);
+    gasCats = (await api('/admin/gastos/categorias')).categorias || [];
+    const creada = gasCats.find((c) => c.id === id)
+      || gasCats.find((c) => c.nombre === datos.nombre.trim());
+    return creada ? { v: creada.id, t: creada.nombre } : null;
+  } catch (ex) {
+    await PPModal.abrir({ titulo: 'No se pudo crear la categoría',
+      cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+      confirmar: 'Entendido', cancelar: null, ancho: 420 });
+    return null;
+  }
+}
+
 // El formulario: lo justo, que es como se pidió. Sirve para uno nuevo y para
 // corregir uno que ya está.
 async function gasFormulario(gasto) {
@@ -2965,7 +3001,9 @@ async function gasFormulario(gasto) {
       { id: 'categoria_id', tipo: 'select', etiqueta: 'Categoría', mitad: true,
         valor: gasto ? gasto.categoria_id : (gasCats[0] || {}).id,
         opciones: gasCats.map((c) => ({ v: c.id, t: c.nombre })),
-        obligatorio: 'Elija la categoría' },
+        obligatorio: 'Elija la categoría',
+        // Si falta una, se crea sin salirse de aquí.
+        accion: { texto: '+ Nueva categoría', al: gasNuevaCategoria } },
       { id: 'monto', tipo: 'dinero', etiqueta: 'Monto', prefijo: 'L.',
         min: 0.01, placeholder: '0.00', valor: gasto ? gasto.monto : null,
         obligatorio: 'Ponga cuánto fue' },
@@ -3164,6 +3202,42 @@ async function gasAdministrarCategorias() {
         caja.innerHTML = pinta();
         avisar('');
       };
+      // Cambia el nombre por un campo dentro de la misma fila. Enter guarda,
+      // Escape deja todo como estaba, y al salir del campo también guarda:
+      // en el teléfono casi nadie le da a Enter.
+      const renombrarAqui = (fila, cat, avisar, refrescar) => {
+        if (!fila || fila.querySelector('.gascat-edit')) return;
+        const nombre = fila.querySelector('.gascat__nm');
+        const ancho = nombre.getBoundingClientRect().width;
+        const campo = document.createElement('input');
+        campo.type = 'text';
+        campo.className = 'gascat-edit';
+        campo.maxLength = 60;
+        campo.value = cat.nombre;
+        campo.style.minWidth = Math.max(140, Math.round(ancho)) + 'px';
+        nombre.replaceWith(campo);
+        campo.focus();
+        campo.select();
+
+        let listo = false;
+        const terminar = async (guardar) => {
+          if (listo) return;
+          listo = true;
+          const valor = campo.value.trim();
+          if (!guardar || !valor || valor === cat.nombre) { await refrescar(); return; }
+          try {
+            await api(`/admin/gastos/categorias/${cat.id}`,
+                      { method: 'PATCH', body: JSON.stringify({ nombre: valor }) });
+          } catch (ex) { avisar(ex.message); }
+          await refrescar();
+        };
+        campo.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); terminar(true); }
+          // Escape no debe cerrar la ventana entera, solo salir del campo.
+          if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); terminar(false); }
+        });
+        campo.addEventListener('blur', () => terminar(true));
+      };
       document.getElementById('gascat-add').addEventListener('click', async () => {
         const campo = document.getElementById('gascat-nombre');
         const nombre = campo.value.trim();
@@ -3182,24 +3256,9 @@ async function gasAdministrarCategorias() {
         if (!cat) return;
         try {
           if (b.dataset.renombrar) {
-            // El formulario se abre encima y esta ventana se queda: al
-            // volver basta con repintar la lista.
-            const datos = await PPForm.abrir({
-              titulo: 'Nuevo nombre', ancho: 420,
-              campos: [{ id: 'nombre', tipo: 'texto', etiqueta: 'Nombre de la categoría',
-                         max: 60, valor: cat.nombre, obligatorio: 'Escriba el nombre' }],
-            });
-            if (datos) {
-              try {
-                await api(`/admin/gastos/categorias/${id}`,
-                          { method: 'PATCH', body: JSON.stringify({ nombre: datos.nombre.trim() }) });
-              } catch (ex) {
-                await PPModal.abrir({ titulo: 'No se pudo cambiar el nombre',
-                  cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
-                  confirmar: 'Entendido', cancelar: null, ancho: 420 });
-              }
-            }
-            await refrescar();
+            // Se edita en la misma fila: abrir otra ventana para cambiar un
+            // texto eran dos capas para nada.
+            renombrarAqui(b.closest('.gascat'), cat, avisar, refrescar);
             return;
           } else if (!cat.activa) {
             await api(`/admin/gastos/categorias/${id}`,

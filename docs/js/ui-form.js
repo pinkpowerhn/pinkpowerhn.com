@@ -171,7 +171,8 @@ window.PPForm = (function () {
           } else if (c.tipo === 'select') {
             montados[c.id] = PPSelect.crear(hueco, {
               opciones: c.opciones || [], valor: c.valor,
-              vacio: c.placeholder || 'Elegir…' });
+              vacio: c.placeholder || 'Elegir…',
+              accion: c.accion || null });
           }
         }
         const primero = cfg.enfocar

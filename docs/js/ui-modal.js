@@ -74,7 +74,7 @@ window.PPModal = (function () {
         fondo.classList.add('is-yendose');
         abiertas = Math.max(0, abiertas - 1);
         if (!abiertas) document.body.classList.remove('ppmodal-abierto');
-        document.removeEventListener('keydown', alEscape, true);
+        document.removeEventListener('keydown', alEscape);
         setTimeout(() => { if (fondo.parentNode) fondo.parentNode.removeChild(fondo); }, 130);
         resolver(valor === undefined ? null : valor);
       }
@@ -88,9 +88,10 @@ window.PPModal = (function () {
         },
       };
 
+      // Ojo: en burbuja, NO en captura. Lo de adentro tiene que poder quedarse
+      // con la tecla: un campo que se está editando en línea cancela su edición
+      // con Escape, y si la ventana escuchara primero se cerraría entera.
       const alEscape = (e) => {
-        // Solo la de más arriba, y solo si nadie más lo usó ya (un calendario
-        // o un desplegable abierto se cierran ellos primero).
         if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); cerrar(null); }
       };
 
@@ -122,7 +123,7 @@ window.PPModal = (function () {
       document.body.appendChild(fondo);
       abiertas += 1;
       document.body.classList.add('ppmodal-abierto');
-      document.addEventListener('keydown', alEscape, true);
+      document.addEventListener('keydown', alEscape);
 
       if (cfg.alAbrir) cfg.alAbrir(caja, api);
     });

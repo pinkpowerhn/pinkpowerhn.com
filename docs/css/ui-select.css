@@ -45,6 +45,20 @@
 .ppsel__opt:hover { background: #fff0f6; }
 .ppsel__opt.is-activo { background: #ffeff6; color: var(--pink-dk, #c01f6b); font-weight: 700; }
 
+/* El renglón de abajo, para crear algo que no está en la lista. Separado del
+   resto: es una acción, no una opción más. */
+.ppsel__accion {
+  display: block; width: 100%; text-align: left; border: none; cursor: pointer;
+  margin-top: 0.3rem; padding: 0.6rem 0.7rem; border-radius: 9px;
+  background: #fdf4f8; color: var(--pink-dk, #c01f6b);
+  font-family: inherit; font-size: 0.85rem; font-weight: 700;
+  border-top: 1px solid #f7e6ee;
+  /* Pegada al pie del menú: con quince o veinte opciones quedaba al final de
+     todo y en el teléfono había que recorrer la lista entera para verla. */
+  position: sticky; bottom: -0.35rem;
+}
+.ppsel__accion:hover { background: #fbe3ed; }
+
 @media (max-width: 540px) {
   .ppsel__btn { font-size: 1rem; padding: 0.6rem; }
   .ppsel__opt { padding: 0.7rem; font-size: 0.95rem; }

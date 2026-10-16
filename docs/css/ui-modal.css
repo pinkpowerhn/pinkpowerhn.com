@@ -1,0 +1,83 @@
+/* Ventana del panel — PinkPower
+   Una sola forma para todas: título, contenido, X y dos botones. En el
+   teléfono se pega abajo, que es donde llega el pulgar. */
+
+.ppmodal {
+  position: fixed; inset: 0; z-index: 1500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.2rem; background: rgba(60, 12, 32, 0.42);
+  backdrop-filter: blur(2px); animation: ppModalFondo .15s ease;
+}
+.ppmodal.is-yendose { animation: ppModalFondoSale .13s ease forwards; }
+@keyframes ppModalFondo { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ppModalFondoSale { to { opacity: 0; } }
+
+.ppmodal__caja {
+  position: relative; width: 100%; max-height: calc(100vh - 2.4rem);
+  display: flex; flex-direction: column;
+  background: #fff; border-radius: 20px; padding: 1.6rem 1.5rem 1.3rem;
+  box-shadow: 0 30px 70px -30px rgba(120, 20, 60, 0.55);
+  animation: ppModalEntra .17s ease;
+}
+.ppmodal.is-yendose .ppmodal__caja { animation: ppModalSale .13s ease forwards; }
+@keyframes ppModalEntra { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes ppModalSale { to { opacity: 0; transform: translateY(6px) scale(.99); } }
+
+.ppmodal__x {
+  position: absolute; top: 0.85rem; right: 0.9rem;
+  width: 32px; height: 32px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 10px; cursor: pointer;
+  color: var(--muted, #9a7385); transition: background .15s ease, color .15s ease;
+}
+.ppmodal__x svg { width: 17px; height: 17px; }
+.ppmodal__x:hover { background: #fdeef5; color: var(--pink-dk, #c01f6b); }
+
+.ppmodal__cab { margin: 0 2rem 1rem 0; }
+.ppmodal__tt {
+  margin: 0; font-size: 1.22rem; font-weight: 800; color: var(--ink, #3a1424);
+  letter-spacing: 0.01em;
+}
+.ppmodal__sub { margin: 0.25rem 0 0; font-size: 0.86rem; color: var(--muted, #9a7385); }
+
+/* El contenido es lo único que crece: si el formulario es largo, el scroll va
+   aquí y los botones se quedan siempre a la vista. */
+.ppmodal__cuerpo { overflow: auto; flex: 1 1 auto; margin: 0 -0.2rem; padding: 0 0.2rem; }
+
+.ppmodal__aviso {
+  margin: 0.8rem 0 0; padding: 0.6rem 0.75rem; border-radius: 11px;
+  background: #fdecef; color: #9b2f43; font-size: 0.85rem; line-height: 1.4;
+}
+.ppmodal__aviso[hidden] { display: none; }
+
+.ppmodal__pie {
+  display: flex; gap: 0.6rem; justify-content: center; margin-top: 1.2rem;
+  flex: 0 0 auto;
+}
+.ppmodal__ok, .ppmodal__no {
+  border: none; border-radius: 11px; padding: 0.7rem 1.4rem; cursor: pointer;
+  font-family: inherit; font-size: 0.92rem; font-weight: 700;
+  transition: filter .15s ease, opacity .15s ease;
+}
+.ppmodal__ok { background: var(--pink, #e8437a); color: #fff; }
+.ppmodal__ok--peligro { background: #d9365a; }
+.ppmodal__ok:hover { filter: brightness(1.06); }
+.ppmodal__ok:disabled { opacity: 0.6; cursor: default; }
+.ppmodal__no { background: #f3e7ee; color: #7b5f6d; }
+.ppmodal__no:hover { filter: brightness(0.97); }
+
+/* Sin scroll detrás mientras hay una ventana abierta. */
+body.ppmodal-abierto { overflow: hidden; }
+
+@media (max-width: 540px) {
+  .ppmodal { padding: 0; align-items: flex-end; }
+  .ppmodal__caja {
+    max-width: none !important; max-height: 92vh;
+    border-radius: 20px 20px 0 0; padding: 1.4rem 1.1rem 1.1rem;
+    animation: ppModalSube .19s ease;
+  }
+  @keyframes ppModalSube { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .ppmodal__tt { font-size: 1.12rem; }
+  /* Botones de ancho completo: el principal arriba, para el pulgar. */
+  .ppmodal__pie { flex-direction: column-reverse; gap: 0.5rem; }
+  .ppmodal__ok, .ppmodal__no { width: 100%; padding: 0.8rem; font-size: 0.95rem; }
+}

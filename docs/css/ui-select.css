@@ -1,0 +1,51 @@
+/* Desplegable del panel — PinkPower
+   El mismo que usan los filtros de PPTabla, ahora también para formularios.
+   Dentro de un formulario se viste como un campo más (esquinas de 9px, borde
+   fino): al lado de un input, una pastilla redonda se ve de otra familia. */
+
+.ppsel { position: relative; display: block; }
+
+.ppsel__btn {
+  display: flex; align-items: center; gap: 0.45rem; width: 100%;
+  background: #fff; border: 1px solid var(--linea, #f0d6e2); border-radius: 9px;
+  padding: 0.5rem 0.6rem; cursor: pointer; font-family: inherit;
+  font-size: 0.92rem; color: var(--ink, #3a1424); text-align: left;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.ppsel__btn:hover { border-color: var(--pink, #e8437a); }
+.ppsel.is-abierto .ppsel__btn {
+  border-color: var(--pink, #e8437a); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.ppsel.is-vacio .ppsel__btn { color: var(--muted, #9a7385); }
+.ppsel__txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppsel__chev {
+  width: 13px; height: 13px; color: var(--pink-dk, #c01f6b); flex: 0 0 auto;
+  transition: transform .2s ease;
+}
+.ppsel.is-abierto .ppsel__chev { transform: rotate(180deg); }
+
+.ppsel__menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; min-width: 180px;
+  background: #fff; border-radius: 13px; padding: 0.35rem;
+  border: 1px solid rgba(232,67,122,0.12);
+  box-shadow: 0 20px 44px -18px rgba(150,30,80,0.45);
+  max-height: 260px; overflow: auto; animation: ppSelIn .16s ease;
+}
+.ppsel__menu[hidden] { display: none; }
+/* Abierto, cuelga del body y lo coloca el JS: dentro de una ventana con
+   scroll, el contenedor lo recortaba. */
+.ppsel__menu--suelto { position: fixed; z-index: 2100; }
+@keyframes ppSelIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.ppsel__opt {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 0.58rem 0.7rem; border-radius: 9px; cursor: pointer; font-family: inherit;
+  font-size: 0.88rem; color: var(--ink, #3a1424); transition: background .15s ease;
+}
+.ppsel__opt:hover { background: #fff0f6; }
+.ppsel__opt.is-activo { background: #ffeff6; color: var(--pink-dk, #c01f6b); font-weight: 700; }
+
+@media (max-width: 540px) {
+  .ppsel__btn { font-size: 1rem; padding: 0.6rem; }
+  .ppsel__opt { padding: 0.7rem; font-size: 0.95rem; }
+}

@@ -1,28 +1,28 @@
 /* Formularios del panel — PinkPower
  *
- * Antes cada pantalla escribía su propio HTML dentro de un Swal: los mismos
- * `<label>`, las mismas validaciones y el mismo "(opcional)" copiados una y
- * otra vez, y cada copia con su propio criterio de cómo se ve en el teléfono.
- * Aquí se describe QUÉ se pide y el componente se encarga del resto.
+ * Se describe QUÉ se pide y el componente arma el resto: el HTML, la
+ * validación y cómo se acomoda en el teléfono. Antes cada pantalla repetía sus
+ * <label>, sus mensajes de error y su propio criterio de responsive.
  *
- * Es un script clásico (no módulo), igual que PPTabla, PPRango y PPFecha.
- * Necesita SweetAlert2 cargado (es el que ya usa el panel para sus ventanas) y
- * PPFecha para los campos de fecha.
+ * Monta sobre PPModal (la ventana), PPSelect (los desplegables) y PPFecha (el
+ * calendario). Ninguno usa controles del navegador: el <select> y el
+ * <input type="date"> se dibujan distinto en cada sistema y, puestos al lado
+ * de un campo de texto, se ve el escalón.
  *
  * Uso:
  *   const datos = await PPForm.abrir({
  *     titulo: 'Nueva orden de compra',
  *     confirmar: 'Crear la orden',
  *     campos: [
- *       { id: 'tienda', tipo: 'texto', etiqueta: 'Tienda', obligatorio: '¿En qué tienda se compró?' },
- *       { id: 'fecha',  tipo: 'fecha', etiqueta: 'Fecha', valor: hoy, max: hoy, obligatorio: true },
+ *       { id: 'tienda', tipo: 'texto', etiqueta: 'Tienda', obligatorio: '¿En qué tienda?' },
+ *       { id: 'fecha',  tipo: 'fecha', etiqueta: 'Fecha', valor: hoy, max: hoy },
  *       { id: 'moneda', tipo: 'select', etiqueta: 'Moneda', mitad: true,
  *         opciones: [{ v: 'USD', t: 'Dólares' }, { v: 'HNL', t: 'Lempiras' }] },
- *       { id: 'tasa', tipo: 'numero', etiqueta: 'Tipo de cambio', mitad: true, paso: 0.0001,
- *         obligatorioSi: (v) => v.moneda === 'USD', mensaje: 'Ponga a cómo está el dólar' },
+ *       { id: 'tasa', tipo: 'numero', etiqueta: 'Tipo de cambio', mitad: true,
+ *         obligatorioSi: (v) => v.moneda === 'USD', mensaje: 'Ponga el cambio' },
  *     ],
  *   });
- *   // datos === null si cerró sin guardar
+ *   // datos === null si se cerró sin guardar
  *
  * Tipos: texto · texto-largo · numero · dinero · fecha · select · si-no · nota
  */
@@ -47,34 +47,34 @@ window.PPForm = (function () {
           <textarea id="${id}" maxlength="${c.max || 2000}"
             placeholder="${esc(c.placeholder || '')}">${esc(valor)}</textarea></label>`;
 
+      // Los dos se montan en didOpen: aquí queda el hueco con su etiqueta.
       case 'select':
+      case 'fecha':
         return `<label class="ppform__campo">${etiquetaHTML(c)}
-          <select id="${id}">${(c.opciones || []).map((o) =>
-            `<option value="${esc(o.v)}"${String(o.v) === String(valor) ? ' selected' : ''}
-              >${esc(o.t)}</option>`).join('')}</select></label>`;
+          <span class="ppform__monta" id="${id}"></span></label>`;
 
       case 'si-no':
         return `<label class="ppform__check">
           <input type="checkbox" id="${id}"${valor ? ' checked' : ''} />
           <span>${esc(c.etiqueta || '')}</span></label>`;
 
-      case 'fecha':
-        // El calendario lo monta PPFecha en didOpen: aquí solo queda el hueco.
+      case 'dinero':
+        // El símbolo va en su propia caja pegada al campo, no flotando encima
+        // del número: superpuesto se montaba con las cifras largas.
         return `<label class="ppform__campo">${etiquetaHTML(c)}
-          <span class="ppform__fecha" id="${id}"></span></label>`;
+          <span class="ppform__grupo">
+            <span class="ppform__simbolo">${esc(c.prefijo || 'L.')}</span>
+            <input type="number" id="${id}" inputmode="decimal"
+              step="${c.paso || '0.01'}"${c.min != null ? ` min="${c.min}"` : ''}
+              placeholder="${esc(c.placeholder || '0.00')}" value="${esc(valor)}" />
+          </span></label>`;
 
       case 'numero':
-      case 'dinero': {
-        const prefijo = c.tipo === 'dinero' ? (c.prefijo || 'L.') : '';
-        const input = `<input type="number" id="${id}" inputmode="decimal"
-          ${c.paso ? `step="${c.paso}"` : 'step="0.01"'}
-          ${c.min != null ? `min="${c.min}"` : ''}
-          ${c.max != null ? `max="${c.max}"` : ''}
-          placeholder="${esc(c.placeholder || '')}" value="${esc(valor)}" />`;
         return `<label class="ppform__campo">${etiquetaHTML(c)}
-          ${prefijo ? `<span class="ppform__conpre"><i>${esc(prefijo)}</i>${input}</span>` : input}
-          </label>`;
-      }
+          <input type="number" id="${id}" inputmode="decimal"
+            step="${c.paso || '0.01'}"${c.min != null ? ` min="${c.min}"` : ''}${
+            c.max != null ? ` max="${c.max}"` : ''}
+            placeholder="${esc(c.placeholder || '')}" value="${esc(valor)}" /></label>`;
 
       default:
         return `<label class="ppform__campo">${etiquetaHTML(c)}
@@ -95,9 +95,7 @@ window.PPForm = (function () {
         if (pendiente) {
           trozos.push(`<div class="ppform__dos">${campoHTML(pendiente)}${campoHTML(c)}</div>`);
           pendiente = null;
-        } else {
-          pendiente = c;
-        }
+        } else { pendiente = c; }
       } else {
         if (pendiente) { trozos.push(campoHTML(pendiente)); pendiente = null; }
         trozos.push(campoHTML(c));
@@ -107,13 +105,13 @@ window.PPForm = (function () {
     return `<div class="ppform">${trozos.join('')}</div>`;
   }
 
-  function leer(campos, fechas) {
+  function leer(campos, montados) {
     const v = {};
     for (const c of campos) {
       if (c.oculto || c.tipo === 'nota') continue;
       const el = document.getElementById(`ppf-${c.id}`);
-      if (c.tipo === 'fecha') {
-        v[c.id] = fechas[c.id] ? fechas[c.id].valor() : '';
+      if (c.tipo === 'fecha' || c.tipo === 'select') {
+        v[c.id] = montados[c.id] ? montados[c.id].valor() : '';
       } else if (c.tipo === 'si-no') {
         v[c.id] = !!(el && el.checked);
       } else if (c.tipo === 'numero' || c.tipo === 'dinero') {
@@ -130,8 +128,8 @@ window.PPForm = (function () {
     for (const c of campos) {
       if (c.oculto || c.tipo === 'nota' || c.tipo === 'si-no') continue;
       const vacio = v[c.id] === '' || v[c.id] == null;
-      const hacefalta = c.obligatorio || (c.obligatorioSi && c.obligatorioSi(v));
-      if (hacefalta && vacio) {
+      const obligatorio = c.obligatorio || (c.obligatorioSi && c.obligatorioSi(v));
+      if (obligatorio && vacio) {
         return (typeof c.obligatorio === 'string' && c.obligatorio)
           || c.mensaje || `Falta ${String(c.etiqueta || '').toLowerCase()}`;
       }
@@ -150,48 +148,48 @@ window.PPForm = (function () {
 
   async function abrir(opciones) {
     const cfg = Object.assign({
-      titulo: '', confirmar: 'Guardar', cancelar: 'Cancelar',
+      titulo: '', sub: '', confirmar: 'Guardar', cancelar: 'Cancelar',
       ancho: 520, campos: [], validar: null, enfocar: null,
     }, opciones || {});
     const campos = cfg.campos.filter(Boolean);
-    const fechas = {};
+    const montados = {};
 
-    const r = await Swal.fire({
-      title: cfg.titulo,
-      html: cuerpoHTML(campos),
-      width: cfg.ancho,
-      showCancelButton: true,
-      confirmButtonText: cfg.confirmar,
-      cancelButtonText: cfg.cancelar,
-      confirmButtonColor: '#e8437a',
-      cancelButtonColor: '#c9b0bd',
-      focusConfirm: false,
-      didOpen: () => {
+    const datos = await PPModal.abrir({
+      titulo: cfg.titulo,
+      sub: cfg.sub,
+      ancho: cfg.ancho,
+      confirmar: cfg.confirmar,
+      cancelar: cfg.cancelar,
+      cuerpo: cuerpoHTML(campos),
+      alAbrir: () => {
         for (const c of campos) {
-          if (c.tipo === 'fecha' && !c.oculto) {
-            fechas[c.id] = PPFecha.crear(document.getElementById(`ppf-${c.id}`), {
-              valor: c.valor || '', min: c.min || '', max: c.max || '',
-            });
+          if (c.oculto) continue;
+          const hueco = document.getElementById(`ppf-${c.id}`);
+          if (c.tipo === 'fecha') {
+            montados[c.id] = PPFecha.crear(hueco, {
+              valor: c.valor || '', min: c.min || '', max: c.max || '' });
+          } else if (c.tipo === 'select') {
+            montados[c.id] = PPSelect.crear(hueco, {
+              opciones: c.opciones || [], valor: c.valor,
+              vacio: c.placeholder || 'Elegir…' });
           }
         }
         const primero = cfg.enfocar
           || (campos.find((c) => !c.oculto && c.tipo !== 'nota') || {}).id;
         const el = primero && document.getElementById(`ppf-${primero}`);
         if (el && el.focus) el.focus();
-        if (cfg.alAbrir) cfg.alAbrir({ valores: () => leer(campos, fechas) });
       },
-      willClose: () => {
-        // Los calendarios dejan oyentes en el documento: hay que soltarlos.
-        Object.values(fechas).forEach((f) => f.soltar && f.soltar());
-      },
-      preConfirm: () => {
-        const v = leer(campos, fechas);
+      alConfirmar: (_caja, api) => {
+        const v = leer(campos, montados);
         const problema = revisar(campos, v) || (cfg.validar && cfg.validar(v));
-        if (problema) { Swal.showValidationMessage(problema); return false; }
+        if (problema) { api.avisar(problema); return false; }
         return v;
       },
     });
-    return r.isConfirmed ? r.value : null;
+
+    // Los calendarios y desplegables dejan oyentes en el documento.
+    Object.values(montados).forEach((m) => m.soltar && m.soltar());
+    return datos;
   }
 
   return { abrir };

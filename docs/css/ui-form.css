@@ -17,6 +17,11 @@
 .ppform input[type="number"],
 .ppform select,
 .ppform textarea {
+  /* Sin margen propio: el aire entre campos lo pone el gap del formulario. El
+     panel les da margin-bottom a todos los input, y dentro de un grupo en
+     línea (el del monto) ese margen se sumaba a la altura y la caja quedaba
+     quince píxeles más alta que los demás campos. */
+  margin: 0;
   width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--linea, #f0d6e2);
   border-radius: 9px; font-family: inherit; font-size: 0.92rem; color: var(--ink, #3a1424);
   background: #fff;
@@ -26,13 +31,29 @@
 }
 .ppform textarea { min-height: 56px; resize: vertical; }
 
-/* Monto con su símbolo pegado adelante, para no repetirlo en la etiqueta. */
-.ppform__conpre { position: relative; display: block; }
-.ppform__conpre i {
-  position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);
-  font-style: normal; font-size: 0.86rem; color: var(--muted, #9a7385); pointer-events: none;
+/* Monto: el símbolo en su propia caja pegada al campo. Flotando encima del
+   input se montaba con los números largos. */
+.ppform__grupo {
+  /* nowrap explícito: el campo de adentro lleva width:100% de la regla general
+     y, si el grupo permite salto, el símbolo se va a su propia línea y la caja
+     queda del doble de alto. */
+  display: flex; align-items: stretch; flex-wrap: nowrap;
+  border: 1px solid var(--linea, #f0d6e2); border-radius: 9px; overflow: hidden;
+  background: #fff; transition: border-color .15s ease, box-shadow .15s ease;
 }
-.ppform__conpre input { padding-left: 2.1rem; }
+.ppform__grupo:focus-within {
+  border-color: var(--pink, #e8437a); box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.ppform__simbolo {
+  display: flex; align-items: center; padding: 0 0.6rem;
+  background: #fdf4f8; color: var(--muted, #9a7385);
+  font-size: 0.85rem; font-weight: 600; border-right: 1px solid var(--linea, #f0d6e2);
+}
+/* Dentro del grupo el campo no lleva su propio borde: lo pone el grupo. */
+.ppform__grupo input[type="number"] {
+  border: none !important; border-radius: 0 !important;
+  box-shadow: none !important; flex: 1 1 auto; width: auto; min-width: 0;
+}
 
 .ppform__check {
   display: flex; align-items: center; gap: 0.55rem;

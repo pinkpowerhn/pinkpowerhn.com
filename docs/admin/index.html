@@ -16,6 +16,8 @@
 <link rel="stylesheet" href="/css/ui-form.css" />
 <link rel="stylesheet" href="/css/ui-segmento.css" />
 <link rel="stylesheet" href="/css/ui-esqueleto.css" />
+<link rel="stylesheet" href="/css/ui-modal.css" />
+<link rel="stylesheet" href="/css/ui-select.css" />
 <script src="/js/ui-tabla.js" defer></script>
 <script src="/js/ui-rango.js" defer></script>
 <script src="/js/ui-menu.js" defer></script>
@@ -23,6 +25,8 @@
 <script src="/js/ui-form.js" defer></script>
 <script src="/js/ui-segmento.js" defer></script>
 <script src="/js/ui-esqueleto.js" defer></script>
+<script src="/js/ui-modal.js" defer></script>
+<script src="/js/ui-select.js" defer></script>
 <!-- Las gráficas de los reportes. Se carga diferida: el panel abre en
      Mayoristas y la mayoría de las veces ni se usa. -->
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js" defer></script>
@@ -2227,15 +2231,14 @@ async function comFormOrden(orden) {
 }
 
 async function comQuitarOrden(orden) {
-  const r = await Swal.fire({
-    title: '¿Quitar esta orden?',
-    html: `La compra en <b>${esc(orden.tienda)}</b> del ${esc(diaCorto(orden.fecha))}`
-      + ' se borra junto con sus productos. Esto no se puede deshacer.',
-    icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Sí, quitarla', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: '¿Quitar esta orden?',
+    cuerpo: `<p class="ppform__nota">La compra en <b>${esc(orden.tienda)}</b> del `
+      + `${esc(diaCorto(orden.fecha))} se borra junto con sus productos. `
+      + 'Esto no se puede deshacer.</p>',
+    confirmar: 'Sí, quitarla', peligro: true,
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   try {
     await api('/admin/compras/ordenes/' + orden.id, { method: 'DELETE' });
     comVolver();
@@ -2337,8 +2340,8 @@ async function comAbrir(oid) {
 }
 
 function comError(titulo, ex) {
-  Swal.fire({ title: titulo, text: ex.message, icon: 'error',
-              confirmButtonColor: '#e8437a' });
+  PPModal.abrir({ titulo, cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+                  confirmar: 'Entendido', cancelar: null, ancho: 420 });
 }
 
 
@@ -2391,10 +2394,11 @@ async function comAgregar(oid, orden) {
     }
   };
 
-  const r = await Swal.fire({
-    title: 'Agregar producto',
-    width: 560,
-    html: `
+  const datos = await PPModal.abrir({
+    titulo: 'Agregar producto',
+    ancho: 560,
+    confirmar: 'Agregar a la orden',
+    cuerpo: `
       <div class="com-tabs">
         <button type="button" id="cp-t-buscar" class="is-active">Ya existe</button>
         <button type="button" id="cp-t-nuevo">Es nuevo</button>
@@ -2457,12 +2461,7 @@ async function comAgregar(oid, orden) {
           </label>
         </div>
       </div>`,
-    showCancelButton: true,
-    confirmButtonText: 'Agregar a la orden',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    focusConfirm: false,
-    didOpen: () => {
+    alAbrir: () => {
       pintarModo();
       pintarElegido();
       document.getElementById('cp-t-buscar').onclick = () => { modo = 'buscar'; pintarModo(); };
@@ -2475,25 +2474,25 @@ async function comAgregar(oid, orden) {
         buscando = setTimeout(() => buscar(q.value), 350);
       };
     },
-    preConfirm: () => {
+    alConfirmar: (_caja, modal) => {
       const cantidad = Number(document.getElementById('cp-cant').value);
       const costoTxt = document.getElementById('cp-costo').value;
       if (!(cantidad >= 1) || cantidad !== Math.floor(cantidad)) {
-        Swal.showValidationMessage('¿Cuántas unidades se compraron?'); return false;
+        modal.avisar('¿Cuántas unidades se compraron?'); return false;
       }
       const base = {
         cantidad,
         precio_compra: costoTxt === '' ? null : Number(costoTxt),
       };
       if (modo === 'buscar') {
-        if (!elegido) { Swal.showValidationMessage('Elija el producto de la lista'); return false; }
+        if (!elegido) { modal.avisar('Elija el producto de la lista'); return false; }
         return Object.assign(base, {
           titulo: elegido.titulo, variante: elegido.variante,
           product_id: elegido.product_id, variant_id: elegido.variant_id,
         });
       }
       const titulo = document.getElementById('cn-titulo').value.trim();
-      if (!titulo) { Swal.showValidationMessage('¿Cómo se llama el producto?'); return false; }
+      if (!titulo) { modal.avisar('¿Cómo se llama el producto?'); return false; }
       return Object.assign(base, {
         producto_nuevo: {
           titulo,
@@ -2508,18 +2507,18 @@ async function comAgregar(oid, orden) {
       });
     },
   });
-  if (!r.isConfirmed) return;
+  if (!datos) return;
   try {
     const hecho = await api(`/admin/compras/ordenes/${oid}/items`,
-      { method: 'POST', body: JSON.stringify(r.value) });
+      { method: 'POST', body: JSON.stringify(datos) });
     await comCargar();
     await comAbrir(oid);
     if (hecho.producto_creado) {
-      Swal.fire({
-        title: 'Producto creado', icon: 'success',
-        html: `<b>${esc(hecho.producto_creado.titulo)}</b> quedó en Shopify como borrador.`
-          + ' Se pone a la venta solo cuando lo reciba.',
-        confirmButtonColor: '#e8437a',
+      PPModal.abrir({
+        titulo: 'Producto creado',
+        cuerpo: `<p class="ppform__nota"><b>${esc(hecho.producto_creado.titulo)}</b> quedó `
+          + 'en Shopify como borrador. Se pone a la venta solo cuando lo reciba.</p>',
+        confirmar: 'Entendido', cancelar: null, ancho: 440,
       });
     }
   } catch (ex) { comError('No se pudo agregar', ex); }
@@ -2573,14 +2572,12 @@ async function comNoSuplido(oid, item) {
 }
 
 async function comQuitarItem(oid, item) {
-  const r = await Swal.fire({
-    title: '¿Quitar este producto?',
-    html: `<b>${esc(item.titulo)}</b> se quita de la orden.`,
-    icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Sí, quitarlo', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: '¿Quitar este producto?',
+    cuerpo: `<p class="ppform__nota"><b>${esc(item.titulo)}</b> se quita de la orden.</p>`,
+    confirmar: 'Sí, quitarlo', peligro: true,
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   try {
     await api('/admin/compras/items/' + item.id, { method: 'DELETE' });
     await comCargar();
@@ -2759,15 +2756,13 @@ async function comTrkMiami(trk) {
 }
 
 async function comTrkQuitar(trk) {
-  const r = await Swal.fire({
-    title: '¿Quitar este envío?',
-    html: `El tracking <b>${esc(trk.numero)}</b> se borra. Lo que traía vuelve a `
-      + 'quedar pendiente de repartir, no se pierde.',
-    icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Sí, quitarlo', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: '¿Quitar este envío?',
+    cuerpo: `<p class="ppform__nota">El tracking <b>${esc(trk.numero)}</b> se borra. `
+      + 'Lo que traía vuelve a quedar pendiente de repartir, no se pierde.</p>',
+    confirmar: 'Sí, quitarlo', peligro: true,
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   try {
     await api('/admin/compras/trackings/' + trk.id, { method: 'DELETE' });
     comTrkVolver();
@@ -2854,14 +2849,13 @@ async function comTrkAbrir(tid) {
 }
 
 async function comTrkSacar(tid, item) {
-  const r = await Swal.fire({
-    title: '¿Sacarlo de este envío?',
-    html: `<b>${esc(item.titulo)}</b> vuelve a quedar pendiente de repartir.`,
-    icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Sí, sacarlo', cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d33', cancelButtonColor: '#c9b0bd',
+  const si = await PPModal.confirmar({
+    titulo: '¿Sacarlo de este envío?',
+    cuerpo: `<p class="ppform__nota"><b>${esc(item.titulo)}</b> vuelve a quedar `
+      + 'pendiente de repartir.</p>',
+    confirmar: 'Sí, sacarlo', peligro: true,
   });
-  if (!r.isConfirmed) return;
+  if (!si) return;
   try {
     await api('/admin/compras/tracking-items/' + item.id, { method: 'DELETE' });
     await comTrkCargar();
@@ -2879,9 +2873,9 @@ async function comTrkMeter(tid) {
   } catch (ex) { comError('No se pudo ver qué hay pendiente', ex); return; }
 
   if (!pendientes.length) {
-    Swal.fire({ title: 'No hay nada pendiente', icon: 'info',
-      text: 'Todo lo comprado ya está repartido en envíos.',
-      confirmButtonColor: '#e8437a' });
+    PPModal.abrir({ titulo: 'No hay nada pendiente', ancho: 420, cancelar: null,
+      cuerpo: '<p class="ppform__nota">Todo lo comprado ya está repartido en envíos.</p>',
+      confirmar: 'Entendido' });
     return;
   }
 
@@ -2899,18 +2893,14 @@ async function comTrkMeter(tid) {
       </span>
     </label>`).join('');
 
-  const r = await Swal.fire({
-    title: 'Qué trae este envío',
-    width: 560,
-    html: `<p class="ppform__nota" style="margin-bottom:0.6rem">Marque lo que viene
+  const datos = await PPModal.abrir({
+    titulo: 'Qué trae este envío',
+    ancho: 560,
+    confirmar: 'Meterlos al envío',
+    cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Marque lo que viene
              en este tracking. Si la tienda mandó solo una parte, cambie la cantidad.</p>
            <div class="com-elegir">${filas}</div>`,
-    showCancelButton: true,
-    confirmButtonText: 'Meterlos al envío',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#e8437a', cancelButtonColor: '#c9b0bd',
-    focusConfirm: false,
-    didOpen: () => {
+    alAbrir: () => {
       // La cantidad solo se puede tocar en lo que está marcado.
       document.querySelectorAll('.com-elegir__ch').forEach((ch) => {
         ch.onchange = () => {
@@ -2920,7 +2910,7 @@ async function comTrkMeter(tid) {
         };
       });
     },
-    preConfirm: () => {
+    alConfirmar: (_caja, modal) => {
       const items = [];
       // `problema` y no un return dentro del forEach: ese return solo sale de
       // la vuelta, y el aviso bueno ("puede meter entre 1 y N") terminaba
@@ -2937,14 +2927,14 @@ async function comTrkMeter(tid) {
         items.push({ orden_item_id: p.id, cantidad: n });
       });
       if (!problema && !items.length) problema = 'Marque al menos un producto';
-      if (problema) { Swal.showValidationMessage(problema); return false; }
+      if (problema) { modal.avisar(problema); return false; }
       return { items };
     },
   });
-  if (!r.isConfirmed) return;
+  if (!datos) return;
   try {
     await api(`/admin/compras/trackings/${tid}/items`,
-      { method: 'POST', body: JSON.stringify(r.value) });
+      { method: 'POST', body: JSON.stringify(datos) });
     await comTrkCargar();
     await comTrkAbrir(tid);
   } catch (ex) { comError('No se pudieron meter', ex); }

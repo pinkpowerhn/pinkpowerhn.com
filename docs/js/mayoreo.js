@@ -32,7 +32,6 @@ function withViewTransition(fn) {
 // ── Íconos ────────────────────────────────────────────────
 const EYE = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18.4 18.4 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2m-6.7-1.1a3 3 0 1 1-4.2-4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-const CHECK = '<svg class="my-pitch__check" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
 // ── Página de acceso a mayoreo ────────────────────────────
 // Antes era un modal; ahora es una PÁGINA dedicada (mismo patrón que la ficha de
@@ -74,15 +73,9 @@ export function showMayoreoPage() {
       </div>
       <div class="my-page__grid">
         <h1 class="my-pitch__title">Compra al por mayor con Pink Power</h1>
-        <section class="my-pitch">
-          <p class="my-pitch__sub">Ingresa con tu cuenta de mayorista para ver el catálogo con tus precios especiales y hacer tus pedidos.</p>
-          <ul class="my-pitch__list">
-            <li>${CHECK}<span>Precios exclusivos de mayoreo</span></li>
-            <li>${CHECK}<span>Catálogo con tu descuento ya aplicado</span></li>
-            <li>${CHECK}<span>Atención directa por WhatsApp</span></li>
-          </ul>
-          ${wa ? `<p class="my-pitch__foot">¿Aún no eres mayorista? <a href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp</a></p>` : ''}
-        </section>
+        ${wa ? `<section class="my-pitch">
+          <p class="my-pitch__foot">¿Aún no eres mayorista? <a href="https://wa.me/${wa}" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp</a></p>
+        </section>` : ''}
         <section class="my-login">
           <div class="my-login__card">
             <p class="my-login__title">Inicia Sesión</p>

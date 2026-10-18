@@ -536,7 +536,7 @@
     font:inherit; font-size:0.88rem; padding:0; margin-bottom:0.7rem;
   }
 
-  /* ── ¿Dónde está este producto? ── */
+  /* ── Rastrear: ¿dónde está este producto? ── */
   /* La lupa va DENTRO del campo, como en la tienda. Antes había un botón rosa
      de ancho completo debajo que no hacía falta: se busca solo al escribir. */
   .bus-campo { position:relative; display:flex; align-items:center; }
@@ -2425,7 +2425,7 @@ function comIniciar() {
 }
 
 // El contador es siempre de la vista que se está mirando. Lo escribía quien
-// terminaba de cargar, así que en "¿Dónde está?" aparecía "1 orden".
+// terminaba de cargar, así que en "Rastrear" aparecía "1 orden".
 function comContador() {
   const cual = comVista ? comVista.valor() : 'ordenes';
   const cuantos = cual === 'ordenes' ? comOrdenes.length
@@ -3715,7 +3715,7 @@ async function comCajMeter(cid) {
 
 
 
-// ── ¿Dónde está este producto? ───────────────────────────────────────────
+// ── Rastrear: ¿dónde está este producto? ─────────────────────────────────
 // La pregunta que más se repite: una clienta pide algo, no está en la tienda,
 // y hoy hay que irse a buscar entre las fotos de la consolidadora en WhatsApp.
 // Contesta con la cuenta primero —cuántas hay, cuántas vienen— y el detalle
@@ -4494,7 +4494,7 @@ async function gasAdministrarCategorias() {
 
 function comIniciarBotones() {
   comVista = PPSegmento.crear($('com-vista'), {
-    opciones: [{ v: 'buscar', t: '¿Dónde está?' },
+    opciones: [{ v: 'buscar', t: 'Rastrear' },
                { v: 'ordenes', t: 'Órdenes' }, { v: 'envios', t: 'Envíos' },
                { v: 'cajas', t: 'Cajas' }],
     valor: 'ordenes',

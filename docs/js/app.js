@@ -1414,14 +1414,16 @@ function showCheckoutModal() {
     } else {
       const nameEl  = modal.querySelector('#co-name');
       const phoneEl = modal.querySelector('#co-phone');
+      const emailEl = modal.querySelector('#co-email');
       name  = nameEl.value.trim();
       phone = phoneEl.value.trim();
-      email = modal.querySelector('#co-email').value.trim();
+      email = emailEl.value.trim();
 
       // Validar y marcar en rojo los campos que falten, apuntando a lo que hace
       // falta. Antes el aviso era genérico y opaco y la clienta no lo notaba.
       nameEl.classList.remove('is-invalid');
       phoneEl.classList.remove('is-invalid');
+      emailEl.classList.remove('is-invalid');
       const faltan = [];
       if (!name) { nameEl.classList.add('is-invalid'); faltan.push('nombre'); }
       // El teléfono arranca con "+504 "; exige que de verdad escriban el número
@@ -1432,6 +1434,17 @@ function showCheckoutModal() {
         const primero = faltan[0] === 'nombre' ? nameEl : phoneEl;
         primero.scrollIntoView({ block: 'center', behavior: 'smooth' });
         primero.focus();
+        return;
+      }
+      // El correo es opcional, pero si lo escriben tiene que servir: el formulario
+      // es `novalidate` y por aquí entró "Ocultar mi correo" (el autollenado del
+      // iPhone). Shopify rechaza eso y el pedido le caía a Aylin sin la ficha de
+      // la clienta.
+      if (email && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) {
+        emailEl.classList.add('is-invalid');
+        showCoError('Ese correo no se ve bien. Escríbelo completo (tu@correo.com) o bórralo: es opcional.');
+        emailEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        emailEl.focus();
         return;
       }
     }

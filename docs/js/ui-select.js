@@ -15,6 +15,7 @@
  *     opciones: [{ v: 'USD', t: 'Dólares (USD)' }, { v: 'HNL', t: 'Lempiras' }],
  *     valor: 'USD',
  *     vacio: 'Elegir…',            // cuando no hay nada elegido
+ *     buscar: 'Escriba el nombre', // campo de filtro arriba del menú
  *     al: (v) => …,
  *   });
  *   s.valor();  s.poner('HNL');  s.opciones([...]);  s.soltar();
@@ -32,8 +33,14 @@ window.PPSelect = (function () {
       // `accion`: { texto, al } pone un renglón al pie del menú para crear algo
       // que no está en la lista. `al` devuelve la opción nueva ({v, t}) o null.
       // Sirve para el momento en que uno descubre que le falta la categoría
-      // justo mientras está llenando el formulario.
-      { opciones: [], valor: null, vacio: 'Elegir…', al: null, accion: null },
+      // justo mientras está llenando el formulario. Recibe lo que se escribió
+      // en el buscador, así el renglón puede decir «Agregar "Bath"» y crearlo
+      // de una, sin otra ventana.
+      // `buscar`: texto del campo de filtro que va arriba del menú. Con quince
+      // proveedores, bajar la lista con el dedo cansa más que escribir tres
+      // letras.
+      { opciones: [], valor: null, vacio: 'Elegir…', al: null, accion: null,
+        buscar: null },
       opciones || {});
     let lista = cfg.opciones.slice();
     const avisos = [];
@@ -46,27 +53,52 @@ window.PPSelect = (function () {
       <button type="button" class="ppsel__btn" aria-expanded="false" aria-haspopup="listbox">
         <span class="ppsel__txt"></span>${CHEV}
       </button>
-      <div class="ppsel__menu" role="listbox" hidden></div>`;
+      <div class="ppsel__menu" role="listbox" hidden>
+        ${cfg.buscar ? `<div class="ppsel__buscador">
+          <input type="text" class="ppsel__buscar" autocomplete="off"
+            placeholder="${esc(typeof cfg.buscar === 'string' ? cfg.buscar : 'Buscar…')}" />
+        </div>` : ''}
+        <div class="ppsel__opts"></div>
+      </div>`;
     destino.innerHTML = '';
     destino.appendChild(raiz);
 
     const boton = raiz.querySelector('.ppsel__btn');
     const texto = raiz.querySelector('.ppsel__txt');
     const menu = raiz.querySelector('.ppsel__menu');
+    const opts = raiz.querySelector('.ppsel__opts');
+    const campo = raiz.querySelector('.ppsel__buscar');
 
     const elegida = () => lista.find((o) => String(o.v) === String(actual));
+    const filtro = () => (campo ? campo.value.trim() : '');
 
     function pintar() {
       const o = elegida();
       texto.textContent = o ? o.t : cfg.vacio;
       raiz.classList.toggle('is-vacio', !o);
-      menu.innerHTML = lista.map((x) => `
+      pintarOpciones();
+    }
+
+    // Solo el interior del menú: el campo de búsqueda no se vuelve a dibujar,
+    // porque repintarlo con cada tecla le quitaría el foco.
+    function pintarOpciones() {
+      const q = filtro().toLowerCase();
+      const vistas = q
+        ? lista.filter((x) => String(x.t).toLowerCase().includes(q))
+        : lista;
+      const accion = cfg.accion
+        ? `<button type="button" class="ppsel__accion" data-accion="1">${esc(
+            typeof cfg.accion.texto === 'function'
+              ? cfg.accion.texto(filtro()) : cfg.accion.texto)}</button>`
+        : '';
+      opts.innerHTML = vistas.map((x) => `
         <button type="button" role="option" class="ppsel__opt${
           String(x.v) === String(actual) ? ' is-activo' : ''}"
           data-v="${esc(x.v)}" aria-selected="${String(x.v) === String(actual)}"
         >${esc(x.t)}</button>`).join('')
-        + (cfg.accion ? `<button type="button" class="ppsel__accion"
-             data-accion="1">${esc(cfg.accion.texto)}</button>` : '');
+        + (vistas.length ? '' : `<div class="ppsel__nada">${
+            q ? 'Nada con eso' : 'La lista está vacía'}</div>`)
+        + accion;
     }
 
     // Igual que el calendario: mientras está abierto cuelga del body, porque
@@ -89,7 +121,11 @@ window.PPSelect = (function () {
         document.body.appendChild(menu);
         menu.classList.add('ppsel__menu--suelto');
         menu.hidden = false;
+        // Cada vez se abre limpio: el filtro de la vez pasada escondería
+        // opciones sin que se note por qué.
+        if (campo) { campo.value = ''; pintarOpciones(); }
         colocar();
+        if (campo) setTimeout(() => { campo.focus(); colocar(); }, 0);
         window.addEventListener('resize', colocar);
         window.addEventListener('scroll', colocar, true);
       } else {
@@ -101,29 +137,48 @@ window.PPSelect = (function () {
       }
     }
 
+    function elegir(v) {
+      actual = v;
+      pintar();
+      abrir(false);
+      if (cfg.al) cfg.al(actual);
+      avisos.forEach((f) => f(actual));
+    }
+
+    async function crearLoEscrito() {
+      const q = filtro();
+      abrir(false);
+      const nueva = await cfg.accion.al(q);
+      if (!nueva) return;
+      if (!lista.some((o) => String(o.v) === String(nueva.v))) lista = lista.concat([nueva]);
+      elegir(nueva.v);
+    }
+
     boton.addEventListener('click', (e) => { e.preventDefault(); abrir(); });
+
+    if (campo) {
+      campo.addEventListener('input', pintarOpciones);
+      // Enter: si lo escrito coincide con algo, esa; si no coincide con nada,
+      // lo crea. Es el gesto que ya conoce de la caja con las clientas.
+      campo.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const primera = opts.querySelector('[data-v]');
+        if (primera) { elegir(primera.dataset.v); return; }
+        if (cfg.accion && filtro()) crearLoEscrito();
+      });
+    }
 
     menu.addEventListener('click', async (e) => {
       if (e.target.closest('[data-accion]')) {
         e.preventDefault();
-        abrir(false);
-        const nueva = await cfg.accion.al();
-        if (!nueva) return;
-        lista = lista.concat([nueva]);
-        actual = nueva.v;
-        pintar();
-        if (cfg.al) cfg.al(actual);
-        avisos.forEach((f) => f(actual));
+        await crearLoEscrito();
         return;
       }
       const b = e.target.closest('[data-v]');
       if (!b) return;
       e.preventDefault();
-      actual = b.dataset.v;
-      pintar();
-      abrir(false);
-      if (cfg.al) cfg.al(actual);
-      avisos.forEach((f) => f(actual));
+      elegir(b.dataset.v);
     });
 
     const alDocumento = (e) => {

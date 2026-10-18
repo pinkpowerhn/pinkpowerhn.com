@@ -37,6 +37,27 @@
 .ppsel__menu--suelto { position: fixed; z-index: 2100; }
 @keyframes ppSelIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* El filtro, pegado arriba del menú. Con quince proveedores es más rápido
+   escribir tres letras que bajar la lista con el dedo, y además es donde se
+   escribe el nombre del que todavía no existe. */
+.ppsel__buscador {
+  position: sticky; top: -0.35rem; z-index: 1;
+  background: #fff; padding: 0.15rem 0.15rem 0.35rem;
+}
+.ppsel__buscar {
+  width: 100%; margin: 0; box-sizing: border-box;
+  border: 1px solid var(--linea, #f0d6e2); border-radius: 9px;
+  padding: 0.5rem 0.6rem; font-family: inherit; font-size: 0.9rem;
+  color: var(--ink, #3a1424); background: #fff;
+}
+.ppsel__buscar:focus {
+  outline: none; border-color: var(--pink, #e8437a);
+  box-shadow: 0 0 0 3px rgba(232,67,122,0.13);
+}
+.ppsel__nada {
+  padding: 0.6rem 0.7rem; font-size: 0.85rem; color: var(--muted, #9a7385);
+}
+
 .ppsel__opt {
   display: block; width: 100%; text-align: left; background: none; border: none;
   padding: 0.58rem 0.7rem; border-radius: 9px; cursor: pointer; font-family: inherit;
@@ -62,4 +83,7 @@
 @media (max-width: 540px) {
   .ppsel__btn { font-size: 1rem; padding: 0.6rem; }
   .ppsel__opt { padding: 0.7rem; font-size: 0.95rem; }
+  /* 16px: con menos, el teléfono hace zoom al enfocar el campo y el menú se
+     sale de la pantalla. */
+  .ppsel__buscar { font-size: 16px; padding: 0.6rem; }
 }

@@ -14,7 +14,7 @@
  *     titulo: 'Nueva orden de compra',
  *     confirmar: 'Crear la orden',
  *     campos: [
- *       { id: 'tienda', tipo: 'texto', etiqueta: 'Tienda', obligatorio: '¿En qué tienda?' },
+ *       { id: 'tienda', tipo: 'texto', etiqueta: 'Proveedor', obligatorio: '¿A quién se le compró?' },
  *       { id: 'fecha',  tipo: 'fecha', etiqueta: 'Fecha', valor: hoy, max: hoy },
  *       { id: 'moneda', tipo: 'select', etiqueta: 'Moneda', mitad: true,
  *         opciones: [{ v: 'USD', t: 'Dólares' }, { v: 'HNL', t: 'Lempiras' }] },
@@ -25,6 +25,9 @@
  *   // datos === null si se cerró sin guardar
  *
  * Tipos: texto · texto-largo · numero · dinero · fecha · select · si-no · nota
+ *
+ * Un `select` puede traer `buscar` (texto del filtro que sale arriba del menú)
+ * y `accion` ({ texto, al }) para crear ahí mismo lo que falta en la lista.
  */
 window.PPForm = (function () {
   const esc = (v) => String(v == null ? '' : v)
@@ -176,6 +179,7 @@ window.PPForm = (function () {
             montados[c.id] = PPSelect.crear(hueco, {
               opciones: c.opciones || [], valor: c.valor,
               vacio: c.placeholder || 'Elegir…',
+              buscar: c.buscar || null,
               accion: c.accion || null });
           }
         }

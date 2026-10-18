@@ -2460,7 +2460,7 @@ function comPintar() {
     comTabla = PPTabla.crear($('com-tabla'), {
       columnas: [
         { clave: 'fecha', titulo: 'Fecha', html: (f) => diaCorto(f.fecha) },
-        { clave: 'tienda', titulo: 'Tienda', principal: true,
+        { clave: 'tienda', titulo: 'Proveedor', principal: true,
           html: (f) => `${esc(f.tienda)}${f.es_local
             ? '<div class="com-pie">compra local</div>' : ''}` },
         { clave: 'unidades', titulo: 'Productos',
@@ -2489,52 +2489,183 @@ function comPintar() {
   comTabla.datos(comOrdenes);
 }
 
+// ── Proveedores y tarjetas ───────────────────────────────────────────────
+// Las dos listas que ella administra. Antes el nombre se escribía a mano en
+// cada orden —"Bath", "Bath and Body", "BBW"— y después nada cuadraba.
+let comListas = null;
+
+async function comListasCargar(forzar) {
+  if (comListas && !forzar) return comListas;
+  try { comListas = await api('/admin/compras/listas'); }
+  catch (_) { comListas = comListas || {}; }
+  comListas.proveedor = comListas.proveedor || [];
+  comListas.tarjeta = comListas.tarjeta || [];
+  return comListas;
+}
+
+// Lo que hay en la lista más lo que ya traía esta orden, aunque se haya
+// quitado después: una compra vieja no se puede quedar sin proveedor en la
+// pantalla solo porque ya no se le compre.
+function comListaOpciones(clase, actual) {
+  const ops = ((comListas && comListas[clase]) || []).map((x) => ({ v: x.nombre, t: x.nombre }));
+  const v = String(actual || '').trim();
+  if (v && !ops.some((o) => o.v.toLowerCase() === v.toLowerCase())) ops.unshift({ v, t: v });
+  return ops;
+}
+
+const COM_LISTA = {
+  proveedor: { titulo: 'Proveedores', sub: 'Las tiendas a las que les compra',
+               nuevo: 'Nuevo proveedor', como: 'Cómo se llama', el: 'el proveedor',
+               ejemplo: "Victoria's Secret, Target…",
+               agregar: 'Agregar un proveedor…', vacio: 'Todavía no hay proveedores.' },
+  tarjeta:   { titulo: 'Tarjetas', sub: 'Con cuáles paga',
+               nuevo: 'Nueva tarjeta', como: 'Cómo la reconoce', el: 'la tarjeta',
+               ejemplo: 'BAC …4417',
+               agregar: 'Agregar una tarjeta…', vacio: 'Todavía no hay tarjetas.' },
+};
+
+// Agregar sin salirse del formulario, como el campo de clientas de la caja: lo
+// que escribió en el buscador ya es el nombre; si no escribió nada, se le
+// pregunta.
+async function comListaAgregar(clase, escrito) {
+  const q = COM_LISTA[clase];
+  let nombre = String(escrito || '').trim();
+  if (!nombre) {
+    const datos = await PPForm.abrir({
+      titulo: q.nuevo, ancho: 420,
+      campos: [{ id: 'nombre', tipo: 'texto', etiqueta: q.como, max: 80,
+                 placeholder: q.ejemplo, obligatorio: 'Escriba el nombre' }],
+    });
+    if (!datos) return null;
+    nombre = datos.nombre.trim();
+  }
+  // Si ya estaba (aunque lo haya escrito con otras mayúsculas), se elige esa.
+  const ya = ((comListas && comListas[clase]) || [])
+    .find((x) => x.nombre.toLowerCase() === nombre.toLowerCase());
+  if (ya) return { v: ya.nombre, t: ya.nombre };
+  try {
+    await api('/admin/compras/listas',
+      { method: 'POST', body: JSON.stringify({ clase, nombre }) });
+    await comListasCargar(true);
+    return { v: nombre, t: nombre };
+  } catch (ex) {
+    comError(`No se pudo agregar ${q.el}`, ex);
+    return null;
+  }
+}
+
+// El campo: se abre, se escribe y lo que no existe se crea ahí mismo.
+function comListaCampo(clase, actual) {
+  const q = COM_LISTA[clase];
+  return {
+    opciones: comListaOpciones(clase, actual),
+    buscar: 'Busque o escriba el nombre',
+    accion: {
+      texto: (escrito) => (escrito ? `+ Agregar “${escrito}”` : `+ ${q.nuevo}`),
+      al: (escrito) => comListaAgregar(clase, escrito),
+    },
+  };
+}
+
+async function comListaAdmin(clase) {
+  const q = COM_LISTA[clase];
+  await listaAdmin({
+    titulo: q.titulo, sub: q.sub, agregar: q.agregar, vacio: q.vacio, max: 80,
+    usos: (n) => (n ? n + (n === 1 ? ' orden' : ' órdenes') : 'sin usar'),
+    cargar: async () => (await api('/admin/compras/listas?todas=true'))[clase] || [],
+    crear: (nombre) => api('/admin/compras/listas',
+      { method: 'POST', body: JSON.stringify({ clase, nombre }) }),
+    // Cambiarle el nombre lo cambia también en las órdenes que ya lo usaban.
+    renombrar: (id, nombre) => api(`/admin/compras/listas/${id}`,
+      { method: 'PATCH', body: JSON.stringify({ nombre }) }),
+    quitar: (id) => api(`/admin/compras/listas/${id}`, { method: 'DELETE' }),
+    revivir: (id) => api(`/admin/compras/listas/${id}`,
+      { method: 'PATCH', body: JSON.stringify({ activo: true }) }),
+    alFallar: (ex) => comError('No se pudo abrir la lista', ex),
+    alCerrar: async () => {
+      await comListasCargar(true);
+      await comCargar();
+      // Si hay una orden abierta, el nombre que se acaba de corregir también
+      // está ahí arriba: hay que volver a pintarla.
+      if (comOrdenAbierta) await comAbrir(comOrdenAbierta);
+    },
+  });
+}
+
 // ── Nueva orden / corregir ───────────────────────────────────────────────
 async function comFormOrden(orden) {
   const esNueva = !orden;
-  // La tasa del mes se propone sola; en la orden queda congelada.
-  let tasaMes = null;
-  if (esNueva) {
-    try { tasaMes = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
-  }
+  await comListasCargar();
+  // El tipo de cambio guardado se aplica solo: "no quiero estarlo poniendo
+  // cada vez sino que jale el que tenga grabado" (Ailin). Solo se pregunta si
+  // todavía no hay ninguno, y al corregir una orden, porque ahí se ve el que
+  // quedó congelado en esa compra.
+  let tasaGuardada = null;
+  try { tasaGuardada = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
+  const pedirTasa = !esNueva || !tasaGuardada;
   const datos = await PPForm.abrir({
     titulo: esNueva ? 'Nueva orden de compra' : 'Corregir la orden',
     confirmar: esNueva ? 'Crear la orden' : 'Guardar cambios',
     campos: [
-      { id: 'tienda', tipo: 'texto', etiqueta: 'Tienda', max: 200,
-        placeholder: "Victoria's Secret, Target…",
-        valor: orden ? orden.tienda : '',
-        obligatorio: '¿En qué tienda se compró?' },
+      Object.assign({ id: 'tienda', tipo: 'select', etiqueta: 'Proveedor',
+        valor: orden ? orden.tienda : '', placeholder: 'Elija el proveedor',
+        obligatorio: '¿A qué proveedor se le compró?' },
+        comListaCampo('proveedor', orden && orden.tienda)),
       { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha', mitad: true,
         valor: orden ? orden.fecha : hoyISO(), max: hoyISO(),
         obligatorio: 'Ponga la fecha de la compra' },
-      { id: 'tarjeta', tipo: 'texto', etiqueta: 'Con qué tarjeta', ayuda: 'opcional',
-        mitad: true, max: 60, placeholder: 'BAC …4417',
+      Object.assign({ id: 'tarjeta', tipo: 'select', etiqueta: 'Con qué tarjeta',
+        ayuda: 'opcional', mitad: true, placeholder: 'Sin tarjeta',
         valor: orden ? (orden.tarjeta || '') : '' },
-      { id: 'moneda', tipo: 'select', etiqueta: 'Moneda', mitad: true,
+        comListaCampo('tarjeta', orden && orden.tarjeta),
+        // La primera opción es poder dejarla en blanco: no todo se paga con
+        // tarjeta y, elegida una, no habría cómo quitarla.
+        { opciones: [{ v: '', t: 'Sin tarjeta' }]
+            .concat(comListaOpciones('tarjeta', orden && orden.tarjeta)) }),
+      { id: 'moneda', tipo: 'select', etiqueta: 'Moneda', mitad: pedirTasa,
         valor: orden ? orden.moneda : 'USD',
         opciones: [{ v: 'USD', t: 'Dólares (USD)' }, { v: 'HNL', t: 'Lempiras (HNL)' }] },
-      { id: 'tasa', tipo: 'numero', etiqueta: 'Tipo de cambio', mitad: true,
-        paso: 0.0001, min: 0.0001, placeholder: '26.30',
-        valor: orden && orden.tasa != null ? orden.tasa : tasaMes,
-        obligatorioSi: (v) => v.moneda === 'USD',
-        mensaje: 'Ponga el tipo de cambio para poder convertir a lempiras' },
+      pedirTasa
+        ? { id: 'tasa', tipo: 'numero', etiqueta: 'Tipo de cambio', mitad: true,
+            ayuda: esNueva ? 'se guarda' : 'de esta compra',
+            paso: 0.0001, min: 0.0001, placeholder: '26.30',
+            valor: orden && orden.tasa != null ? orden.tasa : null,
+            obligatorioSi: (v) => v.moneda === 'USD',
+            mensaje: 'Ponga el tipo de cambio para poder convertir a lempiras' }
+        : { id: 'cambio', tipo: 'nota', texto: '' },
       { id: 'es_local', tipo: 'si-no', etiqueta: 'Es compra local (no pasa por Miami)',
         valor: orden ? orden.es_local : false },
       { id: 'notas', tipo: 'texto-largo', etiqueta: 'Notas', ayuda: 'opcional',
         max: 2000, valor: orden ? (orden.notas || '') : '' },
     ],
+    // Sin campo de tipo de cambio, la nota dice cuál se va a aplicar: que se
+    // use el guardado no puede ser un secreto.
+    alCambiar: pedirTasa ? null : (v, ayuda) => ayuda.nota('cambio',
+      v.moneda === 'HNL'
+        ? 'En lempiras no hace falta tipo de cambio.'
+        : `Se le aplica el dólar a <b>${L(tasaGuardada)}</b>, que es el que está `
+          + 'guardado. Si cambió, se corrige en <b>⋯ → Tipo de cambio</b>.'),
   });
   if (!datos) return;
   try {
     if (esNueva) {
+      // La primera vez que lo escribe queda guardado, y ya no se le vuelve a
+      // preguntar en cada orden.
+      if (pedirTasa && datos.tasa) {
+        try {
+          await api('/admin/compras/tasa',
+            { method: 'PUT', body: JSON.stringify({ tasa: datos.tasa }) });
+        } catch (_) { /* la orden igual se crea con lo que escribió */ }
+      }
       const creada = await api('/admin/compras/ordenes',
         { method: 'POST', body: JSON.stringify(datos) });
+      await comListasCargar(true);
       await comCargar();
       comAbrir(creada.orden.id);          // se abre para empezar a meterle productos
     } else {
       await api('/admin/compras/ordenes/' + orden.id,
         { method: 'PATCH', body: JSON.stringify(datos) });
+      await comListasCargar(true);
       await comCargar();
       if (comOrdenAbierta === orden.id) comAbrir(orden.id);
     }
@@ -2643,7 +2774,7 @@ async function comAbrir(oid, desdeRuta) {
     ],
     acciones: (f) => [
       { texto: 'Corregir', al: () => comFormItem(oid, o, f) },
-      { texto: f.estado === 'no_suplido' ? 'Ya lo van a enviar' : 'La tienda no lo va a enviar',
+      { texto: f.estado === 'no_suplido' ? 'Ya lo van a enviar' : 'El proveedor no lo va a enviar',
         al: () => comNoSuplido(oid, f) },
       { texto: 'Quitar', peligro: true, al: () => comQuitarItem(oid, f) },
     ],
@@ -2870,7 +3001,7 @@ async function comFormItem(oid, orden, item) {
   } catch (ex) { comError('No se pudo guardar', ex); }
 }
 
-// La tienda avisa por correo que no va a poder suplir algo: deja de contar como
+// El proveedor avisa por correo que no va a poder suplir algo: deja de contar como
 // que viene en camino, pero no se borra (la compra existió).
 async function comNoSuplido(oid, item) {
   const vuelve = item.estado === 'no_suplido';
@@ -2898,23 +3029,26 @@ async function comQuitarItem(oid, item) {
   } catch (ex) { comError('No se pudo quitar', ex); }
 }
 
-// ── El tipo de cambio del mes ────────────────────────────────────────────
-// Se propone solo al crear una orden en dólares y queda congelado en ella, así
-// que corregirlo aquí no mueve lo que ya se compró.
+// ── El tipo de cambio ────────────────────────────────────────────────────
+// Un solo lugar donde se dice a cómo está el dólar. Las órdenes nuevas se lo
+// llevan solas y lo guardan congelado, así que cambiarlo aquí no mueve lo que
+// ya se compró. Es lo que pidió Ailin: "si sube o baja el dólar solo voy y
+// cambio el valor allí en ese campo aparte".
 async function comTipoDeCambio() {
   let actual = null;
   try { actual = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
-  const mes = new Date().toLocaleDateString('es-HN', { month: 'long', year: 'numeric' });
   const datos = await PPForm.abrir({
-    titulo: 'Tipo de cambio del mes',
+    titulo: 'Tipo de cambio',
+    sub: 'A cómo está el dólar ahora',
     ancho: 420,
     campos: [
-      { id: 'tasa', tipo: 'numero', etiqueta: `Lempiras por dólar — ${mes}`,
+      { id: 'tasa', tipo: 'numero', etiqueta: 'Lempiras por dólar',
         paso: 0.0001, min: 0.0001, placeholder: '26.30', valor: actual,
         obligatorio: 'Ponga a cómo está el dólar' },
       { id: 'nota', tipo: 'nota',
-        texto: 'Se propone solo al crear una orden en dólares y queda guardado '
-          + 'en esa orden. Cambiarlo aquí no mueve las compras que ya hizo.' },
+        texto: 'Es el que se les pone solo a las órdenes nuevas en dólares: no '
+          + 'hay que escribirlo en cada compra. Si el dólar sube o baja, se '
+          + 'cambia aquí, y las compras que ya hizo se quedan con el suyo.' },
     ],
   });
   if (!datos) return;
@@ -2925,7 +3059,7 @@ async function comTipoDeCambio() {
 }
 
 // ── Envíos (trackings) ───────────────────────────────────────────────────
-// El segundo momento: la tienda despacha, y lo que mandó viaja a Miami. Un
+// El segundo momento: el proveedor despacha, y lo que mandó viaja a Miami. Un
 // envío puede traer pedazos de varias órdenes, así que lo que se mete aquí son
 // (producto, cantidad), no órdenes enteras.
 let comVista = null;          // el conmutador Órdenes · Envíos
@@ -3007,7 +3141,7 @@ function comTrkPintar() {
         { texto: 'Quitar', peligro: true, al: () => comTrkQuitar(f) },
       ],
       porPagina: 12,
-      vacio: 'Todavía no hay envíos. Cuando la tienda despache, anote el tracking aquí.',
+      vacio: 'Todavía no hay envíos. Cuando el proveedor despache, anote el tracking aquí.',
     });
   }
   comTrkTabla.datos(comTrks);
@@ -3219,7 +3353,7 @@ async function comTrkSacar(tid, item) {
 
 // ── Meter productos en un envío ──────────────────────────────────────────
 // Se ofrece lo que todavía no va en ningún envío. La cantidad arranca en todo
-// lo que falta, que es el caso normal, y se baja cuando la tienda mandó parte.
+// lo que falta, que es el caso normal, y se baja cuando el proveedor mandó parte.
 async function comTrkMeter(tid) {
   let pendientes = [];
   try {
@@ -3252,7 +3386,7 @@ async function comTrkMeter(tid) {
     ancho: 560,
     confirmar: 'Meterlos al envío',
     cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Marque lo que viene
-             en este tracking. Si la tienda mandó solo una parte, cambie la cantidad.</p>
+             en este tracking. Si el proveedor mandó solo una parte, cambie la cantidad.</p>
            <div class="com-elegir">${filas}</div>`,
     alAbrir: () => {
       // La cantidad solo se puede tocar en lo que está marcado.
@@ -3979,11 +4113,11 @@ function busParada(x) {
       break;
     case 'en_tienda_eu':
       frase = x.es_local ? 'compradas, sin recibir todavía'
-        : 'la tienda todavía no las despacha';
+        : 'el proveedor todavía no las despacha';
       color = 'quieto';
       break;
     case 'no_suplido':
-      frase = 'la tienda avisó que no las va a mandar';
+      frase = 'el proveedor avisó que no las va a mandar';
       color = 'no';
       break;
     default:
@@ -4201,7 +4335,7 @@ async function recOtroCaso(fila) {
     alCambiar: (v, api2) => api2.nota('ojo', v.estado === 'danado'
       ? 'Lo dañado queda anotado pero <b>no entra al inventario</b>: no se puede vender.'
       : v.estado === 'faltante'
-        ? 'Lo que no llegó no entra al inventario. Sirve para reclamarle a la tienda.'
+        ? 'Lo que no llegó no entra al inventario. Sirve para reclamarle al proveedor.'
         : v.estado === 'sobrante'
           ? 'Lo de más <b>sí entra</b> al inventario: es mercadería que está en la tienda.'
           : 'Entra al inventario y el producto queda a la venta.'),
@@ -4456,52 +4590,62 @@ async function gasCreditoFormulario(gasto, credito) {
   }
 }
 
-// Las categorías: agregar, renombrar y quitar. Las que ya tienen gastos no se
-// borran, se apagan: si no, los meses viejos se quedarían sin categoría.
-async function gasAdministrarCategorias() {
-  try { gasCats = (await api('/admin/gastos/categorias?todas=true')).categorias || []; }
-  catch (ex) { gasEstado(ex.message, true); return; }
+// ── Listas que ella administra ───────────────────────────────────────────
+// Las categorías de gasto, los proveedores y las tarjetas son el mismo mueble:
+// una lista de nombres que se agregan, se renombran en la propia fila y se
+// quitan —o se apagan, si ya hay algo que los usa—. El estilo salió de las
+// categorías, de ahí el nombre de las clases.
+//
+// Quien la llama pone de dónde salen las filas ({ id, nombre, activo, usos })
+// y qué hacer con cada botón.
+async function listaAdmin(cfg) {
+  let filas = [];
+  try { filas = await cfg.cargar(); }
+  catch (ex) { if (cfg.alFallar) cfg.alFallar(ex); return; }
 
-  const pinta = () => gasCats.map((c) => `
-    <div class="gascat ${c.activa ? '' : 'gascat--off'}">
-      <span class="gascat__nm">${esc(c.nombre)}</span>
-      <span class="gascat__us">${c.usos ? c.usos + (c.usos === 1 ? ' gasto' : ' gastos') : 'sin usar'}</span>
-      <button type="button" class="gascat__b" data-renombrar="${c.id}" title="Cambiarle el nombre">✎</button>
-      <button type="button" class="gascat__b gascat__b--q" data-quitar="${c.id}"
-        title="${c.activa ? 'Quitar' : 'Volver a usar'}">${c.activa ? '✕' : '↩'}</button>
-    </div>`).join('');
+  const pinta = () => (filas.length ? filas.map((f) => `
+    <div class="gascat ${f.activo ? '' : 'gascat--off'}">
+      <span class="gascat__nm">${esc(f.nombre)}</span>
+      <span class="gascat__us">${esc(cfg.usos ? cfg.usos(Number(f.usos) || 0) : '')}</span>
+      <button type="button" class="gascat__b" data-renombrar="${f.id}" title="Cambiarle el nombre">✎</button>
+      <button type="button" class="gascat__b gascat__b--q" data-quitar="${f.id}"
+        title="${f.activo ? 'Quitar' : 'Volver a usar'}">${f.activo ? '✕' : '↩'}</button>
+    </div>`).join('')
+    : `<p class="gcred-vacio">${esc(cfg.vacio || 'Todavía no hay nada en esta lista.')}</p>`);
 
   await PPModal.abrir({
-    titulo: 'Categorías de gasto',
+    titulo: cfg.titulo,
+    sub: cfg.sub || '',
     ancho: 520,
     confirmar: null,
     cancelar: 'Cerrar',
-    cuerpo: `<div class="gascats" id="gascats">${pinta()}</div>
+    cuerpo: `<div class="gascats" id="ladm-lista">${pinta()}</div>
       <div class="gascat-nueva">
-        <input type="text" id="gascat-nombre" maxlength="60" placeholder="Agregar una categoría…" />
-        <button type="button" class="btn btn--primary btn--sm" id="gascat-add">Agregar</button>
+        <input type="text" id="ladm-nombre" maxlength="${cfg.max || 60}"
+          placeholder="${esc(cfg.agregar || 'Agregar…')}" />
+        <button type="button" class="btn btn--primary btn--sm" id="ladm-add">Agregar</button>
       </div>`,
     alAbrir: (_dentro, modal) => {
-      const caja = document.getElementById('gascats');
+      const caja = document.getElementById('ladm-lista');
       // El aviso va adentro de la ventana: la línea de estado queda detrás.
       const avisar = (texto) => modal.avisar(texto);
       const refrescar = async () => {
-        gasCats = (await api('/admin/gastos/categorias?todas=true')).categorias || [];
+        filas = await cfg.cargar();
         caja.innerHTML = pinta();
         avisar('');
       };
       // Cambia el nombre por un campo dentro de la misma fila. Enter guarda,
       // Escape deja todo como estaba, y al salir del campo también guarda:
       // en el teléfono casi nadie le da a Enter.
-      const renombrarAqui = (fila, cat, avisar, refrescar) => {
+      const renombrarAqui = (fila, dato) => {
         if (!fila || fila.querySelector('.gascat-edit')) return;
         const nombre = fila.querySelector('.gascat__nm');
         const ancho = nombre.getBoundingClientRect().width;
         const campo = document.createElement('input');
         campo.type = 'text';
         campo.className = 'gascat-edit';
-        campo.maxLength = 60;
-        campo.value = cat.nombre;
+        campo.maxLength = cfg.max || 60;
+        campo.value = dato.nombre;
         campo.style.minWidth = Math.max(140, Math.round(ancho)) + 'px';
         nombre.replaceWith(campo);
         campo.focus();
@@ -4512,11 +4656,9 @@ async function gasAdministrarCategorias() {
           if (listo) return;
           listo = true;
           const valor = campo.value.trim();
-          if (!guardar || !valor || valor === cat.nombre) { await refrescar(); return; }
-          try {
-            await api(`/admin/gastos/categorias/${cat.id}`,
-                      { method: 'PATCH', body: JSON.stringify({ nombre: valor }) });
-          } catch (ex) { avisar(ex.message); }
+          if (!guardar || !valor || valor === dato.nombre) { await refrescar(); return; }
+          try { await cfg.renombrar(dato.id, valor); }
+          catch (ex) { avisar(ex.message); }
           await refrescar();
         };
         campo.addEventListener('keydown', (ev) => {
@@ -4526,41 +4668,66 @@ async function gasAdministrarCategorias() {
         });
         campo.addEventListener('blur', () => terminar(true));
       };
-      document.getElementById('gascat-add').addEventListener('click', async () => {
-        const campo = document.getElementById('gascat-nombre');
+      const agregar = async () => {
+        const campo = document.getElementById('ladm-nombre');
         const nombre = campo.value.trim();
         if (!nombre) return;
         try {
-          await api('/admin/gastos/categorias', { method: 'POST', body: JSON.stringify({ nombre }) });
+          await cfg.crear(nombre);
           campo.value = '';
           await refrescar();
         } catch (ex) { avisar(ex.message); }
+      };
+      document.getElementById('ladm-add').addEventListener('click', agregar);
+      document.getElementById('ladm-nombre').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); agregar(); }
       });
       caja.addEventListener('click', async (ev) => {
         const b = ev.target.closest('button');
         if (!b) return;
         const id = Number(b.dataset.renombrar || b.dataset.quitar);
-        const cat = gasCats.find((c) => c.id === id);
-        if (!cat) return;
+        const dato = filas.find((f) => Number(f.id) === id);
+        if (!dato) return;
         try {
           if (b.dataset.renombrar) {
             // Se edita en la misma fila: abrir otra ventana para cambiar un
             // texto eran dos capas para nada.
-            renombrarAqui(b.closest('.gascat'), cat, avisar, refrescar);
+            renombrarAqui(b.closest('.gascat'), dato);
             return;
-          } else if (!cat.activa) {
-            await api(`/admin/gastos/categorias/${id}`,
-                      { method: 'PATCH', body: JSON.stringify({ activa: true }) });
-          } else {
-            await api(`/admin/gastos/categorias/${id}`, { method: 'DELETE' });
           }
+          if (dato.activo) await cfg.quitar(id);
+          else await cfg.revivir(id);
           await refrescar();
         } catch (ex) { avisar(ex.message); }
       });
     },
   });
-  gasCats = gasCats.filter((c) => c.activa);
-  gasCargar();
+  if (cfg.alCerrar) await cfg.alCerrar(filas);
+}
+
+// Las categorías: agregar, renombrar y quitar. Las que ya tienen gastos no se
+// borran, se apagan: si no, los meses viejos se quedarían sin categoría.
+async function gasAdministrarCategorias() {
+  await listaAdmin({
+    titulo: 'Categorías de gasto',
+    agregar: 'Agregar una categoría…',
+    vacio: 'Todavía no hay categorías.',
+    usos: (n) => (n ? n + (n === 1 ? ' gasto' : ' gastos') : 'sin usar'),
+    cargar: async () => ((await api('/admin/gastos/categorias?todas=true')).categorias || [])
+      .map((c) => ({ ...c, activo: c.activa })),
+    crear: (nombre) => api('/admin/gastos/categorias',
+      { method: 'POST', body: JSON.stringify({ nombre }) }),
+    renombrar: (id, nombre) => api(`/admin/gastos/categorias/${id}`,
+      { method: 'PATCH', body: JSON.stringify({ nombre }) }),
+    quitar: (id) => api(`/admin/gastos/categorias/${id}`, { method: 'DELETE' }),
+    revivir: (id) => api(`/admin/gastos/categorias/${id}`,
+      { method: 'PATCH', body: JSON.stringify({ activa: true }) }),
+    alFallar: (ex) => gasEstado(ex.message, true),
+    alCerrar: (filas) => {
+      gasCats = filas.filter((c) => c.activo);
+      gasCargar();
+    },
+  });
 }
 
 function comIniciarBotones() {
@@ -4578,7 +4745,9 @@ function comIniciarBotones() {
     else comCajForm(null);
   });
   PPMenu.colgar($('com-mas'), () => [
-    { texto: 'Tipo de cambio del mes', al: comTipoDeCambio },
+    { texto: 'Proveedores', al: () => comListaAdmin('proveedor') },
+    { texto: 'Tarjetas', al: () => comListaAdmin('tarjeta') },
+    { texto: 'Tipo de cambio', al: comTipoDeCambio },
   ]);
 }
 

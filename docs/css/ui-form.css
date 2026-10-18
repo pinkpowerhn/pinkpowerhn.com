@@ -67,6 +67,15 @@
   background: #fdf4f8; border-radius: 10px; padding: 0.55rem 0.7rem;
 }
 
+/* Un enlace dentro de una nota: el dato que la nota enseña, para corregirlo
+   sin salirse del formulario. Subrayado siempre, que en el teléfono no hay
+   manera de descubrirlo pasando el dedo por encima. */
+.ppform__lnk {
+  background: none; border: none; padding: 0; font: inherit; font-weight: 700;
+  color: var(--pink-dk, #c01f6b); text-decoration: underline; cursor: pointer;
+}
+.ppform__lnk:hover { color: var(--pink, #e8437a); }
+
 /* Dos campos por fila en pantalla grande. */
 .ppform__dos { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
 

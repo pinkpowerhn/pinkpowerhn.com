@@ -312,6 +312,21 @@
   .rep-estado { margin: 0; flex: 1; font-size: 0.8rem; color: var(--muted); }
   .rep-estado.is-error { color: #c0392b; }
 
+  /* El dólar de hoy, en la barra de Compras. Va a la vista porque es el número
+     con el que se convierte todo: enterrado en un menú, uno no se acuerda de
+     corregirlo el día que sube. */
+  .com-dolar {
+    display: inline-flex; align-items: center; gap: 0.35rem; flex: 0 0 auto;
+    background: #fff; border: 1px solid var(--linea); border-radius: 999px;
+    padding: 0.33rem 0.75rem; font-family: inherit; font-size: 0.8rem;
+    font-weight: 700; color: var(--ink); cursor: pointer; white-space: nowrap;
+    transition: border-color .18s ease, color .18s ease;
+  }
+  .com-dolar:hover { border-color: var(--pink); color: var(--pink-dk); }
+  .com-dolar[hidden] { display: none; }
+  /* Todavía sin ponerlo: se avisa sin alarmar. */
+  .com-dolar--falta { background: #fdf4f8; border-color: #f7c9dd; color: var(--pink-dk); }
+
   /* El aire entre tarjetas. Antes el bloque de numeros arrancaba pegado a la
      barra de arriba y no se veia donde terminaba una cosa y empezaba otra. */
   /* ── Aire entre tarjetas ──
@@ -1180,6 +1195,9 @@
         <div class="rep-barra__fila">
           <div id="com-vista"></div>
           <p class="rep-estado" id="com-estado"></p>
+          <!-- A cómo está el dólar, a la vista y a un toque: es el número que
+               convierte todas las compras y cambia solo cuando ella lo dice. -->
+          <button class="com-dolar" id="com-dolar" type="button" hidden></button>
           <div class="rep-barra__acciones rep-barra__acciones--dos">
             <button class="btn btn--primary btn--sm" id="com-nueva" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -2592,6 +2610,28 @@ async function comListaAdmin(clase) {
   });
 }
 
+// ── El dólar guardado ────────────────────────────────────────────────────
+// Se guarda uno solo y vale para todas las compras nuevas. Se lee una vez y se
+// deja aquí: lo mira el botón de la barra y cada orden que se crea.
+let comTasa = null;
+
+async function comTasaCargar(forzar) {
+  if (comTasa != null && !forzar) return comTasa;
+  try { comTasa = (await api('/admin/compras/tasa')).tasa; } catch (_) { comTasa = null; }
+  comDolarPintar();
+  return comTasa;
+}
+
+function comDolarPintar() {
+  const b = $('com-dolar');
+  if (!b) return;
+  b.hidden = false;
+  b.textContent = comTasa ? `Dólar ${L(comTasa)}` : 'Poner el dólar';
+  b.classList.toggle('com-dolar--falta', !comTasa);
+  b.title = comTasa ? 'Cambiar a cómo está el dólar'
+                    : 'Todavía no está puesto a cómo está el dólar';
+}
+
 // ── Nueva orden / corregir ───────────────────────────────────────────────
 async function comFormOrden(orden) {
   const esNueva = !orden;
@@ -2600,9 +2640,15 @@ async function comFormOrden(orden) {
   // cada vez sino que jale el que tenga grabado" (Ailin). Solo se pregunta si
   // todavía no hay ninguno, y al corregir una orden, porque ahí se ve el que
   // quedó congelado en esa compra.
-  let tasaGuardada = null;
-  try { tasaGuardada = (await api('/admin/compras/tasa')).tasa; } catch (_) {}
+  const tasaGuardada = await comTasaCargar(true);
   const pedirTasa = !esNueva || !tasaGuardada;
+  // La moneda elegida en este momento: la nota del dólar la necesita para
+  // volver a escribirse cuando él cambia y el formulario sigue abierto.
+  let monedaVista = orden ? orden.moneda : 'USD';
+  const notaDelCambio = () => (monedaVista === 'HNL'
+    ? 'En lempiras no hace falta tipo de cambio.'
+    : `Se le aplica el dólar a <b>${L(comTasa)}</b>, que es el que está guardado. `
+      + '<button type="button" class="ppform__lnk" data-dolar>Cambiarlo</button>');
   const datos = await PPForm.abrir({
     titulo: esNueva ? 'Nueva orden de compra' : 'Corregir la orden',
     confirmar: esNueva ? 'Crear la orden' : 'Guardar cambios',
@@ -2639,12 +2685,23 @@ async function comFormOrden(orden) {
         max: 2000, valor: orden ? (orden.notas || '') : '' },
     ],
     // Sin campo de tipo de cambio, la nota dice cuál se va a aplicar: que se
-    // use el guardado no puede ser un secreto.
-    alCambiar: pedirTasa ? null : (v, ayuda) => ayuda.nota('cambio',
-      v.moneda === 'HNL'
-        ? 'En lempiras no hace falta tipo de cambio.'
-        : `Se le aplica el dólar a <b>${L(tasaGuardada)}</b>, que es el que está `
-          + 'guardado. Si cambió, se corrige en <b>⋯ → Tipo de cambio</b>.'),
+    // use el guardado no puede ser un secreto. Y si hoy amaneció distinto, se
+    // corrige desde aquí mismo, sin perder lo que ya escribió.
+    alCambiar: pedirTasa ? null : (v, ayuda) => {
+      monedaVista = v.moneda;
+      ayuda.nota('cambio', notaDelCambio());
+    },
+    alAbrir: pedirTasa ? null : (caja) => {
+      // Delegado: la nota se vuelve a escribir con cada tecla, así que el
+      // botón de adentro no es siempre el mismo.
+      caja.addEventListener('click', async (ev) => {
+        if (!ev.target.closest('[data-dolar]')) return;
+        ev.preventDefault();
+        await comTipoDeCambio();
+        const p = document.getElementById('ppf-cambio');
+        if (p) p.innerHTML = notaDelCambio();
+      });
+    },
   });
   if (!datos) return;
   try {
@@ -2655,6 +2712,8 @@ async function comFormOrden(orden) {
         try {
           await api('/admin/compras/tasa',
             { method: 'PUT', body: JSON.stringify({ tasa: datos.tasa }) });
+          comTasa = datos.tasa;
+          comDolarPintar();
         } catch (_) { /* la orden igual se crea con lo que escribió */ }
       }
       const creada = await api('/admin/compras/ordenes',
@@ -3055,6 +3114,8 @@ async function comTipoDeCambio() {
   try {
     await api('/admin/compras/tasa',
       { method: 'PUT', body: JSON.stringify({ tasa: datos.tasa }) });
+    comTasa = datos.tasa;
+    comDolarPintar();
   } catch (ex) { comError('No se pudo guardar', ex); }
 }
 
@@ -4744,6 +4805,8 @@ function comIniciarBotones() {
     else if (v === 'envios') comTrkForm(null);
     else comCajForm(null);
   });
+  $('com-dolar').addEventListener('click', comTipoDeCambio);
+  comTasaCargar();
   PPMenu.colgar($('com-mas'), () => [
     { texto: 'Proveedores', al: () => comListaAdmin('proveedor') },
     { texto: 'Tarjetas', al: () => comListaAdmin('tarjeta') },

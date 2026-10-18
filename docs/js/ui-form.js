@@ -157,6 +157,9 @@ window.PPForm = (function () {
       // reescribe un campo de tipo nota: sirve para ir enseñando una cuenta
       // mientras se llena (el flete de la caja, por ejemplo).
       alCambiar: null,
+      // alAbrir(caja) corre una vez, con el formulario ya montado. Para lo que
+      // el componente no cubre: un botón dentro de una nota, por ejemplo.
+      alAbrir: null,
     }, opciones || {});
     const campos = cfg.campos.filter(Boolean);
     const montados = {};
@@ -196,6 +199,7 @@ window.PPForm = (function () {
           Object.values(montados).forEach((m) => { if (m.alCambiar) m.alCambiar(correr); });
           correr();
         }
+        if (cfg.alAbrir) cfg.alAbrir(caja, montados);
         const primero = cfg.enfocar
           || (campos.find((c) => !c.oculto && c.tipo !== 'nota') || {}).id;
         const el = primero && document.getElementById(`ppf-${primero}`);

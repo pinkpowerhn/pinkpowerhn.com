@@ -3432,6 +3432,68 @@ async function comCajForm(caja) {
   } catch (ex) { comError('No se pudo guardar la caja', ex); }
 }
 
+// ── El peso de la balanza ────────────────────────────────────────────────
+// La consolidadora manda un solo peso y cobra por él. Pesar la caja al llegar
+// es la única forma de saber si ese número era el de verdad.
+function comCajBalanzaDicho(c) {
+  const real = Number(c.peso_recibido) || 0;
+  const cobrado = Number(c.peso_total) || 0;
+  if (!real || !cobrado) return '';
+  const dif = Math.round((cobrado - real) * 1000) / 1000;
+  const plata = Math.abs(dif) * (Number(c.tarifa_libra) || 0);
+  if (Math.abs(dif) < 0.05) return 'cuadra con lo que cobraron';
+  if (dif > 0) {
+    return `${N(dif)} lb de más en el cobro`
+      + (plata ? ` · ${comPlata(plata, c.moneda)}` : '');
+  }
+  return `pesó ${N(-dif)} lb más de lo que cobraron`;
+}
+
+function comCajBalanza(c) {
+  if (!c.peso_recibido) return '<span class="com-form__op">sin pesar</span>';
+  const dicho = comCajBalanzaDicho(c);
+  return `${N(c.peso_recibido)} lb`
+    + (dicho ? `<div class="com-pie">${dicho}</div>` : '');
+}
+
+async function comCajBalanzaForm(caja) {
+  const cobrado = Number(caja.peso_total) || 0;
+  const cuenta = (v) => {
+    const real = Number(v.peso_recibido) || 0;
+    if (!real) {
+      return cobrado ? `La consolidadora cobró ${N(cobrado)} lb.`
+                     : 'Esta caja no tiene peso de la consolidadora.';
+    }
+    if (!cobrado) return `Pesó ${N(real)} lb.`;
+    const dicho = comCajBalanzaDicho({ ...caja, peso_recibido: real });
+    return `Cobraron ${N(cobrado)} lb y pesó ${N(real)} lb: <b>${dicho}</b>.`;
+  };
+  const datos = await PPForm.abrir({
+    titulo: `El peso de la caja ${caja.correlativo}`,
+    sub: 'Lo que marcó su balanza al llegar',
+    ancho: 440,
+    confirmar: 'Guardar el peso',
+    campos: [
+      { id: 'peso_recibido', tipo: 'numero', etiqueta: 'Peso en la balanza',
+        ayuda: 'libras', paso: 0.01, min: 0, placeholder: '46.5',
+        valor: caja.peso_recibido || '' },
+      { id: 'cuenta', tipo: 'nota', texto: cuenta({ peso_recibido: caja.peso_recibido }) },
+    ],
+    alCambiar: (v, api) => api.nota('cuenta', cuenta(v)),
+  });
+  if (!datos) return;
+  try {
+    await api(`/admin/compras/cajas/${caja.id}`, {
+      method: 'PATCH',
+      // Vacío = borrarlo: se anotó mal y se quiere dejar en blanco.
+      body: JSON.stringify({ peso_recibido: datos.peso_recibido || null }),
+    });
+    await comCajCargar();
+    if (comCajAbierta === caja.id) await comCajAbrir(caja.id);
+  } catch (ex) { comError('No se pudo guardar el peso', ex); }
+}
+
+
 // ── Cerrarla: el peso y el flete ─────────────────────────────────────────
 async function comCajCerrar(caja) {
   const moneda = caja.moneda || 'USD';
@@ -3569,7 +3631,10 @@ async function comCajAbrir(cid, desdeRuta) {
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
         <div><div class="com-dato__nm">Peso</div>
-             <div class="com-dato__vl">${c.peso_total ? N(c.peso_total) + ' lb' : '—'}</div></div>
+             <div class="com-dato__vl">${c.peso_total ? N(c.peso_total) + ' lb' : '—'}
+               <div class="com-pie">lo que cobró la consolidadora</div></div></div>
+        ${!abierta ? `<div><div class="com-dato__nm">En la balanza</div>
+             <div class="com-dato__vl">${comCajBalanza(c)}</div></div>` : ''}
         <div><div class="com-dato__nm">Flete</div>
              <div class="com-dato__vl">${comCajFlete(c)}</div></div>
         <div><div class="com-dato__nm">Llega</div>
@@ -3579,6 +3644,10 @@ async function comCajAbrir(cid, desdeRuta) {
       ${abierta && trk.length ? `<div style="margin-top:1rem">
         <button class="btn btn--primary btn--sm" type="button" id="com-caj-cerrar">
           Cerrarla y mandarla</button></div>` : ''}
+      ${!abierta ? `<div style="margin-top:1rem">
+        <button class="btn btn--ghost btn--sm" type="button" id="com-caj-peso">
+          ${c.peso_recibido ? 'Corregir el peso de la balanza'
+                            : 'Pesé la caja al llegar'}</button></div>` : ''}
     </div>
 
     <div class="card rep-card">
@@ -3611,6 +3680,8 @@ async function comCajAbrir(cid, desdeRuta) {
   if (!abierta) comCajRecibirAbrir(cid);
   const bCerrar = $('com-caj-cerrar');
   if (bCerrar) bCerrar.onclick = () => comCajCerrar(c);
+  const bPeso = $('com-caj-peso');
+  if (bPeso) bPeso.onclick = () => comCajBalanzaForm(c);
   const bAdd = $('com-caj-add');
   if (bAdd) bAdd.onclick = () => comCajMeter(cid);
 

@@ -76,8 +76,10 @@
 }
 .ppform__lnk:hover { color: var(--pink, #e8437a); }
 
-/* Dos campos por fila en pantalla grande. */
-.ppform__dos { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+/* Dos campos por fila en pantalla grande. Alineados por abajo: si una etiqueta
+   se parte en dos líneas ("Total de la PO (lo que dice el proveedor)"), su
+   campo quedaba escalonado respecto al de al lado. */
+.ppform__dos { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; align-items: end; }
 
 /* En el teléfono todo va en una columna: dos campos de 150 px no se llenan
    cómodos con el pulgar, y los números quedan ilegibles. */

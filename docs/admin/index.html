@@ -546,6 +546,28 @@
   }
   .com-dato__nm { font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
   .com-dato__vl { font-size:0.95rem; font-weight:700; }
+  /* La cuenta de la orden, puesta como el recibo del proveedor: los productos,
+     lo que cobra aparte y el total. Está aquí para que cuadrar con la PO no
+     sea sacar la calculadora renglón por renglón. */
+  .com-cuenta { margin:0.9rem 0 0; padding:0.8rem 0 0; border-top:1px solid var(--linea); }
+  .com-cuenta__cab {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:0.6rem; margin-bottom:0.4rem;
+  }
+  .com-cuenta__ln {
+    display:flex; justify-content:space-between; gap:1rem;
+    font-size:0.9rem; padding:0.22rem 0;
+  }
+  /* Las cifras una debajo de otra, alineadas por el punto decimal. */
+  .com-cuenta__ln span:last-child { font-variant-numeric:tabular-nums; }
+  .com-cuenta__ln--total {
+    border-top:1px solid var(--linea); margin-top:0.35rem;
+    padding-top:0.45rem; font-weight:800; font-size:1rem;
+  }
+  .com-cuenta__nm { color:var(--muted); }
+  .com-cuenta__pie { margin:0.55rem 0 0; font-size:0.83rem; line-height:1.45; }
+  .com-cuenta__ok { color:#1f7a4d; font-weight:700; }
+  .com-cuenta__mal { color:var(--pink-dk); font-weight:700; }
   .com-volver {
     background:none; border:none; color:var(--pink-dk); cursor:pointer;
     font:inherit; font-size:0.88rem; padding:0; margin-bottom:0.7rem;
@@ -747,10 +769,18 @@
     border-radius:9px; font:inherit; font-size:0.92rem; color:var(--ink);
   }
   .com-form textarea { min-height:56px; resize:vertical; }
-  .com-form__dos { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
+  /* align-items:end para que las cajas queden alineadas aunque una etiqueta se
+     parta en dos líneas: "Total del renglón (US$)" empujaba su campo cuatro
+     píxeles abajo del de al lado. */
+  .com-form__dos { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; align-items:end; }
+  /* Cantidad, precio de cada una y total del renglón: los tres se miran
+     juntos, porque escribir uno llena el otro. */
+  .com-form__tres {
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:0.6rem; align-items:end;
+  }
   .com-form__op { color:#b9a7b2; font-weight:400; }
   @media (max-width: 540px) {
-    .com-form__dos { grid-template-columns:1fr; }
+    .com-form__dos, .com-form__tres { grid-template-columns:1fr; }
     .com-datos { grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:0.7rem 0.9rem; }
     /* El conmutador de vistas ocupa el ancho: su CSS ya lo estira, pero el
        hueco donde vive se encogía al tamaño del contenido. */
@@ -2486,8 +2516,11 @@ function comPintar() {
             + `<div class="com-pie">${N(f.items)} ${f.items === 1 ? 'producto' : 'productos'}</div>` },
         { clave: 'unidades_recibidas', titulo: 'Llegó',
           html: (f) => comAvance(f.unidades_recibidas, f.unidades) },
-        { clave: 'total_compra', titulo: 'Compra',
-          html: (f) => `<b>${comPlata(f.total_compra, f.moneda)}</b>` },
+        // Lo que se pagó de verdad, impuestos y envío incluidos: es el número
+        // que después aparece en el estado de cuenta de la tarjeta.
+        { clave: 'total_pagado', titulo: 'Compra',
+          html: (f) => `<b>${comPlata(
+            f.total_pagado != null ? f.total_pagado : f.total_compra, f.moneda)}</b>` },
         { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado,
             f.estado === 'abierta' ? 'Abierta' : f.estado === 'cerrada' ? 'Cerrada' : 'Cancelada') },
       ],
@@ -2747,6 +2780,63 @@ async function comQuitarOrden(orden) {
   } catch (ex) { comError('No se pudo quitar', ex); }
 }
 
+// ── La cuenta de la orden ────────────────────────────────────────────────
+// "Como simplificarlo para agregar los items y que me cuadre con el total de
+// la PO. Sin tener que estar sacándole el precio unitario y el isv a cada
+// cosa" (Ailin). Los impuestos, el envío y el descuento se escriben una vez
+// para toda la orden; el panel los reparte entre los renglones y aquí enseña
+// la misma cuenta que trae la orden del proveedor, renglón por renglón.
+function comCuentaLn(nombre, monto, moneda, clase, signo) {
+  return `<div class="com-cuenta__ln${clase || ''}">
+    <span class="com-cuenta__nm">${nombre}</span>
+    <span>${signo || ''}${comPlata(monto, moneda)}</span></div>`;
+}
+
+// Cómo llamarle a lo que se repartió: si solo hay impuestos es el ISV, y si
+// hay de todo, "lo de la PO". Decirle ISV al flete confundiría.
+function comExtrasNombre(c) {
+  const hay = [c.impuestos ? 'el ISV' : '', c.envio ? 'el envío' : '',
+               c.descuento ? 'el descuento' : ''].filter(Boolean);
+  return hay.length === 1 ? 'con ' + hay[0] : 'con lo de la PO';
+}
+
+function comCuadreHTML(c, moneda) {
+  if (c.total_po == null) {
+    return '<p class="com-cuenta__pie com-cuenta__nm">Escriba el total que dice la '
+      + 'orden del proveedor y el panel le avisa si no cuadra.</p>';
+  }
+  if (c.cuadra) {
+    return `<p class="com-cuenta__pie com-cuenta__ok">✓ Cuadra con la PO, `
+      + `que dice ${comPlata(c.total_po, moneda)}.</p>`;
+  }
+  const corto = c.diferencia < 0;
+  return `<p class="com-cuenta__pie com-cuenta__mal">La PO dice `
+    + `${comPlata(c.total_po, moneda)}: ${corto ? 'faltan' : 'sobran'} `
+    + `${comPlata(Math.abs(c.diferencia), moneda)}.</p>`;
+}
+
+function comCuentaHTML(c, o) {
+  const puesto = c.extras || c.total_po != null;
+  const moneda = o.moneda;
+  return `<div class="com-cuenta">
+      <div class="com-cuenta__cab">
+        <div class="com-dato__nm">La cuenta</div>
+        <button class="btn btn--ghost btn--sm" type="button" id="com-cuadrar">${
+          puesto ? 'Corregir' : 'Impuestos y envío'}</button>
+      </div>
+      ${comCuentaLn('Los productos', c.subtotal, moneda)}
+      ${c.impuestos ? comCuentaLn('Impuestos', c.impuestos, moneda) : ''}
+      ${c.envio ? comCuentaLn('Envío', c.envio, moneda) : ''}
+      ${c.descuento ? comCuentaLn('Descuento', c.descuento, moneda, '', '−') : ''}
+      ${comCuentaLn('Total', c.total, moneda, ' com-cuenta__ln--total')}
+      ${moneda !== 'HNL' && o.tasa
+        ? `<div class="com-cuenta__ln com-cuenta__nm" style="padding-top:0">
+             <span></span><span>${L(c.total * Number(o.tasa))} a ${o.tasa}</span></div>`
+        : ''}
+      ${comCuadreHTML(c, moneda)}
+    </div>`;
+}
+
 // ── La ficha de una orden ────────────────────────────────────────────────
 let comOrdenAbierta = null;
 
@@ -2774,9 +2864,11 @@ async function comAbrir(oid, desdeRuta) {
     return;
   }
   const o = datos.orden, items = datos.items || [];
+  // La cuenta la hace el API: es la misma que después reparte el ISV entre los
+  // renglones, y dos cuentas iguales en dos lados terminan diferenciándose.
+  const cuenta = datos.cuentas || { subtotal: 0, extras: 0, total: 0 };
   const unidades = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
   const recibidas = items.reduce((s, i) => s + Number(i.recibidas || 0), 0);
-  const total = items.reduce((s, i) => s + Number(i.cantidad || 0) * Number(i.precio_compra || 0), 0);
 
   caja.innerHTML = `
     <button class="com-volver" type="button" id="com-atras">← Todas las órdenes</button>
@@ -2797,11 +2889,8 @@ async function comAbrir(oid, desdeRuta) {
              <div class="com-dato__vl">${N(unidades)}</div></div>
         <div><div class="com-dato__nm">Han llegado</div>
              <div class="com-dato__vl">${N(recibidas)} de ${N(unidades)}</div></div>
-        <div><div class="com-dato__nm">Costo de la compra</div>
-             <div class="com-dato__vl">${comPlata(total, o.moneda)}${
-               o.moneda !== 'HNL' && o.tasa
-                 ? `<div class="com-pie">${L(total * Number(o.tasa))} a ${o.tasa}</div>` : ''}</div></div>
       </div>
+      ${comCuentaHTML(cuenta, o)}
       ${o.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(o.notas)}</p>` : ''}
     </div>
 
@@ -2817,6 +2906,7 @@ async function comAbrir(oid, desdeRuta) {
 
   $('com-atras').onclick = comVolver;
   $('com-add').onclick = () => comAgregar(oid, o);
+  $('com-cuadrar').onclick = () => comTotalesPO(o, cuenta);
 
   PPTabla.crear($('com-items'), {
     columnas: [
@@ -2824,8 +2914,16 @@ async function comAbrir(oid, desdeRuta) {
         html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
           + (f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : '') },
       { clave: 'cantidad', titulo: 'Cantidad', html: (f) => N(f.cantidad) },
-      { clave: 'precio_compra', titulo: 'Precio',
-        html: (f) => (f.precio_compra == null ? '—' : comPlata(f.precio_compra, o.moneda)) },
+      // El total del renglón arriba, que es lo que ella compara con la PO, y
+      // debajo lo que sale cada unidad: limpia y ya con su parte del ISV.
+      // Todo dentro de un bloque: en el teléfono la celda es flex y el monto
+      // se partía en dos renglones para dejarle sitio al pie.
+      { clave: 'precio_compra', titulo: 'Costo',
+        html: (f) => (f.precio_compra == null ? '—'
+          : `<div>${comPlata(f.total_linea, o.moneda)}`
+            + `<div class="com-pie">${comPlata(f.precio_compra, o.moneda)} c/u${
+                cuenta.extras ? ` · ${comExtrasNombre(cuenta)}, `
+                  + `${comPlata(f.costo_unitario, o.moneda)}` : ''}</div></div>`) },
       { clave: 'asignadas', titulo: 'En camino',
         html: (f) => (f.asignadas ? `${N(f.asignadas)} en trackings` : '—') },
       { clave: 'recibidas', titulo: 'Llegó', html: (f) => comAvance(f.recibidas, f.cantidad) },
@@ -2842,11 +2940,91 @@ async function comAbrir(oid, desdeRuta) {
   }).datos(items);
 }
 
+// Lo que la PO cobra aparte de los productos. Se escribe una vez por orden y
+// se reparte solo: antes había que dividir el total de cada renglón entre las
+// unidades y aplicarle el ISV a mano, producto por producto.
+async function comTotalesPO(orden, cuenta) {
+  const signo = orden.moneda === 'HNL' ? 'L.' : 'US$';
+  const sub = Number(cuenta.subtotal || 0);
+  const redondo = (n) => Math.round(n * 100) / 100;
+  // Mientras escribe, la cuenta: así ve el total moverse y si cuadra con la PO
+  // sin tener que guardar para enterarse.
+  const laCuenta = (v) => {
+    const extras = redondo((v.impuestos || 0) + (v.envio || 0) - (v.descuento || 0));
+    const total = redondo(sub + extras);
+    const dif = v.total_po == null ? null : redondo(total - v.total_po);
+    return `Los productos suman <b>${comPlata(sub, orden.moneda)}</b>. Con esto, `
+      + `el total queda en <b>${comPlata(total, orden.moneda)}</b>`
+      + (dif == null
+         ? '. Escriba el total de la PO y el panel le avisa si no cuadra.'
+         : Math.abs(dif) <= 0.02 ? ': cuadra con la PO. ✓'
+         : `, y la PO dice ${comPlata(v.total_po, orden.moneda)}: `
+           + `${dif < 0 ? 'faltan' : 'sobran'} <b>`
+           + `${comPlata(Math.abs(dif), orden.moneda)}</b>.`);
+  };
+  const datos = await PPForm.abrir({
+    titulo: 'Impuestos y envío',
+    sub: 'Lo que la orden del proveedor cobra aparte de los productos',
+    confirmar: 'Guardar',
+    campos: [
+      { id: 'impuestos', tipo: 'dinero', etiqueta: 'Impuestos', ayuda: 'taxes',
+        mitad: true, prefijo: signo, min: 0, valor: orden.impuestos },
+      { id: 'envio', tipo: 'dinero', etiqueta: 'Envío', ayuda: 'shipping',
+        mitad: true, prefijo: signo, min: 0, valor: orden.envio },
+      { id: 'descuento', tipo: 'dinero', etiqueta: 'Descuento', ayuda: 'opcional',
+        mitad: true, prefijo: signo, min: 0, valor: orden.descuento },
+      { id: 'total_po', tipo: 'dinero', etiqueta: 'Total de la PO',
+        ayuda: 'opcional', mitad: true, prefijo: signo, min: 0,
+        valor: orden.total_po },
+      { id: 'cuadre', tipo: 'nota', html: '' },
+    ],
+    alCambiar: (v, ayuda) => ayuda.nota('cuadre', laCuenta(v)),
+  });
+  if (!datos) return;
+  try {
+    await api('/admin/compras/ordenes/' + orden.id,
+      { method: 'PATCH', body: JSON.stringify(datos) });
+    await comCargar();
+    await comAbrir(orden.id);
+  } catch (ex) { comError('No se pudo guardar', ex); }
+}
+
 function comError(titulo, ex) {
   PPModal.abrir({ titulo, cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
                   confirmar: 'Entendido', cancelar: null, ancho: 420 });
 }
 
+
+// El precio de cada una y el total del renglón, enlazados: se escribe el que
+// traiga la orden del proveedor y el otro se llena solo. Las POs de Truly
+// vienen con el total ($148.50 por cinco) y Ailin lo venía dividiendo a mano.
+// El unitario guarda cuatro decimales a propósito: $100 entre 3 redondeado a
+// centavos deja la orden descuadrada frente a la del proveedor.
+function comEnlazarPrecio(idCantidad, idUno, idTodo) {
+  const cant = document.getElementById(idCantidad);
+  const uno = document.getElementById(idUno);
+  const todo = document.getElementById(idTodo);
+  if (!cant || !uno || !todo) return;
+  const cuantas = () => Number(cant.value);
+  const deTodo = () => {
+    // Sin ceros de relleno: el precio de cada una casi siempre es redondo
+    // (29.70) y "29.7000" se lee peor de lo que ayuda.
+    uno.value = (todo.value === '' || !(cuantas() > 0))
+      ? '' : String(Number((Number(todo.value) / cuantas()).toFixed(4)));
+  };
+  const deUno = () => {
+    todo.value = (uno.value === '' || !(cuantas() > 0))
+      ? '' : (Number(uno.value) * cuantas()).toFixed(2);
+  };
+  // Al cambiar la cantidad manda lo último que ella escribió: si venía
+  // copiando totales de la PO, el total es el dato bueno.
+  let ultimo = 'uno';
+  todo.addEventListener('input', () => { ultimo = 'todo'; deTodo(); });
+  uno.addEventListener('input', () => { ultimo = 'uno'; deUno(); });
+  cant.addEventListener('input', () => (ultimo === 'todo' ? deTodo() : deUno()));
+  if (uno.value) deUno();
+  else if (todo.value) deTodo();
+}
 
 // ── Agregar un producto a la orden ───────────────────────────────────────
 // Dos caminos: buscarlo (si ya existe en Shopify) o crearlo. El que se crea
@@ -2855,6 +3033,7 @@ async function comAgregar(oid, orden) {
   let modo = 'buscar';
   let elegido = null;
   let buscando = null;
+  const plata = orden.moneda === 'HNL' ? 'L.' : 'US$';
 
   const pintarModo = () => {
     document.getElementById('cp-t-buscar').classList.toggle('is-active', modo === 'buscar');
@@ -2955,18 +3134,25 @@ async function comAgregar(oid, orden) {
       </div>
 
       <div class="com-form" style="margin-top:0.9rem;border-top:1px solid var(--linea);padding-top:0.8rem">
-        <div class="com-form__dos">
+        <div class="com-form__tres">
           <label>Cuántas unidades
             <input type="number" id="cp-cant" step="1" min="1" value="1" />
           </label>
-          <label>Precio de compra <span class="com-form__op">(${orden.moneda === 'HNL' ? 'L.' : 'US$'} c/u)</span>
+          <label>Precio <span class="com-form__op">(${plata} c/u)</span>
             <input type="number" id="cp-costo" step="0.01" min="0" placeholder="0.00" />
           </label>
+          <label>Total del renglón <span class="com-form__op">(${plata})</span>
+            <input type="number" id="cp-total" step="0.01" min="0" placeholder="0.00" />
+          </label>
         </div>
+        <p class="com-pie" style="margin-top:0.5rem">Escriba el que traiga la orden
+          del proveedor: el otro se llena solo. Los impuestos no van aquí, se ponen
+          una sola vez para toda la orden.</p>
       </div>`,
     alAbrir: () => {
       pintarModo();
       pintarElegido();
+      comEnlazarPrecio('cp-cant', 'cp-costo', 'cp-total');
       document.getElementById('cp-t-buscar').onclick = () => { modo = 'buscar'; pintarModo(); };
       document.getElementById('cp-t-nuevo').onclick = () => { modo = 'nuevo'; pintarModo(); };
       const q = document.getElementById('cp-q');
@@ -3029,6 +3215,7 @@ async function comAgregar(oid, orden) {
 
 // ── Corregir un producto de la orden ─────────────────────────────────────
 async function comFormItem(oid, orden, item) {
+  const plata = orden.moneda === 'HNL' ? 'L.' : 'US$';
   const datos = await PPForm.abrir({
     titulo: 'Corregir el producto',
     ancho: 480,
@@ -3038,10 +3225,12 @@ async function comFormItem(oid, orden, item) {
       { id: 'cantidad', tipo: 'numero', etiqueta: 'Cuántas unidades', mitad: true,
         paso: 1, min: 1, entero: true, valor: item.cantidad,
         obligatorio: '¿Cuántas unidades se compraron?' },
-      { id: 'precio_compra', tipo: 'dinero', etiqueta: 'Precio de compra',
-        ayuda: 'cada una', mitad: true,
-        prefijo: orden.moneda === 'HNL' ? 'L.' : 'US$',
+      { id: 'precio_compra', tipo: 'dinero', etiqueta: 'Precio',
+        ayuda: 'cada una', mitad: true, prefijo: plata,
         min: 0, valor: item.precio_compra },
+      { id: 'total_linea', tipo: 'dinero', etiqueta: 'Total del renglón',
+        ayuda: 'como viene en la PO', prefijo: plata,
+        min: 0, valor: item.total_linea },
       { id: 'nota', tipo: 'texto', etiqueta: 'Nota', ayuda: 'opcional', max: 500,
         valor: item.nota || '' },
       item.asignadas
@@ -3050,8 +3239,12 @@ async function comFormItem(oid, orden, item) {
               + 'trackings: no puede quedar en menos de eso.' }
         : null,
     ],
+    alAbrir: () => comEnlazarPrecio('ppf-cantidad', 'ppf-precio_compra',
+                                    'ppf-total_linea'),
   });
   if (!datos) return;
+  // Las dos caras de lo mismo: lo que se guarda es el precio de cada una.
+  delete datos.total_linea;
   try {
     await api('/admin/compras/items/' + item.id,
       { method: 'PATCH', body: JSON.stringify(datos) });

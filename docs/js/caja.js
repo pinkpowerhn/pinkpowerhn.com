@@ -310,6 +310,58 @@ async function repasarCatalogo() {
   } catch (_) { /* si falla, se sigue con el que había */ }
 }
 
+// Lo que cambió en Shopify hace un rato, y nada más. Pedir el catálogo entero
+// son 1600 variantes y 17 segundos del lado del servidor, así que solo podía
+// rearmarse cada dos minutos: entre que Ailin subía una cantidad en Shopify y
+// la caja la veía pasaban hasta cinco. Esto son 0,3 s, así que va cada minuto
+// y cada vez que vuelve a la pestaña.
+async function repasarNovedades() {
+  if (estado.cargandoCatalogo || !estado.catalogo.length) return;
+  let datos;
+  try {
+    datos = await api('/admin/caja/novedades');
+  } catch (_) {
+    return;   // si falla, se sigue con lo que había
+  }
+  const cambiadas = datos.variantes || [];
+  const quitadas = new Set(datos.quitadas || []);
+  if (!cambiadas.length && !quitadas.size) return;
+
+  // Se funde sobre el mismo orden: rebarajar el catálogo haría saltar los
+  // resultados que la cajera tiene en pantalla.
+  const nuevas = new Map(cambiadas.map((v) => [v.variant_id, v]));
+  const lista = [];
+  for (const v of estado.catalogo) {
+    if (quitadas.has(v.variant_id)) continue;
+    const cambiada = nuevas.get(v.variant_id);
+    if (cambiada) {
+      nuevas.delete(v.variant_id);
+      lista.push({ ...cambiada,
+        busca: norm([cambiada.producto, cambiada.marca, cambiada.variante]
+          .filter(Boolean).join(' ')) });
+    } else {
+      lista.push(v);
+    }
+  }
+  for (const v of nuevas.values()) {
+    lista.push({ ...v,
+      busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')) });
+  }
+  estado.catalogo = lista;
+  indexarCatalogo();
+  // NO se repinta la pantalla entera: eso destruye y recrea el campo donde la
+  // cajera —o el lector— está escribiendo, y se pierden caracteres. Solo la
+  // lista de resultados, que es la que enseña las existencias. Si lo que se
+  // ve vino de una búsqueda en Shopify se deja quieto: esos resultados no
+  // están en el catálogo y rehacerlos los borraría.
+  const q = $('q');
+  if (q && q.value.trim() && !estado.buscadoEnShopify && !camara) {
+    estado.resultados = buscarProductos(q.value.trim());
+    const cont = $('resultados');
+    if (cont) cont.innerHTML = bloqueResultados();
+  }
+}
+
 // Dos índices del catálogo: por código de barras (lo que lee el lector) y por
 // variante (para saber, en cualquier momento, cuántas dice el sistema que hay).
 function indexarCatalogo() {
@@ -4119,6 +4171,8 @@ function medirBarras() {
   raiz.style.setProperty('--alto-cinta', alto + 'px');
 }
 
+let relojesPuestos = false;
+
 function arrancar() {
   mostrarCaja();
   const recuperada = recuperarVenta();
@@ -4126,12 +4180,28 @@ function arrancar() {
   pintar();
   medirBarras();
   window.addEventListener('resize', medirBarras);
-  cargarCatalogo();
+  // Apenas está el catálogo, lo de último minuto: el servidor sirve su copia
+  // de hasta dos minutos atrás, y recargar la página no la renovaba. Por eso
+  // Ailin daba "refresh, refresh, refresh y nada que refresca".
+  cargarCatalogo().then(repasarNovedades);
   cargarRecientes();
   detectarCamara();
-  // Tres minutos: el servidor rearma su copia cada dos, así que un código nuevo
-  // llega en unos cinco minutos como mucho, sin tocar nada.
-  setInterval(repasarCatalogo, 180000);
+  // Una sola vez aunque se vuelva a entrar: arrancar() corre otra vez después
+  // del login, y eso dejaba dos relojes andando a la vez.
+  if (!relojesPuestos) {
+    relojesPuestos = true;
+    // Lo cambiado hace poco: son 0,3 s contra los 17 que cuesta el catálogo
+    // entero, así que se puede preguntar cada minuto.
+    setInterval(repasarNovedades, 60000);
+    // Y al volver a la caja, de una. Es justo el momento: fue a Shopify a
+    // subir la cantidad de lo que acaba de llegar y vuelve a cobrarlo.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) repasarNovedades();
+    });
+    // El catálogo entero, de vez en cuando: es el único que se entera de lo
+    // que desapareció de Shopify sin dejar rastro.
+    setInterval(repasarCatalogo, 600000);
+  }
   if (recuperada) {
     setTimeout(() => flash('Retomamos la venta que tenías a medias', 'ok'), 800);
   }

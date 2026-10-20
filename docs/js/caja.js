@@ -343,15 +343,19 @@ async function buscarEnShopify(texto) {
   }
   let hallados = [];
   try {
-    hallados = (await api('/admin/caja/buscar?q=' + encodeURIComponent(texto))).productos || [];
+    hallados = (await api('/admin/caja/buscar?q=' + encodeURIComponent(texto)
+                          + '&borradores=1')).productos || [];
   } catch (_) { hallados = []; }
   // Mientras tanto siguió escribiendo: esta respuesta ya no vale.
   if (mia !== buscaEnCurso) return;
   const q = $('q');
   if (!q || q.value.trim() !== texto) return;
 
-  // Se suman al catálogo para que la próxima búsqueda sea instantánea.
+  // Se suman al catálogo para que la próxima búsqueda sea instantánea. Los
+  // borradores no: ahí dentro se volverían indistinguibles de lo vendible, y
+  // la gracia es justamente que se vean aparte hasta que se activen.
   for (const v of hallados) {
+    if (v.borrador) continue;
     if (estado.catalogo.some((x) => x.variant_id === v.variant_id)) continue;
     estado.catalogo.push({
       ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
@@ -439,6 +443,57 @@ function agregar(v, desdeLista = false) {
   estado.error = '';
   pintar();
   enfocarBuscador();
+}
+
+// Mientras Shopify contesta: el segundo toque no vuelve a activar lo mismo.
+let activandose = false;
+
+// Un producto que está en Shopify pero todavía en BORRADOR no se vende: la caja
+// lo mostraba como "no está", y la cajera se iba a Shopify a publicarlo y volvía
+// a esperar a que el catálogo lo viera. Acá se activa de un toque y sigue la
+// venta. Es lo que pasaba el 20/10 con Into Orbit Crema Hidratante: nueve
+// minutos de atraso por un producto que sí estaba cargado.
+async function activarYAgregar(v) {
+  if (activandose) return;
+  activandose = true;
+  pintar();
+  try {
+    const r = await api('/admin/caja/activar', {
+      method: 'POST',
+      body: JSON.stringify({ producto_id: v.producto_id, codigo: v.barcode || '' }),
+    });
+    // La fila que vuelve ya es la vendible (la releyó Shopify). Si no vino
+    // —el producto no tenía código— sirve la que ya teníamos, sin la marca.
+    const fila = r.fila || { ...v };
+    delete fila.borrador;
+    estado.catalogo.push({
+      ...fila,
+      busca: norm([fila.producto, fila.marca, fila.variante].filter(Boolean).join(' ')),
+    });
+    if (fila.barcode) estado.porBarcode.set(String(fila.barcode).trim(), fila);
+    if (fila.variant_id) estado.porVariante.set(fila.variant_id, fila);
+    // Deja de ser borrador en la lista que está en pantalla: si la cajera
+    // vuelve a tocarlo, suma una unidad más en vez de activarlo otra vez.
+    const i = estado.resultados.findIndex((x) => x.variant_id === v.variant_id);
+    if (i !== -1) estado.resultados[i] = fila;
+    agregar(fila, true);
+    // Un borrador a medio armar puede no tener precio todavía. Se activa igual
+    // —para eso se tocó— pero entra en cero, y cobrar en cero no avisa solo.
+    if (!fila.precio) {
+      flash(`${fila.producto} ya está a la venta, pero sin precio: póngaselo a mano`, 'mal');
+    } else {
+      flash(`${fila.producto} ya está a la venta`, 'ok');
+    }
+  } catch (err) {
+    estado.error = err.message === 'Failed to fetch'
+      ? 'No se pudo conectar para activarlo. Revise la señal.'
+      : (err.message || 'Shopify no dejó activarlo');
+    pintar();
+    flash(estado.error, 'mal');
+  } finally {
+    activandose = false;
+    pintar();
+  }
 }
 
 function quitar(i) { estado.venta.splice(i, 1); pintar(); enfocarBuscador(); }
@@ -1171,17 +1226,29 @@ function bloqueResultados() {
   // la cajera pierda la cuenta de lo que lleva tocado.
   const llevado = new Map(estado.venta.map((l) => [l.variant_id, l.cantidad]));
   return `<div class="resultados scroll-lindo">${estado.resultados.map((v, i) => `
-    <button class="res ${v.disponible ? '' : 'res--agotado'}" data-res="${i}" type="button">
+    <button class="res ${v.borrador ? 'res--borrador' : (v.disponible ? '' : 'res--agotado')}"
+            data-res="${i}" type="button">
       ${v.imagen ? `<img src="${esc(v.imagen)}" alt="" loading="lazy" />` : '<img alt="" />'}
       <span class="res__txt">
         <span class="res__nom">${esc(v.producto)}${v.variante ? ' · ' + esc(v.variante) : ''}</span>
-        <span class="res__meta">${esc(v.marca || 'Sin marca')}
+        <span class="res__meta">${
+          // "Borrador" va PRIMERO y como texto, no como etiqueta: la meta se
+          // corta por el final, y en 390 px una etiqueta ahí salía partida
+          // ("BORRADO…"). Así lo que se pierde es la marca, no el aviso.
+          v.borrador ? '<b class="res__meta--borrador">Borrador</b> · ' : ''
+          }${esc(v.marca || 'Sin marca')}
           ${v.existencia != null ? ' · ' + v.existencia + ' en existencia' : ''}
-          ${v.disponible ? '' : '<span class="res__tag">agotado</span>'}</span>
+          ${v.borrador ? ' · toque para activarlo'
+                         + (v.precio ? '' : ' (no tiene precio todavía)') : ''}
+          ${!v.borrador && !v.disponible ? '<span class="res__tag">agotado</span>' : ''}</span>
       </span>
-      ${hayMayoreo() && v.precio_mayoreo == null
+      ${v.borrador ? ''
+        // Sin etiqueta a la derecha: en 390 px le comía el ancho al nombre y
+        // quedaba un "Good Girl…" que no distingue un producto de otro. Lo que
+        // hay que hacer se dice abajo, con sitio para decirlo entero.
+        : hayMayoreo() && v.precio_mayoreo == null
         ? '<span class="res__lleva res__lleva--ojo">sin precio de mayoreo</span>' : ''}
-      ${llevado.get(v.variant_id)
+      ${!v.borrador && llevado.get(v.variant_id)
         ? `<span class="res__lleva">${llevado.get(v.variant_id)} en la venta</span>` : ''}
       <span class="res__pre">${L(precioSegunModo(v))}</span>
     </button>`).join('')}${pie}</div>`;
@@ -2640,6 +2707,9 @@ $('caja-main').addEventListener('keydown', (e) => {
     if (porCodigo) { e.target.value = ''; estado.resultados = []; agregar(porCodigo); return; }
     if (estado.resultados.length >= 1) {
       const v = estado.resultados[0];
+      // Un borrador no se agrega con Enter: hay que activarlo primero, y eso
+      // es una decisión —lo pone a la venta—, así que se toca a propósito.
+      if (v.borrador) { activarYAgregar(v); return; }
       e.target.value = '';
       estado.resultados = [];
       agregar(v);
@@ -2727,7 +2797,11 @@ $('caja-main').addEventListener('click', (e) => {
     // mismo aroma, cerrarla obligaba a escribir el aroma cuatro veces. La lista
     // se queda, y cada fila muestra cuántas unidades van ya en la venta. Para
     // salir de la búsqueda está la × del buscador.
-    agregar(estado.resultados[Number(d.res)], true);
+    const elegido = estado.resultados[Number(d.res)];
+    // Lo que está en borrador no se agrega: primero se activa en Shopify, y
+    // eso es justo lo que dice su etiqueta ("activar y agregar").
+    if (elegido && elegido.borrador) { activarYAgregar(elegido); return; }
+    agregar(elegido, true);
     return;
   }
   if (d.cli !== undefined) {
@@ -2777,7 +2851,9 @@ $('caja-main').addEventListener('click', (e) => {
       const q = $('q'); if (q) q.value = '';
       estado.resultados = []; pintar(); enfocarBuscador(); break;
     }
-    case 'recargar': cargarCatalogo(); break;
+    // Forzado: quien toca "Reintentar" acaba de cargar algo en Shopify y
+    // quiere verlo YA, no el catálogo que armó el refresco de fondo hace rato.
+    case 'recargar': cargarCatalogo(1, true); break;
     case 'quitar-cliente':
       estado.cliente = null; recalcularPrecios(); pintar(); enfocarBuscador(); break;
     case 'abrir-cobro': estado.cobroAbierto = true; pintar(); break;
@@ -3082,6 +3158,22 @@ async function procesarEscaneo(codigo) {
   // SECUNDARIOS (una variante puede tener varios códigos y la API solo devuelve
   // el principal, pero el buscador de Shopify los conoce todos).
   const enShopify = await preguntarAShopify(limpio);
+  // Está en Shopify, pero en borrador: no se vende todavía. Antes salía "ese
+  // código no está en el catálogo", que era mentira y dejaba esperando a que
+  // apareciera algo que ya estaba cargado. Ahora sale en la lista con su aviso,
+  // y un toque lo activa y lo agrega.
+  if (enShopify && enShopify.borrador) {
+    pipMal();
+    estado.resultados = [enShopify];
+    estado.resultadosTotal = 1;
+    estado.buscadoEnShopify = false;
+    estado.codigoSinHallar = '';
+    marcarLeido(limpio);
+    pintar();
+    if (camara) fichaCamara(limpio, 'Está en borrador en Shopify', enShopify);
+    else flash(`${enShopify.producto}: está en borrador, toque para activarlo`, 'mal');
+    return;
+  }
   if (enShopify) {
     estado.catalogo.push({
       ...enShopify,
@@ -3108,7 +3200,8 @@ async function procesarEscaneo(codigo) {
 // Una sola consulta, rápida: no rearma el catálogo entero.
 async function preguntarAShopify(codigo) {
   try {
-    return await api('/admin/caja/codigo?codigo=' + encodeURIComponent(codigo));
+    return await api('/admin/caja/codigo?codigo=' + encodeURIComponent(codigo)
+                     + '&borradores=1');
   } catch (_) {
     return null;   // 404 (no existe) o sin señal: sigue el camino de siempre
   }
@@ -3122,6 +3215,15 @@ async function buscarDeNuevo(codigo) {
   if (caja) caja.innerHTML = '<p class="camara__ayuda"><span class="puntos">Buscando en Shopify</span></p>';
   else flash('Buscando en Shopify…');
   let v = await preguntarAShopify(codigo);
+  if (v && v.borrador) {
+    // Sí estaba: lo que faltaba no era refrescar nada, sino activarlo.
+    marcarLeido(codigo);
+    estado.codigoSinHallar = '';
+    if (caja) fichaCamara(codigo, 'Está en borrador en Shopify', v);
+    else { estado.resultados = [v]; estado.resultadosTotal = 1; pintar();
+           flash(`${v.producto}: está en borrador, toque para activarlo`, 'mal'); }
+    return;
+  }
   if (v) {
     estado.catalogo.push({
       ...v, busca: norm([v.producto, v.marca, v.variante].filter(Boolean).join(' ')),
@@ -3359,7 +3461,7 @@ function cambioLaEscena(a, b) {
   return suma / 256 > 12;
 }
 
-function fichaCamara(codigo, aviso) {
+function fichaCamara(codigo, aviso, borrador) {
   if (!camara) return;
   const caja = document.getElementById('camara-marcador');
   if (!caja) return;
@@ -3367,13 +3469,25 @@ function fichaCamara(codigo, aviso) {
   if (aviso) {
     const puedeReintentar = aviso.includes('no está en el catálogo');
     caja.innerHTML = `<div class="camara__aviso">
-        <p class="camara__ayuda camara__ayuda--mal">${esc(aviso)}</p>
+        <p class="camara__ayuda camara__ayuda--mal">${esc(aviso)}${
+          borrador ? '<br />' + esc(borrador.producto) : ''}</p>
+        ${borrador ? `<button class="camara__mas" type="button" data-activar>
+          Activarlo y agregarlo</button>` : ''}
         ${puedeReintentar ? `<button class="camara__mas" type="button" data-rebuscar>
           Buscar de nuevo en Shopify</button>` : ''}
       </div>`;
     caja.dataset.codigo = '';
     const btn = caja.querySelector('[data-rebuscar]');
     if (btn) btn.addEventListener('click', () => buscarDeNuevo(codigo));
+    const act = caja.querySelector('[data-activar]');
+    if (act) act.addEventListener('click', async () => {
+      act.disabled = true;
+      act.textContent = 'Activando…';
+      await activarYAgregar(borrador);
+      // Con el producto ya a la venta, la ficha de siempre: nombre, precio y
+      // los botones de cantidad, igual que cualquier otro escaneo.
+      if (estado.porBarcode.get(codigo)) { fichaCamara(codigo); ventaCamara(); }
+    });
     return;
   }
   const v = estado.porBarcode.get(codigo);

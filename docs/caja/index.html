@@ -364,9 +364,22 @@
                display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .res__pre { font-weight:700; color:var(--pink-dk); white-space:nowrap; font-size:1rem; }
   .res--agotado { opacity:0.5; }
+  /* Está en Shopify pero todavía en borrador: no se vende hasta activarlo, y
+     se activa tocándolo. Va en ámbar —ni normal ni error— porque no es un
+     problema: es un paso que falta y que se resuelve ahí mismo. */
+  .res--borrador { background:#fffaf0; }
+  .res--borrador:hover, .res--borrador:active { background:#fff3dc; }
   .res__tag { font-size:0.6rem; background:#ffe9e9; color:var(--rojo); border-radius:6px;
               padding:0.12rem 0.4rem; margin-left:0.3rem; letter-spacing:0.06em;
               text-transform:uppercase; font-weight:700; }
+  .res__meta--borrador { color:#8a5a00; letter-spacing:0.04em;
+                         text-transform:uppercase; font-size:0.68rem; }
+  /* El borrador es el único que puede ocupar dos líneas: tiene algo que
+     explicar y son cuatro en mil seiscientos, así que la fila más alta no le
+     quita sitio a nadie. Recortarlo, en cambio, dejaba un "Good Girl…" que no
+     distingue un producto de otro. */
+  .res--borrador .res__nom, .res--borrador .res__meta { white-space:normal; }
+  .res__lleva--activar { background:#fdebc8; color:#8a5a00; }
   /* Cuántas unidades de ese producto van ya en la venta: la lista de búsqueda
      se queda abierta al agregar, y sin esto se pierde la cuenta. */
   .res__lleva { font-size:0.62rem; background:#e8f7ee; color:#1f7a44; border-radius:999px;

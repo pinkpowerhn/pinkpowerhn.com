@@ -1552,6 +1552,14 @@ async function submitCheckout(name, phone, email, checkout = null) {
   // y la clienta pagaría de más (pasó con el #1555). Mejor que vuelva a entrar.
   const enMayoreo = !!getState().mayoreo;
   const mayoreoToken = enMayoreo ? localStorage.getItem('pinkpower_mayoreo_token') : null;
+  // Productos que entraron al carrito con precio de mayoreo y la sesión ya no
+  // está: el pedido saldría a precio de tienda y el mensaje de WhatsApp con los
+  // de mayoreo. Le pasó a Glow Store con el #D708 (L. 7,810 contra L. 5,550).
+  if (!enMayoreo && cart.some(i => i.mayoreo)) {
+    showCoError('Tu sesión de mayorista venció. Entra de nuevo a tu cuenta para que el pedido salga con tus precios.');
+    if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
+    return;
+  }
   if (enMayoreo && !mayoreoToken) {
     showCoError('Tu sesión de mayorista venció. Entra de nuevo para que se apliquen tus precios.');
     if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }

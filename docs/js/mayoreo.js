@@ -220,6 +220,11 @@ async function enterMayoreo(token, nombre, telefono = '') {
     // Solo limpiamos la sesión si el token es inválido/vencido (401). Ante un
     // error transitorio (red, 502) la mantenemos para no desloguear sin querer.
     if (e && e.status === 401) {
+      // La sesión venció con el carrito armado a precios de mayoreo. Se marca
+      // para que el checkout pida volver a entrar en vez de mandarlo a precio de
+      // tienda mientras el mensaje de WhatsApp dice los de mayoreo (#D708, 24/10).
+      const { cart } = getState();
+      if (cart.length) setState({ cart: cart.map(i => ({ ...i, mayoreo: true })) });
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
       unmountAccount();

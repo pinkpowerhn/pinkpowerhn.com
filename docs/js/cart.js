@@ -36,6 +36,10 @@ export function addToCart(product, variant) {
       variantTitle: variant.title,
       productTitle: product.title,
       price:        variant.price,
+      // El precio de arriba es de mayoreo si se agregó con la sesión abierta. El
+      // carrito se guarda en el teléfono y sobrevive a la sesión: hay que saberlo
+      // para no mandarlo después como pedido de tienda (#D708).
+      mayoreo:      !!getState().mayoreo,
       imageUrl:     product.images[0]?.url || '',
       quantity:     1,
       maxQty,

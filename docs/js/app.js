@@ -1367,7 +1367,7 @@ function showCheckoutModal() {
         <!-- Solo con envío: para recoger en tienda no hace falta (Ailin, 24/10). -->
         <div class="co-field" id="co-address-field" hidden>
           <label for="co-address">Dirección de entrega *</label>
-          <textarea id="co-address" rows="2" maxlength="300" placeholder="Ciudad, colonia, calle, # de casa y una referencia" autocomplete="street-address"></textarea>
+          <textarea id="co-address" rows="2" maxlength="300" placeholder="Escribe tu dirección exacta" autocomplete="street-address"></textarea>
         </div>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">

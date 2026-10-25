@@ -2260,7 +2260,8 @@ body.menu-open nav {
 }
 
 /* Solo los inputs de texto (hijos directos), NO los radios de las opciones */
-.co-field > input {
+.co-field > input,
+.co-field > textarea {
   width: 100%;
   background: rgba(255, 247, 251, 0.8);
   border: 1px solid rgba(232, 67, 122, 0.28);
@@ -2273,8 +2274,11 @@ body.menu-open nav {
   transition: border-color 0.2s;
 }
 
-.co-field > input::placeholder { color: rgba(26, 10, 18, 0.45); }
-.co-field > input:focus         { border-color: var(--pink); }
+.co-field > input::placeholder,
+.co-field > textarea::placeholder { color: rgba(26, 10, 18, 0.45); }
+.co-field > input:focus,
+.co-field > textarea:focus        { border-color: var(--pink); }
+.co-field > textarea { display: block; resize: vertical; line-height: 1.45; }
 
 .co-error {
   display: flex;
@@ -2315,7 +2319,8 @@ body.menu-open nav {
 }
 
 /* Campo obligatorio sin llenar: borde y fondo rojos para que salte a la vista. */
-.co-field > input.is-invalid {
+.co-field > input.is-invalid,
+.co-field > textarea.is-invalid {
   border-color: #e02424;
   background: rgba(224, 36, 36, 0.07);
 }

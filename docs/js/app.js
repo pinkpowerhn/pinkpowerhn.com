@@ -1364,6 +1364,11 @@ function showCheckoutModal() {
           <input type="email" id="co-email" placeholder="tu@correo.com" autocomplete="email" />
         </div>
         `}
+        <!-- Solo con envío: para recoger en tienda no hace falta (Ailin, 24/10). -->
+        <div class="co-field" id="co-address-field" hidden>
+          <label for="co-address">Dirección de entrega *</label>
+          <textarea id="co-address" rows="2" maxlength="300" placeholder="Ciudad, colonia, calle, # de casa y una referencia" autocomplete="street-address"></textarea>
+        </div>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">
           Finalizar por WhatsApp
@@ -1381,6 +1386,9 @@ function showCheckoutModal() {
   updateCoTotals(modal);
   modal.querySelector('#co-form').addEventListener('change', e => {
     if (e.target.name === 'co-delivery' || e.target.name === 'co-payment') updateCoTotals(modal);
+    if (e.target.name === 'co-delivery') {
+      modal.querySelector('#co-address-field').hidden = e.target.value === 'pickup';
+    }
   });
 
   // Abrir mostrando el inicio (resumen del pedido + opciones), no el campo de
@@ -1393,7 +1401,7 @@ function showCheckoutModal() {
   modal.querySelector('#co-close').addEventListener('click', closeCheckoutModal);
 
   // Al escribir, quitar el resaltado rojo del campo ya corregido.
-  ['#co-name', '#co-phone'].forEach(sel => {
+  ['#co-name', '#co-phone', '#co-address'].forEach(sel => {
     const el = modal.querySelector(sel);
     if (el) el.addEventListener('input', () => el.classList.remove('is-invalid'));
   });
@@ -1450,11 +1458,23 @@ function showCheckoutModal() {
     }
 
     const { delivery, payment } = getCoSelection(modal);
+    // Con envío hace falta saber a dónde: va a las notas del pedido y al WhatsApp.
+    const addressEl = modal.querySelector('#co-address');
+    const address = delivery === 'pickup' ? '' : addressEl.value.trim();
+    addressEl.classList.remove('is-invalid');
+    if (delivery !== 'pickup' && address.length < 6) {
+      addressEl.classList.add('is-invalid');
+      showCoError('Falta tu dirección de entrega. Escríbela para que te llegue el pedido.');
+      addressEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      addressEl.focus();
+      return;
+    }
     const totals  = computeCheckout(delivery, payment);
     const checkout = {
       customerName:  name,
       customerPhone: phone,
       deliveryLabel: DELIVERY[delivery].label,
+      address,
       paymentLabel:  PAYMENT[payment].label,
       ...totals,
     };
@@ -1577,6 +1597,7 @@ async function submitCheckout(name, phone, email, checkout = null) {
     // Aylin los tenga aunque la clienta no llegue a mandar el mensaje de WhatsApp.
     envio: checkout?.deliveryLabel || null,
     pago:  checkout?.paymentLabel  || null,
+    direccion: checkout?.address || null,
     // El MONTO del envío y de la comisión, no solo su nombre: sin esto el pedido
     // en Shopify quedaba por menos de lo que la clienta paga.
     envio_monto:    checkout?.shipping   || 0,

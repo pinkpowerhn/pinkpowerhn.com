@@ -142,6 +142,7 @@ export function buildWhatsAppMessage(orderName = null, checkout = null) {
     const rows = ['📦 Datos de Entrega:', `Nombre: ${checkout.customerName}`];
     if (checkout.customerPhone) rows.push(`Teléfono: ${checkout.customerPhone}`);
     if (checkout.deliveryLabel) rows.push(checkout.deliveryLabel);
+    if (checkout.address) rows.push(`Dirección: ${checkout.address}`);
     if (checkout.paymentLabel) {
       const pago = checkout.cashOnDelivery ? 'Efectivo contra entrega' : checkout.paymentLabel;
       rows.push(`Pago: ${pago}`);

@@ -81,6 +81,7 @@ const estado = {
   descuento: { tipo: '', valor: 0 },
   descAbierto: false,   // desplegable propio del descuento
   flete: '',            // '', 'local' o 'nacional'
+  direccion: '',        // a dónde va, cuando lleva flete
   // Por dónde entró la venta: 'tienda' (vino al mostrador) o 'redes' (pidió por
   // WhatsApp, Instagram o TikTok, aunque después pase recogiendo).
   canal: 'tienda',
@@ -124,7 +125,7 @@ function loArmado() {
   return {
     venta: estado.venta, cliente: estado.cliente,
     mayoreo: estado.mayoreo, descuento: estado.descuento,
-    pago: estado.pago, banco: estado.banco, flete: estado.flete,
+    pago: estado.pago, banco: estado.banco, flete: estado.flete, direccion: estado.direccion,
     canal: estado.canal, canalTocado: estado.canalTocado,
     preparado: estado.preparado, entregaTocada: estado.entregaTocada,
     varios: estado.varios, montos: estado.montos,
@@ -141,6 +142,7 @@ function aplicarArmado(d) {
   estado.pago = d.pago || '';
   estado.banco = d.banco || '';
   estado.flete = d.flete || '';
+  estado.direccion = d.direccion || '';
   estado.canal = d.canal === 'redes' ? 'redes' : (d.flete ? 'redes' : 'tienda');
   estado.canalTocado = !!d.canalTocado;
   estado.preparado = d.preparado === undefined ? !d.flete : !!d.preparado;
@@ -805,6 +807,7 @@ function limpiarArmado() {
   estado.banco = '';
   estado.bancoAbierto = false;
   estado.flete = '';
+  estado.direccion = '';
   estado.canal = 'tienda';
   estado.canalTocado = false;
   estado.cobroAbierto = false;
@@ -923,6 +926,7 @@ async function cobrar() {
     })),
     cliente_id: estado.cliente ? estado.cliente.id : '',
     cliente_nombre: estado.cliente ? estado.cliente.nombre : '',
+    cliente_telefono: estado.cliente ? (estado.cliente.telefono || '') : '',
     mayoreo: hayMayoreo(),
     // Con varios métodos, el pedido se marca con el que trajo más plata; el
     // detalle completo viaja en `pagos`.
@@ -930,6 +934,8 @@ async function cobrar() {
     banco: formaPrincipal() === 'transferencia' ? estado.banco : '',
     flete: elFlete().monto > 0
       ? { titulo: elFlete().titulo, monto: elFlete().monto } : null,
+    // Va como dirección de envío del pedido, que en Shopify se puede corregir.
+    direccion: elFlete().monto > 0 ? estado.direccion.trim() : '',
     // Tienda o redes: las dos entran por la caja, pero ella necesita saber
     // cuánto genera el mostrador de verdad.
     canal: estado.canal === 'redes' ? 'redes' : 'tienda',
@@ -1580,6 +1586,12 @@ function bloqueResumen() {
               f.monto ? `<b>${L(f.monto)}</b>` : ''}</button>`).join('')}
         </div>
       </div>
+      ${estado.flete ? `
+      <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
+        <label for="direccion">Dirección de entrega</label>
+        <textarea id="direccion" data-direccion rows="2" maxlength="300"
+          placeholder="Dirección exacta (si la tiene)">${esc(estado.direccion)}</textarea>
+      </div>` : ''}
 
       <!-- Las dos cosas entran por la caja, pero no son lo mismo: ella necesita
            saber cuanto genera el mostrador de verdad. Con flete siempre es de
@@ -2665,6 +2677,12 @@ $('caja-main').addEventListener('input', (e) => {
       if (sub) sub.textContent = L(l.precio * l.cantidad);
       actualizarTotales();
     }
+    return;
+  }
+  if (t.dataset.direccion !== undefined) {
+    // Sin repintar: se perdería el foco a media palabra.
+    estado.direccion = t.value;
+    guardarVenta();
     return;
   }
   if (t.dataset.recibido !== undefined) {

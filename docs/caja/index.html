@@ -48,7 +48,8 @@
     border-radius:14px; font-size:16px; color:var(--ink-2); background:#fff;
     font-family:inherit; transition:border-color .18s ease, box-shadow .18s ease;
   }
-  input::placeholder { color:#c3a7b4; }
+  input::placeholder, textarea::placeholder { color:#c3a7b4; }
+  textarea { display:block; resize:vertical; line-height:1.45; }
   input:focus, textarea:focus {
     outline:none; border-color:var(--pink); box-shadow:0 0 0 4px rgba(232,67,122,0.13);
   }

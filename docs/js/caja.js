@@ -721,6 +721,7 @@ function resumenDelCobro() {
   }
   if (montoDescuento() > 0) chips.push('Desc. ' + L(montoDescuento()));
   if (elFlete().monto > 0) chips.push(elFlete().titulo);
+  if (faltaDireccion()) chips.push({ falta: 'Falta la dirección' });
   chips.push(estado.preparado ? 'Se lo lleva' : 'Para entregar');
   chips.push(estado.canal === 'redes' ? 'Redes' : 'Tienda');
   return chips;
@@ -760,11 +761,19 @@ function faltaParaCobrar() {
     if (sumaPagos() <= 0) return 'Falta anotar cuánto entrega';
     if (sumaPagos() > total() + 0.009) return 'Lo anotado pasa del total de la venta';
     if (num(estado.montos.transferencia) > 0 && !estado.banco) return 'Falta elegir el banco';
-    return '';
+  } else {
+    if (!estado.pago) return 'Falta elegir la forma de pago';
+    if (estado.pago === 'transferencia' && !estado.banco) return 'Falta elegir el banco';
   }
-  if (!estado.pago) return 'Falta elegir la forma de pago';
-  if (estado.pago === 'transferencia' && !estado.banco) return 'Falta elegir el banco';
+  if (faltaDireccion()) return 'Falta la dirección de entrega';
   return '';
+}
+
+// Con flete la dirección es obligatoria, como en la web (Ailin, 29/10): el
+// #1681 salió con envío nacional y sin dirección, y en Shopify no había a
+// dónde mandarlo.
+function faltaDireccion() {
+  return elFlete().monto > 0 && !estado.direccion.trim();
 }
 
 function verboDeCobro() {
@@ -838,11 +847,12 @@ function sePuedeCobrar() {
   if (estado.varios) {
     // Algo tiene que entrar, y no puede entrar más que el total de la venta.
     if (sumaPagos() <= 0 || sumaPagos() > total() + 0.009) return false;
-    return !(num(estado.montos.transferencia) > 0 && !estado.banco);
+    if (num(estado.montos.transferencia) > 0 && !estado.banco) return false;
+    return !faltaDireccion();
   }
   if (!estado.pago) return false;
   if (estado.pago === 'transferencia' && !estado.banco) return false;
-  return true;
+  return !faltaDireccion();
 }
 
 // El número vive mientras dure el intento de cobro: se borra al terminar bien y
@@ -1588,9 +1598,9 @@ function bloqueResumen() {
       </div>
       ${estado.flete ? `
       <div class="campo" style="margin-top:0.9rem; margin-bottom:0">
-        <label for="direccion">Dirección de entrega</label>
+        <label for="direccion">Dirección de entrega *</label>
         <textarea id="direccion" data-direccion rows="2" maxlength="300"
-          placeholder="Dirección exacta (si la tiene)">${esc(estado.direccion)}</textarea>
+          placeholder="Dirección exacta de la clienta">${esc(estado.direccion)}</textarea>
       </div>` : ''}
 
       <!-- Las dos cosas entran por la caja, pero no son lo mismo: ella necesita
@@ -2683,6 +2693,7 @@ $('caja-main').addEventListener('input', (e) => {
     // Sin repintar: se perdería el foco a media palabra.
     estado.direccion = t.value;
     guardarVenta();
+    actualizarTotales();     // el botón de cobrar se prende al escribirla
     return;
   }
   if (t.dataset.recibido !== undefined) {

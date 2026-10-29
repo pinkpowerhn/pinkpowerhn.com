@@ -3119,7 +3119,7 @@ async function comFormOrden(orden) {
         obligatorio: '¿A qué proveedor se le compró?' },
         comListaCampo('proveedor', orden && orden.tienda)),
       { id: 'numero_proveedor', tipo: 'texto', etiqueta: 'N.º de orden del proveedor',
-        ayuda: 'opcional', max: 80, placeholder: 'El que trae la PO',
+        ayuda: 'opcional', max: 80, placeholder: 'El que aparece en la PO',
         valor: orden ? (orden.numero_proveedor || '') : '' },
       { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha', mitad: true,
         valor: orden ? orden.fecha : hoyISO(), max: hoyISO(),
@@ -4097,7 +4097,7 @@ function comTrkPintar() {
         .map((o) => `#${o.correlativo} ${o.tienda} ${o.numero_proveedor || ''}`).join(' '))
         .toLowerCase().includes(t),
       acciones: (f) => [
-        { texto: 'Ver lo que trae', al: () => comTrkAbrir(f.id) },
+        { texto: 'Ver productos', al: () => comTrkAbrir(f.id) },
         { texto: f.llegada_miami ? 'Todavía no llega a Miami' : 'Ya llegó a Miami',
           al: () => comTrkMiami(f) },
         ...(f.caja_numero ? [] : [{ texto: 'Asignar caja', al: () => comTrkAsignarCaja(f) }]),
@@ -4318,7 +4318,7 @@ async function comTrkMiami(trk) {
       { id: 'llegada_miami', tipo: 'fecha', etiqueta: '¿Qué día llegó?',
         valor: hoyISO(), max: hoyISO(), obligatorio: 'Ponga el día que llegó' },
       { id: 'nota', tipo: 'nota',
-        texto: 'Todo lo que trae este envío pasa a "En Miami" de una vez.' },
+        texto: 'Todos los productos de este envío pasan a "En Miami" de una vez.' },
     ],
   });
   if (!datos) return;
@@ -4395,14 +4395,14 @@ async function comTrkAbrir(tid, desdeRuta) {
       ${!t.llegada_miami ? `<button class="btn btn--primary btn--sm" type="button"
         id="com-trk-miami" style="margin-top:0.8rem">Ya llegó a Miami</button>
         <p class="com-pie" style="margin-top:0.4rem">Es el paso siguiente: hasta
-        que no llegue a Miami no se puede meter en una caja.</p>` : ''}
+        que no llegue a Miami no se puede agregar a una caja.</p>` : ''}
     </div>
 
     <div class="card rep-card">
       <div class="rep-card__cab">
-        <h2>Qué trae</h2>
+        <h2>Productos incluidos</h2>
         <button class="btn btn--primary btn--sm" type="button" id="com-trk-add">
-          Meter productos
+          Agregar productos
         </button>
       </div>
       <div id="com-trk-items"></div>
@@ -4427,10 +4427,10 @@ async function comTrkAbrir(tid, desdeRuta) {
     ],
     acciones: (f) => [
       { texto: 'Ver la orden', al: () => { comVista.poner('ordenes'); comMostrarVista('ordenes'); comAbrir(f.orden_id); } },
-      { texto: 'Sacar de este envío', peligro: true, al: () => comTrkSacar(tid, f) },
+      { texto: 'Quitar de este envío', peligro: true, al: () => comTrkSacar(tid, f) },
     ],
     porPagina: 20,
-    vacio: 'Este envío todavía no trae nada. Toque "Meter productos".',
+    vacio: 'Este envío todavía no tiene productos. Toque "Agregar productos".',
   }).datos(items);
 }
 
@@ -4446,7 +4446,7 @@ async function comTrkSacar(tid, item) {
     await api('/admin/compras/tracking-items/' + item.id, { method: 'DELETE' });
     await comTrkCargar();
     await comTrkAbrir(tid);
-  } catch (ex) { comError('No se pudo sacar', ex); }
+  } catch (ex) { comError('No se pudo quitar', ex); }
 }
 
 // ── Meter productos en un envío ──────────────────────────────────────────
@@ -4480,9 +4480,9 @@ async function comTrkMeter(tid) {
     </label>`).join('');
 
   const datos = await PPModal.abrir({
-    titulo: 'Qué trae este envío',
+    titulo: 'Agregar productos a este envío',
     ancho: 560,
-    confirmar: 'Meterlos al envío',
+    confirmar: 'Agregar al envío',
     cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Marque lo que viene
              en este tracking. Si el proveedor mandó solo una parte, cambie la cantidad.</p>
            <div class="com-todos__fila"><button type="button" class="ppform__lnk com-todos"
@@ -4502,7 +4502,7 @@ async function comTrkMeter(tid) {
     alConfirmar: (_caja, modal) => {
       const items = [];
       // `problema` y no un return dentro del forEach: ese return solo sale de
-      // la vuelta, y el aviso bueno ("puede meter entre 1 y N") terminaba
+      // la vuelta, y el aviso bueno ("puede agregar entre 1 y N") terminaba
       // pisado por el genérico de abajo.
       let problema = null;
       document.querySelectorAll('.com-elegir__ch').forEach((ch) => {
@@ -4510,7 +4510,7 @@ async function comTrkMeter(tid) {
         const p = pendientes[Number(ch.dataset.i)];
         const n = Number(document.querySelector(`[data-c="${ch.dataset.i}"]`).value);
         if (!(n >= 1) || n !== Math.floor(n) || n > p.libres) {
-          problema = `De "${p.titulo}" puede meter entre 1 y ${p.libres}`;
+          problema = `De "${p.titulo}" puede agregar entre 1 y ${p.libres}`;
           return;
         }
         items.push({ orden_item_id: p.id, cantidad: n });
@@ -4526,7 +4526,7 @@ async function comTrkMeter(tid) {
       { method: 'POST', body: JSON.stringify(datos) });
     await comTrkCargar();
     await comTrkAbrir(tid);
-  } catch (ex) { comError('No se pudieron meter', ex); }
+  } catch (ex) { comError('No se pudieron agregar', ex); }
 }
 
 // Crear una categoría desde el desplegable del formulario. Devuelve la opción
@@ -4802,8 +4802,8 @@ async function comCajReabrir(caja) {
 async function comCajRecibir(caja) {
   const si = await PPModal.confirmar({
     titulo: `¿La caja ${caja.correlativo} ya llegó?`,
-    cuerpo: '<p class="ppform__nota">Queda marcada como recibida. Lo que trae se '
-      + 'va recibiendo producto por producto al abrirla.</p>',
+    cuerpo: '<p class="ppform__nota">Queda marcada como recibida. Los productos se '
+      + 'van recibiendo uno por uno al abrirla.</p>',
     confirmar: 'Sí, ya llegó',
   });
   if (!si) return;
@@ -4905,7 +4905,7 @@ async function comCajAbrir(cid, desdeRuta) {
     ${!abierta ? `
     <div class="card rep-card">
       <div class="rep-card__cab">
-        <h2>Recibir lo que trae</h2>
+        <h2>Recibir productos</h2>
         <span class="rep-card__sub">escanee cada producto al sacarlo de la caja</span>
       </div>
       <div id="com-caj-recibir"></div>
@@ -4939,7 +4939,7 @@ async function comCajAbrir(cid, desdeRuta) {
         html: (f) => (f.llegada_miami ? esc(comFecha(f.llegada_miami)) : '—') },
     ],
     acciones: (f) => (abierta
-      ? [{ texto: 'Sacar de la caja', peligro: true, al: () => comCajSacar(cid, f) }]
+      ? [{ texto: 'Quitar de la caja', peligro: true, al: () => comCajSacar(cid, f) }]
       : []),
     porPagina: 20,
     vacio: abierta ? 'Esta caja está vacía. Toque "Agregar tracking".'
@@ -4976,7 +4976,7 @@ async function comCajSacar(cid, trk) {
     await api('/admin/compras/cajas/trackings/' + trk.id, { method: 'DELETE' });
     await comCajCargar();
     await comCajAbrir(cid);
-  } catch (ex) { comError('No se pudo sacar', ex); }
+  } catch (ex) { comError('No se pudo quitar', ex); }
 }
 
 // ── Meter envíos en la caja ──────────────────────────────────────────────
@@ -4988,7 +4988,7 @@ async function comCajMeter(cid) {
 
   if (!libres.length) {
     PPModal.abrir({ titulo: 'No hay envíos esperando', ancho: 440, cancelar: null,
-      cuerpo: '<p class="ppform__nota">Para meter un envío en la caja, primero '
+      cuerpo: '<p class="ppform__nota">Para agregar un envío a la caja, primero '
         + 'tiene que estar marcado como llegado a Miami.</p>',
       confirmar: 'Entendido' });
     return;
@@ -5007,7 +5007,7 @@ async function comCajMeter(cid) {
   const datos = await PPModal.abrir({
     titulo: 'Agregar tracking a la caja',
     ancho: 540,
-    confirmar: 'Meterlos a la caja',
+    confirmar: 'Agregar a la caja',
     cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Solo salen los
              que ya están en Miami y todavía no van en ninguna caja.</p>
            <div class="com-todos__fila"><button type="button" class="ppform__lnk com-todos"
@@ -5030,7 +5030,7 @@ async function comCajMeter(cid) {
       { method: 'POST', body: JSON.stringify(datos) });
     await comCajCargar();
     await comCajAbrir(cid);
-  } catch (ex) { comError('No se pudieron meter', ex); }
+  } catch (ex) { comError('No se pudieron agregar', ex); }
 }
 
 

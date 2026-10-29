@@ -554,6 +554,7 @@
   .com-tk__cant input { width:4.2rem; padding:0.35rem 0.45rem; border:1px solid var(--linea);
     border-radius:8px; font:inherit; font-size:0.9rem; text-align:right; }
   .com-tk__cant input:disabled { opacity:0.45; }
+  .com-ficha__etapa { text-align:right; }
   .com-ficha__num { font-size:0.78rem; font-weight:700; color:var(--pink-dk); letter-spacing:0.02em; }
   .com-ficha__tienda { margin:0; font-size:1.25rem; font-weight:800; }
   .com-ficha__sub { margin:0.15rem 0 0; color:var(--muted); font-size:0.88rem; }
@@ -586,6 +587,39 @@
   }
   .com-cuenta__ln--lps { padding-top:0; font-size:0.8rem; }
   .com-cuenta__ln--total .com-cuenta__nm { color:var(--ink); }
+  /* Vista rápida de una orden: pestañas para no amontonar todo */
+  .com-cuenta--ver { margin:0; padding:0; border-top:none; }
+  .com-vr__etapa { margin-bottom:0.7rem; }
+  .com-vr__etapa .com-pie { display:inline; margin-left:0.4rem; }
+  .com-vr__tabs { position:sticky; top:0; z-index:1; background:#fff; padding-bottom:0.2rem; }
+  .com-vr__n { margin-left:0.3rem; font-weight:400; opacity:0.75; }
+  /* Alto mínimo: que la ventana no brinque al cambiar de pestaña. */
+  .com-vr__pane { min-height:min(430px, 58vh); text-align:left; }
+  .com-vr__it {
+    display:grid; grid-template-columns:minmax(0,1fr) auto 128px 132px;
+    align-items:center; gap:0.4rem 0.9rem; padding:0.6rem 0.1rem;
+    border-bottom:1px solid var(--linea); font-size:0.88rem;
+  }
+  .com-vr__it:last-child { border-bottom:none; }
+  .com-vr__nm { font-weight:700; }
+  .com-vr__cant { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .com-vr__est { text-align:right; }
+  .com-vr__trk { padding:0.65rem 0.1rem; border-bottom:1px solid var(--linea); }
+  .com-vr__trk:last-of-type { border-bottom:none; }
+  .com-vr__trk-cab {
+    display:flex; justify-content:space-between; align-items:center; gap:0.6rem;
+    margin-bottom:0.2rem; font-size:0.9rem; word-break:break-all;
+  }
+  .com-vr__falta { margin:0.7rem 0 0; font-size:0.85rem; color:var(--pink-dk); font-weight:700; }
+  .com-vr__datos {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.9rem 1.2rem;
+  }
+  .com-vr__vl { font-size:0.95rem; font-weight:700; }
+  .com-vr__notas { margin:0.2rem 0 0; font-size:0.9rem; white-space:pre-wrap; }
+  @media (max-width: 540px) {
+    .com-vr__it { grid-template-columns:minmax(0,1fr) auto; }
+    .com-vr__lleg { grid-column:1; }
+  }
   .com-cuenta__nm { color:var(--muted); }
   .com-cuenta__pie { margin:0.55rem 0 0; font-size:0.83rem; line-height:1.45; }
   .com-cuenta__ok { color:#1f7a4d; font-weight:700; }
@@ -2560,7 +2594,7 @@ function comPintar() {
       filtros: [{ clave: 'etapa', titulo: 'Estado', opciones: COM_ETAPAS_FILTRO }],
       buscar: (f, t) => (`#${f.correlativo} ${f.tienda} ${f.tarjeta || ''} `
         + (f.numero_proveedor || '')).toLowerCase().includes(t),
-      alTocarFila: (f) => comAbrir(f.id),
+      alTocarFila: (f) => comVistaRapida(f),
       acciones: (f) => [
         { texto: 'Ver la orden', al: () => comAbrir(f.id) },
         { texto: 'Editar', al: () => comFormOrden(f) },
@@ -2603,6 +2637,120 @@ function comTrkOrdenes(lista) {
   return (lista || []).map((o) => `<div><b>#${N(o.correlativo)}</b> · ${esc(o.tienda)}${
     o.numero_proveedor ? `<div class="com-pie">${esc(o.numero_proveedor)}</div>` : ''}</div>`)
     .join('') || '<span class="com-pie">—</span>';
+}
+
+// ── Vista rápida de una orden ────────────────────────────────────────────
+// "Que al darle click salga un modal para ver rápido los items y no que entre
+// a otro lado" (Ailin). Es solo para ver: lo que se cambia (agregar producto,
+// tracking, recibir) sigue en la orden completa, a un botón de distancia.
+async function comVistaRapida(fila) {
+  const pestanas = [
+    { id: 'prod', t: 'Productos' }, { id: 'env', t: 'Envíos' },
+    { id: 'cuenta', t: 'Cuenta' }, { id: 'datos', t: 'Datos' },
+  ];
+  const abrir = await PPModal.abrir({
+    titulo: `Orden #${fila.correlativo} · ${fila.tienda}`,
+    sub: diaCorto(fila.fecha) + (fila.numero_proveedor
+      ? ` · N.º del proveedor ${fila.numero_proveedor}` : ''),
+    ancho: 780,
+    confirmar: 'Abrir la orden completa',
+    cancelar: 'Cerrar',
+    cuerpo: `
+      <div class="com-vr__etapa">${comEtapaOrden(fila)}</div>
+      <div class="com-tabs com-vr__tabs" role="tablist">
+        ${pestanas.map((p, i) => `<button type="button" role="tab" data-vr-tab="${p.id}"
+          class="${i ? '' : 'is-active'}">${p.t}<span class="com-vr__n" data-vr-n="${p.id}"></span>
+          </button>`).join('')}
+      </div>
+      ${pestanas.map((p, i) => `<div class="com-vr__pane" data-vr-pane="${p.id}" ${i ? 'hidden' : ''}>
+        <p class="com-pie">Cargando…</p></div>`).join('')}`,
+    alAbrir: async (caja) => {
+      caja.querySelectorAll('[data-vr-tab]').forEach((b) => {
+        b.onclick = () => {
+          caja.querySelectorAll('[data-vr-tab]').forEach((x) =>
+            x.classList.toggle('is-active', x === b));
+          caja.querySelectorAll('[data-vr-pane]').forEach((x) => {
+            x.hidden = x.dataset.vrPane !== b.dataset.vrTab;
+          });
+        };
+      });
+      const pane = (id) => caja.querySelector(`[data-vr-pane="${id}"]`);
+      let datos;
+      try {
+        datos = await api('/admin/compras/ordenes/' + fila.id);
+      } catch (ex) {
+        pane('prod').innerHTML = `<p class="com-pie">${esc(ex.message)}</p>`;
+        return;
+      }
+      const o = datos.orden, items = datos.items || [];
+      const cuenta = datos.cuentas || { subtotal: 0, extras: 0, total: 0 };
+      const n = (id, v) => { caja.querySelector(`[data-vr-n="${id}"]`).textContent = v; };
+
+      // Productos: qué es, cuántas, cuánto costó, cuántas llegaron.
+      n('prod', ` ${items.length}`);
+      pane('prod').innerHTML = items.length ? `<div class="com-vr__lista">
+        ${items.map((f) => `<div class="com-vr__it">
+          <div class="com-vr__nm">${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}
+            ${f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : ''}</div>
+          <div class="com-vr__cant">${N(f.cantidad)} ${f.precio_compra == null ? ''
+            : `× ${comPlata(f.precio_compra, o.moneda)}
+               <div class="com-pie">${comPlata(f.total_linea, o.moneda)}</div>`}</div>
+          <div class="com-vr__lleg">${comAvance(f.recibidas, f.cantidad)}</div>
+          <div class="com-vr__est">${comEtiq(f.estado)}</div>
+        </div>`).join('')}</div>`
+        : '<p class="com-pie">Esta orden todavía no tiene productos.</p>';
+
+      // Envíos: cada tracking con lo que trae y dónde va.
+      const porTrk = new Map();
+      let sinTrk = 0;
+      for (const f of items) {
+        if (!['no_suplido', 'cancelado'].includes(f.estado)) {
+          sinTrk += Math.max(0, Number(f.cantidad) - Number(f.asignadas || 0));
+        }
+        for (const t of (f.trackings || []).filter((x) => !x.local)) {
+          const g = porTrk.get(t.numero) || { t, unidades: 0, productos: [] };
+          g.unidades += Number(t.cantidad || 0);
+          g.productos.push(`${f.titulo}${f.variante ? ' · ' + f.variante : ''} (${N(t.cantidad)})`);
+          porTrk.set(t.numero, g);
+        }
+      }
+      n('env', porTrk.size ? ` ${porTrk.size}` : '');
+      pane('env').innerHTML = o.es_local
+        ? '<p class="com-pie">Es compra local: no pasa por Miami ni por caja. '
+          + 'Se recibe desde la orden completa.</p>'
+        : ([...porTrk.values()].map((g) => `<div class="com-vr__trk">
+            <div class="com-vr__trk-cab"><b>${esc(g.t.numero)}</b>
+              <span>${g.t.caja ? comEtiq('en_caja', `Caja ${N(g.t.caja)}`)
+                : g.t.en_miami ? comEtiq('en_miami', 'En Miami')
+                : comEtiq('despachado', 'En camino a Miami')}</span></div>
+            <div class="com-pie">${N(g.unidades)} ${g.unidades === 1 ? 'unidad' : 'unidades'}:
+              ${g.productos.map(esc).join(', ')}</div>
+          </div>`).join('')
+          || '<p class="com-pie">Todavía no tiene ningún tracking.</p>')
+          + (sinTrk ? `<p class="com-vr__falta">${N(sinTrk)} ${sinTrk === 1
+              ? 'unidad todavía no va' : 'unidades todavía no van'} en ningún tracking.</p>` : '');
+
+      // Cuenta: la misma de la orden completa, sin el botón de corregir.
+      pane('cuenta').innerHTML = comCuentaHTML(cuenta, o, true);
+
+      // Datos de la orden.
+      const dato = (nm, vl) => (vl ? `<div><div class="com-dato__nm">${nm}</div>
+        <div class="com-vr__vl">${vl}</div></div>` : '');
+      pane('datos').innerHTML = `<div class="com-vr__datos">
+          ${dato('Orden', '#' + N(o.correlativo))}
+          ${dato('Proveedor', esc(o.tienda))}
+          ${dato('N.º del proveedor', o.numero_proveedor ? esc(o.numero_proveedor) : '—')}
+          ${dato('Fecha', esc(diaCorto(o.fecha)))}
+          ${dato('Tarjeta', o.tarjeta ? esc(o.tarjeta) : '—')}
+          ${dato('Moneda', o.moneda === 'HNL' ? 'Lempiras'
+            : `Dólares${o.tasa ? ` · a ${esc(o.tasa)}` : ''}`)}
+          ${dato('Tipo', o.es_local ? 'Compra local' : 'Pasa por Miami')}
+        </div>
+        ${o.notas ? `<div class="com-dato__nm" style="margin-top:0.9rem">Notas</div>
+          <p class="com-vr__notas">${esc(o.notas)}</p>` : ''}`;
+    },
+  });
+  if (abrir) comAbrir(fila.id);
 }
 
 // ── Proveedores y tarjetas ───────────────────────────────────────────────
@@ -2883,14 +3031,14 @@ function comCuadreHTML(c, moneda) {
     + `${comPlata(Math.abs(c.diferencia), moneda)}.</p>`;
 }
 
-function comCuentaHTML(c, o) {
+function comCuentaHTML(c, o, soloVer) {
   const puesto = c.extras || c.total_po != null;
   const moneda = o.moneda;
-  return `<div class="com-cuenta">
-      <div class="com-cuenta__cab">
+  return `<div class="com-cuenta${soloVer ? ' com-cuenta--ver' : ''}">
+      ${soloVer ? '' : `<div class="com-cuenta__cab">
         <button class="btn btn--ghost btn--sm" type="button" id="com-cuadrar">${
           puesto ? 'Corregir' : 'Impuestos y envío'}</button>
-      </div>
+      </div>`}
       ${comCuentaLn('Subtotal productos', c.subtotal, moneda)}
       ${c.impuestos ? comCuentaLn('Impuestos', c.impuestos, moneda) : ''}
       ${c.envio ? comCuentaLn('Envío', c.envio, moneda) : ''}
@@ -2941,6 +3089,8 @@ async function comAbrir(oid, desdeRuta) {
     && Number(i.cantidad) > Number(i.asignadas || 0));
   // La compra local ya empezó a recibirse si tiene su envío interno.
   const yaLocal = items.some((i) => (i.trackings || []).some((t) => t.local));
+  // En qué va, igual que en la lista: la ficha decía "Abierta" y la lista "En Miami".
+  const filaLista = (comOrdenes || []).find((x) => x.id === o.id);
 
   caja.innerHTML = `
     <button class="com-volver" type="button" id="com-atras">← Todas las órdenes</button>
@@ -2953,8 +3103,9 @@ async function comAbrir(oid, desdeRuta) {
           <p class="com-ficha__sub">${esc(diaCorto(o.fecha))}${
             o.tarjeta ? ' · ' + esc(o.tarjeta) : ''}${o.es_local ? ' · compra local' : ''}</p>
         </div>
-        <div>${comEtiq(o.estado, o.estado === 'abierta' ? 'Abierta'
-          : o.estado === 'cerrada' ? 'Cerrada' : 'Cancelada')}</div>
+        <div class="com-ficha__etapa">${filaLista ? comEtapaOrden(filaLista)
+          : comEtiq(o.estado, o.estado === 'abierta' ? 'Abierta'
+            : o.estado === 'cerrada' ? 'Cerrada' : 'Cancelada')}</div>
       </div>
       <div class="com-datos">
         <div><div class="com-dato__nm">Productos</div>

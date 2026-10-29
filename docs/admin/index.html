@@ -659,19 +659,46 @@
   .com-tk__cant input { width:4.2rem; padding:0.35rem 0.45rem; border:1px solid var(--linea);
     border-radius:8px; font:inherit; font-size:0.9rem; text-align:right; }
   .com-tk__cant input:disabled { opacity:0.45; }
+  /* Jerarquía de las fichas de Compras (orden, tracking y caja), la misma en
+     las tres, de arriba abajo:
+       1. qué es (ORDEN #4, TRACKING · FEDEX, CAJA): chiquito y rosa;
+       2. el título: lo único grande;
+       3. el subtítulo, en gris;
+       4. el estatus y su ETA;
+       5. los datos: etiqueta chiquita gris y el valor en negrita, del tamaño
+          del texto. Antes los datos eran casi del tamaño del título y la ficha
+          no tenía por dónde empezar a leerse (Ailin). */
   .com-ficha__etapa { text-align:right; }
-  .com-ficha__num { font-size:0.78rem; font-weight:700; color:var(--pink-dk); letter-spacing:0.02em; }
-  .com-ficha__tienda { margin:0; font-size:1.25rem; font-weight:800; }
-  .com-ficha__sub { margin:0.15rem 0 0; color:var(--muted); font-size:0.88rem; }
+  .com-ficha__num { font-size:0.7rem; font-weight:700; color:var(--pink-dk);
+    text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.2rem; }
+  .card .com-ficha__tienda { margin:0; font-size:1.3rem; font-weight:800; line-height:1.2;
+    overflow-wrap:anywhere; }
+  .com-ficha__sub { margin:0.25rem 0 0; color:var(--muted); font-size:0.86rem; line-height:1.4; }
+  /* El paso que sigue, en un recuadro: un botón suelto con una nota debajo no
+     decía que era lo próximo por hacer. */
+  .com-paso {
+    display:flex; align-items:center; justify-content:space-between; gap:0.7rem 1rem;
+    flex-wrap:wrap; margin-top:1rem; padding:0.8rem 0.95rem;
+    border-radius:12px; background:#fdf4f8;
+  }
+  .com-paso__txt { flex:1 1 220px; margin:0; font-size:0.86rem; line-height:1.4; color:var(--ink); }
+  .com-paso__txt b { display:block; margin-bottom:0.15rem; font-size:0.66rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.08em; color:var(--pink-dk); }
   /* Los datos de la ficha repartidos a lo ancho: antes se amontonaban a la
      izquierda y dejaban media tarjeta vacía en computadora. */
   .com-datos {
     display:grid; grid-template-columns:repeat(auto-fit, minmax(118px, 1fr));
-    gap:0.9rem 1.2rem; margin:0.9rem 0 0;
-    padding:0.8rem 0 0; border-top:1px solid var(--linea);
+    gap:0.85rem 1.2rem; margin:1rem 0 0;
+    padding:0.9rem 0 0; border-top:1px solid var(--linea);
   }
-  .com-dato__nm { font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
-  .com-dato__vl { font-size:1.15rem; font-weight:800; }
+  .com-dato__nm { font-size:0.66rem; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.15rem; }
+  .com-dato__vl { font-size:1rem; font-weight:700; line-height:1.3; overflow-wrap:anywhere; }
+  .com-dato__vl .com-pie { font-weight:400; }
+  /* El pie debajo del nombre del producto (de qué orden es) no va en negrita
+     como el nombre: es dato de apoyo. */
+  .pp-tabla__td-ppal .com-pie { font-weight:400; }
+  .com-dato__vl .ppform__lnk { font-size:inherit; font-weight:inherit; }
   /* La cuenta de la orden, puesta como el recibo del proveedor: los productos,
      lo que cobra aparte y el total. Está aquí para que cuadrar con la PO no
      sea sacar la calculadora renglón por renglón. */
@@ -788,6 +815,39 @@
     border-radius:10px; background:#f7eef3;
   }
   .bus-ayuda { margin:0.6rem 0 0; font-size:0.8rem; color:var(--muted); }
+  /* La portada de Rastrear: lo que viene en camino. Foto, nombre y estatus a
+     la izquierda; la ETA a la derecha, que es lo que se busca con la vista. */
+  .bus-fil { display:flex; flex-wrap:wrap; gap:0.4rem; margin:-0.3rem 0 0.6rem; }
+  .bus-fil button {
+    border:1px solid var(--linea); background:#fff; border-radius:999px;
+    padding:0.35rem 0.75rem; font:inherit; font-size:0.78rem; color:var(--muted); cursor:pointer;
+  }
+  .bus-fil button span { font-weight:700; margin-left:0.15rem; }
+  .bus-fil button.is-active { background:#fdf0f5; border-color:var(--pink); color:var(--pink-dk); font-weight:700; }
+  .bus-cam-lista { display:flex; flex-direction:column; }
+  .bus-cam {
+    display:grid; grid-template-columns:48px minmax(0,1fr) auto; align-items:center;
+    gap:0.75rem; width:100%; padding:0.7rem 0.3rem; text-align:left; cursor:pointer;
+    background:none; border:none; border-bottom:1px solid var(--linea); font:inherit; border-radius:10px;
+  }
+  .bus-cam:last-child { border-bottom:none; }
+  .bus-cam:hover { background:#fdf4f8; }
+  .bus-cam__img { width:48px; height:48px; object-fit:cover; border-radius:10px; background:#f7eef3; display:block; }
+  .bus-cam__txt { min-width:0; }
+  .bus-cam__nm {
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    font-size:0.9rem; font-weight:600; color:var(--ink); line-height:1.3;
+  }
+  .bus-cam__est { display:flex; flex-wrap:wrap; align-items:center; gap:0.2rem 0.4rem; margin-top:0.3rem; }
+  .bus-cam__est .com-pie { margin:0; }
+  .bus-cam__u { font-size:0.78rem; font-weight:700; color:var(--ink); }
+  .bus-cam__eta { text-align:right; font-size:0.84rem; font-weight:700; color:var(--ink); }
+  .bus-cam__eta .com-pie { font-weight:400; }
+  @media (max-width: 560px) {
+    .bus-cam { grid-template-columns:42px minmax(0,1fr) auto; gap:0.6rem; }
+    .bus-cam__img { width:42px; height:42px; }
+    .bus-cam__eta { font-size:0.78rem; }
+  }
   .bus-vacio { margin:0; font-size:0.92rem; color:var(--muted); line-height:1.5; }
 
   .bus-prod__cab { display:flex; align-items:center; gap:0.8rem; margin-bottom:0.9rem; }
@@ -949,7 +1009,13 @@
   .com-form__op { color:#b9a7b2; font-weight:400; }
   @media (max-width: 540px) {
     .com-form__dos, .com-form__tres { grid-template-columns:1fr; }
-    .com-datos { grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:0.7rem 0.9rem; }
+    /* En el teléfono: el estatus debajo del título y los datos de dos en dos,
+       para que una fecha no se parta en dos renglones. */
+    .com-ficha__cab { flex-direction:column; gap:0.6rem; }
+    .com-ficha__etapa { text-align:left; }
+    .card .com-ficha__tienda { font-size:1.2rem; }
+    .com-datos { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.8rem 1rem; }
+    .com-paso .btn { flex:1 1 100%; }
     /* El conmutador de vistas ocupa el ancho: su CSS ya lo estira, pero el
        hueco donde vive se encogía al tamaño del contenido. */
     #com-vista { width:100%; }
@@ -1010,7 +1076,7 @@
     .tab { padding: 0.55rem 0.75rem; font-size: 0.78rem; flex: 0 0 auto; }
     .tab svg { width: 15px; height: 15px; }
     /* Textos un poco más pequeños en móvil */
-    .card h2 { font-size: 0.9rem; }
+    .card h2 { font-size: 1rem; }
     .card .muted, .pager__info { font-size: 0.76rem; }
     .chk { font-size: 0.85rem; }
   }
@@ -1425,7 +1491,7 @@
               <circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <input type="search" id="bus-q" autocomplete="off" enterkeyhint="search"
-                   placeholder="¿Qué producto anda buscando?" />
+                   placeholder="¿Qué producto busca?" />
           </div>
           <p class="bus-ayuda">Escriba parte del nombre, o escanee el código de barras.</p>
         </div>
@@ -4368,34 +4434,48 @@ async function comTrkAbrir(tid, desdeRuta) {
   const t = datos.tracking, items = datos.items || [];
   const unidades = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
 
+  // De qué orden es: casi siempre una sola. Cada una abre su orden.
+  const ordenes = [...new Map(items.map((i) => [i.orden_id, i])).values()];
+  const llego = !!t.llegada_miami;
+
   caja.innerHTML = `
     <button class="com-volver" type="button" id="com-trk-atras">← Todos los envíos</button>
     <div class="card rep-card">
       <div class="com-ficha__cab">
         <div>
-          ${items.length ? `<div class="com-ficha__num">${[...new Map(items.map((i) =>
-            [i.orden_id, `Orden #${N(i.orden_correlativo)} · ${esc(i.tienda)}`])).values()]
-            .join(' · ')}</div>` : ''}
+          <div class="com-ficha__num">Tracking${t.empresa ? ' · ' + esc(t.empresa) : ''}</div>
           <h2 class="com-ficha__tienda">${esc(t.numero)}</h2>
-          <p class="com-ficha__sub">${t.empresa ? esc(t.empresa) : 'Sin empresa anotada'}</p>
+          ${t.empresa ? '' : '<p class="com-ficha__sub">Sin empresa anotada</p>'}
         </div>
-        <div>${comTrkDonde(t)}</div>
+        <div class="com-ficha__etapa">${comTrkDonde(t)}</div>
       </div>
       <div class="com-datos">
+        <div><div class="com-dato__nm">${ordenes.length > 1 ? 'Órdenes' : 'Orden'}</div>
+             <div class="com-dato__vl">${ordenes.length ? ordenes.map((i) =>
+               `<button type="button" class="ppform__lnk" data-orden="${i.orden_id}">#${
+                 N(i.orden_correlativo)}</button>`).join(' · ') : '—'}
+               ${ordenes.length === 1 ? `<div class="com-pie">${esc(ordenes[0].tienda)}</div>` : ''}</div></div>
+        <div><div class="com-dato__nm">Caja</div>
+             <div class="com-dato__vl">${t.caja_id
+               ? `<button type="button" class="ppform__lnk" id="com-trk-caja">Caja #${N(t.caja_numero)}</button>
+                  <div class="com-pie">${esc(COM_CAJA_ESTADOS[t.caja_estado] || '')}</div>`
+               : `Sin caja<div class="com-pie">${llego ? 'lista para agregarla a una'
+                                                       : 'se agrega al llegar a Miami'}</div>`}</div></div>
         <div><div class="com-dato__nm">Productos</div>
              <div class="com-dato__vl">${N(items.length)}</div></div>
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
-        <div><div class="com-dato__nm">Llega a Miami</div>
-             <div class="com-dato__vl">${t.eta_miami ? esc(comFecha(t.eta_miami)) : '—'}</div></div>
-        <div><div class="com-dato__nm">Caja</div>
-             <div class="com-dato__vl">${t.caja_id ? 'Asignada' : 'Todavía ninguna'}</div></div>
       </div>
       ${t.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(t.notas)}</p>` : ''}
-      ${!t.llegada_miami ? `<button class="btn btn--primary btn--sm" type="button"
-        id="com-trk-miami" style="margin-top:0.8rem">Ya llegó a Miami</button>
-        <p class="com-pie" style="margin-top:0.4rem">Es el paso siguiente: hasta
-        que no llegue a Miami no se puede agregar a una caja.</p>` : ''}
+      ${!llego ? `<div class="com-paso">
+        <p class="com-paso__txt"><b>Siguiente paso</b>Cuando llegue a Miami, márquelo aquí.
+          Después se puede agregar a una caja.</p>
+        <button class="btn btn--primary btn--sm" type="button" id="com-trk-miami">Ya llegó a Miami</button>
+      </div>` : !t.caja_id ? `<div class="com-paso">
+        <p class="com-paso__txt"><b>Siguiente paso</b>Ya está en Miami. Agréguelo a una caja
+          para mandarlo a Honduras.</p>
+        <button class="btn btn--primary btn--sm" type="button" id="com-trk-asignar">Asignar caja</button>
+      </div>` : ''}
     </div>
 
     <div class="card rep-card">
@@ -4411,17 +4491,24 @@ async function comTrkAbrir(tid, desdeRuta) {
   $('com-trk-atras').onclick = comTrkVolver;
   const bMiami = $('com-trk-miami');
   if (bMiami) bMiami.onclick = () => comTrkMiami(t);
+  const bAsignar = $('com-trk-asignar');
+  if (bAsignar) bAsignar.onclick = async () => { await comTrkAsignarCaja(t); comTrkAbrir(tid, true); };
+  const bCaja = $('com-trk-caja');
+  if (bCaja) bCaja.onclick = () => { comVista.poner('cajas'); comCajAbrir(t.caja_id); };
+  caja.querySelectorAll('[data-orden]').forEach((b) => {
+    b.onclick = () => { comVista.poner('ordenes'); comMostrarVista('ordenes'); comAbrir(Number(b.dataset.orden)); };
+  });
   $('com-trk-add').onclick = () => comTrkMeter(tid);
 
+  // La orden va debajo del nombre y no en su propia columna: en el teléfono
+  // esa columna se partía en tres pedazos.
   PPTabla.crear($('com-trk-items'), {
     columnas: [
       { clave: 'titulo', titulo: 'Producto', principal: true,
-        html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}` },
-      { clave: 'tienda', titulo: 'De qué orden',
-        html: (f) => `${f.orden_correlativo != null ? `<b>#${N(f.orden_correlativo)}</b> · ` : ''}`
-          + `${esc(f.tienda)}<div class="com-pie">${esc(comFecha(f.orden_fecha))}${
-            f.orden_numero_proveedor ? ' · ' + esc(f.orden_numero_proveedor) : ''}</div>` },
-      { clave: 'cantidad', titulo: 'Cuántas', html: (f) => N(f.cantidad) },
+        html: (f) => comConFoto(f.imagen, `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
+          + `<div class="com-pie">${f.orden_correlativo != null ? `Orden #${N(f.orden_correlativo)} · ` : ''}${
+            esc(f.tienda)}${f.orden_numero_proveedor ? ' · ' + esc(f.orden_numero_proveedor) : ''}</div>`) },
+      { clave: 'cantidad', titulo: 'Unidades', html: (f) => N(f.cantidad) },
       { clave: 'recibidas', titulo: 'Recibidas',
         html: (f) => comAvance(f.recibidas, f.cantidad) },
     ],
@@ -4429,6 +4516,7 @@ async function comTrkAbrir(tid, desdeRuta) {
       { texto: 'Ver la orden', al: () => { comVista.poner('ordenes'); comMostrarVista('ordenes'); comAbrir(f.orden_id); } },
       { texto: 'Quitar de este envío', peligro: true, al: () => comTrkSacar(tid, f) },
     ],
+    buscar: (f, q) => `${f.titulo} ${f.variante || ''} ${f.tienda}`.toLowerCase().includes(q),
     porPagina: 20,
     vacio: 'Este envío todavía no tiene productos. Toque "Agregar productos".',
   }).datos(items);
@@ -4583,6 +4671,11 @@ async function comCajCargar() {
 }
 
 // El flete, dicho como ella lo cuenta: el total y cuánto sale la libra.
+// Lo que todavía no se sabe de la caja dice cuándo se llena: un "—" solo no
+// explicaba si faltaba algo o si así quedaba.
+const comCajFalta = (abierta) => (abierta
+  ? '<div class="com-pie">se anota al cerrarla</div>' : '');
+
 function comCajFlete(c, conPeso) {
   if (!c.flete_total) return '—';
   const porLibra = c.peso_total ? Number(c.flete_total) / Number(c.peso_total) : 0;
@@ -4857,13 +4950,14 @@ async function comCajAbrir(cid, desdeRuta) {
     <div class="card rep-card">
       <div class="com-ficha__cab">
         <div>
+          <div class="com-ficha__num">Envío a Honduras</div>
           <h2 class="com-ficha__tienda">Caja #${N(c.correlativo)}</h2>
           <p class="com-ficha__sub">${c.fecha ? 'Del ' + esc(comFecha(c.fecha)) : ''}${
             c.cerrada_en ? ' · cerrada el ' + esc(comFecha(c.cerrada_en)) : ''}${
             c.recibida_en ? ' · llegó el ' + esc(comFecha(c.recibida_en)) : ''}
             <button type="button" class="ppform__lnk" id="com-caj-editar">Editar</button></p>
         </div>
-        <div>${comEtiq(c.estado === 'recibida' ? 'recibido'
+        <div class="com-ficha__etapa">${comEtiq(c.estado === 'recibida' ? 'recibido'
           : c.estado === 'en_camino' ? 'en_caja' : 'pedido',
           COM_CAJA_ESTADOS[c.estado] || c.estado)}</div>
       </div>
@@ -4873,20 +4967,26 @@ async function comCajAbrir(cid, desdeRuta) {
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
         <div><div class="com-dato__nm">Peso</div>
-             <div class="com-dato__vl">${c.peso_total ? N(c.peso_total) + ' lb' : '—'}
-               <div class="com-pie">lo que cobró la consolidadora</div></div></div>
+             <div class="com-dato__vl">${c.peso_total ? N(c.peso_total) + ' lb'
+               + '<div class="com-pie">lo que cobró la consolidadora</div>'
+               : 'Sin anotar' + comCajFalta(abierta)}</div></div>
         ${!abierta ? `<div><div class="com-dato__nm">En la balanza</div>
              <div class="com-dato__vl">${comCajBalanza(c)}</div></div>` : ''}
         <div><div class="com-dato__nm">Flete</div>
-             <div class="com-dato__vl">${comCajFlete(c)}</div></div>
+             <div class="com-dato__vl">${c.flete_total ? comCajFlete(c)
+               : 'Sin anotar' + comCajFalta(abierta)}</div></div>
         <div><div class="com-dato__nm">ETA</div>
              <div class="com-dato__vl${comDiasTarde(c.eta) && c.estado === 'en_camino' ? ' com-tarde' : ''}">${
-               c.eta ? esc(comFecha(c.eta)) : '—'}</div></div>
+               c.eta ? esc(comFecha(c.eta)) : 'Sin fecha' + comCajFalta(abierta)}</div></div>
       </div>
       ${c.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(c.notas)}</p>` : ''}
-      ${abierta && trk.length ? `<div style="margin-top:1rem">
-        <button class="btn btn--primary btn--sm" type="button" id="com-caj-cerrar">
-          Cerrarla y mandarla</button></div>` : ''}
+      ${abierta ? `<div class="com-paso">
+        <p class="com-paso__txt"><b>Siguiente paso</b>${trk.length
+          ? 'Cuando la consolidadora la mande a Honduras, ciérrela aquí.'
+          : 'Agregue los trackings que van en esta caja.'}</p>
+        ${trk.length ? `<button class="btn btn--primary btn--sm" type="button" id="com-caj-cerrar">
+          Cerrarla y mandarla</button>` : ''}
+      </div>` : ''}
       ${!abierta ? `<div style="margin-top:1rem">
         <button class="btn btn--ghost btn--sm" type="button" id="com-caj-peso">
           ${c.peso_recibido ? 'Corregir el peso de la balanza'
@@ -5053,7 +5153,7 @@ function busArmar() {
   campo.oninput = () => {
     clearTimeout(busEspera);
     const q = campo.value.trim();
-    if (q.length < 2) { busDatos = null; $('bus-res').innerHTML = ''; return; }
+    if (q.length < 2) { busDatos = null; busUltima = ''; busPortada(); return; }
     busEspera = setTimeout(() => busBuscar(q), 350);
   };
   // Enter (y el lector de código de barras, que lo manda al final) va directo
@@ -5066,6 +5166,97 @@ function busArmar() {
     if (q.length >= 2) busBuscar(q, true);
   };
   campo.focus();
+  busPortada();
+}
+
+// ── Lo que viene en camino: la portada de Rastrear ─────────────────────────
+// Antes de buscar, la lista de todo lo que viene, cada producto con su foto,
+// su estatus y su ETA (Ailin). Tocar uno abre el mismo detalle del buscador.
+let busCamino = null;        // los productos con sus partes en camino
+let busCamFiltro = 'todos';
+const BUS_CAM_GRUPOS = [
+  { id: 'a_honduras', t: 'Tránsito a Honduras', donde: ['a_honduras'] },
+  { id: 'en_miami', t: 'En Miami', donde: ['en_miami', 'en_caja'] },
+  { id: 'a_miami', t: 'Tránsito a Miami', donde: ['a_miami'] },
+  { id: 'en_tienda_eu', t: 'Sin despachar', donde: ['en_tienda_eu'] },
+];
+
+async function busPortada(forzar) {
+  const caja = $('bus-res');
+  if (!busCamino || forzar) {
+    caja.innerHTML = '<div class="card rep-card" id="bus-cam-cargando"></div>';
+    PPEsqueleto.pintar('bus-cam-cargando', 'ficha');
+    try { busCamino = (await api('/admin/compras/en-camino')).productos || []; }
+    catch (ex) { busAviso(esc(ex.message)); return; }
+  }
+  // Mientras cargaba pudo empezar a buscar: lo que escribió manda.
+  if ($('bus-q').value.trim().length >= 2) return;
+  busPortadaPintar();
+}
+
+// Una fila por producto y estatus: el mismo producto puede venir parte en
+// una caja y parte todavía a Miami, y cada parte tiene su ETA.
+function busCamFilas() {
+  const filas = new Map();
+  (busCamino || []).forEach((p, pi) => (p.paradas || []).forEach((x) => {
+    const eta = x.donde === 'a_miami' ? x.eta_miami : x.donde === 'a_honduras' ? x.caja_eta : null;
+    const grupo = BUS_CAM_GRUPOS.find((g) => g.donde.includes(x.donde));
+    const clave = `${pi}|${x.donde}|${eta || ''}|${x.caja || ''}`;
+    const f = filas.get(clave);
+    if (f) f.cantidad += Number(x.cantidad || 0);
+    else filas.set(clave, { p, pi, x, eta, grupo: grupo ? grupo.id : 'otro',
+                            cantidad: Number(x.cantidad || 0) });
+  }));
+  const orden = BUS_CAM_GRUPOS.map((g) => g.id);
+  return [...filas.values()].sort((a, b) => (orden.indexOf(a.grupo) - orden.indexOf(b.grupo))
+    || String(a.eta || '9999').localeCompare(String(b.eta || '9999'))
+    || a.p.titulo.localeCompare(b.p.titulo));
+}
+
+function busPortadaPintar() {
+  const todas = busCamFilas();
+  const filas = busCamFiltro === 'todos' ? todas : todas.filter((f) => f.grupo === busCamFiltro);
+  const unidades = (lista) => lista.reduce((s, f) => s + f.cantidad, 0);
+  const total = unidades(todas);
+  const productos = new Set(todas.map((f) => f.pi)).size;
+  const chips = [{ id: 'todos', t: 'Todo', n: total },
+    ...BUS_CAM_GRUPOS.map((g) => ({ ...g, n: unidades(todas.filter((f) => f.grupo === g.id)) }))
+      .filter((g) => g.n)];
+
+  $('bus-res').innerHTML = `
+    <div class="card rep-card">
+      <div class="rep-card__cab">
+        <h2>Viene en camino</h2>
+        <span class="rep-card__sub">${N(productos)} ${productos === 1 ? 'producto' : 'productos'}
+          · ${N(total)} ${total === 1 ? 'unidad' : 'unidades'}</span>
+      </div>
+      ${todas.length ? `
+      <div class="bus-fil" role="tablist">${chips.map((c) => `
+        <button type="button" role="tab" data-fil="${c.id}"
+          class="${c.id === busCamFiltro ? 'is-active' : ''}">${esc(c.t)} <span>${N(c.n)}</span></button>`).join('')}
+      </div>
+      <div class="bus-cam-lista">${filas.map((f, i) => `
+        <button type="button" class="bus-cam" data-cam="${i}">
+          ${f.p.imagen ? `<img class="bus-cam__img" src="${esc(f.p.imagen)}" alt="" loading="lazy"
+                              onerror="this.style.visibility='hidden'" />`
+                       : '<span class="bus-cam__img"></span>'}
+          <span class="bus-cam__txt">
+            <span class="bus-cam__nm">${esc(f.p.titulo)}${f.p.variante ? ' · ' + esc(f.p.variante) : ''}</span>
+            <span class="bus-cam__est"><span class="bus-cam__u">${N(f.cantidad)} ${
+              f.cantidad === 1 ? 'unidad' : 'unidades'}</span>${busEstatus(f.x)}</span>
+          </span>
+          <span class="bus-cam__eta">${f.eta ? busEtaParada(f.x)
+            : '<span class="com-pie">Sin ETA</span>'}</span>
+        </button>`).join('')}
+      </div>` : '<p class="bus-vacio">Ahora no viene nada en camino.</p>'}
+    </div>`;
+
+  document.querySelectorAll('[data-fil]').forEach((b) => {
+    b.onclick = () => { busCamFiltro = b.dataset.fil; busPortadaPintar(); };
+  });
+  document.querySelectorAll('[data-cam]').forEach((b) => {
+    b.onclick = () => busModal(filas[Number(b.dataset.cam)].p);
+  });
 }
 
 async function busBuscar(q, alDetalle) {

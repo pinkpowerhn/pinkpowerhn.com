@@ -144,7 +144,8 @@ window.PPTabla = (function () {
         <tbody>
           ${hoja.map((fila, i) => `<tr data-fila="${i}">
             ${cfg.columnas.map((c) => `<td data-titulo="${esc(c.titulo)}"
-              class="${c.principal ? 'pp-tabla__td-ppal' : ''}">${celdaHTML(c, fila)}</td>`).join('')}
+              class="${c.principal ? 'pp-tabla__td-ppal' : ''}">${c.principal ? celdaHTML(c, fila)
+                : `<div class="pp-tabla__vl">${celdaHTML(c, fila)}</div>`}</td>`).join('')}
             ${cfg.acciones ? `<td class="pp-tabla__td-acc">
               <button class="pp-tabla__puntos" type="button" data-menu="${i}"
                       aria-label="Acciones" aria-haspopup="menu">${svg(IC_PUNTOS, true)}</button>

@@ -160,8 +160,12 @@
     content: attr(data-titulo); font-size: 0.58rem; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex: 0 0 auto;
   }
+  /* El valor va en un solo bloque a la derecha: si la celda trae varias piezas
+     ("#4 · Bath and Body Works" y su fecha debajo), cada una se volvía una
+     columna y la fila se partía en tres. */
+  .pp-tabla__vl { flex: 0 1 auto; min-width: 0; text-align: right; }
   .pp-tabla__td-ppal {
-    font-size: 0.98rem !important; font-weight: 700; padding: 0 3rem 0.5rem 0 !important;
+    font-size: 0.92rem !important; font-weight: 700; padding: 0 3rem 0.5rem 0 !important;
     margin-bottom: 0.4rem; border-bottom: 1px solid var(--pp-t-linea) !important;
     /* El panel alinea las celdas a la derecha en su CSS viejo; el titulo de la
        tarjeta tiene que quedar a la izquierda. */

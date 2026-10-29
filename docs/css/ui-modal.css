@@ -41,7 +41,12 @@
 
 /* El contenido es lo único que crece: si el formulario es largo, el scroll va
    aquí y los botones se quedan siempre a la vista. */
-.ppmodal__cuerpo { overflow: auto; flex: 1 1 auto; margin: 0 -0.2rem; padding: 0 0.2rem; }
+.ppmodal__cuerpo {
+  overflow-x: hidden; overflow-y: auto; flex: 1 1 auto; margin: 0 -0.2rem; padding: 0 0.2rem;
+  /* Nunca scroll de lado: un número de tracking o un nombre largo se parte
+     antes que empujar la ventana más allá del ancho del teléfono. */
+  overflow-wrap: anywhere;
+}
 
 .ppmodal__aviso {
   margin: 0.8rem 0 0; padding: 0.6rem 0.75rem; border-radius: 11px;

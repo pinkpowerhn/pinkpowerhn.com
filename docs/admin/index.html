@@ -600,8 +600,22 @@
     background:#f6eef2; color:var(--muted); font-size:1.1rem; cursor:pointer;
   }
   .com-cp__x:hover { background:#fbe3e7; color:#a3203a; }
+  .com-cp__fila > *, .com-vr__it > *, .com-confoto > div { min-width:0; }
+  .com-cp__fila input { min-width:0; }
+  .com-tk__nm { min-width:0; }
   @media (max-width: 560px) {
-    .com-cp__fila { grid-template-columns:1fr 1fr 1fr; }
+    .com-cp__fila { grid-template-columns:repeat(3, minmax(0,1fr)); }
+    /* Cuatro pestañas en el ancho de un teléfono: letra más chica para que
+       quepan sin empujar la ventana de lado. */
+    .com-tabs { gap:0.25rem; }
+    .com-tabs button { min-width:0; padding:0.45rem 0.2rem; font-size:0.76rem;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .com-vr__it { font-size:0.82rem; gap:0.3rem 0.6rem; }
+    .com-vr__trk-cab { font-size:0.84rem; }
+    .com-foto { width:32px; height:32px; }
+    .bus-m__cta { min-width:80px; padding:0.45rem 0.55rem; }
+    .bus-m__cta b { font-size:1.15rem; }
+    .bus-m__img { width:56px; height:56px; }
     .com-cp__nm { grid-column:1 / 3; }
     .com-cp__x { grid-column:3; justify-self:end; grid-row:1; }
   }

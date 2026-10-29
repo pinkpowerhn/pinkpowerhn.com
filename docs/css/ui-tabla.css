@@ -148,7 +148,9 @@
     box-shadow: 0 6px 18px -12px rgba(150,30,80,0.4);
   }
   .pp-tabla__tabla tbody tr:hover { background: #fff; }
-  .pp-tabla__tabla td { border: none; padding: 0.18rem 0; font-size: 0.83rem; }
+  .pp-tabla__tabla td { border: none; padding: 0.18rem 0; font-size: 0.83rem;
+    min-width: 0; overflow-wrap: anywhere; }
+  .pp-tabla__tabla td > * { min-width: 0; }
   /* Cada dato con su etiqueta chiquita al lado, salvo el principal, que hace de
      título de la tarjeta. */
   .pp-tabla__tabla td:not(.pp-tabla__td-ppal):not(.pp-tabla__td-acc) {

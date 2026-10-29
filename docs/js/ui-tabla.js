@@ -18,6 +18,7 @@
  *                 opciones: [{ v: 'activa', t: 'Activas' }] }],
  *     buscar: (fila, texto) => fila.nombre.toLowerCase().includes(texto),
  *     acciones: (fila) => [{ texto: 'Editar', al: () => … }],
+ *     alTocarFila: (fila) => …,   // opcional: tocar la fila la abre
  *     porPagina: 12,
  *     vacio: 'Todavía no hay nada acá',
  *   });
@@ -41,7 +42,7 @@ window.PPTabla = (function () {
 
   function crear(destino, opciones) {
     const cfg = Object.assign({
-      columnas: [], filtros: [], acciones: null, buscar: null,
+      columnas: [], filtros: [], acciones: null, buscar: null, alTocarFila: null,
       porPagina: 12, vacio: 'No hay nada para mostrar', buscarTexto: 'Buscar…',
       minimoParaBuscar: 8,
       accionPrincipal: null,
@@ -137,7 +138,7 @@ window.PPTabla = (function () {
             ? 'No hay resultados con eso' : cfg.vacio)}</p>
         </div>`;
       }
-      return `<table class="pp-tabla__tabla">
+      return `<table class="pp-tabla__tabla${cfg.alTocarFila ? ' pp-tabla__tabla--clic' : ''}">
         <thead><tr>${cfg.columnas.map((c) => `<th>${esc(c.titulo)}</th>`).join('')}
           ${cfg.acciones ? '<th class="pp-tabla__th-acc"></th>' : ''}</tr></thead>
         <tbody>
@@ -264,7 +265,16 @@ window.PPTabla = (function () {
         destino.scrollIntoView({ block: 'start', behavior: 'smooth' });
         return;
       }
-      if (e.target.closest('[data-principal]') && cfg.accionPrincipal.al) cfg.accionPrincipal.al();
+      if (e.target.closest('[data-principal]') && cfg.accionPrincipal.al) {
+        cfg.accionPrincipal.al();
+        return;
+      }
+      // Lo que esté adentro de la fila y ya haga algo (un enlace, un botón)
+      // manda; si no, tocar la fila la abre.
+      const tr = e.target.closest('tr[data-fila]');
+      if (tr && cfg.alTocarFila && !e.target.closest('a, button, input, select, textarea')) {
+        cfg.alTocarFila(paginadas(filtradas())[Number(tr.dataset.fila)]);
+      }
     });
 
     document.addEventListener('click', (e) => {

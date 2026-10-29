@@ -535,6 +535,7 @@
     display:flex; align-items:flex-start; justify-content:space-between;
     gap:1rem; flex-wrap:wrap; margin-bottom:0.2rem;
   }
+  .com-ficha__num { font-size:0.78rem; font-weight:700; color:var(--pink-dk); letter-spacing:0.02em; }
   .com-ficha__tienda { margin:0; font-size:1.25rem; font-weight:800; }
   .com-ficha__sub { margin:0.15rem 0 0; color:var(--muted); font-size:0.88rem; }
   /* Los datos de la ficha repartidos a lo ancho: antes se amontonaban a la
@@ -545,25 +546,27 @@
     padding:0.8rem 0 0; border-top:1px solid var(--linea);
   }
   .com-dato__nm { font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
-  .com-dato__vl { font-size:0.95rem; font-weight:700; }
+  .com-dato__vl { font-size:1.15rem; font-weight:800; }
   /* La cuenta de la orden, puesta como el recibo del proveedor: los productos,
      lo que cobra aparte y el total. Está aquí para que cuadrar con la PO no
      sea sacar la calculadora renglón por renglón. */
   .com-cuenta { margin:0.9rem 0 0; padding:0.8rem 0 0; border-top:1px solid var(--linea); }
   .com-cuenta__cab {
-    display:flex; align-items:center; justify-content:space-between;
-    gap:0.6rem; margin-bottom:0.4rem;
+    display:flex; align-items:center; justify-content:flex-end;
+    gap:0.6rem; margin-bottom:0.2rem;
   }
   .com-cuenta__ln {
     display:flex; justify-content:space-between; gap:1rem;
-    font-size:0.9rem; padding:0.22rem 0;
+    font-size:0.86rem; padding:0.2rem 0;
   }
   /* Las cifras una debajo de otra, alineadas por el punto decimal. */
   .com-cuenta__ln span:last-child { font-variant-numeric:tabular-nums; }
   .com-cuenta__ln--total {
     border-top:1px solid var(--linea); margin-top:0.35rem;
-    padding-top:0.45rem; font-weight:800; font-size:1rem;
+    padding-top:0.5rem; font-weight:800; font-size:1.15rem;
   }
+  .com-cuenta__ln--lps { padding-top:0; font-size:0.8rem; }
+  .com-cuenta__ln--total .com-cuenta__nm { color:var(--ink); }
   .com-cuenta__nm { color:var(--muted); }
   .com-cuenta__pie { margin:0.55rem 0 0; font-size:0.83rem; line-height:1.45; }
   .com-cuenta__ok { color:#1f7a4d; font-weight:700; }
@@ -749,7 +752,14 @@
     border-radius:10px; cursor:pointer; font:inherit; font-size:0.86rem; color:var(--muted);
   }
   .com-tabs button.is-active { background:#fdf0f5; border-color:var(--pink); color:var(--pink-dk); font-weight:700; }
-  .com-res { max-height:230px; overflow:auto; margin-top:0.5rem; text-align:left; }
+  /* Sin scroll propio: dentro del modal, que ya se desplaza, eran dos barras. */
+  .com-res { margin-top:0.5rem; text-align:left; }
+  .com-elegido {
+    display:flex; align-items:center; justify-content:space-between; gap:0.6rem;
+    margin-top:0.5rem; padding:0.55rem 0.7rem; border:1px solid var(--pink);
+    background:#fdf4f8; border-radius:10px; font-size:0.87rem; text-align:left;
+  }
+  .com-elegido[hidden] { display:none; }
   .com-res__it {
     display:flex; justify-content:space-between; align-items:center; gap:0.6rem;
     width:100%; padding:0.5rem 0.3rem; background:none; border:none; cursor:pointer;
@@ -2507,6 +2517,11 @@ function comPintar() {
   if (!comTabla) {
     comTabla = PPTabla.crear($('com-tabla'), {
       columnas: [
+        // El número con el que ella llama a la orden, y debajo el que le dio
+        // el proveedor a su pedido.
+        { clave: 'correlativo', titulo: 'Orden',
+          html: (f) => `<b>#${N(f.correlativo)}</b>${f.numero_proveedor
+            ? `<div class="com-pie">${esc(f.numero_proveedor)}</div>` : ''}` },
         { clave: 'fecha', titulo: 'Fecha', html: (f) => diaCorto(f.fecha) },
         { clave: 'tienda', titulo: 'Proveedor', principal: true,
           html: (f) => `${esc(f.tienda)}${f.es_local
@@ -2527,11 +2542,13 @@ function comPintar() {
       filtros: [{ clave: 'estado', titulo: 'Estado', opciones: [
         { v: 'abierta', t: 'Abiertas' }, { v: 'cerrada', t: 'Cerradas' },
         { v: 'cancelada', t: 'Canceladas' }] }],
-      buscar: (f, t) => (f.tienda + ' ' + (f.tarjeta || '')).toLowerCase().includes(t),
+      buscar: (f, t) => (`#${f.correlativo} ${f.tienda} ${f.tarjeta || ''} `
+        + (f.numero_proveedor || '')).toLowerCase().includes(t),
+      alTocarFila: (f) => comAbrir(f.id),
       acciones: (f) => [
         { texto: 'Ver la orden', al: () => comAbrir(f.id) },
-        { texto: 'Corregir los datos', al: () => comFormOrden(f) },
-        { texto: 'Quitar', peligro: true, al: () => comQuitarOrden(f) },
+        { texto: 'Editar', al: () => comFormOrden(f) },
+        { texto: 'Eliminar', peligro: true, al: () => comQuitarOrden(f) },
       ],
       porPagina: 12,
       vacio: 'Todavía no hay órdenes de compra',
@@ -2683,13 +2700,16 @@ async function comFormOrden(orden) {
     : `Se le aplica el dólar a <b>${L(comTasa)}</b>, que es el que está guardado. `
       + '<button type="button" class="ppform__lnk" data-dolar>Cambiarlo</button>');
   const datos = await PPForm.abrir({
-    titulo: esNueva ? 'Nueva orden de compra' : 'Corregir la orden',
+    titulo: esNueva ? 'Nueva orden de compra' : `Editar la orden #${orden.correlativo}`,
     confirmar: esNueva ? 'Crear la orden' : 'Guardar cambios',
     campos: [
       Object.assign({ id: 'tienda', tipo: 'select', etiqueta: 'Proveedor',
         valor: orden ? orden.tienda : '', placeholder: 'Elija el proveedor',
         obligatorio: '¿A qué proveedor se le compró?' },
         comListaCampo('proveedor', orden && orden.tienda)),
+      { id: 'numero_proveedor', tipo: 'texto', etiqueta: 'N.º de orden del proveedor',
+        ayuda: 'opcional', max: 80, placeholder: 'El que trae la PO',
+        valor: orden ? (orden.numero_proveedor || '') : '' },
       { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha', mitad: true,
         valor: orden ? orden.fecha : hoyISO(), max: hoyISO(),
         obligatorio: 'Ponga la fecha de la compra' },
@@ -2766,18 +2786,18 @@ async function comFormOrden(orden) {
 
 async function comQuitarOrden(orden) {
   const si = await PPModal.confirmar({
-    titulo: '¿Quitar esta orden?',
+    titulo: `¿Eliminar la orden #${orden.correlativo}?`,
     cuerpo: `<p class="ppform__nota">La compra en <b>${esc(orden.tienda)}</b> del `
       + `${esc(diaCorto(orden.fecha))} se borra junto con sus productos. `
       + 'Esto no se puede deshacer.</p>',
-    confirmar: 'Sí, quitarla', peligro: true,
+    confirmar: 'Sí, eliminarla', peligro: true,
   });
   if (!si) return;
   try {
     await api('/admin/compras/ordenes/' + orden.id, { method: 'DELETE' });
     comVolver();
     await comCargar();
-  } catch (ex) { comError('No se pudo quitar', ex); }
+  } catch (ex) { comError('No se pudo eliminar', ex); }
 }
 
 // ── La cuenta de la orden ────────────────────────────────────────────────
@@ -2820,17 +2840,16 @@ function comCuentaHTML(c, o) {
   const moneda = o.moneda;
   return `<div class="com-cuenta">
       <div class="com-cuenta__cab">
-        <div class="com-dato__nm">La cuenta</div>
         <button class="btn btn--ghost btn--sm" type="button" id="com-cuadrar">${
           puesto ? 'Corregir' : 'Impuestos y envío'}</button>
       </div>
-      ${comCuentaLn('Los productos', c.subtotal, moneda)}
+      ${comCuentaLn('Subtotal productos', c.subtotal, moneda)}
       ${c.impuestos ? comCuentaLn('Impuestos', c.impuestos, moneda) : ''}
       ${c.envio ? comCuentaLn('Envío', c.envio, moneda) : ''}
       ${c.descuento ? comCuentaLn('Descuento', c.descuento, moneda, '', '−') : ''}
       ${comCuentaLn('Total', c.total, moneda, ' com-cuenta__ln--total')}
       ${moneda !== 'HNL' && o.tasa
-        ? `<div class="com-cuenta__ln com-cuenta__nm" style="padding-top:0">
+        ? `<div class="com-cuenta__ln com-cuenta__nm com-cuenta__ln--lps">
              <span></span><span>${L(c.total * Number(o.tasa))} a ${o.tasa}</span></div>`
         : ''}
       ${comCuadreHTML(c, moneda)}
@@ -2875,6 +2894,8 @@ async function comAbrir(oid, desdeRuta) {
     <div class="card rep-card">
       <div class="com-ficha__cab">
         <div>
+          <div class="com-ficha__num">Orden #${N(o.correlativo)}${o.numero_proveedor
+            ? ` · N.º del proveedor ${esc(o.numero_proveedor)}` : ''}</div>
           <h2 class="com-ficha__tienda">${esc(o.tienda)}</h2>
           <p class="com-ficha__sub">${esc(diaCorto(o.fecha))}${
             o.tarjeta ? ' · ' + esc(o.tarjeta) : ''}${o.es_local ? ' · compra local' : ''}</p>
@@ -2887,7 +2908,7 @@ async function comAbrir(oid, desdeRuta) {
              <div class="com-dato__vl">${N(items.length)}</div></div>
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
-        <div><div class="com-dato__nm">Han llegado</div>
+        <div><div class="com-dato__nm">Recibidos</div>
              <div class="com-dato__vl">${N(recibidas)} de ${N(unidades)}</div></div>
       </div>
       ${comCuentaHTML(cuenta, o)}
@@ -2930,10 +2951,10 @@ async function comAbrir(oid, desdeRuta) {
       { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado) },
     ],
     acciones: (f) => [
-      { texto: 'Corregir', al: () => comFormItem(oid, o, f) },
+      { texto: 'Editar', al: () => comFormItem(oid, o, f) },
       { texto: f.estado === 'no_suplido' ? 'Ya lo van a enviar' : 'El proveedor no lo va a enviar',
         al: () => comNoSuplido(oid, f) },
-      { texto: 'Quitar', peligro: true, al: () => comQuitarItem(oid, f) },
+      { texto: 'Eliminar', peligro: true, al: () => comQuitarItem(oid, f) },
     ],
     porPagina: 20,
     vacio: 'Esta orden todavía no tiene productos. Toque "Agregar producto".',
@@ -3042,12 +3063,25 @@ async function comAgregar(oid, orden) {
     document.getElementById('cp-nuevo').hidden = modo !== 'nuevo';
   };
 
+  // Lo elegido queda justo debajo del buscador y la lista se recoge: antes se
+  // anotaba al final de la lista y había que bajar a buscarlo.
   const pintarElegido = () => {
     const caja = document.getElementById('cp-elegido');
+    caja.hidden = !elegido;
     caja.innerHTML = elegido
-      ? `<b>${esc(elegido.titulo)}</b>${elegido.variante ? ' · ' + esc(elegido.variante) : ''}`
-        + (elegido.borrador ? '<span class="com-res__bor">borrador</span>' : '')
-      : '<span class="com-form__op">Ninguno elegido todavía</span>';
+      ? `<span>✓ <b>${esc(elegido.titulo)}</b>${elegido.variante ? ' · ' + esc(elegido.variante) : ''}`
+        + (elegido.borrador ? '<span class="com-res__bor">borrador</span>' : '') + '</span>'
+        + '<button type="button" class="ppform__lnk" id="cp-cambiar">Cambiar</button>'
+      : '';
+    if (elegido) {
+      document.getElementById('cp-cambiar').onclick = () => {
+        const q = document.getElementById('cp-q');
+        elegido = null;
+        q.value = '';
+        pintarElegido();
+        q.focus();
+      };
+    }
   };
 
   const buscar = async (texto) => {
@@ -3069,7 +3103,14 @@ async function comAgregar(oid, orden) {
           <span class="com-res__pr">${p.precio ? L(p.precio) : ''}</span>
         </button>`).join('');
       caja.querySelectorAll('.com-res__it').forEach((b) => {
-        b.onclick = () => { elegido = lista[Number(b.dataset.i)]; pintarElegido(); };
+        b.onclick = () => {
+          elegido = lista[Number(b.dataset.i)];
+          document.getElementById('cp-q').value = elegido.titulo
+            + (elegido.variante ? ' · ' + elegido.variante : '');
+          caja.innerHTML = '';
+          pintarElegido();
+          document.getElementById('cp-cant').focus();
+        };
       });
     } catch (ex) {
       caja.innerHTML = `<p class="com-pie">${esc(ex.message)}</p>`;
@@ -3092,8 +3133,8 @@ async function comAgregar(oid, orden) {
             <input type="text" id="cp-q" placeholder="Nombre del producto…" autocomplete="off" />
           </label>
         </div>
+        <div class="com-elegido" id="cp-elegido" hidden></div>
         <div class="com-res" id="cp-res"></div>
-        <p class="com-pie" style="margin-top:0.5rem">Elegido: <span id="cp-elegido"></span></p>
       </div>
 
       <div id="cp-nuevo" hidden>
@@ -3159,6 +3200,8 @@ async function comAgregar(oid, orden) {
       q.focus();
       // Se espera a que deje de teclear: si no, son cinco llamadas por palabra.
       q.oninput = () => {
+        // Si vuelve a escribir es que busca otro.
+        if (elegido) { elegido = null; pintarElegido(); }
         clearTimeout(buscando);
         buscando = setTimeout(() => buscar(q.value), 350);
       };
@@ -3217,7 +3260,7 @@ async function comAgregar(oid, orden) {
 async function comFormItem(oid, orden, item) {
   const plata = orden.moneda === 'HNL' ? 'L.' : 'US$';
   const datos = await PPForm.abrir({
-    titulo: 'Corregir el producto',
+    titulo: 'Editar el producto',
     ancho: 480,
     campos: [
       { id: 'titulo', tipo: 'texto', etiqueta: 'Nombre', max: 300,
@@ -3269,16 +3312,16 @@ async function comNoSuplido(oid, item) {
 
 async function comQuitarItem(oid, item) {
   const si = await PPModal.confirmar({
-    titulo: '¿Quitar este producto?',
-    cuerpo: `<p class="ppform__nota"><b>${esc(item.titulo)}</b> se quita de la orden.</p>`,
-    confirmar: 'Sí, quitarlo', peligro: true,
+    titulo: '¿Eliminar este producto?',
+    cuerpo: `<p class="ppform__nota"><b>${esc(item.titulo)}</b> se elimina de la orden.</p>`,
+    confirmar: 'Sí, eliminarlo', peligro: true,
   });
   if (!si) return;
   try {
     await api('/admin/compras/items/' + item.id, { method: 'DELETE' });
     await comCargar();
     await comAbrir(oid);
-  } catch (ex) { comError('No se pudo quitar', ex); }
+  } catch (ex) { comError('No se pudo eliminar', ex); }
 }
 
 // ── El tipo de cambio ────────────────────────────────────────────────────

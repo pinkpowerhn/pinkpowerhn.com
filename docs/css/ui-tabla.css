@@ -70,6 +70,7 @@
 }
 .pp-tabla__tabla tbody tr { transition: background .15s ease; }
 .pp-tabla__tabla tbody tr:hover { background: #fffafc; }
+.pp-tabla__tabla--clic tbody tr { cursor: pointer; }
 .pp-tabla__tabla tbody tr:last-child td { border-bottom: none; }
 .pp-tabla__td-ppal { font-weight: 700; }
 .pp-tabla__th-acc, .pp-tabla__td-acc { width: 48px; text-align: right; }

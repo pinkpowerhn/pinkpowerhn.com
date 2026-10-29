@@ -529,6 +529,97 @@
   .com-etiq--cancelado  { background:#eee; color:#777; }
   .com-etiq--abierta    { background:#fdf0f5; color:var(--pink-dk); }
   .com-etiq--cerrada    { background:#e9f6ec; color:#2c6e3f; }
+  .com-etiq--atrasado   { background:#fbe3e7; color:#a3203a; }
+  /* Lo que ya se pasó de su fecha estimada */
+  .com-tarde, .com-pie--tarde { color:#a3203a; }
+  .com-pie--tarde { font-weight:700; }
+  .com-etalinea { margin-top:0.35rem; font-size:0.82rem; color:var(--muted); }
+  .com-etalinea b { color:var(--ink); }
+  .com-etalinea.com-tarde, .com-etalinea.com-tarde b { color:#a3203a; }
+  /* La foto chiquita del producto, al lado del nombre */
+  .com-confoto { display:flex; align-items:center; gap:0.6rem; min-width:0; }
+  .com-foto {
+    width:38px; height:38px; flex:none; object-fit:cover; border-radius:8px;
+    background:#f7eef3; display:block;
+  }
+  /* Seleccionar todo / Quitar todo */
+  .com-tk__tit[hidden], .com-form[hidden] { display:none; }
+  .com-nw { white-space:nowrap; }
+  .com-todos { font-size:0.8rem; text-transform:none; letter-spacing:normal; }
+  .com-todos__fila { display:flex; justify-content:flex-end; margin-bottom:0.3rem; }
+  /* El aviso de envíos y cajas atrasados */
+  .com-alerta {
+    margin:0 0 1rem; padding:0.8rem 1rem; border-radius:14px;
+    background:#fff3f5; border:1px solid #f3c4cd; text-align:left;
+  }
+  .com-alerta[hidden] { display:none; }
+  .com-alerta__tt { font-weight:800; color:#a3203a; font-size:0.92rem; margin-bottom:0.35rem; }
+  .com-alerta__lista { display:flex; flex-direction:column; gap:0.2rem; }
+  .com-alerta__it {
+    display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer;
+    padding:0.35rem 0.4rem; border-radius:8px; font:inherit; font-size:0.86rem; color:var(--ink);
+  }
+  .com-alerta__it:hover { background:#fde6ea; }
+  .com-alerta__it span { display:block; font-size:0.78rem; color:#a3203a; }
+  /* Agregar varios productos: el contador del buscador y su lista */
+  .com-q { position:relative; }
+  .com-q input { width:100%; padding-right:7.5rem; }
+  .com-q__n {
+    position:absolute; right:0.4rem; top:50%; transform:translateY(-50%);
+    padding:0.2rem 0.6rem; border:none; border-radius:99px; cursor:default;
+    background:var(--pink); color:#fff; font:inherit; font-size:0.74rem; font-weight:700;
+  }
+  .com-q__n[hidden] { display:none; }
+  .com-q__pop {
+    display:none; position:absolute; right:0; top:calc(100% + 6px); z-index:5;
+    min-width:220px; max-width:320px; max-height:240px; overflow:auto;
+    padding:0.55rem 0.7rem; border-radius:10px; background:#fff;
+    border:1px solid var(--linea); box-shadow:0 8px 24px rgba(60,20,40,0.14);
+    font-size:0.82rem; color:var(--ink); text-align:left;
+  }
+  .com-q__pop div { padding:0.18rem 0; border-bottom:1px solid var(--linea); }
+  .com-q__pop div:last-child { border-bottom:none; }
+  .com-q__n:hover + .com-q__pop, .com-q__n:focus + .com-q__pop { display:block; }
+  .com-res__ok { display:none; margin-left:0.4rem; color:var(--pink-dk); font-weight:700; }
+  .com-res__it.is-elegido { background:#fdf4f8; }
+  .com-res__it.is-elegido .com-res__ok { display:inline; }
+  .com-cp { display:flex; flex-direction:column; gap:0.5rem; text-align:left; }
+  .com-cp__fila {
+    display:grid; grid-template-columns:minmax(0,1fr) 76px 104px 104px 28px;
+    gap:0.5rem; align-items:end; padding:0.55rem 0.6rem;
+    border:1px solid var(--linea); border-radius:10px;
+  }
+  .com-cp__nm { font-size:0.86rem; font-weight:600; align-self:center; }
+  .com-cp__fila label { display:grid; gap:0.2rem; font-size:0.72rem; color:var(--muted); }
+  .com-cp__fila input {
+    width:100%; padding:0.4rem 0.45rem; border:1px solid var(--linea); border-radius:8px;
+    font:inherit; font-size:0.88rem;
+  }
+  .com-cp__x {
+    align-self:center; width:28px; height:28px; border:none; border-radius:8px;
+    background:#f6eef2; color:var(--muted); font-size:1.1rem; cursor:pointer;
+  }
+  .com-cp__x:hover { background:#fbe3e7; color:#a3203a; }
+  @media (max-width: 560px) {
+    .com-cp__fila { grid-template-columns:1fr 1fr 1fr; }
+    .com-cp__nm { grid-column:1 / 3; }
+    .com-cp__x { grid-column:3; justify-self:end; grid-row:1; }
+  }
+  /* Rastrear: el detalle de un producto en un modal */
+  .bus-m__cab { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+  .bus-m__img { width:76px; height:76px; object-fit:cover; border-radius:12px; background:#f7eef3; }
+  .bus-m__cuentas { display:flex; gap:0.5rem; flex-wrap:wrap; flex:1; }
+  .bus-m__cta {
+    flex:1; min-width:96px; padding:0.55rem 0.7rem; border-radius:12px; background:#f7f4f6;
+    text-align:left;
+  }
+  .bus-m__cta b { display:block; font-size:1.35rem; line-height:1.1; color:var(--ink); }
+  .bus-m__cta span { font-size:0.76rem; color:var(--muted); }
+  .bus-m__cta--aqui   { background:#e9f6ec; }
+  .bus-m__cta--camino { background:#e8f0fb; }
+  .bus-m__cta--ojo    { background:#fff6e8; }
+  .bus-m__cta--no     { background:#f4f2f3; }
+  .com-vr__trk-est { text-align:right; }
 
   /* La ficha de una orden */
   .com-ficha__cab {
@@ -539,7 +630,7 @@
   .com-trk-it { white-space:nowrap; }
   /* Agregar tracking: los productos de la orden con su casilla y cuántas.
      Son spans porque viven dentro del <p> de la nota del formulario. */
-  .com-tk__tit { display:block; margin:0.3rem 0 0.4rem; font-size:0.74rem; font-weight:700;
+  .com-tk__tit { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin:0.3rem 0 0.4rem; font-size:0.74rem; font-weight:700;
     text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); }
   .com-tk { display:block; border:1px solid var(--linea); border-radius:10px; }
   .com-tk__it { display:flex; align-items:center; justify-content:space-between; gap:0.7rem;
@@ -596,7 +687,7 @@
   /* Alto mínimo: que la ventana no brinque al cambiar de pestaña. */
   .com-vr__pane { min-height:min(430px, 58vh); text-align:left; }
   .com-vr__it {
-    display:grid; grid-template-columns:minmax(0,1fr) auto 128px 132px;
+    display:grid; grid-template-columns:minmax(0,1fr) auto 110px auto;
     align-items:center; gap:0.4rem 0.9rem; padding:0.6rem 0.1rem;
     border-bottom:1px solid var(--linea); font-size:0.88rem;
   }
@@ -1307,6 +1398,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Envíos y cajas que ya debieron llegar -->
+      <div class="com-alerta" id="com-alerta" hidden></div>
 
       <!-- La lista de órdenes -->
       <div id="com-buscar" class="hidden">
@@ -2504,9 +2598,11 @@ let comTabla = null;
 let comArrancada = false;
 let comOrdenes = [];
 
+// Los mismos nombres que el envío en el que va cada producto (Ailin): un
+// producto "despachado" es uno que va en tránsito a Miami.
 const COM_ESTADOS = {
-  pedido: 'Pedido', despachado: 'Despachado', en_miami: 'En Miami',
-  en_caja: 'En la caja', recibido: 'Recibido',
+  pedido: 'Pedido', despachado: 'Tránsito a Miami', en_miami: 'En Miami',
+  en_caja: 'Tránsito a Honduras', recibido: 'Recibido', por_recibir: 'Por recibir',
   no_suplido: 'No lo van a enviar', cancelado: 'Cancelado',
 };
 
@@ -2528,11 +2624,67 @@ function comAvance(recibidas, unidades) {
 const comPlata = (n, moneda) => (moneda === 'HNL' ? 'L. ' : '$ ')
   + Number(n || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// "28 oct 2026": con el mes en letras, porque 10/11 y 11/10 se confunden
+// (Ailin). Solo en Compras; lo demás del panel sigue como estaba.
+const COM_MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const comFecha = (iso) => {
+  if (!iso) return '';
+  const [a, m, d] = String(iso).slice(0, 10).split('-');
+  return d ? `${Number(d)} ${COM_MESES[Number(m) - 1]} ${a}` : String(iso);
+};
+// Cuántos días lleva de atraso una fecha estimada (0 si todavía no se pasa).
+const comDiasTarde = (iso) => {
+  if (!iso) return 0;
+  const dia = String(iso).slice(0, 10);
+  if (dia >= hoyISO()) return 0;
+  return Math.round((new Date(hoyISO() + 'T12:00') - new Date(dia + 'T12:00')) / 864e5);
+};
+const comTarde = (n) => `${N(n)} ${n === 1 ? 'día' : 'días'} tarde`;
+// "ETA: 28 oct 2026", y en rojo si ya se pasó.
+const comEta = (iso) => {
+  if (!iso) return '';
+  const tarde = comDiasTarde(iso);
+  return `<div class="com-pie${tarde ? ' com-pie--tarde' : ''}">ETA: <span class="com-nw">${esc(comFecha(iso))}</span>${
+    tarde ? ` · ${comTarde(tarde)}` : ''}</div>`;
+};
+// La foto chiquita del producto. La CDN de Shopify la manda ya reducida.
+const comFoto = (url) => (url
+  ? `<img class="com-foto" src="${esc(url + (url.includes('?') ? '&' : '?') + 'width=96')}"
+       alt="" loading="lazy" onerror="this.style.visibility='hidden'" />`
+  : '<span class="com-foto"></span>');
+const comConFoto = (url, html) => `<div class="com-confoto">${comFoto(url)}<div>${html}</div></div>`;
+
+// Un enlace para marcar o desmarcar todas las casillas de una lista de una
+// vez. Avisa con "change" para que cada casilla haga lo suyo (prender su
+// cantidad, por ejemplo).
+function comMarcarTodos(boton, casillas) {
+  const lista = () => [...casillas()];
+  const pintar = () => {
+    const todas = lista().length && lista().every((c) => c.checked);
+    boton.textContent = todas ? 'Quitar todo' : 'Seleccionar todo';
+  };
+  boton.onclick = () => {
+    const marcar = !lista().every((c) => c.checked);
+    lista().forEach((c) => {
+      if (c.checked !== marcar) {
+        c.checked = marcar;
+        c.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    pintar();
+  };
+  lista().forEach((c) => c.addEventListener('change', pintar));
+  pintar();
+}
+
 function comIniciar() {
   if (comArrancada) return;
   comArrancada = true;
   comIniciarBotones();
   comCargar();
+  // Para el aviso de atrasados, que se ve desde cualquier vista de Compras.
+  comTrkCargar();
+  comCajCargar();
 }
 
 // El contador es siempre de la vista que se está mirando. Lo escribía quien
@@ -2575,7 +2727,7 @@ function comPintar() {
         { clave: 'correlativo', titulo: 'Orden',
           html: (f) => `<b>#${N(f.correlativo)}</b>${f.numero_proveedor
             ? `<div class="com-pie">${esc(f.numero_proveedor)}</div>` : ''}` },
-        { clave: 'fecha', titulo: 'Fecha', html: (f) => diaCorto(f.fecha) },
+        { clave: 'fecha', titulo: 'Fecha', html: (f) => `<span class="com-nw">${comFecha(f.fecha)}</span>` },
         { clave: 'tienda', titulo: 'Proveedor', principal: true,
           html: (f) => `${esc(f.tienda)}${f.es_local
             ? '<div class="com-pie">compra local</div>' : ''}` },
@@ -2590,6 +2742,8 @@ function comPintar() {
           html: (f) => `<b>${comPlata(
             f.total_pagado != null ? f.total_pagado : f.total_compra, f.moneda)}</b>` },
         { clave: 'etapa', titulo: 'Estado', html: (f) => comEtapaOrden(f) },
+        // Cuándo se espera lo que falta: a Miami o a Honduras, según dónde va.
+        { clave: 'eta', titulo: 'ETA', html: (f) => comEtaOrden(f) },
       ],
       filtros: [{ clave: 'etapa', titulo: 'Estado', opciones: COM_ETAPAS_FILTRO }],
       buscar: (f, t) => (`#${f.correlativo} ${f.tienda} ${f.tarjeta || ''} `
@@ -2617,8 +2771,8 @@ const COM_ETAPA_COLOR = {
   sin_productos: 'cancelado',
 };
 const COM_ETAPAS_FILTRO = [
-  { v: 'comprada', t: 'Compradas' }, { v: 'a_miami', t: 'En camino a Miami' },
-  { v: 'en_miami', t: 'En Miami' }, { v: 'a_honduras', t: 'Vienen a Honduras' },
+  { v: 'comprada', t: 'Compradas' }, { v: 'a_miami', t: 'Tránsito a Miami' },
+  { v: 'en_miami', t: 'En Miami' }, { v: 'a_honduras', t: 'Tránsito a Honduras' },
   { v: 'por_recibir', t: 'Por recibir' }, { v: 'recibida', t: 'Recibidas' },
   { v: 'cancelada', t: 'Canceladas' },
 ];
@@ -2630,6 +2784,55 @@ function comEtapaOrden(f) {
   }
   return comEtiq(COM_ETAPA_COLOR[f.etapa] || 'pedido', f.etapa_texto)
     + (f.etapa_pie ? `<div class="com-pie">${esc(f.etapa_pie)}</div>` : '');
+}
+
+function comEtaOrden(f) {
+  if (!f.eta) return '<span class="com-pie">—</span>';
+  const tarde = comDiasTarde(f.eta);
+  return `<span class="com-nw${tarde ? ' com-tarde' : ''}">${esc(comFecha(f.eta))}</span>`
+    + `<div class="com-pie${tarde ? ' com-pie--tarde' : ''}">${
+      tarde ? comTarde(tarde) : 'a ' + esc(f.eta_lugar || '')}</div>`;
+}
+
+// La línea "Fecha estimada de llegada: 28 oct 2026" de la orden.
+function comEtaLinea(f) {
+  if (!f || !f.eta) return '';
+  const tarde = comDiasTarde(f.eta);
+  return `<div class="com-etalinea${tarde ? ' com-tarde' : ''}">Fecha estimada de llegada${
+    f.eta_lugar ? ' a ' + esc(f.eta_lugar) : ''}: <b>${esc(comFecha(f.eta))}</b>${
+    tarde ? ` · ${comTarde(tarde)}` : ''}</div>`;
+}
+
+// En qué va un producto: el de su envío. Si va repartido en varios, manda el
+// más atrasado. Lo que no va en ningún envío conserva el suyo.
+const COM_PASO = { despachado: 0, en_miami: 1, en_caja: 2, por_recibir: 3 };
+function comEstadoItem(f) {
+  const tks = (f.trackings || []).filter((t) => !t.local);
+  if (!tks.length || !['despachado', 'en_miami', 'en_caja'].includes(f.estado)) {
+    return f.estado;
+  }
+  const pasos = tks.map((t) => (t.caja_estado === 'recibida' ? 'por_recibir'
+    : t.caja_estado === 'en_camino' ? 'en_caja'
+    : (t.en_miami || t.caja) ? 'en_miami' : 'despachado'));
+  return pasos.sort((a, b) => COM_PASO[a] - COM_PASO[b])[0];
+}
+const comEtiqItem = (f) => {
+  const e = comEstadoItem(f);
+  return comEtiq(e === 'por_recibir' ? 'abierta' : e, COM_ESTADOS[e]);
+};
+
+// Dónde va un envío visto desde la orden (la vista rápida).
+function comEnvioEtiq(t) {
+  if (t.caja_estado === 'recibida') {
+    return comEtiq('abierta', 'Por recibir') + `<div class="com-pie">la caja ${N(t.caja)} ya llegó</div>`;
+  }
+  if (t.caja_estado === 'en_camino') {
+    return comEtiq('en_caja', 'Tránsito a Honduras')
+      + `<div class="com-pie">caja ${N(t.caja)}</div>` + comEta(t.caja_eta);
+  }
+  if (t.caja) return comEtiq('en_miami', 'En Miami') + `<div class="com-pie">en la caja ${N(t.caja)}</div>`;
+  if (t.en_miami) return comEtiq('en_miami', 'En Miami');
+  return comEtiq('despachado', 'Tránsito a Miami') + comEta(t.eta_miami);
 }
 
 // De qué orden es un envío: "#3 · Truly". Casi siempre es una sola.
@@ -2650,13 +2853,13 @@ async function comVistaRapida(fila) {
   ];
   const abrir = await PPModal.abrir({
     titulo: `Orden #${fila.correlativo} · ${fila.tienda}`,
-    sub: diaCorto(fila.fecha) + (fila.numero_proveedor
+    sub: comFecha(fila.fecha) + (fila.numero_proveedor
       ? ` · N.º del proveedor ${fila.numero_proveedor}` : ''),
     ancho: 780,
     confirmar: 'Abrir la orden completa',
     cancelar: 'Cerrar',
     cuerpo: `
-      <div class="com-vr__etapa">${comEtapaOrden(fila)}</div>
+      <div class="com-vr__etapa">${comEtapaOrden(fila)}${comEtaLinea(fila)}</div>
       <div class="com-tabs com-vr__tabs" role="tablist">
         ${pestanas.map((p, i) => `<button type="button" role="tab" data-vr-tab="${p.id}"
           class="${i ? '' : 'is-active'}">${p.t}<span class="com-vr__n" data-vr-n="${p.id}"></span>
@@ -2690,13 +2893,13 @@ async function comVistaRapida(fila) {
       n('prod', ` ${items.length}`);
       pane('prod').innerHTML = items.length ? `<div class="com-vr__lista">
         ${items.map((f) => `<div class="com-vr__it">
-          <div class="com-vr__nm">${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}
-            ${f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : ''}</div>
+          <div class="com-vr__nm">${comConFoto(f.imagen, `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}
+            ${f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : ''}`)}</div>
           <div class="com-vr__cant">${N(f.cantidad)} ${f.precio_compra == null ? ''
             : `× ${comPlata(f.precio_compra, o.moneda)}
                <div class="com-pie">${comPlata(f.total_linea, o.moneda)}</div>`}</div>
           <div class="com-vr__lleg">${comAvance(f.recibidas, f.cantidad)}</div>
-          <div class="com-vr__est">${comEtiq(f.estado)}</div>
+          <div class="com-vr__est">${comEtiqItem(f)}</div>
         </div>`).join('')}</div>`
         : '<p class="com-pie">Esta orden todavía no tiene productos.</p>';
 
@@ -2720,9 +2923,7 @@ async function comVistaRapida(fila) {
           + 'Se recibe desde la orden completa.</p>'
         : ([...porTrk.values()].map((g) => `<div class="com-vr__trk">
             <div class="com-vr__trk-cab"><b>${esc(g.t.numero)}</b>
-              <span>${g.t.caja ? comEtiq('en_caja', `Caja ${N(g.t.caja)}`)
-                : g.t.en_miami ? comEtiq('en_miami', 'En Miami')
-                : comEtiq('despachado', 'En camino a Miami')}</span></div>
+              <span class="com-vr__trk-est">${comEnvioEtiq(g.t)}</span></div>
             <div class="com-pie">${N(g.unidades)} ${g.unidades === 1 ? 'unidad' : 'unidades'}:
               ${g.productos.map(esc).join(', ')}</div>
           </div>`).join('')
@@ -2740,7 +2941,7 @@ async function comVistaRapida(fila) {
           ${dato('Orden', '#' + N(o.correlativo))}
           ${dato('Proveedor', esc(o.tienda))}
           ${dato('N.º del proveedor', o.numero_proveedor ? esc(o.numero_proveedor) : '—')}
-          ${dato('Fecha', esc(diaCorto(o.fecha)))}
+          ${dato('Fecha', esc(comFecha(o.fecha)))}
           ${dato('Tarjeta', o.tarjeta ? esc(o.tarjeta) : '—')}
           ${dato('Moneda', o.moneda === 'HNL' ? 'Lempiras'
             : `Dólares${o.tasa ? ` · a ${esc(o.tasa)}` : ''}`)}
@@ -2984,7 +3185,7 @@ async function comQuitarOrden(orden) {
   const si = await PPModal.confirmar({
     titulo: `¿Eliminar la orden #${orden.correlativo}?`,
     cuerpo: `<p class="ppform__nota">La compra en <b>${esc(orden.tienda)}</b> del `
-      + `${esc(diaCorto(orden.fecha))} se borra junto con sus productos. `
+      + `${esc(comFecha(orden.fecha))} se borra junto con sus productos. `
       + 'Esto no se puede deshacer.</p>',
     confirmar: 'Sí, eliminarla', peligro: true,
   });
@@ -3100,10 +3301,10 @@ async function comAbrir(oid, desdeRuta) {
           <div class="com-ficha__num">Orden #${N(o.correlativo)}${o.numero_proveedor
             ? ` · N.º del proveedor ${esc(o.numero_proveedor)}` : ''}</div>
           <h2 class="com-ficha__tienda">${esc(o.tienda)}</h2>
-          <p class="com-ficha__sub">${esc(diaCorto(o.fecha))}${
+          <p class="com-ficha__sub">${esc(comFecha(o.fecha))}${
             o.tarjeta ? ' · ' + esc(o.tarjeta) : ''}${o.es_local ? ' · compra local' : ''}</p>
         </div>
-        <div class="com-ficha__etapa">${filaLista ? comEtapaOrden(filaLista)
+        <div class="com-ficha__etapa">${filaLista ? comEtapaOrden(filaLista) + comEtaLinea(filaLista)
           : comEtiq(o.estado, o.estado === 'abierta' ? 'Abierta'
             : o.estado === 'cerrada' ? 'Cerrada' : 'Cancelada')}</div>
       </div>
@@ -3160,8 +3361,8 @@ async function comAbrir(oid, desdeRuta) {
   comItemsTabla = PPTabla.crear($('com-items'), {
     columnas: [
       { clave: 'titulo', titulo: 'Producto', principal: true,
-        html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
-          + (f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : '') },
+        html: (f) => comConFoto(f.imagen, `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
+          + (f.nota ? `<div class="com-pie">${esc(f.nota)}</div>` : '')) },
       { clave: 'cantidad', titulo: 'Cantidad', html: (f) => N(f.cantidad) },
       // El total del renglón arriba, que es lo que ella compara con la PO, y
       // debajo lo que sale cada unidad: limpia y ya con su parte del ISV.
@@ -3178,7 +3379,7 @@ async function comAbrir(oid, desdeRuta) {
       ...(o.es_local ? [] : [{ clave: 'asignadas', titulo: 'Tracking',
         html: (f) => comTrkDeItem(f) }]),
       { clave: 'recibidas', titulo: 'Llegó', html: (f) => comAvance(f.recibidas, f.cantidad) },
-      { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado) },
+      { clave: 'estado', titulo: 'Estado', html: (f) => comEtiqItem(f) },
     ],
     acciones: (f) => [
       { texto: 'Editar', al: () => comFormItem(oid, o, f) },
@@ -3259,13 +3460,16 @@ async function comAgregarTracking(oid, orden, items) {
         placeholder: '1Z999AA10123456784', obligatorio: 'Ponga el número del tracking' },
       { id: 'empresa', tipo: 'texto', etiqueta: 'Empresa', ayuda: 'opcional',
         mitad: true, max: 80, placeholder: 'UPS, FedEx…' },
-      { id: 'eta_miami', tipo: 'fecha', etiqueta: 'Llega a Miami', ayuda: 'estimado',
+      { id: 'eta_miami', tipo: 'fecha', etiqueta: 'Llega a Miami', ayuda: 'ETA',
         mitad: true },
       { id: 'que-trae', tipo: 'nota',
-        html: `<span class="com-tk__tit">Qué viene en este tracking</span>`
+        html: `<span class="com-tk__tit">Qué viene en este tracking`
+          + `<button type="button" class="ppform__lnk com-todos" id="com-tk-todos"></button></span>`
           + `<span class="com-tk">${lista}</span>` },
     ],
     alAbrir: (caja) => {
+      comMarcarTodos(caja.querySelector('#com-tk-todos'),
+        () => caja.querySelectorAll('[data-tk]'));
       // Desmarcado, su cantidad no cuenta: se apaga para que se note.
       caja.addEventListener('change', (e) => {
         const c = e.target.closest('[data-tk]');
@@ -3414,38 +3618,86 @@ function comEnlazarPrecio(idCantidad, idUno, idTodo) {
 // ── Agregar un producto a la orden ───────────────────────────────────────
 // Dos caminos: buscarlo (si ya existe en Shopify) o crearlo. El que se crea
 // nace como BORRADOR: no se vende hasta que la caja llegue y se reciba.
+// "Que se puedan agregar varios de golpe" (Ailin): en "Ya existe" cada
+// producto que toca se suma a la lista de abajo, con sus unidades y su
+// precio, y el buscador queda listo para el siguiente. El contador del
+// buscador dice cuántos lleva y, al pasarle encima, cuáles.
 async function comAgregar(oid, orden) {
   let modo = 'buscar';
-  let elegido = null;
   let buscando = null;
+  let lista = [];                 // lo que salió en la última búsqueda
+  const canasta = new Map();      // variant_id -> producto elegido
+  let fila = 0;
   const plata = orden.moneda === 'HNL' ? 'L.' : 'US$';
+  const clave = (p) => String(p.variant_id || p.product_id || p.titulo);
+  const nombreDe = (p) => p.titulo + (p.variante ? ' · ' + p.variante : '');
+  let botonOk = null;
 
   const pintarModo = () => {
     document.getElementById('cp-t-buscar').classList.toggle('is-active', modo === 'buscar');
     document.getElementById('cp-t-nuevo').classList.toggle('is-active', modo === 'nuevo');
     document.getElementById('cp-buscar').hidden = modo !== 'buscar';
     document.getElementById('cp-nuevo').hidden = modo !== 'nuevo';
+    document.getElementById('cp-uno').hidden = modo !== 'nuevo';
+    pintarCuenta();
   };
 
-  // Lo elegido queda justo debajo del buscador y la lista se recoge: antes se
-  // anotaba al final de la lista y había que bajar a buscarlo.
-  const pintarElegido = () => {
-    const caja = document.getElementById('cp-elegido');
-    caja.hidden = !elegido;
-    caja.innerHTML = elegido
-      ? `<span>✓ <b>${esc(elegido.titulo)}</b>${elegido.variante ? ' · ' + esc(elegido.variante) : ''}`
-        + (elegido.borrador ? '<span class="com-res__bor">borrador</span>' : '') + '</span>'
-        + '<button type="button" class="ppform__lnk" id="cp-cambiar">Cambiar</button>'
-      : '';
-    if (elegido) {
-      document.getElementById('cp-cambiar').onclick = () => {
-        const q = document.getElementById('cp-q');
-        elegido = null;
-        q.value = '';
-        pintarElegido();
-        q.focus();
-      };
+  // El contador del buscador, su lista al pasarle encima y el botón de abajo.
+  const pintarCuenta = () => {
+    const n = canasta.size;
+    const chip = document.getElementById('cp-n');
+    chip.hidden = !n;
+    chip.textContent = `${N(n)} ${n === 1 ? 'agregado' : 'agregados'}`;
+    document.getElementById('cp-pop').innerHTML = [...canasta.values()]
+      .map((p) => `<div>${esc(nombreDe(p))}</div>`).join('');
+    document.getElementById('cp-lista-tit').hidden = !n;
+    if (botonOk) {
+      botonOk.textContent = modo === 'buscar' && n > 1
+        ? `Agregar ${N(n)} productos a la orden` : 'Agregar a la orden';
     }
+  };
+
+  const marcarResultados = () => {
+    document.querySelectorAll('#cp-res .com-res__it').forEach((b) => {
+      const p = lista[Number(b.dataset.i)];
+      b.classList.toggle('is-elegido', !!p && canasta.has(clave(p)));
+    });
+  };
+
+  // Cada producto elegido, con sus unidades, su precio y el total del renglón.
+  const sumar = (p) => {
+    const k = clave(p);
+    if (canasta.has(k)) {
+      const r = document.querySelector(`[data-cp-fila="${CSS.escape(k)}"] input`);
+      if (r) r.focus();
+      return;
+    }
+    canasta.set(k, p);
+    fila += 1;
+    const id = 'cpf' + fila;
+    const div = document.createElement('div');
+    div.className = 'com-cp__fila';
+    div.dataset.cpFila = k;
+    div.innerHTML = `
+      <div class="com-cp__nm">${comConFoto(p.imagen, `${esc(nombreDe(p))}${
+        p.borrador ? '<span class="com-res__bor">borrador</span>' : ''}`)}</div>
+      <label>Unidades<input type="number" id="${id}-c" step="1" min="1" value="1" /></label>
+      <label>Precio <span class="com-form__op">(${plata} c/u)</span>
+        <input type="number" id="${id}-u" step="0.01" min="0" placeholder="0.00" /></label>
+      <label>Total <span class="com-form__op">(${plata})</span>
+        <input type="number" id="${id}-t" step="0.01" min="0" placeholder="0.00" /></label>
+      <button type="button" class="com-cp__x" aria-label="Quitar">×</button>`;
+    div.dataset.id = id;
+    div.querySelector('.com-cp__x').onclick = () => {
+      canasta.delete(k);
+      div.remove();
+      marcarResultados();
+      pintarCuenta();
+    };
+    document.getElementById('cp-lista').appendChild(div);
+    comEnlazarPrecio(id + '-c', id + '-u', id + '-t');
+    marcarResultados();
+    pintarCuenta();
   };
 
   const buscar = async (texto) => {
@@ -3454,7 +3706,7 @@ async function comAgregar(oid, orden) {
     caja.innerHTML = '<p class="com-pie">Buscando…</p>';
     try {
       const r = await api('/admin/compras/productos?q=' + encodeURIComponent(texto));
-      const lista = r.productos || [];
+      lista = r.productos || [];
       if (!lista.length) {
         caja.innerHTML = '<p class="com-pie">No se encontró nada. '
           + 'Si es un producto nuevo, use la otra pestaña.</p>';
@@ -3462,18 +3714,19 @@ async function comAgregar(oid, orden) {
       }
       caja.innerHTML = lista.map((p, i) => `
         <button type="button" class="com-res__it" data-i="${i}">
-          <span class="com-res__nm">${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}
-            ${p.borrador ? '<span class="com-res__bor">borrador</span>' : ''}</span>
-          <span class="com-res__pr">${p.precio ? L(p.precio) : ''}</span>
+          <span class="com-res__nm">${comConFoto(p.imagen, `${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}
+            ${p.borrador ? '<span class="com-res__bor">borrador</span>' : ''}`)}</span>
+          <span class="com-res__pr">${p.precio ? L(p.precio) : ''}<span class="com-res__ok">✓ agregado</span></span>
         </button>`).join('');
+      marcarResultados();
       caja.querySelectorAll('.com-res__it').forEach((b) => {
         b.onclick = () => {
-          elegido = lista[Number(b.dataset.i)];
-          document.getElementById('cp-q').value = elegido.titulo
-            + (elegido.variante ? ' · ' + elegido.variante : '');
+          sumar(lista[Number(b.dataset.i)]);
+          // Listo para buscar el siguiente.
+          const q = document.getElementById('cp-q');
+          q.value = '';
           caja.innerHTML = '';
-          pintarElegido();
-          document.getElementById('cp-cant').focus();
+          q.focus();
         };
       });
     } catch (ex) {
@@ -3483,7 +3736,7 @@ async function comAgregar(oid, orden) {
 
   const datos = await PPModal.abrir({
     titulo: 'Agregar producto',
-    ancho: 560,
+    ancho: 680,
     confirmar: 'Agregar a la orden',
     cuerpo: `
       <div class="com-tabs">
@@ -3493,12 +3746,16 @@ async function comAgregar(oid, orden) {
 
       <div id="cp-buscar">
         <div class="com-form">
-          <label>Buscar en Shopify
+          <label for="cp-q">Buscar en Shopify</label>
+          <div class="com-q">
             <input type="text" id="cp-q" placeholder="Nombre del producto…" autocomplete="off" />
-          </label>
+            <button type="button" class="com-q__n" id="cp-n" hidden></button>
+            <div class="com-q__pop" id="cp-pop" role="tooltip"></div>
+          </div>
         </div>
-        <div class="com-elegido" id="cp-elegido" hidden></div>
         <div class="com-res" id="cp-res"></div>
+        <div class="com-tk__tit" id="cp-lista-tit" hidden>Lo que va a agregar</div>
+        <div class="com-cp" id="cp-lista"></div>
       </div>
 
       <div id="cp-nuevo" hidden>
@@ -3538,7 +3795,7 @@ async function comAgregar(oid, orden) {
           <b>borrador</b>: no se pone a la venta hasta que llegue y se reciba.</p>
       </div>
 
-      <div class="com-form" style="margin-top:0.9rem;border-top:1px solid var(--linea);padding-top:0.8rem">
+      <div class="com-form" id="cp-uno" style="margin-top:0.9rem;border-top:1px solid var(--linea);padding-top:0.8rem">
         <div class="com-form__tres">
           <label>Cuántas unidades
             <input type="number" id="cp-cant" step="1" min="1" value="1" />
@@ -3550,13 +3807,13 @@ async function comAgregar(oid, orden) {
             <input type="number" id="cp-total" step="0.01" min="0" placeholder="0.00" />
           </label>
         </div>
-        <p class="com-pie" style="margin-top:0.5rem">Escriba el que traiga la orden
-          del proveedor: el otro se llena solo. Los impuestos no van aquí, se ponen
-          una sola vez para toda la orden.</p>
-      </div>`,
-    alAbrir: () => {
+      </div>
+      <p class="com-pie" style="margin-top:0.5rem">Precio o total: escriba el que traiga
+        la orden del proveedor y el otro se llena solo. Los impuestos no van aquí, se
+        ponen una sola vez para toda la orden.</p>`,
+    alAbrir: (cajaModal) => {
+      botonOk = cajaModal.closest('.ppmodal__caja').querySelector('.ppmodal__ok');
       pintarModo();
-      pintarElegido();
       comEnlazarPrecio('cp-cant', 'cp-costo', 'cp-total');
       document.getElementById('cp-t-buscar').onclick = () => { modo = 'buscar'; pintarModo(); };
       document.getElementById('cp-t-nuevo').onclick = () => { modo = 'nuevo'; pintarModo(); };
@@ -3564,13 +3821,30 @@ async function comAgregar(oid, orden) {
       q.focus();
       // Se espera a que deje de teclear: si no, son cinco llamadas por palabra.
       q.oninput = () => {
-        // Si vuelve a escribir es que busca otro.
-        if (elegido) { elegido = null; pintarElegido(); }
         clearTimeout(buscando);
         buscando = setTimeout(() => buscar(q.value), 350);
       };
     },
     alConfirmar: (_caja, modal) => {
+      if (modo === 'buscar') {
+        if (!canasta.size) { modal.avisar('Busque y toque los productos que va a agregar'); return false; }
+        const varios = [];
+        for (const div of document.querySelectorAll('#cp-lista .com-cp__fila')) {
+          const p = canasta.get(div.dataset.cpFila);
+          const id = div.dataset.id;
+          const cant = Number(document.getElementById(id + '-c').value);
+          if (!(Number.isInteger(cant) && cant >= 1)) {
+            modal.avisar(`${nombreDe(p)}: ¿cuántas unidades?`); return false;
+          }
+          const costo = document.getElementById(id + '-u').value;
+          varios.push({
+            cantidad: cant, precio_compra: costo === '' ? null : Number(costo),
+            titulo: p.titulo, variante: p.variante, imagen: p.imagen || null,
+            product_id: p.product_id, variant_id: p.variant_id,
+          });
+        }
+        return { varios };
+      }
       const cantidad = Number(document.getElementById('cp-cant').value);
       const costoTxt = document.getElementById('cp-costo').value;
       if (!(cantidad >= 1) || cantidad !== Math.floor(cantidad)) {
@@ -3580,13 +3854,6 @@ async function comAgregar(oid, orden) {
         cantidad,
         precio_compra: costoTxt === '' ? null : Number(costoTxt),
       };
-      if (modo === 'buscar') {
-        if (!elegido) { modal.avisar('Elija el producto de la lista'); return false; }
-        return Object.assign(base, {
-          titulo: elegido.titulo, variante: elegido.variante,
-          product_id: elegido.product_id, variant_id: elegido.variant_id,
-        });
-      }
       const titulo = document.getElementById('cn-titulo').value.trim();
       if (!titulo) { modal.avisar('¿Cómo se llama el producto?'); return false; }
       return Object.assign(base, {
@@ -3604,6 +3871,21 @@ async function comAgregar(oid, orden) {
     },
   });
   if (!datos) return;
+  if (datos.varios) {
+    // Uno por uno: si alguno falla, se dice cuál y los demás quedan.
+    const fallaron = [];
+    for (const it of datos.varios) {
+      try {
+        await api(`/admin/compras/ordenes/${oid}/items`, { method: 'POST', body: JSON.stringify(it) });
+      } catch (ex) { fallaron.push(`${it.titulo}: ${ex.message}`); }
+    }
+    await comCargar();
+    await comAbrir(oid);
+    if (fallaron.length) {
+      comError('Algunos no se pudieron agregar', new Error(fallaron.join(' · ')));
+    }
+    return;
+  }
   try {
     const hecho = await api(`/admin/compras/ordenes/${oid}/items`,
       { method: 'POST', body: JSON.stringify(datos) });
@@ -3771,6 +4053,7 @@ async function comTrkCargar() {
     comContador();
     if (comVista) comVista.cuenta('envios', comTrks.length || null);
     comTrkPintar();
+    comAlertas();
   } catch (ex) { $('com-estado').textContent = ex.message; }
 }
 
@@ -3782,18 +4065,20 @@ function comTrkPintar() {
           html: (f) => `${esc(f.numero)}${f.empresa
             ? `<div class="com-pie">${esc(f.empresa)}</div>` : ''}` },
         { clave: 'ordenes', titulo: 'Orden', html: (f) => comTrkOrdenes(f.ordenes) },
-        { clave: 'unidades', titulo: 'Trae',
+        { clave: 'unidades', titulo: 'Productos',
           html: (f) => (f.unidades
             ? `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
               + `<div class="com-pie">${N(f.renglones)} ${f.renglones === 1 ? 'producto' : 'productos'}</div>`
             : '<span class="com-pie">vacío</span>') },
-        { clave: 'estado', titulo: 'Dónde va', html: (f) => comTrkDonde(f) },
+        { clave: 'estado', titulo: 'Estatus', html: (f) => comTrkDonde(f) },
         { clave: 'caja_numero', titulo: 'Caja',
-          html: (f) => (f.caja_numero ? `Caja ${N(f.caja_numero)}` : '—') },
+          html: (f) => (f.caja_numero ? `Caja #${N(f.caja_numero)}` : '—') },
       ],
-      filtros: [{ clave: 'llegada_miami', titulo: 'Dónde va', opciones: [
-        { v: 'camino', t: 'En camino a Miami' }, { v: 'miami', t: 'Ya en Miami' }],
-        aplica: (f, v) => (v === 'miami' ? !!f.llegada_miami : !f.llegada_miami) }],
+      filtros: [{ clave: 'llegada_miami', titulo: 'Estatus', opciones: [
+        { v: 'camino', t: 'Tránsito a Miami' }, { v: 'atrasado', t: 'Atrasados' },
+        { v: 'miami', t: 'Ya en Miami' }],
+        aplica: (f, v) => (v === 'miami' ? !!f.llegada_miami
+          : v === 'atrasado' ? comTrkAtrasado(f) : !f.llegada_miami) }],
       buscar: (f, t) => (f.numero + ' ' + (f.empresa || '') + ' ' + (f.ordenes || [])
         .map((o) => `#${o.correlativo} ${o.tienda} ${o.numero_proveedor || ''}`).join(' '))
         .toLowerCase().includes(t),
@@ -3801,6 +4086,7 @@ function comTrkPintar() {
         { texto: 'Ver lo que trae', al: () => comTrkAbrir(f.id) },
         { texto: f.llegada_miami ? 'Todavía no llega a Miami' : 'Ya llegó a Miami',
           al: () => comTrkMiami(f) },
+        ...(f.caja_numero ? [] : [{ texto: 'Asignar caja', al: () => comTrkAsignarCaja(f) }]),
         { texto: 'Corregir', al: () => comTrkForm(f) },
         { texto: 'Quitar', peligro: true, al: () => comTrkQuitar(f) },
       ],
@@ -3816,21 +4102,150 @@ function comTrkPintar() {
 function comTrkDonde(f) {
   if (f.caja_estado === 'recibida') {
     return comEtiq('recibido', 'Ya llegó')
-      + `<div class="com-pie">en la caja ${N(f.caja_numero)}</div>`;
+      + `<div class="com-pie">en la caja #${N(f.caja_numero)}</div>`;
   }
   if (f.caja_estado === 'en_camino') {
-    return comEtiq('en_caja', 'En camino')
-      + `<div class="com-pie">${f.caja_eta ? 'llega ~' + esc(diaCorto(f.caja_eta))
-         : 'en la caja ' + N(f.caja_numero)}</div>`;
+    return comEtiq('en_caja', 'Tránsito a Honduras')
+      + (f.caja_eta ? comEta(f.caja_eta) : `<div class="com-pie">en la caja #${N(f.caja_numero)}</div>`);
   }
   if (f.llegada_miami) {
     return comEtiq('en_miami', 'En Miami')
-      + `<div class="com-pie">${f.caja_numero ? 'esperando en la caja ' + N(f.caja_numero)
-         : 'desde el ' + esc(diaCorto(f.llegada_miami))}</div>`;
+      + `<div class="com-pie">${f.caja_numero ? 'esperando en la caja #' + N(f.caja_numero)
+         : 'desde el ' + esc(comFecha(f.llegada_miami))}</div>`;
   }
-  const pie = f.eta_miami
-    ? `<div class="com-pie">llega ~${esc(diaCorto(f.eta_miami))}</div>` : '';
-  return comEtiq('despachado', 'En camino a Miami') + pie;
+  if (comTrkAtrasado(f)) {
+    return comEtiq('atrasado', 'Atrasado')
+      + `<div class="com-pie com-pie--tarde">ETA: ${esc(comFecha(f.eta_miami))} · ${
+        comTarde(comDiasTarde(f.eta_miami))}</div>`;
+  }
+  return comEtiq('despachado', 'Tránsito a Miami') + comEta(f.eta_miami);
+}
+
+// Un envío está atrasado si ya pasó su fecha estimada y no se ha marcado que
+// llegó a Miami. Es lo que pidió Ailin: "¿de qué forma me puede alertar?".
+const comTrkAtrasado = (f) => !f.llegada_miami && !f.caja_numero && comDiasTarde(f.eta_miami) > 0;
+
+// El aviso de arriba: los envíos que ya debieron llegar a Miami y las cajas
+// que ya debieron llegar a Honduras. Tocarlo abre el envío o la caja.
+function comAlertas() {
+  const caja = $('com-alerta');
+  if (!caja) return;
+  const trks = (comTrks || []).filter(comTrkAtrasado)
+    .sort((a, b) => String(a.eta_miami).localeCompare(String(b.eta_miami)));
+  const cajas = (comCajas || []).filter((c) => c.estado === 'en_camino' && comDiasTarde(c.eta) > 0);
+  const n = trks.length + cajas.length;
+  caja.hidden = !n;
+  if (!n) { caja.innerHTML = ''; return; }
+  const titulo = [trks.length ? `${N(trks.length)} ${trks.length === 1 ? 'envío atrasado' : 'envíos atrasados'}` : '',
+                  cajas.length ? `${N(cajas.length)} ${cajas.length === 1 ? 'caja atrasada' : 'cajas atrasadas'}` : '']
+    .filter(Boolean).join(' y ');
+  caja.innerHTML = `
+    <div class="com-alerta__tt">⚠ ${titulo}</div>
+    <div class="com-alerta__lista">
+      ${trks.map((t) => `<button type="button" class="com-alerta__it" data-trk="${t.id}">
+        <b>${esc(t.numero)}</b>${(t.ordenes || []).length ? ` · Orden ${t.ordenes.map((o) =>
+          `#${N(o.correlativo)} ${esc(o.tienda)}`).join(', ')}` : ''}
+        <span>debía llegar a Miami el ${esc(comFecha(t.eta_miami))} · ${comTarde(comDiasTarde(t.eta_miami))}</span>
+      </button>`).join('')}
+      ${cajas.map((c) => `<button type="button" class="com-alerta__it" data-caja="${c.id}">
+        <b>Caja #${N(c.correlativo)}</b>
+        <span>debía llegar a Honduras el ${esc(comFecha(c.eta))} · ${comTarde(comDiasTarde(c.eta))}</span>
+      </button>`).join('')}
+    </div>`;
+  caja.querySelectorAll('[data-trk]').forEach((b) => {
+    b.onclick = () => comTrkAbrir(Number(b.dataset.trk));
+  });
+  caja.querySelectorAll('[data-caja]').forEach((b) => {
+    b.onclick = () => comCajAbrir(Number(b.dataset.caja));
+  });
+}
+
+// ── Asignar caja desde Envíos ────────────────────────────────────────────
+// "Agregar opción de asignar caja, a una caja existente o en su defecto
+// crearla desde allí" (Ailin). Si el envío todavía no estaba marcado en Miami,
+// se marca hoy: si ya va en una caja, es que llegó.
+async function comTrkAsignarCaja(trk) {
+  let abiertas = [];
+  let siguiente = 1;
+  try {
+    const r = await api('/admin/compras/cajas?estado=abierta');
+    abiertas = r.cajas || [];
+    siguiente = r.siguiente || 1;
+  } catch (ex) { comError('No se pudieron ver las cajas', ex); return; }
+
+  const opciones = abiertas.map((c, i) => `
+    <label class="com-elegir__it">
+      <input type="radio" class="com-elegir__ch" name="ac-caja" value="${c.id}" ${i ? '' : 'checked'} />
+      <span class="com-elegir__txt">
+        <span class="com-elegir__nm">Caja #${N(c.correlativo)}</span>
+        <span class="com-elegir__sub">${c.fecha ? 'del ' + esc(comFecha(c.fecha)) + ' · ' : ''}${
+          N(c.trackings)} ${c.trackings === 1 ? 'tracking' : 'trackings'} · ${N(c.unidades)} unidades</span>
+      </span>
+    </label>`).join('');
+
+  const datos = await PPModal.abrir({
+    titulo: 'Asignar caja',
+    sub: `Tracking ${trk.numero}`,
+    ancho: 480,
+    confirmar: 'Asignar',
+    cuerpo: `
+      <div class="com-elegir">${opciones}
+        <label class="com-elegir__it">
+          <input type="radio" class="com-elegir__ch" name="ac-caja" value="nueva" ${abiertas.length ? '' : 'checked'} />
+          <span class="com-elegir__txt"><span class="com-elegir__nm">Crear una caja nueva</span></span>
+        </label>
+      </div>
+      <div class="com-form com-form__dos" id="ac-nueva" style="margin-top:0.7rem" hidden>
+        <label>Número de caja <input type="number" id="ac-num" min="1" step="1" value="${siguiente}" /></label>
+        <label>Fecha de la caja <input type="date" id="ac-fecha" value="${hoyISO()}" max="${hoyISO()}" /></label>
+      </div>
+      ${trk.llegada_miami ? '' : `<p class="ppform__nota" style="margin-top:0.7rem">Este envío
+        todavía no estaba marcado como llegado a Miami: queda marcado con la fecha de hoy.</p>`}`,
+    alAbrir: (caja) => {
+      const pintar = () => {
+        const v = (caja.querySelector('[name="ac-caja"]:checked') || {}).value;
+        caja.querySelector('#ac-nueva').hidden = v !== 'nueva';
+      };
+      caja.addEventListener('change', pintar);
+      pintar();
+    },
+    alConfirmar: (caja, modal) => {
+      const v = (caja.querySelector('[name="ac-caja"]:checked') || {}).value;
+      if (!v) { modal.avisar('Elija una caja'); return false; }
+      if (v !== 'nueva') return { caja: Number(v) };
+      const num = Number(caja.querySelector('#ac-num').value);
+      if (!(Number.isInteger(num) && num >= 1)) { modal.avisar('Póngale número a la caja'); return false; }
+      return { nueva: { correlativo: num, fecha: caja.querySelector('#ac-fecha').value || null } };
+    },
+  });
+  if (!datos) return;
+  let cid = datos.caja;
+  let creada = null;
+  try {
+    if (datos.nueva) {
+      creada = (await api('/admin/compras/cajas',
+        { method: 'POST', body: JSON.stringify(datos.nueva) })).caja;
+      cid = creada.id;
+    }
+    if (!trk.llegada_miami) {
+      await api('/admin/compras/trackings/' + trk.id,
+        { method: 'PATCH', body: JSON.stringify({ llegada_miami: hoyISO() }) });
+    }
+    await api(`/admin/compras/cajas/${cid}/trackings`,
+      { method: 'POST', body: JSON.stringify({ trackings: [trk.id] }) });
+  } catch (ex) {
+    // Una caja recién creada que se quedó vacía solo estorba.
+    if (creada) {
+      try { await api('/admin/compras/cajas/' + creada.id, { method: 'DELETE' }); }
+      catch (_) { /* se puede quitar desde Cajas */ }
+    }
+    comError('No se pudo asignar la caja', ex);
+    await comTrkCargar();
+    return;
+  }
+  await comTrkCargar();
+  comCajCargar();
+  comCargar();
 }
 
 // ── Nuevo envío / corregir ───────────────────────────────────────────────
@@ -3958,7 +4373,7 @@ async function comTrkAbrir(tid, desdeRuta) {
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
         <div><div class="com-dato__nm">Llega a Miami</div>
-             <div class="com-dato__vl">${t.eta_miami ? esc(diaCorto(t.eta_miami)) : '—'}</div></div>
+             <div class="com-dato__vl">${t.eta_miami ? esc(comFecha(t.eta_miami)) : '—'}</div></div>
         <div><div class="com-dato__nm">Caja</div>
              <div class="com-dato__vl">${t.caja_id ? 'Asignada' : 'Todavía ninguna'}</div></div>
       </div>
@@ -3990,7 +4405,7 @@ async function comTrkAbrir(tid, desdeRuta) {
         html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}` },
       { clave: 'tienda', titulo: 'De qué orden',
         html: (f) => `${f.orden_correlativo != null ? `<b>#${N(f.orden_correlativo)}</b> · ` : ''}`
-          + `${esc(f.tienda)}<div class="com-pie">${esc(diaCorto(f.orden_fecha))}${
+          + `${esc(f.tienda)}<div class="com-pie">${esc(comFecha(f.orden_fecha))}${
             f.orden_numero_proveedor ? ' · ' + esc(f.orden_numero_proveedor) : ''}</div>` },
       { clave: 'cantidad', titulo: 'Cuántas', html: (f) => N(f.cantidad) },
       { clave: 'recibidas', titulo: 'Recibidas',
@@ -4041,7 +4456,7 @@ async function comTrkMeter(tid) {
       <input type="checkbox" class="com-elegir__ch" data-i="${i}" />
       <span class="com-elegir__txt">
         <span class="com-elegir__nm">${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}</span>
-        <span class="com-elegir__sub">${esc(p.tienda)} · ${esc(diaCorto(p.orden_fecha))}
+        <span class="com-elegir__sub">${esc(p.tienda)} · ${esc(comFecha(p.orden_fecha))}
           · faltan ${N(p.libres)} de ${N(p.cantidad)}</span>
       </span>
       <span class="com-elegir__cant">
@@ -4056,8 +4471,11 @@ async function comTrkMeter(tid) {
     confirmar: 'Meterlos al envío',
     cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Marque lo que viene
              en este tracking. Si el proveedor mandó solo una parte, cambie la cantidad.</p>
+           <div class="com-todos__fila"><button type="button" class="ppform__lnk com-todos"
+             id="com-trk-todos"></button></div>
            <div class="com-elegir">${filas}</div>`,
     alAbrir: () => {
+      comMarcarTodos($('com-trk-todos'), () => document.querySelectorAll('.com-elegir__ch'));
       // La cantidad solo se puede tocar en lo que está marcado.
       document.querySelectorAll('.com-elegir__ch').forEach((ch) => {
         ch.onchange = () => {
@@ -4133,7 +4551,7 @@ let comCajas = [];
 let comCajAbierta = null;
 let comCajSiguiente = 1;
 
-const COM_CAJA_ESTADOS = { abierta: 'Armándose', en_camino: 'En camino',
+const COM_CAJA_ESTADOS = { abierta: 'Abierta', en_camino: 'Tránsito a Honduras',
                            recibida: 'Recibida' };
 
 async function comCajCargar() {
@@ -4146,6 +4564,7 @@ async function comCajCargar() {
     comContador();
     if (comVista) comVista.cuenta('cajas', comCajas.length || null);
     comCajPintar();
+    comAlertas();
   } catch (ex) { $('com-estado').textContent = ex.message; }
 }
 
@@ -4164,8 +4583,10 @@ function comCajPintar() {
     comCajTabla = PPTabla.crear($('com-caj-tabla'), {
       columnas: [
         { clave: 'correlativo', titulo: 'Caja', principal: true,
-          html: (f) => `Caja ${N(f.correlativo)}`
+          html: (f) => `Caja #${N(f.correlativo)}`
             + (f.notas ? `<div class="com-pie">${esc(f.notas)}</div>` : '') },
+        // El día que la consolidadora juntó los paquetes en la caja.
+        { clave: 'fecha', titulo: 'Fecha', html: (f) => (f.fecha ? `<span class="com-nw">${esc(comFecha(f.fecha))}</span>` : '—') },
         { clave: 'unidades', titulo: 'Lleva',
           html: (f) => (f.trackings
             ? `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
@@ -4176,15 +4597,15 @@ function comCajPintar() {
             f.estado === 'recibida' ? 'recibido'
               : f.estado === 'en_camino' ? 'en_caja' : 'pedido',
             COM_CAJA_ESTADOS[f.estado] || f.estado)
-          + (f.estado === 'en_camino' && f.eta
-              ? `<div class="com-pie">llega ~${esc(diaCorto(f.eta))}</div>` : '') },
+          + (f.estado === 'en_camino' ? comEta(f.eta) : '') },
       ],
       filtros: [{ clave: 'estado', titulo: 'Estado', opciones: [
-        { v: 'abierta', t: 'Armándose' }, { v: 'en_camino', t: 'En camino' },
+        { v: 'abierta', t: 'Abiertas' }, { v: 'en_camino', t: 'Tránsito a Honduras' },
         { v: 'recibida', t: 'Recibidas' }] }],
       buscar: (f, t) => (`caja ${f.correlativo} ${f.notas || ''}`).toLowerCase().includes(t),
       acciones: (f) => [
         { texto: 'Ver la caja', al: () => comCajAbrir(f.id) },
+        { texto: 'Editar', al: () => comCajForm(f) },
         ...(f.estado === 'abierta'
           ? [{ texto: 'Cerrarla y mandarla', al: () => comCajCerrar(f) }]
           : []),
@@ -4205,15 +4626,19 @@ function comCajPintar() {
 async function comCajForm(caja) {
   const esNueva = !caja;
   const datos = await PPForm.abrir({
-    titulo: esNueva ? 'Nueva caja' : `Corregir la caja ${caja.correlativo}`,
+    titulo: esNueva ? 'Nueva caja' : `Editar la caja #${caja.correlativo}`,
     confirmar: esNueva ? 'Crear la caja' : 'Guardar cambios',
     ancho: 460,
     campos: [
       esNueva
         ? { id: 'correlativo', tipo: 'numero', etiqueta: 'Número de caja',
-            paso: 1, min: 1, entero: true, valor: comCajSiguiente,
+            paso: 1, min: 1, entero: true, valor: comCajSiguiente, mitad: true,
             obligatorio: 'Póngale número a la caja' }
         : null,
+      // El día que la consolidadora abrió los paquetes y los juntó en esta caja.
+      { id: 'fecha', tipo: 'fecha', etiqueta: 'Fecha de la caja', mitad: esNueva,
+        valor: caja && caja.fecha ? String(caja.fecha).slice(0, 10) : hoyISO(), max: hoyISO(),
+        obligatorio: '¿Qué día armó la caja la consolidadora?' },
       { id: 'notas', tipo: 'texto', etiqueta: 'Nota', ayuda: 'opcional', max: 1000,
         placeholder: 'Lo que convenga recordar de esta caja',
         valor: caja ? (caja.notas || '') : '' },
@@ -4418,18 +4843,18 @@ async function comCajAbrir(cid, desdeRuta) {
     <div class="card rep-card">
       <div class="com-ficha__cab">
         <div>
-          <h2 class="com-ficha__tienda">Caja ${N(c.correlativo)}</h2>
-          <p class="com-ficha__sub">${c.cerrada_en
-            ? 'Cerrada el ' + esc(diaCorto(c.cerrada_en))
-            : 'Todavía se le pueden meter envíos'}${
-            c.recibida_en ? ' · llegó el ' + esc(diaCorto(c.recibida_en)) : ''}</p>
+          <h2 class="com-ficha__tienda">Caja #${N(c.correlativo)}</h2>
+          <p class="com-ficha__sub">${c.fecha ? 'Del ' + esc(comFecha(c.fecha)) : ''}${
+            c.cerrada_en ? ' · cerrada el ' + esc(comFecha(c.cerrada_en)) : ''}${
+            c.recibida_en ? ' · llegó el ' + esc(comFecha(c.recibida_en)) : ''}
+            <button type="button" class="ppform__lnk" id="com-caj-editar">Editar</button></p>
         </div>
         <div>${comEtiq(c.estado === 'recibida' ? 'recibido'
           : c.estado === 'en_camino' ? 'en_caja' : 'pedido',
           COM_CAJA_ESTADOS[c.estado] || c.estado)}</div>
       </div>
       <div class="com-datos">
-        <div><div class="com-dato__nm">Envíos</div>
+        <div><div class="com-dato__nm">Trackings</div>
              <div class="com-dato__vl">${N(trk.length)}</div></div>
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
@@ -4440,8 +4865,9 @@ async function comCajAbrir(cid, desdeRuta) {
              <div class="com-dato__vl">${comCajBalanza(c)}</div></div>` : ''}
         <div><div class="com-dato__nm">Flete</div>
              <div class="com-dato__vl">${comCajFlete(c)}</div></div>
-        <div><div class="com-dato__nm">Llega</div>
-             <div class="com-dato__vl">${c.eta ? esc(diaCorto(c.eta)) : '—'}</div></div>
+        <div><div class="com-dato__nm">ETA</div>
+             <div class="com-dato__vl${comDiasTarde(c.eta) && c.estado === 'en_camino' ? ' com-tarde' : ''}">${
+               c.eta ? esc(comFecha(c.eta)) : '—'}</div></div>
       </div>
       ${c.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(c.notas)}</p>` : ''}
       ${abierta && trk.length ? `<div style="margin-top:1rem">
@@ -4455,9 +4881,9 @@ async function comCajAbrir(cid, desdeRuta) {
 
     <div class="card rep-card">
       <div class="rep-card__cab">
-        <h2>Qué envíos lleva</h2>
+        <h2>Trackings incluidos</h2>
         ${abierta ? `<button class="btn btn--primary btn--sm" type="button"
-          id="com-caj-add">Meter envíos</button>` : ''}
+          id="com-caj-add">Agregar tracking</button>` : ''}
       </div>
       <div id="com-caj-trk"></div>
     </div>
@@ -4473,13 +4899,14 @@ async function comCajAbrir(cid, desdeRuta) {
 
     <div class="card rep-card">
       <div class="rep-card__cab">
-        <h2>Lo que viene adentro</h2>
+        <h2>Productos incluidos</h2>
         <span class="rep-card__sub">${N(items.length)} ${items.length === 1 ? 'producto' : 'productos'}</span>
       </div>
       <div id="com-caj-items"></div>
     </div>`;
 
   $('com-caj-atras').onclick = comCajVolver;
+  $('com-caj-editar').onclick = () => comCajForm(c);
   if (!abierta) comCajRecibirAbrir(cid);
   const bCerrar = $('com-caj-cerrar');
   if (bCerrar) bCerrar.onclick = () => comCajCerrar(c);
@@ -4492,25 +4919,25 @@ async function comCajAbrir(cid, desdeRuta) {
     columnas: [
       { clave: 'numero', titulo: 'Tracking', principal: true,
         html: (f) => `${esc(f.numero)}${f.empresa ? `<div class="com-pie">${esc(f.empresa)}</div>` : ''}` },
-      { clave: 'unidades', titulo: 'Trae',
+      { clave: 'unidades', titulo: 'Productos',
         html: (f) => `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}` },
       { clave: 'llegada_miami', titulo: 'Llegó a Miami',
-        html: (f) => (f.llegada_miami ? esc(diaCorto(f.llegada_miami)) : '—') },
+        html: (f) => (f.llegada_miami ? esc(comFecha(f.llegada_miami)) : '—') },
     ],
     acciones: (f) => (abierta
       ? [{ texto: 'Sacar de la caja', peligro: true, al: () => comCajSacar(cid, f) }]
       : []),
     porPagina: 20,
-    vacio: abierta ? 'Esta caja está vacía. Toque "Meter envíos".'
+    vacio: abierta ? 'Esta caja está vacía. Toque "Agregar tracking".'
                    : 'Esta caja no lleva envíos.',
   }).datos(trk);
 
   comCajAdentro = PPTabla.crear($('com-caj-items'), {
     columnas: [
       { clave: 'titulo', titulo: 'Producto', principal: true,
-        html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
-          + `<div class="com-pie">${esc(f.tienda)}</div>` },
-      { clave: 'tracking', titulo: 'En qué envío' },
+        html: (f) => comConFoto(f.imagen, `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
+          + `<div class="com-pie">${f.orden_num ? `Orden #${N(f.orden_num)} · ` : ''}${esc(f.tienda)}</div>`) },
+      { clave: 'tracking', titulo: 'Tracking' },
       { clave: 'cantidad', titulo: 'Cuántas', html: (f) => N(f.cantidad) },
       { clave: 'recibidas', titulo: 'Recibidas',
         html: (f) => comAvance(f.recibidas, f.cantidad) },
@@ -4559,17 +4986,22 @@ async function comCajMeter(cid) {
       <span class="com-elegir__txt">
         <span class="com-elegir__nm">${esc(t.numero)}${t.empresa ? ' · ' + esc(t.empresa) : ''}</span>
         <span class="com-elegir__sub">${N(t.unidades)} ${t.unidades === 1 ? 'unidad' : 'unidades'}
-          · en Miami desde el ${esc(diaCorto(t.llegada_miami))}</span>
+          · en Miami desde el ${esc(comFecha(t.llegada_miami))}</span>
       </span>
     </label>`).join('');
 
   const datos = await PPModal.abrir({
-    titulo: 'Qué envíos van en esta caja',
+    titulo: 'Agregar tracking a la caja',
     ancho: 540,
     confirmar: 'Meterlos a la caja',
     cuerpo: `<p class="ppform__nota" style="margin-bottom:0.6rem">Solo salen los
              que ya están en Miami y todavía no van en ninguna caja.</p>
+           <div class="com-todos__fila"><button type="button" class="ppform__lnk com-todos"
+             id="com-caj-todos"></button></div>
            <div class="com-elegir">${filas}</div>`,
+    alAbrir: () => {
+      comMarcarTodos($('com-caj-todos'), () => document.querySelectorAll('.com-elegir__ch'));
+    },
     alConfirmar: (_caja, modal) => {
       const ids = [...document.querySelectorAll('.com-elegir__ch')]
         .filter((ch) => ch.checked)
@@ -4690,31 +5122,43 @@ function busIt(c, i) {
     </button>`;
 }
 
-// Una sola: la que tocó en la lista.
+// Una sola: la que tocó en la lista. El detalle sale en un modal, como la
+// vista rápida de las órdenes (Ailin: "no se entiende").
 function busUno(i) {
   const c = (busDatos.coincidencias || [])[i];
   if (!c) return;
   const p = (busDatos.productos || []).find(
     (x) => String(x.variant_id || '') === String(c.variant_id || ''));
-  const nombre = esc(c.titulo) + (c.variante ? ' · ' + esc(c.variante) : '');
-  $('bus-res').innerHTML = busVolver() + (p ? busProducto(p) : `
-    <div class="card rep-card">
-      <p class="bus-vacio">De <b>${nombre}</b> no hay ninguna compra anotada.
-      ${c.existencia > 0 ? `En la tienda hay ${N(c.existencia)}.`
-                         : 'Si lo compró, puede que todavía no esté registrada la orden.'}</p>
-    </div>`);
-  busVolverArmar();
+  busModal(p, c);
 }
 
-// Todo lo que coincide, con sus paradas.
+// Escaneó un código o tocó Enter: la lista de lo comprado que coincide, y si
+// es uno solo, el detalle de una vez.
 function busDetalle() {
   const prods = busDatos.productos || [];
-  $('bus-res').innerHTML = busVolver() + (prods.length
-    ? prods.map(busProducto).join('')
-    : `<div class="card rep-card">
-         <p class="bus-vacio">No hay ninguna compra de <b>${esc(busUltima)}</b>.
-         Si lo compró, puede que todavía no esté registrada la orden.</p></div>`);
+  if (!prods.length) {
+    $('bus-res').innerHTML = busVolver() + `<div class="card rep-card">
+       <p class="bus-vacio">No hay ninguna compra de <b>${esc(busUltima)}</b>.
+       Si lo compró, puede que todavía no esté registrada la orden.</p></div>`;
+    busVolverArmar();
+    return;
+  }
+  $('bus-res').innerHTML = busVolver() + `<div class="card rep-card">
+      <div class="bus-lista">${prods.map((p, i) => `
+        <button type="button" class="bus-it" data-p="${i}">
+          ${p.imagen ? `<img class="bus-it__img" src="${esc(p.imagen)}" alt="" loading="lazy"
+                            onerror="this.style.visibility='hidden'" />`
+                     : '<span class="bus-it__img"></span>'}
+          <span class="bus-it__txt">
+            <span class="bus-it__nm">${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}</span>
+            <span class="bus-it__est">${busCuenta(p) || 'nada pendiente'}</span>
+          </span>
+        </button>`).join('')}</div></div>`;
   busVolverArmar();
+  document.querySelectorAll('[data-p]').forEach((b) => {
+    b.onclick = () => busModal(prods[Number(b.dataset.p)]);
+  });
+  if (prods.length === 1) busModal(prods[0]);
 }
 
 function busVolver() {
@@ -4727,81 +5171,110 @@ function busVolverArmar() {
   if ($('bus-atras')) $('bus-atras').onclick = busCoincidencias;
 }
 
-function busProducto(p) {
-  // El titular: lo que contesta la pregunta sin leer el detalle.
-  const trozos = [];
-  if (p.aqui) trozos.push(`<b>${N(p.aqui)}</b> ya ${p.aqui === 1 ? 'está' : 'están'} en la tienda`);
-  if (p.en_camino) trozos.push(`<b>${N(p.en_camino)}</b> ${p.en_camino === 1 ? 'viene' : 'vienen'} en camino`);
-  if (p.por_anotar) trozos.push(`<b>${N(p.por_anotar)}</b> sin anotar de una caja que ya llegó`);
-  if (p.sin_salir) trozos.push(`<b>${N(p.sin_salir)}</b> sin despachar`);
-  if (p.no_viene) trozos.push(`<b>${N(p.no_viene)}</b> que no ${p.no_viene === 1 ? 'viene' : 'vienen'}`);
-
-  return `
-    <div class="card rep-card bus-prod">
-      <div class="bus-prod__cab">
-        ${p.imagen ? `<img class="bus-prod__img" src="${esc(p.imagen)}" alt=""
-                          loading="lazy" onerror="this.remove()" />` : ''}
-        <div>
-          <h2>${esc(p.titulo)}${p.variante ? ' · ' + esc(p.variante) : ''}</h2>
-          <p class="bus-prod__cuenta">${trozos.join(' · ') || 'Sin unidades'}</p>
-        </div>
-      </div>
-      <div class="bus-paradas">${p.paradas.map(busParada).join('')}</div>
-    </div>`;
+// "3 en camino · 2 recibidas": lo que contesta la pregunta, en una línea.
+function busCuenta(p) {
+  const t = [];
+  if (p.en_camino) t.push(`${N(p.en_camino)} en camino`);
+  if (p.aqui) t.push(`${N(p.aqui)} recibidas`);
+  if (p.por_anotar) t.push(`${N(p.por_anotar)} sin anotar`);
+  if (p.sin_salir) t.push(`${N(p.sin_salir)} sin despachar`);
+  return t.join(' · ');
 }
 
-// Cada parada, dicha como se la contaría a alguien por teléfono.
-function busParada(x) {
-  const cuantas = `${N(x.cantidad)}`;
-  const deDonde = x.es_local ? esc(x.tienda)
-    : `${esc(x.tienda)}${x.fecha ? ', ' + diaCorto(x.fecha) : ''}`;
-  let frase;
-  let color = 'camino';
+// El detalle de un producto: arriba la cuenta en recuadros y abajo una tabla
+// con cada parte (cuántas, estatus, orden, tracking y ETA), con los mismos
+// nombres que Órdenes y Envíos.
+function busModal(p, c) {
+  const base = p || c || {};
+  const nombre = `${base.titulo || ''}${base.variante ? ' · ' + base.variante : ''}`;
+  const foto = base.imagen || (c && c.imagen) || '';
+  const pie = c ? [c.marca, c.borrador ? 'todavía no está a la venta'
+    : (c.existencia > 0 ? `${N(c.existencia)} disponibles en la tienda en línea` : 'agotado en la tienda en línea')]
+    .filter(Boolean).join(' · ') : '';
+  const cajas = p ? [
+    ['Recibidas', p.aqui, 'aqui'], ['En camino', p.en_camino, 'camino'],
+    ['Sin despachar', p.sin_salir, 'quieto'], ['Llegó sin anotar', p.por_anotar, 'ojo'],
+    ['No vienen', p.no_viene, 'no'],
+  ].filter(([, n], i) => i < 3 || n) : [];
+
+  PPModal.abrir({
+    titulo: nombre,
+    sub: pie,
+    ancho: 820,
+    confirmar: 'Cerrar',
+    cancelar: null,
+    cuerpo: `
+      <div class="bus-m__cab">
+        ${foto ? `<img class="bus-m__img" src="${esc(foto)}" alt="" onerror="this.remove()" />` : ''}
+        ${p ? `<div class="bus-m__cuentas">${cajas.map(([t, n, k]) => `
+          <div class="bus-m__cta bus-m__cta--${k}"><b>${N(n || 0)}</b><span>${t}</span></div>`).join('')}
+        </div>` : `<p class="bus-vacio">De este producto no hay ninguna compra anotada.
+          Si lo compró, puede que todavía no esté registrada la orden.</p>`}
+      </div>
+      ${p ? '<div id="bus-m-tabla"></div>' : ''}`,
+    alAbrir: (caja, modal) => {
+      if (!p) return;
+      PPTabla.crear(caja.querySelector('#bus-m-tabla'), {
+        columnas: [
+          { clave: 'cantidad', titulo: 'Unidades', html: (x) => `<b>${N(x.cantidad)}</b>` },
+          { clave: 'donde', titulo: 'Estatus', principal: true, html: (x) => busEstatus(x) },
+          { clave: 'orden_num', titulo: 'Orden',
+            html: (x) => (x.orden_num
+              ? `<button type="button" class="ppform__lnk" data-orden="${x.orden_id}">#${N(x.orden_num)}</button>`
+                + ` · ${esc(x.tienda)}<div class="com-pie">${esc(comFecha(x.fecha))}${
+                  x.numero_proveedor ? ' · ' + esc(x.numero_proveedor) : ''}</div>`
+              : esc(x.tienda)) },
+          { clave: 'tracking', titulo: 'Tracking',
+            html: (x) => (x.tracking ? `${esc(x.tracking)}${x.empresa
+              ? `<div class="com-pie">${esc(x.empresa)}</div>` : ''}` : '<span class="com-pie">—</span>') },
+          { clave: 'eta', titulo: 'ETA', html: (x) => busEtaParada(x) },
+        ],
+        porPagina: 50,
+        vacio: 'Sin unidades',
+      }).datos(p.paradas || []);
+      // La orden se abre en su vista rápida.
+      caja.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-orden]');
+        if (!b) return;
+        const fila = (comOrdenes || []).find((o) => o.id === Number(b.dataset.orden));
+        modal.cerrar(null);
+        if (fila) comVistaRapida(fila);
+        else comAbrir(Number(b.dataset.orden));
+      });
+    },
+  });
+}
+
+// El estatus de cada parte, con el nombre de siempre y debajo el dato que
+// lo explica (en qué caja, desde cuándo).
+function busEstatus(x) {
+  const pie = (t) => (t ? `<div class="com-pie">${t}</div>` : '');
   switch (x.donde) {
-    case 'aqui':
-      frase = 'ya están en la tienda';
-      color = 'aqui';
-      break;
-    case 'por_anotar':
-      frase = `la caja ${N(x.caja)} ya llegó, pero esto no se ha anotado`;
-      color = 'ojo';
-      break;
-    case 'a_honduras':
-      frase = `vienen en la caja ${N(x.caja)}`
-        + (x.caja_eta ? `, se espera el ${diaCorto(x.caja_eta)}` : '');
-      break;
-    case 'en_caja':
-      frase = `en Miami, metidas en la caja ${N(x.caja)} que se está armando`;
-      break;
-    case 'en_miami':
-      frase = `en Miami desde el ${diaCorto(x.llegada_miami)}, esperando caja`;
-      break;
-    case 'a_miami':
-      frase = `despachadas${x.empresa ? ' por ' + esc(x.empresa) : ''}, van para Miami`
-        + (x.eta_miami ? `, llegan el ${diaCorto(x.eta_miami)}` : '');
-      break;
-    case 'en_tienda_eu':
-      frase = x.es_local ? 'compradas, sin recibir todavía'
-        : 'el proveedor todavía no las despacha';
-      color = 'quieto';
-      break;
-    case 'no_suplido':
-      frase = 'el proveedor avisó que no las va a mandar';
-      color = 'no';
-      break;
-    default:
-      frase = 'canceladas';
-      color = 'no';
+    case 'aqui': return comEtiq('recibido', 'Recibido') + pie('ya en la tienda');
+    case 'por_anotar': return comEtiq('abierta', 'Llegó, falta anotarlo')
+      + pie(`la caja #${N(x.caja)} ya llegó`);
+    case 'a_honduras': return comEtiq('en_caja', 'Tránsito a Honduras') + pie(`caja #${N(x.caja)}`);
+    case 'en_caja': return comEtiq('en_miami', 'En Miami') + pie(`en la caja #${N(x.caja)} (abierta)`);
+    case 'en_miami': return comEtiq('en_miami', 'En Miami')
+      + pie(x.llegada_miami ? `desde el ${esc(comFecha(x.llegada_miami))}, sin caja` : 'sin caja');
+    case 'a_miami': return comDiasTarde(x.eta_miami)
+      ? comEtiq('atrasado', 'Atrasado') + pie('tránsito a Miami')
+      : comEtiq('despachado', 'Tránsito a Miami');
+    case 'en_tienda_eu': return x.es_local ? comEtiq('pedido', 'Sin recibir')
+      : comEtiq('pedido', 'Sin despachar') + pie('el proveedor no lo ha mandado');
+    case 'no_suplido': return comEtiq('no_suplido', 'No lo envían');
+    default: return comEtiq('cancelado', 'Cancelado');
   }
-  return `
-    <div class="bus-parada bus-parada--${color}">
-      <span class="bus-parada__n">${cuantas}</span>
-      <span class="bus-parada__txt">
-        ${frase}
-        <span class="bus-parada__de">${deDonde}${
-          x.tracking ? ' · ' + esc(x.tracking) : ''}</span>
-      </span>
-    </div>`;
+}
+
+function busEtaParada(x) {
+  const fecha = x.donde === 'a_miami' ? x.eta_miami
+    : x.donde === 'a_honduras' ? x.caja_eta : null;
+  if (!fecha) return '<span class="com-pie">—</span>';
+  const tarde = comDiasTarde(fecha);
+  return `<span class="com-nw${tarde ? ' com-tarde' : ''}">${esc(comFecha(fecha))}</span>`
+    + `<div class="com-pie${tarde ? ' com-pie--tarde' : ''}">${
+      tarde ? comTarde(tarde) : (x.donde === 'a_miami' ? 'a Miami' : 'a Honduras')}</div>`;
 }
 
 // ── Recibir la caja ──────────────────────────────────────────────────────

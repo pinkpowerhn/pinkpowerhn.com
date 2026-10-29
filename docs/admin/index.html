@@ -826,27 +826,27 @@
   .bus-fil button.is-active { background:#fdf0f5; border-color:var(--pink); color:var(--pink-dk); font-weight:700; }
   .bus-cam-lista { display:flex; flex-direction:column; }
   .bus-cam {
-    display:grid; grid-template-columns:48px minmax(0,1fr) auto; align-items:center;
-    gap:0.75rem; width:100%; padding:0.7rem 0.3rem; text-align:left; cursor:pointer;
+    display:flex; align-items:center; gap:0.85rem; width:100%;
+    padding:0.75rem 0.3rem; text-align:left; cursor:pointer;
     background:none; border:none; border-bottom:1px solid var(--linea); font:inherit; border-radius:10px;
   }
   .bus-cam:last-child { border-bottom:none; }
   .bus-cam:hover { background:#fdf4f8; }
-  .bus-cam__img { width:48px; height:48px; object-fit:cover; border-radius:10px; background:#f7eef3; display:block; }
-  .bus-cam__txt { min-width:0; }
+  .bus-cam__img { width:56px; height:56px; flex:none; object-fit:cover; border-radius:12px;
+    background:#f7eef3; border:1px solid var(--linea); display:block; }
+  .bus-cam__txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:0.3rem; }
   .bus-cam__nm {
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
     font-size:0.9rem; font-weight:600; color:var(--ink); line-height:1.3;
   }
-  .bus-cam__est { display:flex; flex-wrap:wrap; align-items:center; gap:0.2rem 0.4rem; margin-top:0.3rem; }
-  .bus-cam__est .com-pie { margin:0; }
-  .bus-cam__u { font-size:0.78rem; font-weight:700; color:var(--ink); }
-  .bus-cam__eta { text-align:right; font-size:0.84rem; font-weight:700; color:var(--ink); }
-  .bus-cam__eta .com-pie { font-weight:400; }
+  /* Cuántas, el estatus y la ETA a la par; si no cabe, baja la ETA. */
+  .bus-cam__ln { display:flex; flex-wrap:wrap; align-items:center; gap:0.2rem 0.45rem; font-size:0.78rem; }
+  .bus-cam__ln .com-pie { margin:0; }
+  .bus-cam__u { font-weight:700; color:var(--ink); }
+  .bus-cam__eta { color:var(--muted); white-space:nowrap; }
+  .bus-cam__eta.com-tarde { font-weight:700; }
   @media (max-width: 560px) {
-    .bus-cam { grid-template-columns:42px minmax(0,1fr) auto; gap:0.6rem; }
-    .bus-cam__img { width:42px; height:42px; }
-    .bus-cam__eta { font-size:0.78rem; }
+    .bus-cam__img { width:50px; height:50px; }
   }
   .bus-vacio { margin:0; font-size:0.92rem; color:var(--muted); line-height:1.5; }
 
@@ -5222,6 +5222,14 @@ function busPortadaPintar() {
   const chips = [{ id: 'todos', t: 'Todo', n: total },
     ...BUS_CAM_GRUPOS.map((g) => ({ ...g, n: unidades(todas.filter((f) => f.grupo === g.id)) }))
       .filter((g) => g.n)];
+  // Una fila por producto, con sus partes debajo, en el orden de las partes:
+  // primero lo que está más cerca de llegar.
+  const porProd = new Map();
+  filas.forEach((f) => {
+    if (!porProd.has(f.pi)) porProd.set(f.pi, { p: f.p, partes: [] });
+    porProd.get(f.pi).partes.push(f);
+  });
+  const prods = [...porProd.values()];
 
   $('bus-res').innerHTML = `
     <div class="card rep-card">
@@ -5235,18 +5243,15 @@ function busPortadaPintar() {
         <button type="button" role="tab" data-fil="${c.id}"
           class="${c.id === busCamFiltro ? 'is-active' : ''}">${esc(c.t)} <span>${N(c.n)}</span></button>`).join('')}
       </div>
-      <div class="bus-cam-lista">${filas.map((f, i) => `
+      <div class="bus-cam-lista">${prods.map((g, i) => `
         <button type="button" class="bus-cam" data-cam="${i}">
-          ${f.p.imagen ? `<img class="bus-cam__img" src="${esc(f.p.imagen)}" alt="" loading="lazy"
+          ${g.p.imagen ? `<img class="bus-cam__img" src="${esc(g.p.imagen)}" alt="" loading="lazy"
                               onerror="this.style.visibility='hidden'" />`
                        : '<span class="bus-cam__img"></span>'}
           <span class="bus-cam__txt">
-            <span class="bus-cam__nm">${esc(f.p.titulo)}${f.p.variante ? ' · ' + esc(f.p.variante) : ''}</span>
-            <span class="bus-cam__est"><span class="bus-cam__u">${N(f.cantidad)} ${
-              f.cantidad === 1 ? 'unidad' : 'unidades'}</span>${busEstatus(f.x)}</span>
+            <span class="bus-cam__nm">${esc(g.p.titulo)}${g.p.variante ? ' · ' + esc(g.p.variante) : ''}</span>
+            ${g.partes.map(busCamLinea).join('')}
           </span>
-          <span class="bus-cam__eta">${f.eta ? busEtaParada(f.x)
-            : '<span class="com-pie">Sin ETA</span>'}</span>
         </button>`).join('')}
       </div>` : '<p class="bus-vacio">Ahora no viene nada en camino.</p>'}
     </div>`;
@@ -5255,8 +5260,26 @@ function busPortadaPintar() {
     b.onclick = () => { busCamFiltro = b.dataset.fil; busPortadaPintar(); };
   });
   document.querySelectorAll('[data-cam]').forEach((b) => {
-    b.onclick = () => busModal(filas[Number(b.dataset.cam)].p);
+    b.onclick = () => busModal(prods[Number(b.dataset.cam)].p);
   });
+}
+
+// Una línea debajo del nombre por cada parte: cuántas, el estatus y a la par
+// la ETA, como la lista de productos de Shopify que mandó Ailin.
+function busCamLinea(f) {
+  const tarde = f.eta ? comDiasTarde(f.eta) : 0;
+  const grupo = BUS_CAM_GRUPOS.find((g) => g.id === f.grupo);
+  // "4 sin despachar" ya lo dice todo: la etiqueta al lado lo repetía.
+  const etiq = f.grupo === 'en_tienda_eu' ? '<span class="com-pie">el proveedor no lo ha mandado</span>'
+    : tarde && f.grupo === 'a_miami' ? comEtiq('atrasado', 'Atrasado')
+    : comEtiq({ a_honduras: 'en_caja', en_miami: 'en_miami', a_miami: 'despachado' }[f.grupo] || 'pedido',
+              grupo ? grupo.t : '');
+  const dato = f.eta
+    ? `<span class="bus-cam__eta${tarde ? ' com-tarde' : ''}">ETA ${esc(comFecha(f.eta))}${
+        tarde ? ' · ' + comTarde(tarde) : ''}</span>`
+    : f.x.caja ? `<span class="com-pie">caja #${N(f.x.caja)}</span>` : '';
+  return `<span class="bus-cam__ln"><span class="bus-cam__u">${N(f.cantidad)} ${
+    f.grupo === 'en_tienda_eu' ? 'sin despachar' : 'en camino'}</span>${etiq}${dato}</span>`;
 }
 
 async function busBuscar(q, alDetalle) {

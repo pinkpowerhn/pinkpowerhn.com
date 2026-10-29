@@ -5234,7 +5234,7 @@ function busPortadaPintar() {
   $('bus-res').innerHTML = `
     <div class="card rep-card">
       <div class="rep-card__cab">
-        <h2>Viene en camino</h2>
+        <h2>En tránsito</h2>
         <span class="rep-card__sub">${N(productos)} ${productos === 1 ? 'producto' : 'productos'}
           · ${N(total)} ${total === 1 ? 'unidad' : 'unidades'}</span>
       </div>
@@ -5253,7 +5253,7 @@ function busPortadaPintar() {
             ${g.partes.map(busCamLinea).join('')}
           </span>
         </button>`).join('')}
-      </div>` : '<p class="bus-vacio">Ahora no viene nada en camino.</p>'}
+      </div>` : '<p class="bus-vacio">Ahora no hay nada en tránsito.</p>'}
     </div>`;
 
   document.querySelectorAll('[data-fil]').forEach((b) => {
@@ -5279,7 +5279,7 @@ function busCamLinea(f) {
         tarde ? ' · ' + comTarde(tarde) : ''}</span>`
     : f.x.caja ? `<span class="com-pie">caja #${N(f.x.caja)}</span>` : '';
   return `<span class="bus-cam__ln"><span class="bus-cam__u">${N(f.cantidad)} ${
-    f.grupo === 'en_tienda_eu' ? 'sin despachar' : 'en camino'}</span>${etiq}${dato}</span>`;
+    f.grupo === 'en_tienda_eu' ? 'sin despachar' : 'en tránsito'}</span>${etiq}${dato}</span>`;
 }
 
 async function busBuscar(q, alDetalle) {

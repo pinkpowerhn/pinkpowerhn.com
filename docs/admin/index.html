@@ -535,6 +535,25 @@
     display:flex; align-items:flex-start; justify-content:space-between;
     gap:1rem; flex-wrap:wrap; margin-bottom:0.2rem;
   }
+  .com-ficha__botones { display:flex; gap:0.4rem; flex-wrap:wrap; justify-content:flex-end; }
+  .com-trk-it { white-space:nowrap; }
+  /* Agregar tracking: los productos de la orden con su casilla y cuántas.
+     Son spans porque viven dentro del <p> de la nota del formulario. */
+  .com-tk__tit { display:block; margin:0.3rem 0 0.4rem; font-size:0.74rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); }
+  .com-tk { display:block; border:1px solid var(--linea); border-radius:10px; }
+  .com-tk__it { display:flex; align-items:center; justify-content:space-between; gap:0.7rem;
+    padding:0.5rem 0.7rem; border-bottom:1px solid var(--linea); }
+  .com-tk__it:last-child { border-bottom:none; }
+  .com-tk__nm { display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;
+    color:var(--ink); cursor:pointer; text-transform:none; letter-spacing:normal;
+    font-weight:500; margin:0; }
+  .com-tk__nm input { width:1.05rem; height:1.05rem; accent-color:var(--pink); flex:none; }
+  .com-tk__cant { display:flex; align-items:center; gap:0.35rem; flex:none; }
+  .com-tk__cant .com-pie { white-space:nowrap; }
+  .com-tk__cant input { width:4.2rem; padding:0.35rem 0.45rem; border:1px solid var(--linea);
+    border-radius:8px; font:inherit; font-size:0.9rem; text-align:right; }
+  .com-tk__cant input:disabled { opacity:0.45; }
   .com-ficha__num { font-size:0.78rem; font-weight:700; color:var(--pink-dk); letter-spacing:0.02em; }
   .com-ficha__tienda { margin:0; font-size:1.25rem; font-weight:800; }
   .com-ficha__sub { margin:0.15rem 0 0; color:var(--muted); font-size:0.88rem; }
@@ -2536,12 +2555,9 @@ function comPintar() {
         { clave: 'total_pagado', titulo: 'Compra',
           html: (f) => `<b>${comPlata(
             f.total_pagado != null ? f.total_pagado : f.total_compra, f.moneda)}</b>` },
-        { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado,
-            f.estado === 'abierta' ? 'Abierta' : f.estado === 'cerrada' ? 'Cerrada' : 'Cancelada') },
+        { clave: 'etapa', titulo: 'Estado', html: (f) => comEtapaOrden(f) },
       ],
-      filtros: [{ clave: 'estado', titulo: 'Estado', opciones: [
-        { v: 'abierta', t: 'Abiertas' }, { v: 'cerrada', t: 'Cerradas' },
-        { v: 'cancelada', t: 'Canceladas' }] }],
+      filtros: [{ clave: 'etapa', titulo: 'Estado', opciones: COM_ETAPAS_FILTRO }],
       buscar: (f, t) => (`#${f.correlativo} ${f.tienda} ${f.tarjeta || ''} `
         + (f.numero_proveedor || '')).toLowerCase().includes(t),
       alTocarFila: (f) => comAbrir(f.id),
@@ -2555,6 +2571,38 @@ function comPintar() {
     });
   }
   comTabla.datos(comOrdenes);
+}
+
+// En qué va la orden: "Abierta" no le decía nada. La cuenta la hace el API
+// (la parte más atrasada de lo que falta manda) y aquí solo se pinta, con los
+// mismos colores que el estado de cada producto.
+const COM_ETAPA_COLOR = {
+  comprada: 'pedido', a_miami: 'despachado', en_miami: 'en_miami',
+  a_honduras: 'en_caja', por_recibir: 'abierta', recibida: 'recibido',
+  cerrada: 'cerrada', cancelada: 'cancelado', no_suplida: 'no_suplido',
+  sin_productos: 'cancelado',
+};
+const COM_ETAPAS_FILTRO = [
+  { v: 'comprada', t: 'Compradas' }, { v: 'a_miami', t: 'En camino a Miami' },
+  { v: 'en_miami', t: 'En Miami' }, { v: 'a_honduras', t: 'Vienen a Honduras' },
+  { v: 'por_recibir', t: 'Por recibir' }, { v: 'recibida', t: 'Recibidas' },
+  { v: 'cancelada', t: 'Canceladas' },
+];
+
+function comEtapaOrden(f) {
+  if (!f.etapa) {                     // un API viejo: lo de antes
+    return comEtiq(f.estado, f.estado === 'abierta' ? 'Abierta'
+      : f.estado === 'cerrada' ? 'Cerrada' : 'Cancelada');
+  }
+  return comEtiq(COM_ETAPA_COLOR[f.etapa] || 'pedido', f.etapa_texto)
+    + (f.etapa_pie ? `<div class="com-pie">${esc(f.etapa_pie)}</div>` : '');
+}
+
+// De qué orden es un envío: "#3 · Truly". Casi siempre es una sola.
+function comTrkOrdenes(lista) {
+  return (lista || []).map((o) => `<div><b>#${N(o.correlativo)}</b> · ${esc(o.tienda)}${
+    o.numero_proveedor ? `<div class="com-pie">${esc(o.numero_proveedor)}</div>` : ''}</div>`)
+    .join('') || '<span class="com-pie">—</span>';
 }
 
 // ── Proveedores y tarjetas ───────────────────────────────────────────────
@@ -2888,6 +2936,11 @@ async function comAbrir(oid, desdeRuta) {
   const cuenta = datos.cuentas || { subtotal: 0, extras: 0, total: 0 };
   const unidades = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
   const recibidas = items.reduce((s, i) => s + Number(i.recibidas || 0), 0);
+  // Lo que todavía no va en ningún tracking: sin eso no hay qué registrar.
+  const sinTracking = items.some((i) => !['no_suplido', 'cancelado'].includes(i.estado)
+    && Number(i.cantidad) > Number(i.asignadas || 0));
+  // La compra local ya empezó a recibirse si tiene su envío interno.
+  const yaLocal = items.some((i) => (i.trackings || []).some((t) => t.local));
 
   caja.innerHTML = `
     <button class="com-volver" type="button" id="com-atras">← Todas las órdenes</button>
@@ -2909,18 +2962,38 @@ async function comAbrir(oid, desdeRuta) {
         <div><div class="com-dato__nm">Unidades</div>
              <div class="com-dato__vl">${N(unidades)}</div></div>
         <div><div class="com-dato__nm">Recibidos</div>
-             <div class="com-dato__vl">${N(recibidas)} de ${N(unidades)}</div></div>
+             <div class="com-dato__vl" id="com-recibidos">${N(recibidas)} de ${N(unidades)}</div></div>
       </div>
       ${comCuentaHTML(cuenta, o)}
       ${o.notas ? `<p class="com-pie" style="margin-top:0.8rem">${esc(o.notas)}</p>` : ''}
     </div>
 
+    ${o.es_local ? `
+    <div class="card rep-card">
+      <div class="rep-card__cab">
+        <h2>Recibir lo que llegó</h2>
+        <span class="rep-card__sub">compra local: no pasa por Miami ni por caja</span>
+      </div>
+      <div id="com-loc-recibir">${yaLocal ? '' : `
+        <p class="com-pie" style="margin:0 0 0.7rem">Cuando tenga la mercadería en la
+          mano, escanee cada producto o márquelo como llegado. Lo que reciba sube al
+          inventario de Shopify.</p>
+        <button class="btn btn--primary btn--sm" type="button" id="com-loc-empezar">
+          Empezar a recibir</button>`}</div>
+    </div>` : ''}
+
     <div class="card rep-card">
       <div class="rep-card__cab">
         <h2>Lo que se compró</h2>
-        <button class="btn btn--primary btn--sm" type="button" id="com-add">
-          Agregar producto
-        </button>
+        <span class="com-ficha__botones">
+          ${o.es_local ? '' : `<button class="btn btn--ghost btn--sm" type="button"
+            id="com-add-trk" ${sinTracking ? '' : 'disabled'}
+            title="${sinTracking ? 'Registrar un tracking con productos de esta orden'
+              : 'Todo lo de esta orden ya va en algún tracking'}">Agregar tracking</button>`}
+          <button class="btn btn--primary btn--sm" type="button" id="com-add">
+            Agregar producto
+          </button>
+        </span>
       </div>
       <div id="com-items"></div>
     </div>`;
@@ -2928,8 +3001,12 @@ async function comAbrir(oid, desdeRuta) {
   $('com-atras').onclick = comVolver;
   $('com-add').onclick = () => comAgregar(oid, o);
   $('com-cuadrar').onclick = () => comTotalesPO(o, cuenta);
+  const bTrk = $('com-add-trk');
+  if (bTrk) bTrk.onclick = () => comAgregarTracking(oid, o, items);
+  const bLoc = $('com-loc-empezar');
+  if (bLoc) bLoc.onclick = () => comLocRecibir(oid);
 
-  PPTabla.crear($('com-items'), {
+  comItemsTabla = PPTabla.crear($('com-items'), {
     columnas: [
       { clave: 'titulo', titulo: 'Producto', principal: true,
         html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}`
@@ -2945,8 +3022,10 @@ async function comAbrir(oid, desdeRuta) {
             + `<div class="com-pie">${comPlata(f.precio_compra, o.moneda)} c/u${
                 cuenta.extras ? ` · ${comExtrasNombre(cuenta)}, `
                   + `${comPlata(f.costo_unitario, o.moneda)}` : ''}</div></div>`) },
-      { clave: 'asignadas', titulo: 'En camino',
-        html: (f) => (f.asignadas ? `${N(f.asignadas)} en trackings` : '—') },
+      // En qué tracking va cada parte, con su número: "3 en trackings" no
+      // decía cuál buscar. La compra local no lleva trackings.
+      ...(o.es_local ? [] : [{ clave: 'asignadas', titulo: 'Tracking',
+        html: (f) => comTrkDeItem(f) }]),
       { clave: 'recibidas', titulo: 'Llegó', html: (f) => comAvance(f.recibidas, f.cantidad) },
       { clave: 'estado', titulo: 'Estado', html: (f) => comEtiq(f.estado) },
     ],
@@ -2958,7 +3037,141 @@ async function comAbrir(oid, desdeRuta) {
     ],
     porPagina: 20,
     vacio: 'Esta orden todavía no tiene productos. Toque "Agregar producto".',
-  }).datos(items);
+  });
+  comItemsTabla.datos(items);
+  // Si ya se estaba recibiendo, se sigue donde iba (y suma lo que se haya
+  // agregado a la orden después).
+  if (o.es_local && yaLocal) comLocRecibir(oid);
+}
+
+let comItemsTabla = null;
+
+// Los trackings de un producto: el número y cuántas trae cada uno, y debajo
+// dónde va (en Miami, en qué caja) o cuántas faltan por registrar.
+function comTrkDeItem(f) {
+  const tks = (f.trackings || []).filter((t) => !t.local);
+  const falta = ['no_suplido', 'cancelado'].includes(f.estado) ? 0
+    : Number(f.cantidad) - Number(f.asignadas || 0);
+  if (!tks.length) return falta > 0 ? '<span class="com-pie">sin tracking</span>' : '—';
+  return tks.map((t) => `<div class="com-trk-it">${esc(t.numero)}`
+      + `<span class="com-pie"> · ${N(t.cantidad)}${t.caja ? ` · caja ${N(t.caja)}`
+        : t.en_miami ? ' · en Miami' : ''}</span></div>`).join('')
+    + (falta > 0 ? `<div class="com-pie">${N(falta)} sin tracking</div>` : '');
+}
+
+// Lo que cambia al recibir, sin volver a pintar la ficha: pintarla de nuevo
+// la subía al principio en cada escaneo.
+async function comFichaRefrescar(oid) {
+  try {
+    const d = await api('/admin/compras/ordenes/' + oid);
+    const items = d.items || [];
+    if (comItemsTabla) comItemsTabla.datos(items);
+    const el = $('com-recibidos');
+    if (el) {
+      const u = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
+      const r = items.reduce((s, i) => s + Number(i.recibidas || 0), 0);
+      el.textContent = `${N(r)} de ${N(u)}`;
+    }
+  } catch (_) { /* lo de arriba ya se guardó; solo no se refrescó */ }
+  comCargar();
+}
+
+// ── Agregar tracking desde la orden ──────────────────────────────────────
+// "Desde la orden ahí mismo asignarle un tracking y seleccionar qué viene en
+// ese tracking" (Ailin). Un tracking nunca mezcla órdenes, así que solo salen
+// los productos de esta y solo lo que todavía no va en ningún envío.
+async function comAgregarTracking(oid, orden, items) {
+  const libres = items
+    .filter((i) => !['no_suplido', 'cancelado'].includes(i.estado))
+    .map((i) => ({ id: i.id, nombre: i.titulo + (i.variante ? ' · ' + i.variante : ''),
+                   libres: Number(i.cantidad) - Number(i.asignadas || 0) }))
+    .filter((i) => i.libres > 0);
+  if (!libres.length) return;
+  let elegidos = [];
+  const lista = libres.map((i) => `
+    <span class="com-tk__it">
+      <label class="com-tk__nm"><input type="checkbox" data-tk="${i.id}" checked />
+        <span>${esc(i.nombre)}</span></label>
+      <span class="com-tk__cant">
+        <input type="number" data-tk-cant="${i.id}" min="1" max="${i.libres}" step="1"
+               value="${i.libres}" aria-label="Cuántas vienen" />
+        <span class="com-pie">de ${N(i.libres)}</span>
+      </span>
+    </span>`).join('');
+  const datos = await PPForm.abrir({
+    titulo: 'Agregar tracking',
+    sub: `Orden #${N(orden.correlativo)} · ${orden.tienda}`,
+    confirmar: 'Guardar el tracking',
+    ancho: 540,
+    campos: [
+      { id: 'numero', tipo: 'texto', etiqueta: 'Número de tracking', max: 120,
+        placeholder: '1Z999AA10123456784', obligatorio: 'Ponga el número del tracking' },
+      { id: 'empresa', tipo: 'texto', etiqueta: 'Empresa', ayuda: 'opcional',
+        mitad: true, max: 80, placeholder: 'UPS, FedEx…' },
+      { id: 'eta_miami', tipo: 'fecha', etiqueta: 'Llega a Miami', ayuda: 'estimado',
+        mitad: true },
+      { id: 'que-trae', tipo: 'nota',
+        html: `<span class="com-tk__tit">Qué viene en este tracking</span>`
+          + `<span class="com-tk">${lista}</span>` },
+    ],
+    alAbrir: (caja) => {
+      // Desmarcado, su cantidad no cuenta: se apaga para que se note.
+      caja.addEventListener('change', (e) => {
+        const c = e.target.closest('[data-tk]');
+        if (!c) return;
+        const n = caja.querySelector(`[data-tk-cant="${c.dataset.tk}"]`);
+        if (n) n.disabled = !c.checked;
+      });
+    },
+    validar: () => {
+      elegidos = [];
+      for (const i of libres) {
+        const c = document.querySelector(`[data-tk="${i.id}"]`);
+        if (!c || !c.checked) continue;
+        const n = Number(document.querySelector(`[data-tk-cant="${i.id}"]`).value);
+        if (!(Number.isInteger(n) && n >= 1 && n <= i.libres)) {
+          return `${i.nombre}: ponga entre 1 y ${N(i.libres)}`;
+        }
+        elegidos.push({ orden_item_id: i.id, cantidad: n });
+      }
+      return elegidos.length ? null : 'Marque al menos un producto';
+    },
+  });
+  if (!datos) return;
+  let tid = null;
+  try {
+    tid = (await api('/admin/compras/trackings',
+      { method: 'POST', body: JSON.stringify(datos) })).tracking.id;
+    await api(`/admin/compras/trackings/${tid}/items`,
+      { method: 'POST', body: JSON.stringify({ items: elegidos }) });
+  } catch (ex) {
+    // Si los productos no entraron, el envío recién creado se borra: uno
+    // vacío en Envíos solo confunde.
+    if (tid) {
+      try { await api('/admin/compras/trackings/' + tid, { method: 'DELETE' }); }
+      catch (_) { /* queda vacío; se puede borrar desde Envíos */ }
+    }
+    comError('No se pudo guardar el tracking', ex);
+    return;
+  }
+  if (comTrks.length) comTrkCargar();     // la lista de Envíos ya no está al día
+  await comCargar();
+  await comAbrir(oid, true);
+}
+
+// ── Recibir la compra local ──────────────────────────────────────────────
+// La misma pantalla de recibir la caja, apuntada a la orden. El panel arma
+// solo el envío interno con lo que falta; sin caja no hay flete.
+async function comLocRecibir(oid) {
+  try {
+    await api(`/admin/compras/ordenes/${oid}/local`, { method: 'POST' });
+  } catch (ex) { comError('No se pudo empezar a recibir', ex); return; }
+  recCaja = null;
+  recBase = `/admin/compras/ordenes/${oid}/local`;
+  recCont = 'com-loc-recibir';
+  recDespues = () => comFichaRefrescar(oid);
+  recMarcado = null;
+  await recCargar();
 }
 
 // Lo que la PO cobra aparte de los productos. Se escribe una vez por orden y
@@ -3417,6 +3630,7 @@ function comTrkPintar() {
         { clave: 'numero', titulo: 'Tracking', principal: true,
           html: (f) => `${esc(f.numero)}${f.empresa
             ? `<div class="com-pie">${esc(f.empresa)}</div>` : ''}` },
+        { clave: 'ordenes', titulo: 'Orden', html: (f) => comTrkOrdenes(f.ordenes) },
         { clave: 'unidades', titulo: 'Trae',
           html: (f) => (f.unidades
             ? `${N(f.unidades)} ${f.unidades === 1 ? 'unidad' : 'unidades'}`
@@ -3429,7 +3643,9 @@ function comTrkPintar() {
       filtros: [{ clave: 'llegada_miami', titulo: 'Dónde va', opciones: [
         { v: 'camino', t: 'En camino a Miami' }, { v: 'miami', t: 'Ya en Miami' }],
         aplica: (f, v) => (v === 'miami' ? !!f.llegada_miami : !f.llegada_miami) }],
-      buscar: (f, t) => (f.numero + ' ' + (f.empresa || '')).toLowerCase().includes(t),
+      buscar: (f, t) => (f.numero + ' ' + (f.empresa || '') + ' ' + (f.ordenes || [])
+        .map((o) => `#${o.correlativo} ${o.tienda} ${o.numero_proveedor || ''}`).join(' '))
+        .toLowerCase().includes(t),
       acciones: (f) => [
         { texto: 'Ver lo que trae', al: () => comTrkAbrir(f.id) },
         { texto: f.llegada_miami ? 'Todavía no llega a Miami' : 'Ya llegó a Miami',
@@ -3577,6 +3793,9 @@ async function comTrkAbrir(tid, desdeRuta) {
     <div class="card rep-card">
       <div class="com-ficha__cab">
         <div>
+          ${items.length ? `<div class="com-ficha__num">${[...new Map(items.map((i) =>
+            [i.orden_id, `Orden #${N(i.orden_correlativo)} · ${esc(i.tienda)}`])).values()]
+            .join(' · ')}</div>` : ''}
           <h2 class="com-ficha__tienda">${esc(t.numero)}</h2>
           <p class="com-ficha__sub">${t.empresa ? esc(t.empresa) : 'Sin empresa anotada'}</p>
         </div>
@@ -3619,7 +3838,9 @@ async function comTrkAbrir(tid, desdeRuta) {
       { clave: 'titulo', titulo: 'Producto', principal: true,
         html: (f) => `${esc(f.titulo)}${f.variante ? ' · ' + esc(f.variante) : ''}` },
       { clave: 'tienda', titulo: 'De qué orden',
-        html: (f) => `${esc(f.tienda)}<div class="com-pie">${esc(diaCorto(f.orden_fecha))}</div>` },
+        html: (f) => `${f.orden_correlativo != null ? `<b>#${N(f.orden_correlativo)}</b> · ` : ''}`
+          + `${esc(f.tienda)}<div class="com-pie">${esc(diaCorto(f.orden_fecha))}${
+            f.orden_numero_proveedor ? ' · ' + esc(f.orden_numero_proveedor) : ''}</div>` },
       { clave: 'cantidad', titulo: 'Cuántas', html: (f) => N(f.cantidad) },
       { clave: 'recibidas', titulo: 'Recibidas',
         html: (f) => comAvance(f.recibidas, f.cantidad) },
@@ -4437,20 +4658,29 @@ function busParada(x) {
 // se repite), botones grandes y un toque para el caso normal —llegó completo—.
 // Lo raro (dañado, faltante, de más) pide la cantidad y el motivo.
 let recCaja = null;
+// De dónde se recibe: la caja o la compra local. `recCont` es dónde se pinta y
+// `recDespues` lo que se refresca después de anotar.
+let recBase = '';
+let recCont = 'com-caj-recibir';
+let recDespues = null;
 let recItems = [];
+const recEl = (id) => { const c = $(recCont); return c && c.querySelector('#' + id); };
 let comCajAdentroItems = [];
 let recMarcado = null;
 
 async function comCajRecibirAbrir(cid) {
   recCaja = cid;
+  recBase = `/admin/compras/cajas/${cid}`;
+  recCont = 'com-caj-recibir';
+  recDespues = comCajCargar;
   recMarcado = null;
   await recCargar();
 }
 
 async function recCargar() {
   try {
-    recItems = (await api(`/admin/compras/cajas/${recCaja}/recibir`)).items || [];
-  } catch (ex) { comError('No se pudo ver lo que trae la caja', ex); return; }
+    recItems = (await api(`${recBase}/recibir`)).items || [];
+  } catch (ex) { comError('No se pudo ver lo que hay que recibir', ex); return; }
   recAdentro();
   recPintar();
 }
@@ -4460,7 +4690,7 @@ async function recCargar() {
 // que ya se trajo —todo lo anotado cuenta, bueno o malo, igual que en la ficha
 // de la caja— en vez de pedir la caja otra vez en cada escaneo.
 function recAdentro() {
-  if (!comCajAdentro || !comCajAdentroItems.length) return;
+  if (!recCaja || !comCajAdentro || !comCajAdentroItems.length) return;
   const anotadas = {};
   recItems.forEach((f) => {
     anotadas[f.tracking_item_id] = Number(f.recibidas) + Number(f.danadas)
@@ -4475,7 +4705,7 @@ const recFalta = (f) => Math.max(0, Number(f.cantidad) - Number(f.recibidas)
   - Number(f.danadas) - Number(f.faltantes));
 
 function recPintar(aviso) {
-  const caja = $('com-caj-recibir');
+  const caja = $(recCont);
   if (!caja) return;
   const total = recItems.reduce((s, f) => s + Number(f.cantidad), 0);
   const buenas = recItems.reduce((s, f) => s + Number(f.recibidas), 0);
@@ -4507,15 +4737,15 @@ function recPintar(aviso) {
 
     <div id="rec-lista">${recItems.map(recFila).join('')}</div>`;
 
-  $('rec-buscar').onclick = recEscanear;
-  const campo = $('rec-codigo');
+  recEl('rec-buscar').onclick = recEscanear;
+  const campo = recEl('rec-codigo');
   // El escáner teclea el código y manda Enter: no hay que tocar nada más.
   campo.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); recEscanear(); } };
   campo.focus();
-  const reint = $('rec-reintentar');
+  const reint = recEl('rec-reintentar');
   if (reint) reint.onclick = recReintentar;
 
-  $('rec-lista').onclick = (e) => {
+  recEl('rec-lista').onclick = (e) => {
     const b = e.target.closest('[data-rec]');
     if (!b) return;
     const fila = recItems.find((f) => String(f.tracking_item_id) === b.dataset.ti);
@@ -4555,7 +4785,7 @@ function recFila(f) {
 }
 
 function recAviso(tipo, texto) {
-  const p = $('rec-aviso');
+  const p = recEl('rec-aviso');
   if (!p) return;
   p.className = `rec-aviso rec-aviso--${tipo}`;
   p.textContent = texto;
@@ -4564,12 +4794,12 @@ function recAviso(tipo, texto) {
 
 // ── Escanear ─────────────────────────────────────────────────────────────
 async function recEscanear() {
-  const campo = $('rec-codigo');
+  const campo = recEl('rec-codigo');
   const codigo = campo.value.trim();
   if (codigo.length < 3) return;
   campo.value = '';
   try {
-    const r = await api(`/admin/compras/cajas/${recCaja}/escanear?codigo=${encodeURIComponent(codigo)}`);
+    const r = await api(`${recBase}/escanear?codigo=${encodeURIComponent(codigo)}`);
     const fila = recItems.find((f) => f.tracking_item_id === r.item.tracking_item_id);
     recMarcado = r.item.tracking_item_id;
     if (fila) {
@@ -4599,7 +4829,7 @@ async function recAnotar(fila, cantidad, estado, nota) {
       : estado === 'faltante' ? 'Anotadas como no llegadas' : 'Anotadas como de más';
     recAviso(r.aviso ? 'ojo' : 'bien',
       `${que} ${N(cantidad)} de ${fila.titulo}.` + (r.aviso ? ' ' + r.aviso : ''));
-    await comCajCargar();
+    if (recDespues) await recDespues();
   } catch (ex) {
     recAviso('mal', ex.message);
   }
@@ -4682,7 +4912,7 @@ async function recVerAnotado(fila) {
           await recCargar();
           recAviso(r.aviso ? 'ojo' : 'bien',
             r.aviso || `Se quitó lo anotado de ${fila.titulo}.`);
-          await comCajCargar();
+          if (recDespues) await recDespues();
         } catch (ex) { b.disabled = false; recAviso('mal', ex.message); }
       };
     },

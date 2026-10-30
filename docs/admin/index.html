@@ -1339,8 +1339,8 @@
         <div class="rep-fila rep-fila--2">
           <div class="card rep-card">
             <div class="rep-card__cab">
-              <h2>Por dónde se vendió</h2>
-              <span class="rep-card__sub">caja, página o a mano en Shopify</span>
+              <h2>Pedidos por canal</h2>
+              <span class="rep-card__sub">web, tienda física o redes</span>
             </div>
             <div id="rep-g-canal" class="rep-grafica rep-grafica--dona"></div>
           </div>
@@ -2221,16 +2221,20 @@ function repLista(id, filas, opciones = {}) {
     </div>`).join('');
 }
 
-function repDona(id, filas, vacio) {
+// Con `pedidos` la dona cuenta pedidos en vez de lempiras (Ailin, 30/10: los
+// canales los quiere ver por cantidad de pedidos y porcentaje).
+function repDona(id, filas, vacio, pedidos = false) {
   // El porcentaje va junto al monto: se pidió ver cuánto pesa cada pedazo sin
   // tener que sacar la cuenta.
-  const total = filas.reduce((a, x) => a + (Number(x.monto) || 0), 0) || 1;
+  const valor = (x) => Number(pedidos ? x.cuantos : x.monto) || 0;
+  const total = filas.reduce((a, x) => a + valor(x), 0) || 1;
   const pct = (v) => N(Math.round((Number(v) || 0) / total * 1000) / 10) + '%';
+  const fmt = pedidos ? (v) => `${N(v)} pedido${Number(v) === 1 ? '' : 's'}` : Lc;
   repGrafica(id, {
     ...GRAFICA_BASE,
     noData: { ...GRAFICA_BASE.noData, text: vacio || GRAFICA_BASE.noData.text },
     chart: { ...GRAFICA_BASE.chart, type: 'donut', height: 260 },
-    series: filas.map((x) => x.monto),
+    series: filas.map(valor),
     labels: filas.map((x) => x.nombre),
     colors: ROSA,
     // Sin porcentajes encima del anillo: con el agujero grande (para que el
@@ -2238,20 +2242,42 @@ function repDona(id, filas, vacio) {
     // el borde, cortados. La leyenda de abajo ya dice el % de cada pedazo.
     dataLabels: { enabled: false },
     legend: { position: 'bottom', fontSize: '12px', markers: { radius: 4 },
-              formatter: (nombre, o) => `${nombre} · ${pct(o.w.globals.series[o.seriesIndex])}` },
+              formatter: (nombre, o) => {
+                const v = o.w.globals.series[o.seriesIndex];
+                return `${nombre} · ${pedidos ? N(v) + ' · ' : ''}${pct(v)}`;
+              } },
     stroke: { width: 2, colors: ['#fff'] },
     plotOptions: {
       // El agujero tiene que dar para el total escrito adentro. Con 62% un
       // "L. 138,410" se montaba sobre el anillo por los dos lados.
       pie: { donut: { size: '73%', labels: {
         show: true,
-        value: { fontSize: '15px', fontWeight: 700, offsetY: 2, formatter: (v) => Lc(v) },
-        total: { show: true, label: 'Total', color: '#9b8491', fontSize: '11px',
-                 formatter: (w) => Lc(w.globals.seriesTotals.reduce((a, b) => a + b, 0)) },
+        value: { fontSize: '15px', fontWeight: 700, offsetY: 2, formatter: (v) => fmt(v) },
+        total: { show: true, label: pedidos ? 'Pedidos' : 'Total', color: '#9b8491', fontSize: '11px',
+                 formatter: (w) => (pedidos ? N : Lc)(w.globals.seriesTotals.reduce((a, b) => a + b, 0)) },
       } } },
     },
-    tooltip: { ...GRAFICA_BASE.tooltip, y: { formatter: (v) => `${L(v)} · ${pct(v)}` } },
+    tooltip: { ...GRAFICA_BASE.tooltip, y: { formatter: (v, o) => {
+      if (!pedidos) return `${L(v)} · ${pct(v)}`;
+      const x = filas[o.seriesIndex];
+      return `${fmt(v)} · ${pct(v)} · ${L(x ? x.monto : 0)}`;
+    } } },
   });
+}
+
+// Los canales del reporte, en los tres que cuenta Ailin. Lo que se hace a mano
+// en Shopify (o lo que entra por otra app) sale de los chats: va a Redes.
+const CANAL_DE = { 'Web': 'Web', 'Caja (tienda)': 'Tienda física', 'Caja (redes)': 'Redes' };
+function repTresCanales(filas) {
+  const acum = { 'Web': { monto: 0, cuantos: 0 }, 'Tienda física': { monto: 0, cuantos: 0 },
+                 'Redes': { monto: 0, cuantos: 0 } };
+  filas.forEach((x) => {
+    const k = CANAL_DE[x.nombre] || 'Redes';
+    acum[k].monto += Number(x.monto) || 0;
+    acum[k].cuantos += Number(x.cuantos) || 0;
+  });
+  return Object.entries(acum).filter(([, v]) => v.cuantos)
+    .map(([nombre, v]) => ({ nombre, ...v }));
 }
 
 function repPintar(r) {
@@ -2368,7 +2394,7 @@ function repPintar(r) {
   });
 
   // 6. De dónde viene la venta
-  repDona('rep-g-canal', r.por_canal || []);
+  repDona('rep-g-canal', repTresCanales(r.por_canal || []), null, true);
   repDona('rep-g-tipo', r.por_tipo || []);
 
   // 7. Qué marcas dejan la plata. Barras y no dona: son treinta y pico y de la

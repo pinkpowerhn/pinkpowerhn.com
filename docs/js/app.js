@@ -1370,9 +1370,12 @@ function showCheckoutModal() {
           <textarea id="co-address" rows="2" maxlength="300" placeholder="Escribe tu dirección exacta" autocomplete="street-address"></textarea>
         </div>
         <!-- Para que lo empaquen de regalo (Ailin, 31/10). -->
-        <label class="co-regalo">
+        <label class="co-radio co-regalo">
           <input type="checkbox" id="co-regalo" />
-          <span>Mi pedido es para regalo 🎁<small>Envoltorio GRATIS</small></span>
+          <span class="co-radio__text">
+            <span class="co-radio__title">Mi pedido es para regalo <span class="co-radio__emoji">🎁</span></span>
+            <span class="co-radio__sub co-regalo__sub">Envoltorio GRATIS</span>
+          </span>
         </label>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">

@@ -158,15 +158,18 @@ export function buildWhatsAppMessage(orderName = null, checkout = null) {
 
 export function buildWhatsAppUrl(number, orderName = null, checkout = null) {
   const msg = buildWhatsAppMessage(orderName, checkout);
-  if (!msg) return `https://wa.me/${number}`;
+  // Directo a api.whatsapp.com y no a wa.me: la redirección de wa.me cambiaba
+  // los emojis del mensaje por "�" (probado el 31/10).
+  const base = `https://api.whatsapp.com/send?phone=${number}`;
+  if (!msg) return base;
 
   const encoded = encodeURIComponent(msg);
-  const url = `https://wa.me/${number}?text=${encoded}`;
+  const url = `${base}&text=${encoded}`;
 
   // Guard: WhatsApp URL ~4000 char limit
   if (url.length > 4000) {
     const fallback = encodeURIComponent('Hola! Me gustaría hacer un pedido. ¿Me pueden ayudar?');
-    return `https://wa.me/${number}?text=${fallback}`;
+    return `${base}&text=${fallback}`;
   }
 
   return url;

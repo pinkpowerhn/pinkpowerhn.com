@@ -1540,6 +1540,24 @@ function updateCoTotals(modal) {
   }
 }
 
+function mostrarPedidoListo(orderName, url) {
+  const panel = document.querySelector('#checkout-modal .co-panel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <button class="co-close" id="co-close" aria-label="Cerrar">&times;</button>
+    <div class="co-listo">
+      <p class="co-title">¡Pedido recibido! 💗</p>
+      ${orderName ? `<p class="co-listo__num">Tu pedido es el <b>${escHtml(orderName)}</b></p>` : ''}
+      <p class="co-subtitle">Envíanos el detalle por WhatsApp para confirmarlo.
+        Si no se abrió solo, toca el botón.</p>
+      <a class="btn btn-primary co-submit co-listo__wa" href="${escHtml(url)}">
+        Enviar mi pedido por WhatsApp
+      </a>
+    </div>`;
+  panel.scrollTop = 0;
+  panel.querySelector('#co-close').addEventListener('click', closeCheckoutModal);
+}
+
 function closeCheckoutModal() {
   const modal = document.getElementById('checkout-modal');
   if (modal) modal.remove();
@@ -1634,7 +1652,11 @@ async function submitCheckout(name, phone, email, checkout = null) {
     // Al finalizar (tienda o mayoreo) se va directo a WhatsApp. El catálogo desde
     // un pedido ya NO sale acá: ahora vive en "Mis pedidos", y solo se ofrece para
     // pedidos ya pagados (ver mayoreo.js).
-    closeCheckoutModal();
+    // Si el salto a WhatsApp no se da (algunos teléfonos y el navegador de
+    // Instagram o Facebook no lo dejan), la clienta se quedaba sin carrito y sin
+    // mensaje: le pasó a la del #D764 (31/10). Ahora queda el pedido a la vista
+    // con un botón para mandarlo ella.
+    mostrarPedidoListo(orderName, url);
     window.location.href = url;   // en iOS funciona sin gesto de usuario
 
   } catch (err) {

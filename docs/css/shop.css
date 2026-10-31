@@ -2252,6 +2252,10 @@ body.menu-open nav {
   margin-bottom: 0.4rem;
 }
 
+.co-listo { text-align: center; padding: 1.2rem 0 0.4rem; }
+.co-listo__num { font-size: 0.95rem; margin: 0.4rem 0 0.6rem; color: var(--ink, #1a0a12); }
+.co-listo__wa { display: flex; align-items: center; justify-content: center; margin-top: 1rem; text-decoration: none; }
+
 /* "Mi pedido es para regalo": se ve igual que las opciones de pago de arriba
    (.co-radio), solo con la separación de los campos. */
 .co-regalo { margin: -0.2rem 0 1.1rem; background: #fff; }

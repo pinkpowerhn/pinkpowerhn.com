@@ -82,6 +82,7 @@ const estado = {
   descAbierto: false,   // desplegable propio del descuento
   flete: '',            // '', 'local' o 'nacional'
   direccion: '',        // a dónde va, cuando lleva flete
+  regalo: false,        // para que lo empaquen de regalo (Ailin, 31/10)
   // Por dónde entró la venta: 'tienda' (vino al mostrador) o 'redes' (pidió por
   // WhatsApp, Instagram o TikTok, aunque después pase recogiendo).
   canal: 'tienda',
@@ -129,7 +130,7 @@ function loArmado() {
     canal: estado.canal, canalTocado: estado.canalTocado,
     preparado: estado.preparado, entregaTocada: estado.entregaTocada,
     varios: estado.varios, montos: estado.montos,
-    recibido: estado.recibido, nota: estado.nota,
+    recibido: estado.recibido, nota: estado.nota, regalo: estado.regalo,
   };
 }
 
@@ -143,6 +144,7 @@ function aplicarArmado(d) {
   estado.banco = d.banco || '';
   estado.flete = d.flete || '';
   estado.direccion = d.direccion || '';
+  estado.regalo = !!d.regalo;
   estado.canal = d.canal === 'redes' ? 'redes' : (d.flete ? 'redes' : 'tienda');
   estado.canalTocado = !!d.canalTocado;
   estado.preparado = d.preparado === undefined ? !d.flete : !!d.preparado;
@@ -817,6 +819,7 @@ function limpiarArmado() {
   estado.bancoAbierto = false;
   estado.flete = '';
   estado.direccion = '';
+  estado.regalo = false;
   estado.canal = 'tienda';
   estado.canalTocado = false;
   estado.cobroAbierto = false;
@@ -949,6 +952,7 @@ async function cobrar() {
     // Tienda o redes: las dos entran por la caja, pero ella necesita saber
     // cuánto genera el mostrador de verdad.
     canal: estado.canal === 'redes' ? 'redes' : 'tienda',
+    regalo: !!estado.regalo,
     comision: comision() > 0 ? { monto: comision() } : null,
     recibido: efectivoAhora() > 0 ? num(estado.recibido) : 0,
     cambio: vuelto,
@@ -1622,6 +1626,10 @@ function bloqueResumen() {
       <label class="entrega">
         <input type="checkbox" data-entrega ${estado.preparado ? 'checked' : ''} />
         <span><b>Ya se lo lleva</b></span>
+      </label>
+      <label class="entrega">
+        <input type="checkbox" data-regalo ${estado.regalo ? 'checked' : ''} />
+        <span><b>Es para regalo 🎁</b></span>
       </label>
 
       ${estado.varios ? `
@@ -2706,6 +2714,11 @@ $('caja-main').addEventListener('input', (e) => {
   if (t.dataset.descValor !== undefined) {
     estado.descuento.valor = t.value;
     actualizarTotales();
+    return;
+  }
+  if (t.dataset.regalo !== undefined) {
+    estado.regalo = !!t.checked;
+    guardarVenta();
     return;
   }
   if (t.dataset.entrega !== undefined) {

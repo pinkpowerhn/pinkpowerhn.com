@@ -1369,6 +1369,11 @@ function showCheckoutModal() {
           <label for="co-address">Dirección de entrega *</label>
           <textarea id="co-address" rows="2" maxlength="300" placeholder="Escribe tu dirección exacta" autocomplete="street-address"></textarea>
         </div>
+        <!-- Para que lo empaquen de regalo (Ailin, 31/10). -->
+        <label class="co-regalo">
+          <input type="checkbox" id="co-regalo" />
+          <span>Mi pedido es para regalo 🎁</span>
+        </label>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">
           Finalizar por WhatsApp
@@ -1476,6 +1481,7 @@ function showCheckoutModal() {
       deliveryLabel: DELIVERY[delivery].label,
       address,
       paymentLabel:  PAYMENT[payment].label,
+      regalo: !!modal.querySelector('#co-regalo')?.checked,
       ...totals,
     };
 
@@ -1602,6 +1608,7 @@ async function submitCheckout(name, phone, email, checkout = null) {
     // en Shopify quedaba por menos de lo que la clienta paga.
     envio_monto:    checkout?.shipping   || 0,
     comision_monto: checkout?.commission || 0,
+    regalo: !!checkout?.regalo,
     line_items: cart.map(i => ({
       variant_id: i.variantId,
       quantity:   i.quantity,

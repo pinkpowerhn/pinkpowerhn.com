@@ -2252,6 +2252,24 @@ body.menu-open nav {
   margin-bottom: 0.4rem;
 }
 
+/* "Mi pedido es para regalo": un check suelto, sin la etiqueta en mayúsculas
+   de los campos de texto. */
+.co-regalo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: -0.2rem 0 1.1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(42, 15, 28, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--ink, #1a0a12);
+}
+.co-regalo input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--pink); }
+.co-regalo:has(input:checked) { border-color: var(--pink); background: #fff5f9; }
+
 .co-optional {
   text-transform: none;
   letter-spacing: 0;

@@ -1372,7 +1372,7 @@ function showCheckoutModal() {
         <!-- Para que lo empaquen de regalo (Ailin, 31/10). -->
         <label class="co-regalo">
           <input type="checkbox" id="co-regalo" />
-          <span>Mi pedido es para regalo 🎁</span>
+          <span>Mi pedido es para regalo 🎁<small>Envoltorio gratis</small></span>
         </label>
         <p class="co-error" id="co-error" hidden></p>
         <button type="submit" class="btn btn-primary co-submit" id="co-submit">

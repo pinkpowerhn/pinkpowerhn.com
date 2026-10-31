@@ -2268,6 +2268,7 @@ body.menu-open nav {
   color: var(--ink, #1a0a12);
 }
 .co-regalo input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--pink); }
+.co-regalo small { display: block; margin-top: 0.1rem; font-size: 0.76rem; color: var(--pink-dk); }
 .co-regalo:has(input:checked) { border-color: var(--pink); background: #fff5f9; }
 
 .co-optional {

@@ -84,7 +84,10 @@ const SUBCAT_ORDER = {
   'sets-y-regalos': ['Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
   'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro', 'Jabón de Manos'],
   'lenceria': ['Panties', 'Brassieres', 'Set de Lencería'],
-  'hombres': ['Perfumes', 'Body Spray', 'Cremas', 'Jabones', 'Antibacteriales', 'Mini Body Care', 'Mini Perfumes'],
+  // Los sets de hombre solo salían al abrir "Hombres" entero (Ailin, 30/10): los
+  // de Body Care no tienen otra subcategoría. Van con las etiquetas de Sets.
+  'hombres': ['Perfumes', 'Body Spray', 'Cremas', 'Jabones', 'Antibacteriales', 'Mini Body Care', 'Mini Perfumes',
+              'Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
   // Nota: la última etiqueta es "Candelabro para Velas" en Shopify (la clienta la
   // llama "Candelabros"). Se usa el nombre real para que calce con los productos.
   'accesorios': ['Bolsos y Carteras', 'Llaveros y Monederos', 'Maquillaje', 'Holder para Antibacterial', 'Difusores para Carro', 'Difusores Ambientales de Pared', 'Candelabro para Velas'],

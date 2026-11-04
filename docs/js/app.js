@@ -579,7 +579,12 @@ document.addEventListener('click', e => {
 
   // Compartir la vista actual del catálogo (colección, etiqueta o búsqueda)
   if (e.target.closest('#share-view')) {
-    const hash = location.hash.startsWith('#shop') ? location.hash : '#shop';
+    // La talla elegida viaja en el enlace (Ailin: compartir ropa interior solo
+    // en talla L). Se quita la que trajera el hash, que puede ser otra.
+    let hash = location.hash.startsWith('#shop') ? location.hash : '#shop';
+    hash = hash.replace(/\/talla\/[^/]*$/, '');
+    const { activeSize } = getState();
+    if (activeSize && !hash.startsWith('#shop/product/')) hash += `/talla/${encodeURIComponent(activeSize)}`;
     shareLink(siteUrl(hash), shareViewTitle());
     return;
   }
@@ -1716,9 +1721,14 @@ function renderFeaturedBanner(collections) {
 
 // Título descriptivo para compartir la vista actual del catálogo
 function shareViewTitle() {
-  const { activeCollection, activeTag, collections } = getState();
+  const { activeCollection, activeTag, activeSize, collections } = getState();
   const col = activeCollection ? collections.find(c => c.handle === activeCollection) : null;
   const nombreCol = col ? col.title : '';
+  const base = shareViewTitleBase(activeCollection, activeTag, nombreCol);
+  return activeSize ? base.replace(' · PinkPower HN', ` · Talla ${activeSize} · PinkPower HN`) : base;
+}
+
+function shareViewTitleBase(activeCollection, activeTag, nombreCol) {
   // Con categoría Y subcategoría se nombran las dos (p. ej. "Hombres · Perfumes").
   if (nombreCol && activeTag) return `Catálogo: ${nombreCol} · ${activeTag} · PinkPower HN`;
   if (activeTag) return `Catálogo: ${activeTag} · PinkPower HN`;
@@ -1733,6 +1743,8 @@ function shareViewTitle() {
 //   #shop/collection/<h>/tag/<t> → colección + subcategoría (p. ej. Hombres → Perfumes)
 //   #shop/tag/<etiqueta>        → todos los productos con esa etiqueta
 //   #shop/product/<id>          → ficha de un producto (página dedicada)
+//   …/talla/<talla>             → al final de cualquiera de las de arriba (menos
+//                                 producto): la vista con esa talla elegida
 function handleHashRoute() {
   const hash  = location.hash;
 
@@ -1750,6 +1762,12 @@ function handleHashRoute() {
   const isShop = hash.startsWith('#shop');
   const path  = isShop ? hash.replace('#shop', '').replace(/^\//, '') : '';
   const parts = path.split('/').filter(Boolean);
+  // La talla va al final; se saca antes de leer el resto de la ruta.
+  let tallaHash = null;
+  if (parts.length >= 2 && parts[parts.length - 2] === 'talla') {
+    tallaHash = decodeURIComponent(parts.pop());
+    parts.pop();
+  }
 
   // Producto → abrir su ficha (la URL ya la refleja, no se apila historial aquí)
   if (isShop && parts[0] === 'product' && parts[1]) {
@@ -1801,6 +1819,8 @@ function handleHashRoute() {
                 && st.searchQuery === target.searchQuery;
 
   setSearchInput(target.searchQuery);
+  // Sin talla en el enlace se deja la que haya (volver de una ficha no la borra).
+  if (tallaHash) target.activeSize = tallaHash;
   setState({ ...target, currentPage: 1 });
 
   // Bajar a los productos solo en navegación real (no al regresar a la misma vista).

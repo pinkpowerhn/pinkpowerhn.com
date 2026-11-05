@@ -1648,6 +1648,10 @@ async function submitCheckout(name, phone, email, checkout = null) {
     const orderData = await postOrder(orderPayload, mayoreoToken);
 
     const orderName = orderData?.order?.name || null; // e.g. "#1011"
+    // El mensaje lleva los precios con los que Shopify armó el pedido, no los
+    // del carrito: en el #D794 (5/11) el carrito tenía precios de tienda viejos y
+    // el pedido salió a mayoreo, con el mensaje de WhatsApp diciendo otra cosa.
+    if (Array.isArray(orderData?.order?.lineas)) preciosDelPedido(orderData.order.lineas, checkout);
     const url = buildWhatsAppUrl(waNumber, orderName, checkout);
 
     clearCart();
@@ -1680,6 +1684,23 @@ async function submitCheckout(name, phone, email, checkout = null) {
     }
     if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
   }
+}
+
+// Pone en el carrito el precio por unidad que cobró Shopify y rehace los
+// totales del checkout, para que el mensaje de WhatsApp diga lo mismo que el
+// pedido.
+function preciosDelPedido(lineas, checkout) {
+  const precio = new Map(lineas.map(l => [String(l.variant_id), Number(l.precio)]));
+  const cart = getState().cart.map(i => {
+    const p = precio.get(String(i.variantId));
+    return Number.isFinite(p) ? { ...i, price: p } : i;
+  });
+  setState({ cart });
+  if (!checkout) return;
+  checkout.productsTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const base = checkout.productsTotal + checkout.shipping;
+  checkout.finalTotal = checkout.cashOnDelivery ? Math.ceil(base / 0.95) : base;
+  checkout.commission = checkout.finalTotal - base;
 }
 
 // Quita del carrito los productos que se agotaron y avisa a la clienta para que

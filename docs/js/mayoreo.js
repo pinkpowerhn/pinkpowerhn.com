@@ -241,7 +241,18 @@ async function enterMayoreo(token, nombre, telefono = '') {
   productos.forEach(p => (p.collectionHandles || []).forEach(h => conMayoreo.add(h)));
   const todasCols = getState().collections || [];
   const colsMayoreo = todasCols.filter(c => conMayoreo.has(c.handle));
+  // Lo que ya estaba en el carrito se agregó quizá a precio de tienda (antes de
+  // entrar, o con la sesión vencida). Shopify lo cobra a mayoreo, pero el
+  // carrito y el mensaje de WhatsApp decían el de tienda (#D794, 5/11).
+  const precioMayoreo = new Map();
+  productos.forEach(p => (p.variants || []).forEach(v => precioMayoreo.set(String(v.id), v.price)));
+  const carrito = getState().cart.map(i => {
+    const precio = precioMayoreo.get(String(i.variantId));
+    return precio != null ? { ...i, price: precio, mayoreo: true } : i;
+  });
+
   setState({
+    cart: carrito,
     products: productos,
     // Si por algún motivo no se pudo determinar (productos sin colecciones),
     // dejamos las colecciones completas para no vaciar el catálogo.

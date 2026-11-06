@@ -1187,6 +1187,14 @@
         </svg>
         Reportes
       </button>
+      <button class="tab" data-tab="pagos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="6" width="20" height="12" rx="2.5"></rect>
+          <circle cx="12" cy="12" r="2.6"></circle><path d="M6 9.5v5"></path><path d="M18 9.5v5"></path>
+        </svg>
+        Pagos
+      </button>
       <button class="tab" data-tab="gastos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1398,6 +1406,14 @@
           <p class="rep-nota">Los pedidos que se hacen a mano en Shopify no guardan
             el tipo de entrega ni la forma de pago: esos salen en blanco.</p>
         </div>
+      </div>
+    </section>
+
+    <!-- TAB: Pagos (lo que falta cobrar: pedidos de la web y créditos). Aquí se
+         marca como pagado con la forma de pago y el banco, que Shopify no guarda. -->
+    <section class="tab-panel" data-tab="pagos">
+      <div class="card">
+        <div id="tabla-pagos"></div>
       </div>
     </section>
 
@@ -1760,7 +1776,7 @@ function bordesTabs() {
 //   #gastos · #compras/envios · #compras/cajas/14
 // Recargar deja a uno donde estaba, y el botón de volver del teléfono va a la
 // pantalla anterior en vez de salirse del panel.
-const TABS_VALIDAS = ['mayoristas', 'catalogos', 'reportes', 'gastos',
+const TABS_VALIDAS = ['mayoristas', 'catalogos', 'reportes', 'pagos', 'gastos',
                       'compras', 'general'];
 let aplicandoRuta = false;
 
@@ -1826,6 +1842,7 @@ function setTab(name, desdeRuta) {
   // Los reportes se piden al abrirlos, no al entrar al panel: leer un mes
   // entero de Shopify tarda unos segundos y no siempre se van a mirar.
   if (name === 'reportes') repIniciar();
+  if (name === 'pagos') pagIniciar();
   if (name === 'gastos') gasIniciar();
   if (name === 'compras') comIniciar();
 }
@@ -6156,6 +6173,109 @@ function comIniciarBotones() {
     { texto: 'Tarjetas', al: () => comListaAdmin('tarjeta') },
     { texto: 'Tipo de cambio', al: comTipoDeCambio },
   ]);
+}
+
+// ══ Pagos ════════════════════════════════════════════════════════════════
+// Ailin (5/11): los pedidos de la web por transferencia y los abonos de los
+// créditos los marcaba como pagados en Shopify, que no tiene dónde poner el
+// banco. Aquí se registra el pago con su forma y su banco; el banco queda en
+// los detalles adicionales, como en las ventas de la caja.
+const PAG_BANCOS = ['BAC', 'Atlántida', 'Banpaís', 'Ficohsa', 'Occidente', 'Otro'];
+let tablaPagos = null;
+
+function pagIniciar() {
+  if (tablaPagos) return;
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const pill = (r) => {
+    const clase = r.estado === 'Abonado' ? 'pill--on' : 'pill--off';
+    return `<span class="pill ${r.estado === 'Borrador' ? '' : clase}">${esc(r.estado)}</span>`
+      + (r.mayoreo ? ' <span class="pill">Mayoreo</span>' : '');
+  };
+  tablaPagos = PPTabla.crear($('tabla-pagos'), {
+    porPagina: 15,
+    buscarTexto: 'Buscar por número, clienta o teléfono',
+    vacio: 'No hay pedidos pendientes de pago',
+    accionPrincipal: { texto: 'Actualizar', al: pagCargar },
+    columnas: [
+      { clave: 'pedido', titulo: 'Pedido', principal: true },
+      { clave: 'cliente', titulo: 'Clienta' },
+      { titulo: 'Fecha', html: (r) => esc(diaCorto(r.fecha)) },
+      { titulo: 'Total', html: (r) => esc(L(r.total)) },
+      { titulo: 'Falta', html: (r) => `<b>${esc(L(r.saldo))}</b>` },
+      { titulo: 'Pago', html: (r) => esc(pagNombre(r.pago)) },
+      { titulo: 'Estado', html: pill },
+    ],
+    filtros: [
+      { clave: 'estado', titulo: 'Estado',
+        opciones: [{ v: 'Borrador', t: 'Borradores de la web' }, { v: 'Sin pagar', t: 'Sin pagar' },
+                   { v: 'Abonado', t: 'Abonados' }],
+        aplica: (r, v) => r.estado === v },
+    ],
+    buscar: (r, t) => [r.pedido, r.cliente, r.telefono].some((x) => norm(x).includes(t)),
+    alTocarFila: (r) => pagFormulario(r),
+    acciones: (r) => [{ texto: 'Registrar pago', al: () => pagFormulario(r) }],
+  });
+  pagCargar();
+}
+
+// La caja guarda la forma de pago en minúsculas y sin tilde ("credito").
+function pagNombre(p) {
+  const fijo = { credito: 'Crédito', contraentrega: 'Contra entrega', efectivo: 'Efectivo',
+                 transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
+  const s = String(p || '').trim();
+  return fijo[s.toLowerCase()] || s || '—';
+}
+
+async function pagCargar() {
+  tablaPagos.cargando();
+  try {
+    tablaPagos.datos((await api('/admin/pagos/pendientes')).pedidos || []);
+  } catch (ex) {
+    tablaPagos.datos([]);
+    panelMsg(ex.message, false);
+  }
+}
+
+async function pagFormulario(r) {
+  const formaInicial = /transfer/i.test(r.pago) ? 'Transferencia'
+    : /efectivo|contra/i.test(r.pago) ? 'Efectivo' : /tarjeta/i.test(r.pago) ? 'Tarjeta' : 'Transferencia';
+  const datos = await PPForm.abrir({
+    titulo: `Registrar pago · ${r.pedido}`,
+    confirmar: 'Registrar pago',
+    ancho: 460,
+    enfocar: 'monto',
+    campos: [
+      { id: 'aviso', tipo: 'nota', html: `<b>${esc(r.cliente)}</b> · Total ${esc(L(r.total))}`
+          + (r.saldo < r.total ? ` · ya abonó ${esc(L(r.total - r.saldo))}` : '')
+          + `<br>Falta <b>${esc(L(r.saldo))}</b>. Si paga menos, queda como abono.`
+          + (r.tipo === 'borrador' ? '<br>Es un borrador de la web: al registrar el pago se convierte en pedido.' : '') },
+      { id: 'monto', tipo: 'dinero', etiqueta: 'Monto', prefijo: 'L.', min: 0.01,
+        valor: r.saldo, obligatorio: 'Ponga cuánto pagó' },
+      { id: 'forma', tipo: 'select', etiqueta: 'Forma de pago', mitad: true, valor: formaInicial,
+        opciones: ['Transferencia', 'Efectivo', 'Tarjeta'].map((x) => ({ v: x, t: x })) },
+      { id: 'banco', tipo: 'select', etiqueta: 'Banco', mitad: true, valor: '',
+        opciones: [{ v: '', t: 'Sin banco' }].concat(PAG_BANCOS.map((b) => ({ v: b, t: b }))),
+        obligatorioSi: (v) => v.forma === 'Transferencia', mensaje: 'Elija el banco de la transferencia' },
+    ],
+    validar: (v) => (Number(v.monto) > r.saldo + 0.005 ? `Solo falta pagar ${L(r.saldo)}` : null),
+  });
+  if (!datos) return;
+  try {
+    const res = await api(`/admin/pagos/${r.tipo}/${r.id}`, {
+      method: 'POST',
+      body: JSON.stringify({ monto: datos.monto, forma: datos.forma, banco: datos.banco || '' }),
+    });
+    panelMsg(res.saldo > 0
+      ? `${res.pedido || r.pedido}: abono registrado, falta ${L(res.saldo)}`
+      : `${res.pedido || r.pedido} quedó pagado`);
+    await pagCargar();
+    if (repDatos) repCargar();
+  } catch (ex) {
+    PPModal.abrir({ titulo: 'No se pudo registrar el pago',
+                    cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+                    confirmar: 'Entendido', cancelar: null, ancho: 420 });
+    pagCargar();
+  }
 }
 
 function gasIniciar() {

@@ -6188,7 +6188,9 @@ function pagIniciar() {
   const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const pill = (r) => {
     const clase = r.estado === 'Abonado' ? 'pill--on' : 'pill--off';
-    return `<span class="pill ${r.estado === 'Borrador' ? '' : clase}">${esc(r.estado)}</span>`
+    // Shopify en español los llama "pedidos preliminares" (Ailin, 5/11).
+    const texto = r.estado === 'Borrador' ? 'Preliminar' : r.estado;
+    return `<span class="pill ${r.estado === 'Borrador' ? '' : clase}">${esc(texto)}</span>`
       + (r.mayoreo ? ' <span class="pill">Mayoreo</span>' : '');
   };
   tablaPagos = PPTabla.crear($('tabla-pagos'), {
@@ -6207,7 +6209,7 @@ function pagIniciar() {
     ],
     filtros: [
       { clave: 'estado', titulo: 'Estado',
-        opciones: [{ v: 'Borrador', t: 'Borradores de la web' }, { v: 'Sin pagar', t: 'Sin pagar' },
+        opciones: [{ v: 'Borrador', t: 'Preliminares' }, { v: 'Sin pagar', t: 'Sin pagar' },
                    { v: 'Abonado', t: 'Abonados' }],
         aplica: (r, v) => r.estado === v },
     ],
@@ -6248,7 +6250,7 @@ async function pagFormulario(r) {
       { id: 'aviso', tipo: 'nota', html: `<b>${esc(r.cliente)}</b> · Total ${esc(L(r.total))}`
           + (r.saldo < r.total ? ` · ya abonó ${esc(L(r.total - r.saldo))}` : '')
           + `<br>Falta <b>${esc(L(r.saldo))}</b>. Si paga menos, queda como abono.`
-          + (r.tipo === 'borrador' ? '<br>Es un borrador de la web: al registrar el pago se convierte en pedido.' : '') },
+          + (r.tipo === 'borrador' ? '<br>Es un pedido preliminar: al registrar el pago se convierte en pedido.' : '') },
       { id: 'monto', tipo: 'dinero', etiqueta: 'Monto', prefijo: 'L.', min: 0.01,
         valor: r.saldo, obligatorio: 'Ponga cuánto pagó' },
       { id: 'forma', tipo: 'select', etiqueta: 'Forma de pago', mitad: true, valor: formaInicial,

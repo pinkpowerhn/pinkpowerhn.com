@@ -1941,12 +1941,31 @@ async function cambiarPedido(v, cerrarRecibo) {
   const totalAntes = ped.total || 0;
   const sumaOriginal = lineas.reduce((s, l) => s + l.precio * l.cantidad, 0);
 
+  // El flete se olvida seguido al cobrar (Ailin, 6/11): aquí se pone o se
+  // cambia. Si el que tiene no es uno de los de siempre, sale como opción.
+  const fleteAntes = { titulo: (ped.flete && ped.flete.titulo) || '',
+                       monto: (ped.flete && Number(ped.flete.monto)) || 0 };
+  const opcionesFlete = FLETES.map((f) => ({ t: f.t, titulo: f.titulo || '', monto: f.monto }));
+  if (fleteAntes.monto > 0 && !opcionesFlete.some((f) => f.monto === fleteAntes.monto)) {
+    opcionesFlete.push({ t: fleteAntes.titulo || 'Actual', titulo: fleteAntes.titulo,
+                         monto: fleteAntes.monto });
+  }
+  let flete = opcionesFlete.find((f) => f.monto === fleteAntes.monto) || opcionesFlete[0];
+  const cambioFlete = () => Math.abs(flete.monto - fleteAntes.monto) > 0.009;
+
+  // A un pedido de mayoreo lo que se agrega va a precio de mayorista; el que
+  // no tiene precio de mayoreo va al de tienda, igual que al cobrar.
+  const precioParaAgregar = (p) => (ped.mayoreo && p.precio_mayoreo != null
+    ? Number(p.precio_mayoreo) : Number(p.precio)) || 0;
+
   const diferencia = () => {
     const ahora = lineas.reduce((s, l) => s + l.precio * l.queda, 0)
-      + nuevos.reduce((s, x) => s + x.precio * x.cantidad, 0);
+      + nuevos.reduce((s, x) => s + x.precio * x.cantidad, 0)
+      + flete.monto - fleteAntes.monto;
     return Math.round((ahora - sumaOriginal) * 100) / 100;
   };
-  const hayCambios = () => lineas.some((l) => l.queda !== l.cantidad) || nuevos.length > 0;
+  const hayCambios = () => lineas.some((l) => l.queda !== l.cantidad) || nuevos.length > 0
+    || cambioFlete();
 
   const filaLinea = (l, i) => {
     // Lo ya entregado no se puede quitar: el menos se para ahí.
@@ -2018,19 +2037,23 @@ async function cambiarPedido(v, cerrarRecibo) {
       ${lineas.map(filaLinea).join('')}
       ${nuevos.map(filaNueva).join('')}
     </div>
-    ${ped.mayoreo ? `
-      <p class="ed-aviso">Este pedido es de mayoreo, con precio de mayorista: desde
-      aquí solo se puede quitar. Para agregarle algo hay que hacerlo en Shopify,
-      para que lleve el precio que le toca.</p>` : `
-      <div class="campo ed-buscar">
-        <label for="ed-q">Agregar un producto</label>
-        <input id="ed-q" placeholder="Nombre del producto" autocomplete="off" />
-        <div class="ed-res" id="ed-res"></div>
-      </div>`}
+    <div class="campo ed-buscar">
+      <label for="ed-q">Agregar un producto${ped.mayoreo ? ' (precio de mayoreo)' : ''}</label>
+      <input id="ed-q" placeholder="Nombre del producto" autocomplete="off" />
+      <div class="ed-res" id="ed-res"></div>
+    </div>
+    <div class="campo ed-flete">
+      <label>Flete</label>
+      <div class="fletes">
+        ${opcionesFlete.map((f, i) => `<button class="flete-btn" data-edflete="${i}" type="button"
+          aria-pressed="${f === flete}">${esc(f.t)}${
+            f.monto ? `<b>${L(f.monto)}</b>` : ''}</button>`).join('')}
+      </div>
+    </div>
     ${pie()}`;
 
   const { el, cerrar } = modal({
-    titulo: 'Cambiar lo que lleva',
+    titulo: 'Editar pedido',
     sub: `${ped.numero}${ped.cliente ? ' · ' + ped.cliente : ''}`,
     ok: 'Guardar los cambios',
     cuerpo: `<div class="modal__lista" id="ed-cuerpo">${cuerpo()}</div>`,
@@ -2058,7 +2081,8 @@ async function cambiarPedido(v, cerrarRecibo) {
         <button type="button" class="ed-res__it" data-res="${i}">
           <span class="ed-res__nm">${esc(p.producto)}${
             p.variante ? ` <span class="ed-li__var">${esc(p.variante)}</span>` : ''}</span>
-          <span class="ed-res__pr">${L(p.precio)}${
+          <span class="ed-res__pr">${L(precioParaAgregar(p))}${
+            ped.mayoreo && p.precio_mayoreo == null ? ' · sin precio de mayoreo' : ''}${
             p.disponible ? '' : ' · agotado'}</span>
         </button>`).join('')
       : '<p class="ed-res__no">No se encontró nada con eso.</p>';
@@ -2072,7 +2096,10 @@ async function cambiarPedido(v, cerrarRecibo) {
   el.addEventListener('click', (ev) => {
     const b = ev.target.closest('button');
     if (!b) return;
-    if (b.dataset.menos !== undefined) {
+    if (b.dataset.edflete !== undefined) {
+      flete = opcionesFlete[+b.dataset.edflete] || flete;
+      repintar();
+    } else if (b.dataset.menos !== undefined) {
       const l = lineas[+b.dataset.menos];
       const piso = l.cantidad - l.quitables;
       if (l.queda > piso) { l.queda -= 1; repintar(); }
@@ -2094,7 +2121,7 @@ async function cambiarPedido(v, cerrarRecibo) {
       else {
         nuevos.push({ variant_id: p.variant_id, nombre: p.producto,
                       variante: p.variante || '', imagen: p.imagen || '',
-                      precio: Number(p.precio) || 0, cantidad: 1 });
+                      precio: precioParaAgregar(p), cantidad: 1 });
       }
       el.querySelector('#ed-q').value = '';
       repintar();
@@ -2111,6 +2138,9 @@ async function cambiarPedido(v, cerrarRecibo) {
         .map((l) => ({ line_item_id: l.id, cantidad: l.queda })),
       agregar: nuevos.map((x) => ({ variant_id: x.variant_id, cantidad: x.cantidad })),
     };
+    if (cambioFlete()) {
+      cuerpoEnvio.flete = { monto: flete.monto, titulo: flete.titulo || fleteAntes.titulo || 'Envío' };
+    }
     try {
       const r = await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/editar`,
                           { method: 'POST', body: JSON.stringify(cuerpoEnvio) });
@@ -2205,9 +2235,9 @@ function accionesDeRecibo(v, cotizacion = null) {
           </div>
           ${EDITAR_PEDIDOS && !esCot && !v.ensayo && v.order_id ? `
             <button class="btn btn--ancho" data-accion="cambiar-pedido" type="button"
-              style="margin-top:0.7rem">Cambiar lo que lleva</button>
-            <p class="recibo-nota">Para cuando la clienta se arrepiente o se lleva
-            algo más. Lo que se quita vuelve al inventario.</p>` : ''}
+              style="margin-top:0.7rem">Editar pedido</button>
+            <p class="recibo-nota">Para cuando la clienta se arrepiente, se lleva
+            algo más o falta el flete. Lo que se quita vuelve al inventario.</p>` : ''}
         </div>
       </div>
     </div>`;

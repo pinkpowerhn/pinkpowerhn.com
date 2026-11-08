@@ -6216,9 +6216,35 @@ function pagIniciar() {
     ],
     buscar: (r, t) => [r.pedido, r.cliente, r.telefono].some((x) => norm(x).includes(t)),
     alTocarFila: (r) => pagFormulario(r),
-    acciones: (r) => [{ texto: 'Registrar pago', al: () => pagFormulario(r) }],
+    acciones: (r) => [{ texto: 'Registrar pago', al: () => pagFormulario(r) }].concat(
+      r.tipo === 'borrador' ? [{ texto: 'Pasar a pedido sin pago', al: () => pagPasarAPedido(r) }] : []),
   });
   pagCargar();
+}
+
+// Contra entrega (Ailin, 8/11): el preliminar se vuelve pedido sin pago, y el
+// pago se marca después. Completado en Shopify quedaba sin cobro pendiente y
+// luego no se le podían registrar abonos.
+async function pagPasarAPedido(r) {
+  const si = await PPModal.confirmar({
+    titulo: `¿Pasar ${r.pedido} a pedido?`,
+    cuerpo: `<p class="ppform__nota"><b>${esc(r.cliente)}</b> · ${esc(L(r.total))}<br>`
+      + 'Queda como pedido <b>pendiente de pago</b>, para contra entrega. Cuando la clienta '
+      + 'pague, regístrelo aquí mismo en Pagos.</p>',
+    confirmar: 'Pasar a pedido',
+  });
+  if (!si) return;
+  try {
+    const res = await api(`/admin/pagos/borrador/${r.id}/pedido`, { method: 'POST' });
+    panelMsg(`${r.pedido} ya es el pedido ${res.pedido}, pendiente de pago`);
+    await pagCargar();
+    if (repDatos) repCargar();
+  } catch (ex) {
+    PPModal.abrir({ titulo: 'No se pudo pasar a pedido',
+                    cuerpo: `<p class="ppform__nota">${esc(ex.message)}</p>`,
+                    confirmar: 'Entendido', cancelar: null, ancho: 420 });
+    pagCargar();
+  }
 }
 
 // La caja guarda la forma de pago en minúsculas y sin tilde ("credito").

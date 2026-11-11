@@ -151,6 +151,12 @@ function textoDePago(r) {
   return forma + banco + (r.pagado === false ? ' · pendiente' : '');
 }
 
+function cuentaDeArticulos(lineas) {
+  const n = (lineas || []).length;
+  const u = (lineas || []).reduce((s, l) => s + (Number(l.cantidad) || 0), 0);
+  return `${n} producto${n !== 1 ? 's' : ''} · ${u} unidad${u !== 1 ? 'es' : ''}`;
+}
+
 function pintar(r) {
   recibo = r;
   const items = (r.items || []).map((i) => `
@@ -181,6 +187,7 @@ function pintar(r) {
       </div>
       <div class="items">${items}</div>
       <div class="suma">
+        <div class="fila"><span>Artículos</span><b>${cuentaDeArticulos(r.items)}</b></div>
         ${(d && d.monto > 0) || (r.flete && r.flete.monto > 0)
           ? `<div class="fila"><span>Subtotal</span><b>${L(r.subtotal)}</b></div>` : ''}
         ${d && d.monto > 0 ? `<div class="fila"><span>Descuento${
@@ -338,6 +345,7 @@ async function dibujarTicket(r) {
 
   const d = r.descuento;
   const conFlete = r.flete && r.flete.monto > 0;
+  fila('Artículos', cuentaDeArticulos(r.items), 17, 500, 23);
   if ((d && d.monto > 0) || conFlete) fila('Subtotal', L(r.subtotal), 17, 500, 23);
   if (d && d.monto > 0) {
     fila('Descuento' + (d.tipo === 'porcentaje' ? ` (${d.valor}%)` : ''),

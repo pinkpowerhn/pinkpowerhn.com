@@ -572,6 +572,14 @@ function recalcularPrecios() {
   }
 }
 
+// "8 productos · 9 unidades": la cajera cuenta las piezas al empacar, y con
+// dos de un mismo producto el numero de productos no le cuadra.
+function cuentaDeArticulos(lineas) {
+  const n = (lineas || []).length;
+  const u = (lineas || []).reduce((s, l) => s + (Number(l.cantidad) || 0), 0);
+  return `${n} producto${n !== 1 ? 's' : ''} · ${u} unidad${u !== 1 ? 'es' : ''}`;
+}
+
 function subtotal() {
   return estado.venta.reduce((s, l) => s + (Number(l.precio) || 0) * l.cantidad, 0);
 }
@@ -1350,7 +1358,7 @@ function bloqueLineas() {
   }
   return `<div class="tarjeta scroll-lindo">
     <div class="tarjeta__cab">
-      <span>${estado.venta.length} producto${estado.venta.length !== 1 ? 's' : ''}</span>
+      <span>${cuentaDeArticulos(estado.venta)}</span>
       ${hayMayoreo() ? '<span class="chip chip--may">Precios de mayoreo</span>' : ''}
     </div>
     ${estado.venta.map((l, i) => `
@@ -2495,7 +2503,7 @@ async function dibujarRecibo(d) {
   const conComision = d.comision && d.comision.monto > 0;
   const cuantosDatos = 1 + (d.cliente ? 1 : 0) + (d.cotizacion ? 0 : 1);
   const altoCabecera = 150 + (d.ensayo ? 16 : 0) + Math.ceil(cuantosDatos / 2) * 38 + 36;
-  const altoCierre = ((hayDesc || conFlete || conComision ? 1 : 0) + (hayDesc ? 1 : 0)
+  const altoCierre = 22 + ((hayDesc || conFlete || conComision ? 1 : 0) + (hayDesc ? 1 : 0)
                     + (conFlete ? 1 : 0) + (conComision ? 1 : 0)) * 22
                    + 56 + (d.recibido ? 44 : 0) + 136;
 
@@ -2656,6 +2664,7 @@ async function dibujarHoja(d, items, logo, o) {
     x.fillText(valor, A - M, y + (fuerte ? 4 : 0));
     y += fuerte ? 34 : 22;
   };
+  fila('Artículos', cuentaDeArticulos(d.items));
   if (o.hayDesc || o.conFlete || o.conComision) fila('Subtotal', L(d.subtotal));
   if (o.hayDesc) {
     fila('Descuento' + (d.descuento.tipo === 'porcentaje' ? ` (${d.descuento.valor}%)` : ''),

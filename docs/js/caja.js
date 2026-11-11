@@ -1805,12 +1805,13 @@ async function verVentas() {
       <div class="modal__agarre"></div>
       <div class="modal__cab">
         <div style="flex:1"><h2>Ventas</h2>
-          <p>Para volver a mandar un recibo o retomar una cotización</p></div>
+          <p>Recibos, cotizaciones y lo que falta cobrar</p></div>
         <button class="modal__x" type="button" aria-label="Cerrar">×</button>
       </div>
       <div class="pestanas" role="tablist">
         <button class="pestana pestana--activa" data-pest="ventas" type="button">Ventas</button>
         <button class="pestana" data-pest="cotizaciones" type="button">Cotizaciones</button>
+        <button class="pestana" data-pest="pendientes" type="button">Pendientes</button>
       </div>
       <div class="modal__lista" id="lista-ventas">
         <div class="vacio"><span class="puntos">Buscando las ventas</span></div>
@@ -1824,7 +1825,9 @@ async function verVentas() {
 
   // Cada pestaña se trae una sola vez y se recuerda: cambiar de una a otra es
   // instantáneo, que es como se usa esto en el mostrador.
-  const traido = { ventas: null, cotizaciones: null };
+  const traido = { ventas: null, cotizaciones: null, pendientes: null };
+  const QUE = { ventas: 'las ventas', cotizaciones: 'las cotizaciones',
+                pendientes: 'los pedidos pendientes' };
 
   fondo.querySelectorAll('[data-pest]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -1836,15 +1839,18 @@ async function verVentas() {
 
   async function mostrar(cual) {
     if (traido[cual]) { pintarLista(cual); return; }
-    caja.innerHTML = `<div class="vacio"><span class="puntos">Buscando ${
-      cual === 'ventas' ? 'las ventas' : 'las cotizaciones'}</span></div>`;
-    const ruta = cual === 'ventas' ? '/admin/caja/ventas' : '/admin/caja/cotizaciones';
+    caja.innerHTML = `<div class="vacio"><span class="puntos">Buscando ${QUE[cual]}</span></div>`;
     try {
-      const r = await api(ruta + (MODO_PRUEBA ? '?prueba=1' : ''));
-      traido[cual] = r[cual] || [];
+      if (cual === 'pendientes') {
+        traido[cual] = (await api('/admin/pagos/pendientes')).pedidos || [];
+      } else {
+        const ruta = cual === 'ventas' ? '/admin/caja/ventas' : '/admin/caja/cotizaciones';
+        const r = await api(ruta + (MODO_PRUEBA ? '?prueba=1' : ''));
+        traido[cual] = r[cual] || [];
+      }
     } catch (err) {
-      caja.innerHTML = `<div class="vacio">No se pudieron traer ${
-        cual === 'ventas' ? 'las ventas' : 'las cotizaciones'}.<br>${esc(err.message || '')}</div>`;
+      caja.innerHTML = `<div class="vacio">No se pudieron traer ${QUE[cual]}.<br>${
+        esc(err.message || '')}</div>`;
       return;
     }
     pintarLista(cual);
@@ -1852,6 +1858,22 @@ async function verVentas() {
 
   function pintarLista(cual) {
     const lista = traido[cual];
+    if (cual === 'pendientes') {
+      caja.innerHTML = lista.length ? lista.map((r, i) => `
+        <button class="venta" data-fila="${i}" type="button">
+          <span class="venta__txt">
+            <span class="venta__nom">${esc(r.cliente || 'Sin clienta')}</span>
+            <span class="venta__meta">${esc(r.pedido)} · ${esc(fechaCorta(r.fecha))} ·
+              <span class="ped-estado ped-estado--${r.tipo === 'borrador' ? 'pre'
+                : r.estado === 'Abonado' ? 'abo' : 'pen'}">${esc(estadoPendiente(r))}</span>${
+              r.mayoreo ? ' · Mayoreo' : ''}${r.pago ? ' · ' + esc(nombreDePago(r.pago)) : ''}</span>
+          </span>
+          <span class="venta__imp">${L(r.saldo)}${r.saldo < r.total
+            ? `<small class="venta__de">de ${L(r.total)}</small>` : ''}</span>
+        </button>`).join('')
+        : '<div class="vacio">No hay nada pendiente de cobrar.</div>';
+      return;
+    }
     if (!lista.length) {
       caja.innerHTML = `<div class="vacio">Todavía no hay ${
         cual === 'ventas' ? 'ventas' : 'cotizaciones'}.</div>`;
@@ -1873,7 +1895,15 @@ async function verVentas() {
   caja.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-fila]');
     if (!b) return;
-    const esCot = fondo.querySelector('.pestana--activa').dataset.pest === 'cotizaciones';
+    const pest = fondo.querySelector('.pestana--activa').dataset.pest;
+    if (pest === 'pendientes') {
+      accionesPendiente(traido.pendientes[+b.dataset.fila], () => {
+        traido.pendientes = null;
+        if (fondo.querySelector('.pestana--activa').dataset.pest === 'pendientes') mostrar('pendientes');
+      });
+      return;
+    }
+    const esCot = pest === 'cotizaciones';
     const v = traido[esCot ? 'cotizaciones' : 'ventas'][+b.dataset.fila];
     b.disabled = true;
     const antes = b.innerHTML;
@@ -1911,6 +1941,136 @@ async function verVentas() {
   mostrar('ventas');
 }
 
+
+// ── Pendientes: preliminares y pedidos por cobrar (Ailin, 11/11) ─────────────
+// Lo mismo que la pestaña Pagos del panel, pero en la caja, que es donde ella
+// cobra y cambia pedidos: registrar el pago, editar, y pasar un preliminar a
+// pedido sin pago (contra entrega) o a crédito.
+function estadoPendiente(r) {
+  if (r.tipo === 'borrador') return 'Preliminar';
+  return r.estado === 'Abonado' ? 'Abonado' : 'Pendiente de pago';
+}
+
+function nombreDePago(p) {
+  const fijo = { credito: 'Crédito', contraentrega: 'Contra entrega', efectivo: 'Efectivo',
+                 transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
+  const s = String(p || '').trim();
+  return fijo[s.toLowerCase()] || s;
+}
+
+function accionesPendiente(r, alCambiar) {
+  const pre = r.tipo === 'borrador';
+  const { el, cerrar } = modal({
+    titulo: r.pedido,
+    sub: `${r.cliente || 'Sin clienta'} · ${estadoPendiente(r)}`,
+    cuerpo: `
+      <div class="ped-resumen">
+        <div><span>Total</span><b>${L(r.total)}</b></div>
+        ${r.saldo < r.total ? `<div><span>Ya pagó</span><b>${L(r.total - r.saldo)}</b></div>` : ''}
+        <div class="ped-resumen__falta"><span>Falta</span><b>${L(r.saldo)}</b></div>
+      </div>
+      <div class="ped-acciones">
+        <button class="btn btn--pink btn--ancho" data-acc="pago" type="button">Registrar pago</button>
+        <button class="btn btn--ancho" data-acc="editar" type="button">Editar pedido</button>
+        ${pre ? `
+          <button class="btn btn--ancho" data-acc="sinpago" type="button">Pasar a pedido sin pago</button>
+          <p class="recibo-nota">Para contra entrega: queda pendiente y el pago se registra
+          aquí cuando llegue.</p>
+          <button class="btn btn--ancho" data-acc="credito" type="button">Pasar a pedido al crédito</button>` : ''}
+      </div>`,
+  });
+  el.querySelector('.modal__pie [data-ok]').remove();
+  el.addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-acc]');
+    if (!b) return;
+    const acc = b.dataset.acc;
+    if (acc === 'pago') { cerrar(); registrarPagoPendiente(r, alCambiar); return; }
+    if (acc === 'editar') {
+      cerrar();
+      cambiarPedido(pre ? { draft_id: r.id } : { order_id: r.id }, null, alCambiar);
+      return;
+    }
+    b.disabled = true;
+    const antes = b.textContent;
+    b.textContent = 'Pasando a pedido…';
+    try {
+      const res = await api(`/admin/pagos/borrador/${encodeURIComponent(r.id)}/pedido`, {
+        method: 'POST', body: JSON.stringify({ credito: acc === 'credito' }) });
+      cerrar();
+      flash(`${r.pedido} ya es el pedido ${res.pedido}${
+        acc === 'credito' ? ', al crédito' : ', pendiente de pago'}`, 'ok');
+      alCambiar();
+    } catch (err) {
+      b.disabled = false;
+      b.textContent = antes;
+      flash(err.message || 'No se pudo pasar a pedido', 'mal');
+    }
+  });
+}
+
+function registrarPagoPendiente(r, alCambiar) {
+  const formas = ['Transferencia', 'Efectivo', 'Tarjeta'];
+  let forma = /transfer/i.test(r.pago) ? 'Transferencia'
+    : /efectivo|contra/i.test(r.pago) ? 'Efectivo' : /tarjeta/i.test(r.pago) ? 'Tarjeta' : 'Transferencia';
+  let banco = '';
+  const { el, cerrar } = modal({
+    titulo: `Registrar pago · ${r.pedido}`,
+    sub: `${r.cliente || 'Sin clienta'} · falta ${L(r.saldo)}`,
+    ok: 'Registrar pago',
+    cuerpo: `
+      <div class="campo"><label for="pp-monto">Monto</label>
+        <input id="pp-monto" type="number" inputmode="decimal" step="0.01" min="0.01"
+               value="${r.saldo.toFixed(2)}" /></div>
+      <p class="recibo-nota" style="margin-top:-0.3rem">Si paga menos, queda como abono.${
+        r.tipo === 'borrador' ? ' Al registrar el pago, el preliminar se convierte en pedido.' : ''}</p>
+      <div class="campo"><label>Forma de pago</label><div class="fletes" id="pp-formas"></div></div>
+      <div class="campo" id="pp-banco-campo"><label>Banco</label>
+        <div class="fletes ped-bancos" id="pp-bancos"></div></div>
+      <div class="aviso-caja aviso-caja--roja" id="pp-err" hidden></div>`,
+  });
+  const pintarOpciones = () => {
+    el.querySelector('#pp-formas').innerHTML = formas.map((f) => `<button class="flete-btn"
+      type="button" data-forma="${f}" aria-pressed="${f === forma}">${f}</button>`).join('');
+    el.querySelector('#pp-banco-campo').hidden = forma !== 'Transferencia';
+    el.querySelector('#pp-bancos').innerHTML = BANCOS.map((x) => `<button class="flete-btn"
+      type="button" data-banco="${esc(x)}" aria-pressed="${x === banco}">${esc(x)}</button>`).join('');
+  };
+  pintarOpciones();
+  const aviso = el.querySelector('#pp-err');
+  const avisar = (t) => { aviso.textContent = t || ''; aviso.hidden = !t; };
+  el.addEventListener('click', (ev) => {
+    const f = ev.target.closest('[data-forma]');
+    const b = ev.target.closest('[data-banco]');
+    if (f) { forma = f.dataset.forma; if (forma !== 'Transferencia') banco = ''; pintarOpciones(); }
+    if (b) { banco = b.dataset.banco; pintarOpciones(); }
+  });
+  const boton = el.querySelector('[data-ok]');
+  boton.addEventListener('click', async () => {
+    avisar('');
+    const monto = Math.round(Number(el.querySelector('#pp-monto').value) * 100) / 100;
+    if (!(monto > 0)) { avisar('Ponga cuánto pagó'); return; }
+    if (monto > r.saldo + 0.005) { avisar(`Solo falta pagar ${L(r.saldo)}`); return; }
+    if (forma === 'Transferencia' && !banco) { avisar('Elija el banco de la transferencia'); return; }
+    boton.disabled = true;
+    boton.textContent = 'Registrando…';
+    try {
+      const res = await api(`/admin/pagos/${r.tipo}/${encodeURIComponent(r.id)}`, {
+        method: 'POST', body: JSON.stringify({ monto, forma, banco }) });
+      cerrar();
+      flash(res.saldo > 0
+        ? `${res.pedido || r.pedido}: abono registrado, falta ${L(res.saldo)}`
+        : `${res.pedido || r.pedido} quedó pagado`, 'ok');
+      alCambiar();
+    } catch (err) {
+      boton.disabled = false;
+      boton.textContent = 'Registrar pago';
+      // El aviso va dentro del modal: el flash de atrás queda tapado.
+      avisar(err.message || 'No se pudo registrar el pago');
+    }
+  });
+  setTimeout(() => el.querySelector('#pp-monto').select(), 80);
+}
+
 // ── Cambiar lo que lleva un pedido ya hecho ─────────────────────────────────
 // Lo que más ha pedido la dueña: la clienta se arrepiente de algo o se lleva uno
 // más, y hasta ahora había que anular la venta y rehacerla con el inventario ya
@@ -1921,17 +2081,22 @@ async function verVentas() {
 // Probado contra Shopify de punta a punta: quitar devuelve la unidad al
 // inventario, agregar la descuenta, y el total del pedido se recalcula.
 const EDITAR_PEDIDOS = true;
-async function cambiarPedido(v, cerrarRecibo) {
+async function cambiarPedido(v, cerrarRecibo, alGuardar) {
+  // Un preliminar se edita por otro lado (no es un pedido todavía), pero con la
+  // misma ventana (Ailin, 11/11).
+  const base = v.draft_id ? `/admin/caja/preliminares/${encodeURIComponent(v.draft_id)}`
+    : `/admin/caja/ventas/${encodeURIComponent(v.order_id)}`;
   flash('Buscando el pedido…');
   let ped;
   try {
-    ped = await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/editable`);
+    ped = await api(`${base}/editable`);
   } catch (err) {
     flash(err.message || 'No se pudo abrir el pedido', 'mal');
     return;
   }
   if (!ped.se_puede) {
-    flash('Ese pedido está anulado: ya no se puede cambiar', 'mal');
+    flash(v.draft_id ? 'Ese pedido preliminar ya se completó: búsquelo como pedido'
+      : 'Ese pedido está anulado: ya no se puede cambiar', 'mal');
     return;
   }
 
@@ -2142,10 +2307,11 @@ async function cambiarPedido(v, cerrarRecibo) {
       cuerpoEnvio.flete = { monto: flete.monto, titulo: flete.titulo || fleteAntes.titulo || 'Envío' };
     }
     try {
-      const r = await api(`/admin/caja/ventas/${encodeURIComponent(v.order_id)}/editar`,
+      const r = await api(`${base}/editar`,
                           { method: 'POST', body: JSON.stringify(cuerpoEnvio) });
       cerrar();
       if (cerrarRecibo) cerrarRecibo();
+      if (alGuardar) alGuardar();
       let dice = `${r.numero || ped.numero} quedó en ${L(r.total)}`;
       if (r.pendiente > 0) dice += ` · queda debiendo ${L(r.pendiente)}`;
       else if (r.a_favor > 0) dice += ` · ${L(r.a_favor)} a favor de la clienta`;

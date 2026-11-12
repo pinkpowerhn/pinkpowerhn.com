@@ -81,7 +81,7 @@ const SUBCAT_ORDER = {
     'Aceites y Serums', 'Afeitado', 'Antibacteriales', 'Mini Body Care',
   ],
   'perfumes': ['Perfumes', 'Mini Perfumes', 'Decants'],
-  'sets-y-regalos': ['Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
+  'sets-y-regalos': ['Calendarios de Adviento', 'Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
   'hogar': ['Velas Aromáticas', 'Spray Ambiental', 'Fragancia Ambiental de Pared', 'Fragancias para Carro', 'Jabón de Manos'],
   'lenceria': ['Panties', 'Brassieres', 'Set de Lencería'],
   // Los sets de hombre solo salían al abrir "Hombres" entero (Ailin, 30/10): los

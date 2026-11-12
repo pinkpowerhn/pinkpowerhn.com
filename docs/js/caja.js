@@ -1980,6 +1980,8 @@ function accionesPendiente(r, alCambiar) {
       <div class="ped-acciones">
         <button class="btn btn--pink btn--ancho" data-acc="pago" type="button">Registrar pago</button>
         <button class="btn btn--ancho" data-acc="editar" type="button">Editar pedido</button>
+        <button class="btn btn--ancho" data-acc="forma" type="button">Cambiar forma de pago${
+          r.pago ? ` <span class="ped-forma-actual">(${esc(nombreDePago(r.pago))})</span>` : ''}</button>
         ${pre ? `
           <button class="btn btn--ancho" data-acc="sinpago" type="button">Pasar a pedido sin pago</button>
           <p class="recibo-nota">Para contra entrega: queda pendiente y el pago se registra
@@ -1993,6 +1995,7 @@ function accionesPendiente(r, alCambiar) {
     if (!b) return;
     const acc = b.dataset.acc;
     if (acc === 'pago') { cerrar(); registrarPagoPendiente(r, alCambiar); return; }
+    if (acc === 'forma') { cerrar(); cambiarFormaPendiente(r, alCambiar); return; }
     if (acc === 'editar') {
       cerrar();
       cambiarPedido(pre ? { draft_id: r.id } : { order_id: r.id }, null, alCambiar);
@@ -2012,6 +2015,60 @@ function accionesPendiente(r, alCambiar) {
       b.disabled = false;
       b.textContent = antes;
       flash(err.message || 'No se pudo pasar a pedido', 'mal');
+    }
+  });
+}
+
+// La clienta marcó una forma y era otra (Ailin, 12/11). El servidor cambia los
+// detalles, la nota y la etiqueta, y pone o quita la comisión del 5% del
+// contra entrega con envío nacional, que va dentro del flete.
+function cambiarFormaPendiente(r, alCambiar) {
+  const formas = [['transferencia', 'Transferencia'], ['tarjeta', 'Tarjeta'],
+                  ['efectivo', 'Efectivo'], ['contraentrega', 'Contra entrega'],
+                  ['credito', 'Crédito']];
+  const actual = String(r.pago || '').toLowerCase();
+  let forma = /contra/.test(actual) ? 'contraentrega' : /cr[eé]dito/.test(actual) ? 'credito'
+    : /transfer/.test(actual) ? 'transferencia' : /tarjeta/.test(actual) ? 'tarjeta'
+    : /efectivo/.test(actual) ? 'efectivo' : '';
+  const { el, cerrar } = modal({
+    titulo: `Forma de pago · ${r.pedido}`,
+    sub: `${r.cliente || 'Sin clienta'} · ahora: ${nombreDePago(r.pago) || 'sin forma de pago'}`,
+    ok: 'Cambiar',
+    cuerpo: `
+      <div class="campo"><label>Nueva forma de pago</label><div class="fletes" id="cf-formas"></div></div>
+      <p class="recibo-nota">Contra entrega con envío nacional lleva la comisión del 5%:
+      se agrega sola al flete, y se quita si cambia a otra forma.</p>
+      <div class="aviso-caja aviso-caja--roja" id="cf-err" hidden></div>`,
+  });
+  const pintar = () => {
+    el.querySelector('#cf-formas').innerHTML = formas.map(([k, t]) => `<button class="flete-btn"
+      type="button" data-forma="${k}" aria-pressed="${k === forma}">${t}</button>`).join('');
+  };
+  pintar();
+  const aviso = el.querySelector('#cf-err');
+  const avisar = (t) => { aviso.textContent = t || ''; aviso.hidden = !t; };
+  el.addEventListener('click', (ev) => {
+    const f = ev.target.closest('[data-forma]');
+    if (f) { forma = f.dataset.forma; pintar(); }
+  });
+  const boton = el.querySelector('[data-ok]');
+  boton.addEventListener('click', async () => {
+    avisar('');
+    if (!forma) { avisar('Elija la forma de pago'); return; }
+    boton.disabled = true;
+    boton.textContent = 'Cambiando…';
+    try {
+      const res = await api(`/admin/pagos/${r.tipo}/${encodeURIComponent(r.id)}/forma`, {
+        method: 'POST', body: JSON.stringify({ forma }) });
+      cerrar();
+      const cambioTotal = Math.abs((res.total || 0) - r.total) > 0.005;
+      flash(`${res.pedido || r.pedido}: ${res.forma}${
+        cambioTotal ? ` · total ${L(res.total)}${res.comision ? ' con la comisión' : ''}` : ''}`, 'ok');
+      alCambiar();
+    } catch (err) {
+      boton.disabled = false;
+      boton.textContent = 'Cambiar';
+      avisar(err.message || 'No se pudo cambiar la forma de pago');
     }
   });
 }

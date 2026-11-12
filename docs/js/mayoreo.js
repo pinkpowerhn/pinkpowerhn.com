@@ -166,7 +166,11 @@ async function onSubmit(e) {
     if (location.hash === '#mayoreo') {
       history.replaceState(null, '', `${location.pathname}${location.search}#shop`);
     }
-    document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    let volver = false;
+    try { volver = sessionStorage.getItem('pp_volver_checkout') === '1';
+          sessionStorage.removeItem('pp_volver_checkout'); } catch (_) {}
+    if (volver) window.dispatchEvent(new CustomEvent('mayoreo:volver-checkout'));
+    else document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (ex) {
     err.textContent = ex.message || 'No se pudo iniciar sesión';
     err.hidden = false;

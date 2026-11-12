@@ -2309,6 +2309,20 @@ body.menu-open nav {
 /* El atributo [hidden] pone display:none; hay que reafirmarlo porque arriba
    pusimos display:flex (si no, el error se vería aunque esté "hidden"). */
 .co-error[hidden] { display: none; }
+/* Sesión de mayorista vencida: el botón para volver a entrar va debajo. */
+.co-error:has(.co-error__btn) { flex-wrap: wrap; }
+.co-error__btn {
+  flex: 1 0 100%;
+  margin-top: 0.15rem;
+  padding: 0.6rem 0.9rem;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: #e02424;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
 .co-error::before {
   content: '⚠️';
   font-size: 1.05rem;

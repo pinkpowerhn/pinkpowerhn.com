@@ -1563,15 +1563,35 @@ function mostrarPedidoListo(orderName, url) {
   panel.querySelector('#co-close').addEventListener('click', closeCheckoutModal);
 }
 
+// Volvió a entrar desde el botón del aviso: se le abre otra vez el checkout.
+window.addEventListener('mayoreo:volver-checkout', () => {
+  if (getState().cart.length) showCheckoutModal();
+});
+
 function closeCheckoutModal() {
   const modal = document.getElementById('checkout-modal');
   if (modal) modal.remove();
 }
 
-function showCoError(msg) {
+function showCoError(msg, conBotonDeEntrar = false) {
   const el = document.getElementById('co-error');
   if (!el) return;
   el.textContent = msg;
+  if (conBotonDeEntrar) {
+    // La clienta no sabía dónde volver a entrar y le escribió a Ailin que "el
+    // pedido ya venció" (12/11). El botón la lleva al acceso y, al entrar, la
+    // regresa aquí con el mismo carrito (ver 'mayoreo:volver-checkout').
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'co-error__btn';
+    b.textContent = 'Entrar de nuevo';
+    b.addEventListener('click', () => {
+      try { sessionStorage.setItem('pp_volver_checkout', '1'); } catch (_) {}
+      closeCheckoutModal();
+      location.hash = 'mayoreo';
+    });
+    el.appendChild(b);
+  }
   el.hidden = false;
   // Reiniciar la animación de "shake" para que llame la atención cada vez que
   // se muestra (aunque el mensaje sea el mismo que la vez anterior).
@@ -1608,12 +1628,12 @@ async function submitCheckout(name, phone, email, checkout = null) {
   // está: el pedido saldría a precio de tienda y el mensaje de WhatsApp con los
   // de mayoreo. Le pasó a Glow Store con el #D708 (L. 7,810 contra L. 5,550).
   if (!enMayoreo && cart.some(i => i.mayoreo)) {
-    showCoError('Tu sesión de mayorista venció. Entra de nuevo a tu cuenta para que el pedido salga con tus precios.');
+    showCoError('Tu sesión de mayorista venció. Entra de nuevo a tu cuenta para que el pedido salga con tus precios.', true);
     if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
     return;
   }
   if (enMayoreo && !mayoreoToken) {
-    showCoError('Tu sesión de mayorista venció. Entra de nuevo para que se apliquen tus precios.');
+    showCoError('Tu sesión de mayorista venció. Entra de nuevo para que se apliquen tus precios.', true);
     if (submitBtn) { submitBtn.textContent = 'Finalizar por WhatsApp'; submitBtn.disabled = false; }
     return;
   }
@@ -1678,7 +1698,7 @@ async function submitCheckout(name, phone, email, checkout = null) {
     } else if (err?.status === 401 && detail?.error === 'sesion_mayoreo') {
       // La sesión de mayorista venció mientras armaba el pedido. No se creó nada:
       // vuelve a entrar y el pedido sale con sus precios.
-      showCoError(detail.mensaje || 'Tu sesión de mayorista venció. Entra de nuevo.');
+      showCoError(detail.mensaje || 'Tu sesión de mayorista venció. Entra de nuevo.', true);
     } else {
       showCoError('No se pudo crear el pedido. Por favor intenta de nuevo.');
     }

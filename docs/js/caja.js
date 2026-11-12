@@ -2280,6 +2280,13 @@ async function cambiarPedido(v, cerrarRecibo, alGuardar) {
             f.monto ? `<b>${L(f.monto)}</b>` : ''}</button>`).join('')}
       </div>
     </div>
+    ${ped.pagado ? '' : `
+    <!-- Aquí es donde Ailin la buscó (12/11): no en el menú de Pendientes. -->
+    <div class="campo ed-forma">
+      <label>Forma de pago</label>
+      <button class="btn btn--ancho" data-edforma type="button">${
+        esc(nombreDePago(ped.pago) || 'Sin forma de pago')} · cambiar</button>
+    </div>`}
     ${pie()}`;
 
   const { el, cerrar } = modal({
@@ -2326,7 +2333,16 @@ async function cambiarPedido(v, cerrarRecibo, alGuardar) {
   el.addEventListener('click', (ev) => {
     const b = ev.target.closest('button');
     if (!b) return;
-    if (b.dataset.edflete !== undefined) {
+    if (b.dataset.edforma !== undefined) {
+      // La forma de pago se guarda aparte (cambia el flete por la comisión):
+      // si hay cambios sin guardar, se perderían al recargar el pedido.
+      if (hayCambios()) { flash('Primero guarde los cambios del pedido', 'mal'); return; }
+      cerrar();
+      cambiarFormaPendiente({
+        tipo: v.draft_id ? 'borrador' : 'pedido', id: v.draft_id || v.order_id,
+        pedido: ped.numero, cliente: ped.cliente, total: ped.total, pago: ped.pago,
+      }, () => { if (alGuardar) alGuardar(); });
+    } else if (b.dataset.edflete !== undefined) {
       flete = opcionesFlete[+b.dataset.edflete] || flete;
       repintar();
     } else if (b.dataset.menos !== undefined) {

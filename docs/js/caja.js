@@ -1036,6 +1036,30 @@ function buscarClientas(texto) {
   }, 300);
 }
 
+// La última dirección de la clienta, como sugerencia (Ailin, 13/11): no se
+// escribe sola en el campo, la cajera la toca si sirve y la corrige si hace falta.
+let dirSugerida = { id: '', texto: '' };
+
+function sugerenciaDeDireccion() {
+  const c = estado.cliente;
+  if (!c || !c.id) return '';
+  if (dirSugerida.id !== c.id) {
+    dirSugerida = { id: c.id, texto: '' };
+    api(`/admin/caja/clientes/${encodeURIComponent(c.id)}/direccion`)
+      .then((r) => {
+        if (dirSugerida.id !== c.id || !r.direccion) return;
+        dirSugerida.texto = r.direccion;
+        pintar();
+      })
+      .catch(() => {});
+    return '';
+  }
+  const t = dirSugerida.texto;
+  if (!t || t === estado.direccion.trim()) return '';
+  return `<button class="dir-sug" type="button" data-usardir>
+    <span>Dirección guardada · toque para usarla</span>${esc(t)}</button>`;
+}
+
 function elegirCliente(c) {
   estado.cliente = c;
   estado.resClientes = null;
@@ -1613,6 +1637,7 @@ function bloqueResumen() {
         <label for="direccion">Dirección de entrega *</label>
         <textarea id="direccion" data-direccion rows="2" maxlength="300"
           placeholder="Dirección exacta de la clienta">${esc(estado.direccion)}</textarea>
+        ${sugerenciaDeDireccion()}
       </div>` : ''}
 
       <!-- Las dos cosas entran por la caja, pero no son lo mismo: ella necesita
@@ -3184,6 +3209,13 @@ $('caja-main').addEventListener('click', (e) => {
   if (d.quitar !== undefined) { quitar(Number(d.quitar)); return; }
   if (d.mas !== undefined) { cambiarCantidad(Number(d.mas), 1); return; }
   if (d.menos !== undefined) { cambiarCantidad(Number(d.menos), -1); return; }
+  if (d.usardir !== undefined) {
+    estado.direccion = dirSugerida.texto;
+    pintar();
+    const ta = document.getElementById('direccion');
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    return;
+  }
   if (d.flete !== undefined) {
     estado.flete = d.flete;
     // Con flete casi siempre es un envío, que se prepara después; sin flete, la

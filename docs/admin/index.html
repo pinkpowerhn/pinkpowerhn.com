@@ -1354,6 +1354,13 @@
           </div>
           <div class="card rep-card">
             <div class="rep-card__cab">
+              <h2>Ventas por canal</h2>
+              <span class="rep-card__sub">lo vendido en productos, sin envío</span>
+            </div>
+            <div id="rep-g-canal-monto" class="rep-grafica rep-grafica--dona"></div>
+          </div>
+          <div class="card rep-card">
+            <div class="rep-card__cab">
               <h2>Mayoreo o detalle</h2>
               <span class="rep-card__sub">cuánto pesa cada uno</span>
             </div>
@@ -2412,6 +2419,8 @@ function repPintar(r) {
 
   // 6. De dónde viene la venta
   repDona('rep-g-canal', repTresCanales(r.por_canal || []), null, true);
+  // La misma, por lempiras (Ailin, 14/11).
+  repDona('rep-g-canal-monto', repTresCanales(r.por_canal || []));
   repDona('rep-g-tipo', r.por_tipo || []);
 
   // 7. Qué marcas dejan la plata. Barras y no dona: son treinta y pico y de la
@@ -2529,7 +2538,7 @@ function repEsqueleto() {
   PPEsqueleto.pintar('rep-desglose', 'lista', { filas: 3 });
   ['rep-g-dias', 'rep-g-marcas', 'rep-g-productos'].forEach(
     (id) => PPEsqueleto.pintar(id, 'barras'));
-  ['rep-g-canal', 'rep-g-tipo'].forEach((id) => PPEsqueleto.pintar(id, 'dona'));
+  ['rep-g-canal', 'rep-g-canal-monto', 'rep-g-tipo'].forEach((id) => PPEsqueleto.pintar(id, 'dona'));
   PPEsqueleto.pintar('rep-g-pago', 'barras');
   ['rep-ganancia', 'rep-gastos', 'rep-banco', 'rep-clientas', 'rep-entrega']
     .forEach((id) => PPEsqueleto.pintar(id, 'lista', { filas: 4 }));

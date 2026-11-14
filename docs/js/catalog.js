@@ -90,7 +90,7 @@ const SUBCAT_ORDER = {
               'Sets Mini', 'Sets Body Care', 'Sets de Perfume'],
   // Nota: la última etiqueta es "Candelabro para Velas" en Shopify (la clienta la
   // llama "Candelabros"). Se usa el nombre real para que calce con los productos.
-  'accesorios': ['Bolsos y Carteras', 'Llaveros y Monederos', 'Maquillaje', 'Holder para Antibacterial', 'Difusores para Carro', 'Difusores Ambientales de Pared', 'Candelabro para Velas'],
+  'accesorios': ['Bolsos y Carteras', 'Llaveros y Monederos', 'Maquillaje', 'Holder para Antibacterial', 'Difusores para Carro', 'Difusores Ambientales de Pared', 'Candelabro para Velas', 'Accesorios'],
 };
 
 // Conteo global de cada etiqueta (en cuántos productos aparece en toda la

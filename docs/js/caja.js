@@ -2193,6 +2193,8 @@ async function cambiarPedido(v, cerrarRecibo, alGuardar) {
   // Lo que ya estaba (con la cantidad que va quedando) y lo que se suma ahora.
   const lineas = (ped.lineas || []).map((l) => ({ ...l, queda: l.cantidad }));
   const nuevos = [];
+  // Lo que no está en el catálogo, igual que en la venta (Ailin, 14/11).
+  let persAbierto = false;
   const totalAntes = ped.total || 0;
   const sumaOriginal = lineas.reduce((s, l) => s + l.precio * l.cantidad, 0);
 
@@ -2296,6 +2298,16 @@ async function cambiarPedido(v, cerrarRecibo, alGuardar) {
       <label for="ed-q">Agregar un producto${ped.mayoreo ? ' (precio de mayoreo)' : ''}</label>
       <input id="ed-q" placeholder="Nombre del producto" autocomplete="off" />
       <div class="ed-res" id="ed-res"></div>
+      ${persAbierto ? `
+      <div class="ed-pers">
+        <input id="ed-pers-desc" placeholder="Descripción (lo que no está en el catálogo)" />
+        <div class="ed-pers__fila">
+          <input id="ed-pers-precio" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Precio" />
+          <input id="ed-pers-cant" type="number" inputmode="numeric" min="1" value="1" aria-label="Cantidad" />
+          <button type="button" class="btn" data-pers-ok>Agregar</button>
+        </div>
+      </div>` : `
+      <button type="button" class="li-manual ed-pers-abrir" data-pers-abrir>${svg(IC.mas, 2)} Agregar personalizado</button>`}
     </div>
     <div class="campo ed-flete">
       <label>Flete</label>
@@ -2367,6 +2379,21 @@ async function cambiarPedido(v, cerrarRecibo, alGuardar) {
         tipo: v.draft_id ? 'borrador' : 'pedido', id: v.draft_id || v.order_id,
         pedido: ped.numero, cliente: ped.cliente, total: ped.total, pago: ped.pago,
       }, () => { if (alGuardar) alGuardar(); });
+    } else if (b.dataset.persAbrir !== undefined) {
+      persAbierto = true;
+      repintar();
+      el.querySelector('#ed-pers-desc').focus();
+    } else if (b.dataset.persOk !== undefined) {
+      const desc = el.querySelector('#ed-pers-desc').value.trim();
+      const precio = Number(el.querySelector('#ed-pers-precio').value);
+      const cant = Math.max(1, Math.floor(Number(el.querySelector('#ed-pers-cant').value) || 1));
+      if (!desc) { el.querySelector('#ed-pers-desc').focus(); return; }
+      if (el.querySelector('#ed-pers-precio').value === '' || !(precio >= 0)) {
+        el.querySelector('#ed-pers-precio').focus(); return;
+      }
+      nuevos.push({ manual: true, nombre: desc, variante: '', imagen: '', precio, cantidad: cant });
+      persAbierto = false;
+      repintar();
     } else if (b.dataset.edflete !== undefined) {
       flete = opcionesFlete[+b.dataset.edflete] || flete;
       repintar();
@@ -2407,7 +2434,9 @@ async function cambiarPedido(v, cerrarRecibo, alGuardar) {
     const cuerpoEnvio = {
       cambios: lineas.filter((l) => l.queda !== l.cantidad)
         .map((l) => ({ line_item_id: l.id, cantidad: l.queda })),
-      agregar: nuevos.map((x) => ({ variant_id: x.variant_id, cantidad: x.cantidad })),
+      agregar: nuevos.map((x) => (x.manual
+        ? { titulo: x.nombre, precio: x.precio, cantidad: x.cantidad }
+        : { variant_id: x.variant_id, cantidad: x.cantidad })),
     };
     if (cambioFlete()) {
       cuerpoEnvio.flete = { monto: flete.monto, titulo: flete.titulo || fleteAntes.titulo || 'Envío' };

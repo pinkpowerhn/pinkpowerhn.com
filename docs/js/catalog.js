@@ -132,6 +132,16 @@ export function subcategoriesFor(c, products, globalTag) {
   return tags;
 }
 
+// Opción de temporada del menú: no es una colección de Shopify sino la búsqueda
+// de la palabra (Ailin pone "Colección Navideña 🎄" en la descripción).
+// Para quitarla o cambiarla de temporada, basta con esta constante.
+const MENU_DESTACADO = `
+      <button class="menu-destacado" data-buscar="Navideña" type="button">
+        <span class="collection-ic">${_svg('<path d="M12 3.5 6.5 11h3L5.5 16.5h13L14.5 11h3L12 3.5Z"/><path d="M12 16.5V20.5"/><path d="M19 3.2v3M17.5 4.7h3"/>')}</span>
+        <span class="collection-name">Colección Navideña</span>
+        <span class="menu-destacado__badge">¡NUEVA!</span>
+      </button>`;
+
 // ── Sidebar — Colecciones (con etiquetas desplegables) ────
 // Top level = Colecciones. Click en una colección la expande y muestra sus
 // etiquetas. Todo dinámico desde Shopify — no hay nada hardcoded.
@@ -180,7 +190,12 @@ export function renderCollectionSidebar(collections) {
         sections.push(`<p class="tag-group tag-group--empty">${productsLoaded ? 'Sin etiquetas' : 'Cargando…'}</p>`);
       }
     }
+
+    // Colección de temporada, destacada debajo de Sets y Regalos (Ailin, 19/11).
+    if (c.handle === 'sets-y-regalos') sections.push(MENU_DESTACADO);
   }
+  // Si algún día no existe Sets y Regalos, la temporada no se pierde.
+  if (!collections.some(c => c.handle === 'sets-y-regalos')) sections.push(MENU_DESTACADO);
 
   // (Las tallas se muestran ahora en el toolbar superior, solo en ropa interior;
   //  el filtro de precio se quitó del menú a pedido del cliente.)

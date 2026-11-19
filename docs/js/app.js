@@ -683,6 +683,19 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Opción destacada del menú (Colección Navideña): muestra la búsqueda de la palabra.
+  const destacado = e.target.closest('.menu-destacado');
+  if (destacado) {
+    const q = destacado.dataset.buscar || '';
+    const fromProduct = closeProductIfOpen();
+    document.querySelectorAll('#search-input').forEach(i => { i.value = q; });
+    setState({ searchQuery: q, activeCollection: null, activeTag: null, activeSize: null, currentPage: 1 });
+    history.replaceState(null, '', buildCatalogHash({ searchQuery: q }));
+    closeMenuDrawer();
+    scrollToProducts(fromProduct ? 'auto' : 'smooth');
+    return;
+  }
+
   // Etiqueta dentro de la colección expandida
   const tagBtn = e.target.closest('.tag-btn');
   if (tagBtn) {

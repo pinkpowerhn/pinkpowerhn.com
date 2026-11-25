@@ -23,6 +23,14 @@ function normalizeVariant(node) {
   };
 }
 
+// Lo de hombre va SOLO en Hombres (Ailin, 25/11): en Shopify esos productos
+// están también en Perfumes, Body Care y Sets (colecciones automáticas por
+// etiqueta) y salían regados entre lo de mujer. Si tiene la etiqueta "Hombre"
+// y está en Hombres, se queda únicamente con esa colección.
+export function soloEnHombres(tags, handles) {
+  return (tags || []).includes('Hombre') && handles.includes('hombres') ? ['hombres'] : handles;
+}
+
 function normalizeProduct(node) {
   const variants = (node.variants?.edges || []).map(({ node: v }) => normalizeVariant(v));
   const images   = (node.images?.edges   || []).map(({ node: img }) => ({
@@ -33,9 +41,9 @@ function normalizeProduct(node) {
   // Display price: first available variant, else first variant
   const displayVariant = variants.find(v => v.availableForSale) || variants[0];
 
-  const collectionHandles = (node.collections?.edges || [])
+  const collectionHandles = soloEnHombres(node.tags, (node.collections?.edges || [])
     .map(({ node: c }) => c.handle)
-    .filter(Boolean);
+    .filter(Boolean));
 
   return {
     id:                stripGid(node.id),
@@ -104,7 +112,7 @@ export async function fetchProductsIndex() {
     description:       '',                   // el índice no trae descripción
     productType:       p.productType || '',
     tags:              Array.isArray(p.tags) ? p.tags : [],
-    collectionHandles: Array.isArray(p.collectionHandles) ? p.collectionHandles : [],
+    collectionHandles: soloEnHombres(p.tags, Array.isArray(p.collectionHandles) ? p.collectionHandles : []),
     price:             Number(p.price) || 0,
     availableForSale:  Boolean(p.availableForSale),
     images:            p.image ? [{ url: p.image, altText: '' }] : [],

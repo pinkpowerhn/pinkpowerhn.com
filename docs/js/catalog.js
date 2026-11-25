@@ -716,6 +716,11 @@ export function filterProducts(products, collections, activeCollection, searchQu
 
   if (activeTag) {
     result = result.filter(p => (p.tags || []).includes(activeTag));
+    // Una subcategoría suelta (p. ej. Splash de todo el sitio) no trae lo de
+    // hombre: eso solo se ve dentro de Hombres (Ailin, 25/11).
+    if (activeTag !== 'Hombre' && activeCollection !== 'hombres') {
+      result = result.filter(p => !(p.tags || []).includes('Hombre'));
+    }
   }
 
   if (searchQuery) {
